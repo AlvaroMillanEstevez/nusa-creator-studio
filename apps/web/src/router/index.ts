@@ -11,6 +11,16 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/tools',
+      name: 'tools',
+      component: () => import('../views/ToolsView.vue'),
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: () => import('../views/DashboardView.vue'),
+    },
+    {
       path: '/campaigns/new',
       name: 'campaign-create',
       component: () => import('../views/NewCampaignView.vue'),

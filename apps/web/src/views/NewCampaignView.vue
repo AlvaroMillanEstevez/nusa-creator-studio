@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 
+import AppNav from '@/components/AppNav.vue'
 import { ApiError } from '@/services/api'
 import { createCampaignProject } from '@/services/projects'
 import {
@@ -80,19 +81,7 @@ async function submitCampaign(): Promise<void> {
 <template>
   <main class="min-h-screen bg-neutral-950 text-white">
     <div class="mx-auto min-h-screen max-w-md px-5 pb-12 pt-6 sm:px-6">
-      <header class="flex items-center justify-between">
-        <RouterLink
-          to="/"
-          class="inline-flex min-h-11 items-center gap-2 rounded-full border border-neutral-800 px-4 text-sm text-neutral-300 transition hover:border-neutral-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
-        >
-          <span aria-hidden="true">?</span>
-          Home
-        </RouterLink>
-
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
-          New campaign
-        </p>
-      </header>
+      <AppNav />
 
       <section class="mt-10">
         <p class="text-sm font-medium text-emerald-400">TikTok affiliate campaign</p>
@@ -239,7 +228,7 @@ async function submitCampaign(): Promise<void> {
             class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950"
             aria-hidden="true"
           />
-          {{ isSubmitting ? 'Creating campaign?' : 'Create campaign' }}
+          {{ isSubmitting ? 'Creating campaign...' : 'Create campaign' }}
         </button>
       </form>
     </div>

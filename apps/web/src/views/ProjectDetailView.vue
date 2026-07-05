@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 
+import AppNav from '@/components/AppNav.vue'
 import { ApiError } from '@/services/api'
 import {
   generateCampaignProject,
@@ -153,22 +154,7 @@ onMounted(loadProject)
 <template>
   <main class="min-h-screen bg-neutral-950 text-white">
     <div class="mx-auto min-h-screen max-w-md px-5 pb-16 pt-6 sm:px-6">
-      <header class="flex items-center justify-between">
-        <RouterLink
-          to="/"
-          class="inline-flex min-h-11 items-center gap-2 rounded-full border border-neutral-800 px-4 text-sm text-neutral-300 transition hover:border-neutral-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
-        >
-          <span aria-hidden="true">&larr;</span>
-          Home
-        </RouterLink>
-
-        <RouterLink
-          to="/campaigns/new"
-          class="text-sm font-semibold text-emerald-400 transition hover:text-emerald-300"
-        >
-          New campaign
-        </RouterLink>
-      </header>
+      <AppNav />
 
       <section v-if="isLoading" class="mt-16" aria-live="polite">
         <div class="h-4 w-28 animate-pulse rounded-full bg-neutral-800" />

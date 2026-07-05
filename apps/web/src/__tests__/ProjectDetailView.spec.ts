@@ -38,6 +38,8 @@ async function mountProjectDetail(history: ProjectGenerationHistoryResponse) {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<div />' } },
+      { path: '/tools', component: { template: '<div />' } },
+      { path: '/dashboard', component: { template: '<div />' } },
       { path: '/campaigns/new', component: { template: '<div />' } },
       { path: '/projects/:id', component: ProjectDetailView },
     ],

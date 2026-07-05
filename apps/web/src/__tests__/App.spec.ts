@@ -10,7 +10,7 @@ describe('App', () => {
     vi.unstubAllGlobals()
   })
 
-  it('links the home campaign action to the creation flow', async () => {
+  it('gives the home page a clear path to the creator studio', async () => {
     vi.stubGlobal('scrollTo', vi.fn<() => void>())
     vi.stubGlobal(
       'fetch',
@@ -33,9 +33,10 @@ describe('App', () => {
 
     await flushPromises()
 
-    const campaignLink = wrapper.get('a[href="/campaigns/new"]')
+    const studioLinks = wrapper.findAll('a[href="/tools"]')
 
-    expect(campaignLink.text()).toContain('Create first product campaign')
+    expect(studioLinks.some((link) => link.text().includes('Open Creator Studio'))).toBe(true)
+    expect(wrapper.find('a[href="/dashboard"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('API ok - v1')
   })
 })
