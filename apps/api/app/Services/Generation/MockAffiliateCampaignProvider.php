@@ -30,7 +30,7 @@ class MockAffiliateCampaignProvider implements AffiliateCampaignProvider
                 $audience,
                 $tone,
             ),
-            'spanish', 'es', 'espa?ol' => $this->spanish(
+            'spanish', 'es', 'español' => $this->spanish(
                 $product,
                 $description,
                 $audience,
@@ -173,10 +173,10 @@ class MockAffiliateCampaignProvider implements AffiliateCampaignProvider
 
         return [
             'hooks' => [
-                "Antes de seguir deslizando, mira de cerca {$product}.",
+                "¿Quieres crear contenido rápido? Mira de cerca {$product}.",
                 "Si eres {$audience}, vale la pena comparar este producto.",
-                "Aqu? tienes una mirada breve y honesta a {$product}.",
-                'POV: encuentras un producto que encaja en tu rutina diaria.',
+                "Aquí tienes una mirada breve y honesta a {$product}.",
+                '¡Una idea sencilla para mostrar un producto que encaja en tu rutina diaria!',
                 "Tres detalles que conviene revisar antes de elegir {$product}.",
             ],
             'script' => [
@@ -191,31 +191,31 @@ class MockAffiliateCampaignProvider implements AffiliateCampaignProvider
                     ],
                     [
                         'timestamp' => '3-10s',
-                        'voiceover' => "Est? pensado para {$audience}.",
+                        'voiceover' => "Está pensado para {$audience}.",
                         'visual_direction' => "Muestra honestamente este detalle proporcionado por el creador: {$description}.",
-                        'on_screen_text' => '?Para qui?n es?',
+                        'on_screen_text' => '¿Para quién es?',
                     ],
                     [
                         'timestamp' => '10-22s',
-                        'voiceover' => 'Ense?a la funci?n principal, la preparaci?n y la experiencia real sin exagerar.',
-                        'visual_direction' => 'Usa dos o tres tomas r?pidas de la preparaci?n y el uso cotidiano.',
-                        'on_screen_text' => 'Mira c?mo funciona',
+                        'voiceover' => 'Enseña la función principal, la preparación y la experiencia real sin exagerar.',
+                        'visual_direction' => 'Usa dos o tres tomas rápidas de la preparación y el uso cotidiano.',
+                        'on_screen_text' => 'Mira cómo funciona',
                     ],
                     [
                         'timestamp' => '22-30s',
                         'voiceover' => "Revisa los detalles y decide si {$product} encaja con tus necesidades.",
-                        'visual_direction' => 'Termina mostrando el producto y se?ala el enlace del producto.',
+                        'visual_direction' => 'Termina mostrando el producto y señala el enlace del producto.',
                         'on_screen_text' => 'Ver detalles',
                     ],
                 ],
             ],
-            'caption' => "Una mirada r?pida y honesta a {$product} para {$audience}. Revisa los detalles y decide si encaja en tu rutina.",
+            'caption' => "Una mirada rápida y honesta a {$product} para {$audience}. Revisa los detalles y decide si encaja en tu rutina.",
             'hashtags' => $this->hashtags($product, 'spanish'),
             'cta' => 'Revisa los detalles del producto y comprueba si es adecuado para ti.',
             'notes' => [
-                'Usa im?genes reales y muestra solamente funciones que puedas verificar.',
-                "Mant?n un tono {$toneLabel}, cercano y sin presi?n de venta.",
-                'A?ade texto en pantalla para que el mensaje funcione tambi?n sin sonido.',
+                'Usa imágenes reales y muestra solamente funciones que puedas verificar.',
+                "Mantén un tono {$toneLabel}, cercano y sin presión de venta.",
+                'Añade texto en pantalla para que el mensaje funcione también sin sonido.',
             ],
         ];
     }
@@ -225,11 +225,11 @@ class MockAffiliateCampaignProvider implements AffiliateCampaignProvider
      */
     private function hashtags(string $product, string $language): array
     {
-        $productTag = preg_replace('/[^A-Za-z0-9]/', '', Str::ascii($product)) ?: 'ProductFind';
+        $productTag = preg_replace('/[^\p{L}\p{N}]/u', '', $product) ?: 'ProductFind';
 
         $localized = match ($language) {
             'indonesian' => ['#RacunTikTok', '#ProdukPilihan', '#ReviewProduk'],
-            'spanish' => ['#TikTokMeHizoComprarlo', '#Rese?aDeProducto', '#Creadores'],
+            'spanish' => ['#TikTokMeHizoComprarlo', '#ReseñaDeProducto', '#Creadores'],
             default => ['#TikTokMadeMeBuyIt', '#ProductReview', '#CreatorTips'],
         };
 
@@ -280,8 +280,8 @@ class MockAffiliateCampaignProvider implements AffiliateCampaignProvider
                 'natural' => 'natural',
                 'funny' => 'ligero y divertido',
                 'premium' => 'premium',
-                'problem_solution' => 'problema-soluci?n',
-                'review' => 'rese?a',
+                'problem_solution' => 'problema-solución',
+                'review' => 'reseña',
             ],
         ];
 

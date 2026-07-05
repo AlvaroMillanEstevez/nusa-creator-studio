@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { API_BASE_URL } from '@/services/api'
-import { createCampaignProject, generateCampaignProject } from '@/services/projects'
+import {
+  createCampaignProject,
+  generateCampaignProject,
+  getProjectGenerations,
+} from '@/services/projects'
 import type {
   CampaignFormPayload,
   CampaignGenerationResponse,
   CampaignProject,
+  ProjectGenerationHistoryResponse,
 } from '@/types/project'
 
 describe('project service', () => {
@@ -133,5 +138,53 @@ describe('project service', () => {
       status: 402,
       code: 'insufficient_credits',
     })
+  })
+
+  it('loads the paginated generation history for a project', async () => {
+    const response: ProjectGenerationHistoryResponse = {
+      data: [
+        {
+          id: 8,
+          user_id: 1,
+          project_id: 42,
+          job_type: 'generate_affiliate_campaign',
+          provider: 'mock',
+          status: 'completed',
+          cost_usd: '0.0000',
+          credits_charged: 1,
+          request_payload: null,
+          result_payload: {
+            hooks: ['Saved hook'],
+            script: { title: 'Saved script', duration_seconds: 30, scenes: [] },
+            caption: 'Saved caption',
+            hashtags: ['#Saved'],
+            cta: 'See details.',
+            notes: ['Use real footage.'],
+          },
+          started_at: '2026-07-05T01:00:00.000000Z',
+          finished_at: '2026-07-05T01:00:00.000000Z',
+          created_at: '2026-07-05T01:00:00.000000Z',
+        },
+      ],
+      links: { first: null, last: null, prev: null, next: null },
+      meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getProjectGenerations(42)).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/42/generations',
+      expect.objectContaining({
+        headers: expect.any(Headers),
+      }),
+    )
   })
 })

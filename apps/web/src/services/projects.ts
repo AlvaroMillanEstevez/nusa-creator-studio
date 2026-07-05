@@ -5,6 +5,7 @@ import type {
   CampaignProject,
   CampaignProjectSettings,
   CreateProjectPayload,
+  ProjectGenerationHistoryResponse,
 } from '@/types/project'
 
 interface ResourceResponse<T> {
@@ -46,4 +47,10 @@ export function generateCampaignProject(
     '/projects/' + projectId + '/generate-campaign',
     {},
   )
+}
+
+export function getProjectGenerations(
+  projectId: number | string,
+): Promise<ProjectGenerationHistoryResponse> {
+  return apiGet<ProjectGenerationHistoryResponse>('/projects/' + projectId + '/generations')
 }

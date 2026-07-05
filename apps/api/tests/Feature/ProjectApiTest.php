@@ -58,6 +58,48 @@ class ProjectApiTest extends TestCase
         $this->assertDatabaseMissing('projects', ['id' => $projectId]);
     }
 
+    public function test_project_text_round_trips_unicode_without_mojibake(): void
+    {
+        User::factory()->create();
+
+        $title = 'Campaña ÁÉÍÓÚ áéíóú para España: ñ Ñ ¿? ¡!';
+        $description = 'Diseñado para creadores que necesitan automatización.';
+        $indonesian = 'Konten untuk kreator Indonesia tetap cepat, jujur, dan mudah dipahami.';
+
+        $createResponse = $this->postJson('/api/v1/projects', [
+            'title' => $title,
+            'type' => 'affiliate_campaign',
+            'status' => 'draft',
+            'input_payload' => [
+                'product_name' => $title,
+                'product_description' => $description,
+                'target_audience' => 'Pequeños creadores en España',
+                'language' => 'spanish',
+                'tone' => 'natural',
+                'indonesian_sample' => $indonesian,
+            ],
+        ]);
+
+        $createResponse
+            ->assertCreated()
+            ->assertJsonPath('data.title', $title)
+            ->assertJsonPath('data.input_payload.product_description', $description)
+            ->assertJsonPath('data.input_payload.indonesian_sample', $indonesian);
+
+        $projectId = $createResponse->json('data.id');
+        $fetchResponse = $this->getJson("/api/v1/projects/{$projectId}");
+
+        $fetchResponse
+            ->assertOk()
+            ->assertJsonPath('data.title', $title)
+            ->assertJsonPath('data.input_payload.product_description', $description)
+            ->assertJsonPath('data.input_payload.indonesian_sample', $indonesian);
+
+        foreach (['Ã¡', 'Ã±', 'Â¿', 'Â¡'] as $mojibake) {
+            $this->assertStringNotContainsString($mojibake, $fetchResponse->getContent());
+        }
+    }
+
     public function test_project_payloads_are_validated(): void
     {
         User::factory()->create();

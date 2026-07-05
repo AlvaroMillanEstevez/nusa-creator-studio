@@ -3,16 +3,25 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { ApiError } from '@/services/api'
-import { generateCampaignProject, getCampaignProject } from '@/services/projects'
+import {
+  generateCampaignProject,
+  getCampaignProject,
+  getProjectGenerations,
+} from '@/services/projects'
 import type { CampaignGenerationResult, CampaignProject, Generation } from '@/types/project'
+
+type CampaignGeneration = Generation<CampaignGenerationResult>
 
 const route = useRoute()
 const project = ref<CampaignProject | null>(null)
-const generation = ref<Generation<CampaignGenerationResult> | null>(null)
+const generation = ref<CampaignGeneration | null>(null)
+const generationHistory = ref<CampaignGeneration[]>([])
 const isLoading = ref(true)
 const isGenerating = ref(false)
+const isHistoryLoading = ref(false)
 const loadError = ref('')
 const generationError = ref('')
+const historyError = ref('')
 const remainingCredits = ref<number | null>(null)
 
 const generationResult = computed(() => generation.value?.result_payload ?? null)
@@ -25,10 +34,52 @@ function formatLabel(value: string | undefined): string {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (character: string) => character.toUpperCase())
 }
 
+function formatDate(value: string | null): string {
+  if (!value) {
+    return 'Date unavailable'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Date unavailable'
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}
+
 function currentProjectId(): string | undefined {
   const routeId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
 
   return routeId || undefined
+}
+
+function selectGeneration(selected: CampaignGeneration): void {
+  generation.value = selected
+}
+
+async function loadGenerationHistory(projectId: string): Promise<void> {
+  isHistoryLoading.value = true
+  historyError.value = ''
+
+  try {
+    const response = await getProjectGenerations(projectId)
+
+    generationHistory.value = response.data
+    generation.value =
+      response.data.find((item) => item.status === 'completed' && item.result_payload !== null) ??
+      null
+  } catch (error: unknown) {
+    historyError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'We could not load generation history. You can still generate a new campaign.'
+  } finally {
+    isHistoryLoading.value = false
+  }
 }
 
 async function loadProject(): Promise<void> {
@@ -43,6 +94,8 @@ async function loadProject(): Promise<void> {
     return
   }
 
+  const historyRequest = loadGenerationHistory(projectId)
+
   try {
     project.value = await getCampaignProject(projectId)
   } catch (error: unknown) {
@@ -52,6 +105,7 @@ async function loadProject(): Promise<void> {
         : 'We could not load this project. Check the API connection and try again.'
   } finally {
     isLoading.value = false
+    await historyRequest
   }
 }
 
@@ -68,7 +122,12 @@ async function generateCampaign(): Promise<void> {
   try {
     const response = await generateCampaignProject(projectId)
 
+    historyError.value = ''
     generation.value = response.data
+    generationHistory.value = [
+      response.data,
+      ...generationHistory.value.filter((item) => item.id !== response.data.id),
+    ]
     remainingCredits.value = response.meta.credits_balance
   } catch (error: unknown) {
     if (
@@ -266,12 +325,115 @@ onMounted(loadProject)
           </button>
         </section>
 
+        <section class="mt-5 rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                Saved results
+              </p>
+              <h2 class="mt-1 text-lg font-semibold">Generation history</h2>
+            </div>
+            <span
+              v-if="generationHistory.length"
+              class="rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400"
+            >
+              {{ generationHistory.length }}
+            </span>
+          </div>
+
+          <div v-if="isHistoryLoading" class="mt-5 space-y-3" aria-live="polite">
+            <div class="h-16 animate-pulse rounded-2xl bg-neutral-800/70" />
+            <div class="h-16 animate-pulse rounded-2xl bg-neutral-800/50" />
+            <p class="text-xs text-neutral-500">Loading generation history...</p>
+          </div>
+
+          <div
+            v-else-if="historyError"
+            role="alert"
+            class="mt-5 rounded-2xl border border-amber-900/60 bg-amber-950/30 p-4"
+          >
+            <p class="text-sm leading-6 text-amber-200">{{ historyError }}</p>
+            <button
+              type="button"
+              class="mt-3 text-sm font-semibold text-amber-300 underline underline-offset-4"
+              @click="loadGenerationHistory(String(project.id))"
+            >
+              Retry history
+            </button>
+          </div>
+
+          <p
+            v-else-if="generationHistory.length === 0"
+            class="mt-5 rounded-2xl bg-neutral-950/70 p-4 text-sm text-neutral-400"
+          >
+            No saved generations yet. Generate your first campaign to create hooks, script, caption
+            and hashtags.
+          </p>
+
+          <div v-else class="mt-5 space-y-3">
+            <button
+              v-for="(item, index) in generationHistory"
+              :key="item.id"
+              type="button"
+              class="w-full rounded-2xl border p-4 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+              :class="
+                generation?.id === item.id
+                  ? 'border-emerald-500 bg-emerald-950/30'
+                  : 'border-neutral-800 bg-neutral-950/70 hover:border-neutral-700'
+              "
+              @click="selectGeneration(item)"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-sm font-semibold text-neutral-100">
+                    {{ index === 0 ? 'Latest generation' : 'Generation #' + item.id }}
+                  </p>
+                  <p class="mt-1 text-xs text-neutral-500">{{ formatDate(item.created_at) }}</p>
+                </div>
+                <span
+                  class="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                  :class="
+                    item.status === 'completed'
+                      ? 'bg-emerald-950 text-emerald-300'
+                      : 'bg-neutral-800 text-neutral-300'
+                  "
+                >
+                  {{ item.status }}
+                </span>
+              </div>
+              <div class="mt-3 flex items-center gap-3 text-xs text-neutral-400">
+                <span>{{ item.provider ?? 'Unknown provider' }}</span>
+                <span aria-hidden="true">&bull;</span>
+                <span>{{ item.credits_charged }} credit charged</span>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        <div
+          v-if="generation && !generationResult"
+          class="mt-5 rounded-2xl border border-neutral-800 bg-neutral-900 p-4 text-sm text-neutral-400"
+        >
+          This generation does not have a result payload to display.
+        </div>
+
         <div v-if="generationResult" class="mt-8 space-y-5" aria-live="polite">
           <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-              Generation complete
-            </p>
-            <h2 class="mt-2 text-2xl font-bold">Hooks</h2>
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+                  Selected generation
+                </p>
+                <p class="mt-2 text-xs text-neutral-500">
+                  {{ formatDate(generation?.created_at ?? null) }}
+                </p>
+              </div>
+              <span class="text-xs font-medium text-neutral-400">
+                {{ generation?.provider ?? 'Unknown provider' }}
+              </span>
+            </div>
+
+            <h2 class="mt-5 text-2xl font-bold">Hooks</h2>
             <ol class="mt-5 space-y-3">
               <li
                 v-for="(hook, index) in generationResult.hooks"

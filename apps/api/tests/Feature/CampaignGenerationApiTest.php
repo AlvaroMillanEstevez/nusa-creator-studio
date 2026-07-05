@@ -128,7 +128,7 @@ class CampaignGenerationApiTest extends TestCase
         foreach ([
             'english' => 'Before you scroll',
             'indonesian' => 'Sebelum scroll',
-            'spanish' => 'Antes de seguir',
+            'spanish' => '¿Quieres crear contenido rápido?',
         ] as $language => $expectedHook) {
             $project = $this->affiliateProject($user, $language);
 
@@ -142,6 +142,67 @@ class CampaignGenerationApiTest extends TestCase
         }
 
         $this->assertSame(0, $user->refresh()->credits_balance);
+    }
+
+    public function test_spanish_mock_generation_preserves_unicode_without_mojibake(): void
+    {
+        $user = User::factory()->create(['credits_balance' => 1]);
+        $product = 'Cámara Ágil Á É Í Ó Ú, piñata Ñandú';
+        $description = 'Diseñado para creadores que necesitan automatización.';
+        $audience = 'Pequeños creadores en España';
+
+        $project = Project::factory()
+            ->for($user)
+            ->create([
+                'title' => 'Campaña para pequeños creadores en España',
+                'type' => 'affiliate_campaign',
+                'status' => 'draft',
+                'input_payload' => [
+                    'product_name' => $product,
+                    'product_description' => $description,
+                    'target_audience' => $audience,
+                    'language' => 'spanish',
+                    'tone' => 'problem_solution',
+                ],
+                'settings' => [
+                    'platform' => 'tiktok',
+                    'format' => 'vertical_9_16',
+                ],
+            ]);
+
+        $response = $this->postJson("/api/v1/projects/{$project->id}/generate-campaign");
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath(
+                'data.result_payload.hooks.0',
+                "¿Quieres crear contenido rápido? Mira de cerca {$product}.",
+            )
+            ->assertJsonPath(
+                'data.result_payload.hooks.3',
+                '¡Una idea sencilla para mostrar un producto que encaja en tu rutina diaria!',
+            )
+            ->assertJsonPath(
+                'data.result_payload.script.scenes.1.on_screen_text',
+                '¿Para quién es?',
+            )
+            ->assertJsonPath(
+                'data.result_payload.script.scenes.1.visual_direction',
+                "Muestra honestamente este detalle proporcionado por el creador: {$description}.",
+            )
+            ->assertJsonPath('data.result_payload.hashtags.0', '#CámaraÁgilÁÉÍÓÚpiñataÑandú')
+            ->assertJsonPath('data.result_payload.hashtags.2', '#ReseñaDeProducto');
+
+        $result = $response->json('data.result_payload');
+        $unicodeJson = json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+        foreach (['á', 'é', 'í', 'ó', 'ú', 'Á', 'É', 'Í', 'Ó', 'Ú', 'ñ', 'Ñ', '¿', '?', '¡', '!'] as $character) {
+            $this->assertStringContainsString($character, $unicodeJson);
+        }
+
+        foreach (['Ã¡', 'Ã±', 'Â¿', 'Â¡'] as $mojibake) {
+            $this->assertStringNotContainsString($mojibake, $unicodeJson);
+        }
     }
 
     public function test_user_cannot_generate_another_users_campaign(): void

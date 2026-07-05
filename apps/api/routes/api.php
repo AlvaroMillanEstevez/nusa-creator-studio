@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\ProjectGenerationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,10 @@ Route::get('/health', function () {
 });
 
 Route::prefix('v1')->group(function () {
+    Route::get(
+        'projects/{project}/generations',
+        ProjectGenerationController::class,
+    )->name('projects.generations.index');
     Route::post(
         'projects/{project}/generate-campaign',
         GenerateCampaignController::class,
