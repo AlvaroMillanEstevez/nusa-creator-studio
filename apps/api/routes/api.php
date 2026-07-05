@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ProjectController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +17,8 @@ Route::get('/health', function () {
 });
 
 Route::prefix('v1')->group(function () {
+    Route::apiResource('projects', ProjectController::class);
+
     Route::get('/health', function () {
         return response()->json([
             'status' => 'ok',
