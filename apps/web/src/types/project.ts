@@ -55,3 +55,46 @@ export interface CreateProjectPayload<TInputPayload, TSettings> {
 }
 
 export type CampaignProject = Project<CampaignFormPayload, CampaignProjectSettings>
+
+export interface CampaignScriptScene {
+  timestamp: string
+  voiceover: string
+  visual_direction: string
+  on_screen_text: string
+}
+
+export interface CampaignGenerationResult {
+  hooks: string[]
+  script: {
+    title: string
+    duration_seconds: number
+    scenes: CampaignScriptScene[]
+  }
+  caption: string
+  hashtags: string[]
+  cta: string
+  notes: string[]
+}
+
+export interface Generation<TResult = Record<string, unknown>> {
+  id: number
+  user_id: number
+  project_id: number | null
+  job_type: string
+  provider: string | null
+  status: ProjectStatus
+  cost_usd: string
+  credits_charged: number
+  request_payload: Record<string, unknown> | null
+  result_payload: TResult | null
+  started_at: string | null
+  finished_at: string | null
+  created_at: string | null
+}
+
+export interface CampaignGenerationResponse {
+  data: Generation<CampaignGenerationResult>
+  meta: {
+    credits_balance: number
+  }
+}

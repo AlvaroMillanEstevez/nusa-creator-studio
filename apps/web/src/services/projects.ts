@@ -1,6 +1,7 @@
 import { apiGet, apiPost } from '@/services/api'
 import type {
   CampaignFormPayload,
+  CampaignGenerationResponse,
   CampaignProject,
   CampaignProjectSettings,
   CreateProjectPayload,
@@ -36,4 +37,13 @@ export async function getCampaignProject(projectId: number | string): Promise<Ca
   const response = await apiGet<ResourceResponse<CampaignProject>>('/projects/' + projectId)
 
   return response.data
+}
+
+export function generateCampaignProject(
+  projectId: number | string,
+): Promise<CampaignGenerationResponse> {
+  return apiPost<CampaignGenerationResponse, Record<string, never>>(
+    '/projects/' + projectId + '/generate-campaign',
+    {},
+  )
 }

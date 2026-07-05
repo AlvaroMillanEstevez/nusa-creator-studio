@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,10 @@ Route::get('/health', function () {
 });
 
 Route::prefix('v1')->group(function () {
+    Route::post(
+        'projects/{project}/generate-campaign',
+        GenerateCampaignController::class,
+    )->name('projects.generate-campaign');
     Route::apiResource('projects', ProjectController::class);
 
     Route::get('/health', function () {

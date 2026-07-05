@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { API_BASE_URL } from '@/services/api'
-import { createCampaignProject } from '@/services/projects'
-import type { CampaignFormPayload, CampaignProject } from '@/types/project'
+import { createCampaignProject, generateCampaignProject } from '@/services/projects'
+import type {
+  CampaignFormPayload,
+  CampaignGenerationResponse,
+  CampaignProject,
+} from '@/types/project'
 
 describe('project service', () => {
   afterEach(() => {
@@ -59,5 +63,75 @@ describe('project service', () => {
         }),
       }),
     )
+  })
+
+  it('posts to the mock campaign generation endpoint', async () => {
+    const response: CampaignGenerationResponse = {
+      data: {
+        id: 7,
+        user_id: 1,
+        project_id: 42,
+        job_type: 'generate_affiliate_campaign',
+        provider: 'mock',
+        status: 'completed',
+        cost_usd: '0.0000',
+        credits_charged: 1,
+        request_payload: null,
+        result_payload: {
+          hooks: ['Hook'],
+          script: { title: 'Script', duration_seconds: 30, scenes: [] },
+          caption: 'Caption',
+          hashtags: ['#Product'],
+          cta: 'See details.',
+          notes: ['Use real footage.'],
+        },
+        started_at: '2026-07-05T00:00:00.000000Z',
+        finished_at: '2026-07-05T00:00:00.000000Z',
+        created_at: '2026-07-05T00:00:00.000000Z',
+      },
+      meta: { credits_balance: 19 },
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(generateCampaignProject(42)).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/42/generate-campaign',
+      expect.objectContaining({
+        method: 'POST',
+        body: '{}',
+      }),
+    )
+  })
+
+  it('preserves the insufficient-credit API error code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: 'You do not have enough platform credits to generate this campaign.',
+            code: 'insufficient_credits',
+          }),
+          {
+            status: 402,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      ),
+    )
+
+    await expect(generateCampaignProject(42)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 402,
+      code: 'insufficient_credits',
+    })
   })
 })
