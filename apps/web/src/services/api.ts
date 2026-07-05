@@ -1,17 +1,71 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
+const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
+const API_BASE_URL = configuredBaseUrl.replace(/\/$/, '')
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Accept: 'application/json',
-    },
+interface ApiErrorPayload {
+  message: string
+}
+
+function hasErrorMessage(value: unknown): value is ApiErrorPayload {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'message' in value &&
+    typeof value.message === 'string'
+  )
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers)
+  headers.set('Accept', 'application/json')
+
+  if (options.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const normalizedPath = path.startsWith('/') ? path : '/' + path
+  const response = await fetch(API_BASE_URL + normalizedPath, {
+    ...options,
+    headers,
   })
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`)
+    let message = 'The API request failed. Please try again.'
+
+    try {
+      const payload: unknown = await response.json()
+
+      if (hasErrorMessage(payload)) {
+        message = payload.message
+      }
+    } catch {
+      // The API may return an empty or non-JSON error response.
+    }
+
+    throw new ApiError(message, response.status)
   }
 
   return response.json() as Promise<T>
+}
+
+export function apiGet<T>(path: string): Promise<T> {
+  return apiRequest<T>(path)
+}
+
+export function apiPost<T, TPayload>(path: string, payload: TPayload): Promise<T> {
+  return apiRequest<T>(path, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }
 
 export { API_BASE_URL }

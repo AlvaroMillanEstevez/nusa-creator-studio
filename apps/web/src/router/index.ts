@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+
 import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
@@ -9,7 +10,18 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
     },
+    {
+      path: '/campaigns/new',
+      name: 'campaign-create',
+      component: () => import('../views/NewCampaignView.vue'),
+    },
+    {
+      path: '/projects/:id',
+      name: 'project-detail',
+      component: () => import('../views/ProjectDetailView.vue'),
+    },
   ],
+  scrollBehavior: () => ({ top: 0 }),
 })
 
 export default router

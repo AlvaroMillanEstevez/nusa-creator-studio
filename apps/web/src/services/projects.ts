@@ -1,0 +1,39 @@
+import { apiGet, apiPost } from '@/services/api'
+import type {
+  CampaignFormPayload,
+  CampaignProject,
+  CampaignProjectSettings,
+  CreateProjectPayload,
+} from '@/types/project'
+
+interface ResourceResponse<T> {
+  data: T
+}
+
+export async function createCampaignProject(
+  campaign: CampaignFormPayload,
+): Promise<CampaignProject> {
+  const payload: CreateProjectPayload<CampaignFormPayload, CampaignProjectSettings> = {
+    title: campaign.product_name,
+    type: 'affiliate_campaign',
+    status: 'draft',
+    input_payload: campaign,
+    settings: {
+      platform: 'tiktok',
+      format: 'vertical_9_16',
+    },
+  }
+
+  const response = await apiPost<
+    ResourceResponse<CampaignProject>,
+    CreateProjectPayload<CampaignFormPayload, CampaignProjectSettings>
+  >('/projects', payload)
+
+  return response.data
+}
+
+export async function getCampaignProject(projectId: number | string): Promise<CampaignProject> {
+  const response = await apiGet<ResourceResponse<CampaignProject>>('/projects/' + projectId)
+
+  return response.data
+}
