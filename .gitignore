@@ -10,7 +10,8 @@ coverage/
 
 # Laravel
 /vendor/
-/apps/api/.env
+apps/api/.env
+apps/web/.env.local
 /apps/api/storage/*.key
 /apps/api/storage/logs/*.log
 /apps/api/bootstrap/cache/*.php
