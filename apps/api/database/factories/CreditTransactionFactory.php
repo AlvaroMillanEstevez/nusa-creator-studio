@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\CreditTransactionType;
 use App\Models\CreditTransaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -16,7 +17,7 @@ class CreditTransactionFactory extends Factory
         return [
             'user_id' => User::factory(),
             'generation_id' => null,
-            'type' => fake()->randomElement(['credit', 'debit']),
+            'type' => fake()->randomElement(CreditTransactionType::cases()),
             'amount' => fake()->numberBetween(0, 100),
             'balance_after' => fake()->numberBetween(0, 10_000),
             'reason' => null,

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CreditTransactionType;
 use App\Models\CreditTransaction;
 use App\Models\Generation;
 use App\Models\MediaAsset;
@@ -42,7 +43,7 @@ class DomainModelRelationshipsTest extends TestCase
             ->for($user)
             ->for($generation)
             ->create([
-                'type' => 'debit',
+                'type' => CreditTransactionType::Usage,
                 'amount' => 5,
                 'balance_after' => 95,
                 'metadata' => ['source' => 'generation'],

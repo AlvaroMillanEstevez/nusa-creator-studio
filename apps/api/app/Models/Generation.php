@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\GenerationFactory;
+use DomainException;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,15 @@ class Generation extends Model
 {
     /** @use HasFactory<GenerationFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Generation $generation): void {
+            if ($generation->credits_charged < 0) {
+                throw new DomainException('Generation credits charged cannot be negative.');
+            }
+        });
+    }
 
     /**
      * @return BelongsTo<User, $this>
