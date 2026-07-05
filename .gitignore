@@ -1,0 +1,32 @@
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Laravel
+/vendor/
+/apps/api/.env
+/apps/api/storage/*.key
+/apps/api/storage/logs/*.log
+/apps/api/bootstrap/cache/*.php
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Docker volumes / local storage
+/storage-local/
+/tmp/
+
+# Uploads
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3
