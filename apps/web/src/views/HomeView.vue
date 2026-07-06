@@ -35,8 +35,8 @@ onMounted(async () => {
         </h1>
 
         <p class="mt-5 text-base leading-7 text-neutral-300">
-          Plan affiliate campaigns today, then grow into video, voice and visual tools as the studio
-          expands.
+          Plan affiliate content, shape recorded product stories and keep every saved result in one
+          focused creator workspace.
         </p>
 
         <div class="mt-9 space-y-3">
@@ -57,29 +57,32 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section class="mt-12 grid gap-3">
-        <RouterLink
-          to="/campaigns/new"
-          class="group rounded-3xl border border-neutral-800 bg-gradient-to-br from-neutral-900 to-emerald-950/30 p-5 transition hover:border-emerald-800"
-        >
-          <div class="flex items-start justify-between gap-4">
+      <section class="mt-12 border-y border-neutral-900 py-6">
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+          Built for a faster creator workflow
+        </p>
+        <ul class="mt-5 grid gap-4">
+          <li class="flex gap-3">
+            <span class="mt-2 size-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" />
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                Available now
+              <p class="text-sm font-semibold text-neutral-200">From brief to usable content</p>
+              <p class="mt-1 text-sm leading-6 text-neutral-500">
+                Keep planning, generation and saved results together.
               </p>
-              <h2 class="mt-2 text-lg font-semibold">Affiliate Campaign Generator</h2>
             </div>
-            <span class="rounded-full bg-neutral-950/70 px-3 py-1 text-xs text-neutral-400">
-              1 credit
-            </span>
-          </div>
-          <p class="mt-3 text-sm leading-6 text-neutral-400">
-            Generate hooks, TikTok script, caption, hashtags, CTA and filming notes.
-          </p>
-          <p class="mt-4 text-sm font-semibold text-emerald-300 group-hover:text-emerald-200">
-            Create a campaign &rarr;
-          </p>
-        </RouterLink>
+          </li>
+          <li class="flex gap-3">
+            <span class="mt-2 size-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" />
+            <div>
+              <p class="text-sm font-semibold text-neutral-200">
+                Made for vertical product stories
+              </p>
+              <p class="mt-1 text-sm leading-6 text-neutral-500">
+                Structured for TikTok affiliate creation in English, Indonesian and Spanish.
+              </p>
+            </div>
+          </li>
+        </ul>
       </section>
 
       <div class="mt-5 rounded-2xl border border-neutral-900 bg-neutral-900/60 px-4 py-3">

@@ -37,6 +37,9 @@ describe('App', () => {
 
     expect(studioLinks.some((link) => link.text().includes('Open Creator Studio'))).toBe(true)
     expect(wrapper.find('a[href="/dashboard"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Affiliate Campaign Generator')
+    expect(wrapper.text()).not.toContain('Video Enhancer / Caption Pack')
+    expect(wrapper.find('[data-testid^="tool-card-"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('API ok - v1')
   })
 })
