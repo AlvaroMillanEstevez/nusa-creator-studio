@@ -5,15 +5,18 @@ import { useRoute } from 'vue-router'
 import AppNav from '@/components/AppNav.vue'
 import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
+import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import { ApiError } from '@/services/api'
 import {
   generateCampaignProject,
+  generateProductVideoScript,
   generateVideoEnhancerProject,
   getCreatorProject,
   getProjectGenerations,
 } from '@/services/projects'
 import {
   isCampaignGenerationResult,
+  isProductToVideoResult,
   isVideoEnhancerResult,
   type CreatorProject,
   type Generation,
@@ -41,23 +44,40 @@ const campaignResult = computed(() =>
 const videoEnhancerResult = computed(() =>
   isVideoEnhancerResult(selectedResult.value) ? selectedResult.value : null,
 )
+const productToVideoResult = computed(() =>
+  isProductToVideoResult(selectedResult.value) ? selectedResult.value : null,
+)
 const hasSelectedResult = computed(
-  () => campaignResult.value !== null || videoEnhancerResult.value !== null,
+  () =>
+    campaignResult.value !== null ||
+    videoEnhancerResult.value !== null ||
+    productToVideoResult.value !== null,
 )
 const isVideoEnhancer = computed(() => project.value?.type === 'video_enhancer')
-const generationTitle = computed(() =>
-  isVideoEnhancer.value ? 'Generate caption pack' : 'Create campaign content',
-)
-const generationDescription = computed(() =>
-  isVideoEnhancer.value
-    ? 'Create a deterministic caption, subtitle timing, cut plan, posting copy and editing notes from this written brief.'
-    : 'Generate deterministic hooks, a TikTok script, caption, hashtags, CTA, and practical filming notes.',
-)
-const emptyHistoryCopy = computed(() =>
-  isVideoEnhancer.value
-    ? 'No saved generations yet. Generate your first caption pack to create subtitles, cuts, posting text and hashtags.'
-    : 'No saved generations yet. Generate your first campaign to create hooks, script, caption and hashtags.',
-)
+const isProductToVideo = computed(() => project.value?.type === 'product_to_video')
+const generationTitle = computed(() => {
+  if (isProductToVideo.value) return 'Generate video script pack'
+  if (isVideoEnhancer.value) return 'Generate caption pack'
+  return 'Create campaign content'
+})
+const generationDescription = computed(() => {
+  if (isProductToVideo.value) {
+    return 'Create a deterministic storyboard, shot list, voiceover plan and production checklist. No video is rendered.'
+  }
+  if (isVideoEnhancer.value) {
+    return 'Create a deterministic caption, subtitle timing, cut plan, posting copy and editing notes from this written brief.'
+  }
+  return 'Generate deterministic hooks, a TikTok script, caption, hashtags, CTA, and practical filming notes.'
+})
+const emptyHistoryCopy = computed(() => {
+  if (isProductToVideo.value) {
+    return 'No saved generations yet. Generate your first video script pack to create a storyboard, shot list and production notes.'
+  }
+  if (isVideoEnhancer.value) {
+    return 'No saved generations yet. Generate your first caption pack to create subtitles, cuts, posting text and hashtags.'
+  }
+  return 'No saved generations yet. Generate your first campaign to create hooks, script, caption and hashtags.'
+})
 
 function formatLabel(value: string | undefined): string {
   if (!value) {
@@ -156,7 +176,11 @@ async function generateContent(): Promise<void> {
     let generated: CreatorGeneration
     let creditsBalance: number
 
-    if (project.value.type === 'video_enhancer') {
+    if (project.value.type === 'product_to_video') {
+      const response = await generateProductVideoScript(projectId)
+      generated = response.data
+      creditsBalance = response.meta.credits_balance
+    } else if (project.value.type === 'video_enhancer') {
       const response = await generateVideoEnhancerProject(projectId)
       generated = response.data
       creditsBalance = response.meta.credits_balance
@@ -239,7 +263,13 @@ onMounted(loadProject)
         <section class="mt-9 rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
           <div class="flex items-center justify-between gap-4">
             <h2 class="text-lg font-semibold">
-              {{ isVideoEnhancer ? 'Recorded video brief' : 'Campaign brief' }}
+              {{
+                isProductToVideo
+                  ? 'Product video brief'
+                  : isVideoEnhancer
+                    ? 'Recorded video brief'
+                    : 'Campaign brief'
+              }}
             </h2>
             <span class="text-xs font-medium uppercase tracking-wider text-neutral-500">
               TikTok
@@ -291,7 +321,7 @@ onMounted(loadProject)
             </div>
           </dl>
 
-          <dl v-else class="mt-6 space-y-6">
+          <dl v-else-if="project.type === 'video_enhancer'" class="mt-6 space-y-6">
             <div>
               <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 Product
@@ -339,6 +369,74 @@ onMounted(loadProject)
                 </dt>
                 <dd class="mt-2 text-sm font-medium text-neutral-200">
                   {{ formatLabel(project.input_payload?.style) }}
+                </dd>
+              </div>
+            </div>
+          </dl>
+          <dl v-else class="mt-6 space-y-6">
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                Product
+              </dt>
+              <dd class="mt-2 text-base font-medium text-neutral-100">
+                {{ project.input_payload?.product_name ?? '-' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                Description
+              </dt>
+              <dd class="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-300">
+                {{ project.input_payload?.product_description ?? '-' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                Key benefits
+              </dt>
+              <dd class="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-300">
+                {{ project.input_payload?.key_benefits ?? '-' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                Target audience
+              </dt>
+              <dd class="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-300">
+                {{ project.input_payload?.target_audience ?? '-' }}
+              </dd>
+            </div>
+            <div class="grid grid-cols-2 gap-4 border-t border-neutral-800 pt-5">
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                  Goal
+                </dt>
+                <dd class="mt-2 text-sm font-medium text-neutral-200">
+                  {{ formatLabel(project.input_payload?.video_goal) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                  Style
+                </dt>
+                <dd class="mt-2 text-sm font-medium text-neutral-200">
+                  {{ formatLabel(project.input_payload?.video_style) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                  Duration
+                </dt>
+                <dd class="mt-2 text-sm font-medium text-neutral-200">
+                  {{ project.input_payload?.duration_seconds ?? '-' }} seconds
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                  Language
+                </dt>
+                <dd class="mt-2 text-sm font-medium text-neutral-200">
+                  {{ formatLabel(project.input_payload?.language) }}
                 </dd>
               </div>
             </div>
@@ -391,14 +489,18 @@ onMounted(loadProject)
             />
             {{
               isGenerating
-                ? isVideoEnhancer
-                  ? 'Generating caption pack...'
-                  : 'Generating campaign...'
-                : isVideoEnhancer
-                  ? 'Generate caption pack'
-                  : generation
-                    ? 'Generate again'
-                    : 'Generate campaign'
+                ? isProductToVideo
+                  ? 'Generating video script pack...'
+                  : isVideoEnhancer
+                    ? 'Generating caption pack...'
+                    : 'Generating campaign...'
+                : isProductToVideo
+                  ? 'Generate video script pack'
+                  : isVideoEnhancer
+                    ? 'Generate caption pack'
+                    : generation
+                      ? 'Generate again'
+                      : 'Generate campaign'
             }}
           </button>
         </section>
@@ -515,6 +617,10 @@ onMounted(loadProject)
           <VideoEnhancerGenerationResult
             v-else-if="videoEnhancerResult"
             :result="videoEnhancerResult"
+          />
+          <ProductToVideoGenerationResult
+            v-else-if="productToVideoResult"
+            :result="productToVideoResult"
           />
         </div>
       </template>

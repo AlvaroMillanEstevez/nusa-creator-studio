@@ -20,9 +20,31 @@ export const videoEnhancerStyleOptions = [
   { value: 'review', label: 'Review' },
 ] as const
 
+export const productVideoGoalOptions = [
+  { value: 'awareness', label: 'Awareness' },
+  { value: 'product_demo', label: 'Product demo' },
+  { value: 'affiliate_sale', label: 'Affiliate sale' },
+  { value: 'education', label: 'Education' },
+  { value: 'review', label: 'Review' },
+] as const
+
+export const productVideoStyleOptions = [
+  { value: 'natural', label: 'Natural' },
+  { value: 'energetic', label: 'Energetic' },
+  { value: 'premium', label: 'Premium' },
+  { value: 'problem_solution', label: 'Problem-solution' },
+  { value: 'storytelling', label: 'Storytelling' },
+  { value: 'review', label: 'Review' },
+] as const
+
+export const productVideoDurationOptions = [15, 30, 45] as const
+
 export type CampaignLanguage = (typeof campaignLanguageOptions)[number]['value']
 export type CampaignTone = (typeof campaignToneOptions)[number]['value']
 export type VideoEnhancerStyle = (typeof videoEnhancerStyleOptions)[number]['value']
+export type ProductVideoGoal = (typeof productVideoGoalOptions)[number]['value']
+export type ProductVideoStyle = (typeof productVideoStyleOptions)[number]['value']
+export type ProductVideoDuration = (typeof productVideoDurationOptions)[number]
 
 export type ProjectType = 'affiliate_campaign' | 'video_enhancer' | 'product_to_video'
 export type ProjectStatus = 'draft' | 'pending' | 'processing' | 'completed' | 'failed'
@@ -43,6 +65,17 @@ export interface VideoEnhancerForm {
   target_audience: string
   language: CampaignLanguage
   style: VideoEnhancerStyle
+}
+
+export interface ProductToVideoForm {
+  product_name: string
+  product_description: string
+  key_benefits: string
+  target_audience: string
+  video_goal: ProductVideoGoal
+  video_style: ProductVideoStyle
+  duration_seconds: ProductVideoDuration
+  language: CampaignLanguage
 }
 
 export interface CreatorProjectSettings {
@@ -78,13 +111,12 @@ export interface CreateProjectPayload<TInputPayload, TSettings> {
 type TypedProject<TType extends ProjectType, TInputPayload> = Omit<
   Project<TInputPayload, CreatorProjectSettings>,
   'type'
-> & {
-  type: TType
-}
+> & { type: TType }
 
 export type CampaignProject = TypedProject<'affiliate_campaign', CampaignFormPayload>
 export type VideoEnhancerProject = TypedProject<'video_enhancer', VideoEnhancerForm>
-export type CreatorProject = CampaignProject | VideoEnhancerProject
+export type ProductToVideoProject = TypedProject<'product_to_video', ProductToVideoForm>
+export type CreatorProject = CampaignProject | VideoEnhancerProject | ProductToVideoProject
 
 export interface CampaignScriptScene {
   timestamp: string
@@ -95,11 +127,7 @@ export interface CampaignScriptScene {
 
 export interface CampaignGenerationResult {
   hooks: string[]
-  script: {
-    title: string
-    duration_seconds: number
-    scenes: CampaignScriptScene[]
-  }
+  script: { title: string; duration_seconds: number; scenes: CampaignScriptScene[] }
   caption: string
   hashtags: string[]
   cta: string
@@ -110,7 +138,6 @@ export interface VideoEnhancerSubtitleCue {
   timestamp: string
   text: string
 }
-
 export interface VideoEnhancerCut {
   timestamp: string
   edit_direction: string
@@ -128,7 +155,29 @@ export interface VideoEnhancerResult {
   notes: string[]
 }
 
-export type GenerationResult = CampaignGenerationResult | VideoEnhancerResult
+export interface ProductVideoStoryboardScene {
+  scene_number: number
+  timestamp: string
+  scene_goal: string
+  visual_direction: string
+  voiceover: string
+  on_screen_text: string
+}
+
+export interface ProductToVideoResult {
+  concept_title: string
+  video_angle: string
+  storyboard: ProductVideoStoryboardScene[]
+  shot_list: string[]
+  asset_checklist: string[]
+  caption: string
+  hashtags: string[]
+  cta: string
+  editing_notes: string[]
+  compliance_notes: string[]
+}
+
+export type GenerationResult = CampaignGenerationResult | VideoEnhancerResult | ProductToVideoResult
 
 export interface Generation<TResult = GenerationResult> {
   id: number
@@ -148,28 +197,17 @@ export interface Generation<TResult = GenerationResult> {
 
 export interface GenerationResponse<TResult extends GenerationResult> {
   data: Generation<TResult>
-  meta: {
-    credits_balance: number
-  }
+  meta: { credits_balance: number }
 }
 
 export type CampaignGenerationResponse = GenerationResponse<CampaignGenerationResult>
 export type VideoEnhancerGenerationResponse = GenerationResponse<VideoEnhancerResult>
+export type ProductToVideoGenerationResponse = GenerationResponse<ProductToVideoResult>
 
 export interface PaginatedResponse<T> {
   data: T[]
-  links: {
-    first: string | null
-    last: string | null
-    prev: string | null
-    next: string | null
-  }
-  meta: {
-    current_page: number
-    last_page: number
-    per_page: number
-    total: number
-  }
+  links: { first: string | null; last: string | null; prev: string | null; next: string | null }
+  meta: { current_page: number; last_page: number; per_page: number; total: number }
 }
 
 export type ProjectGenerationHistoryResponse = PaginatedResponse<Generation<GenerationResult>>
@@ -184,4 +222,10 @@ export function isVideoEnhancerResult(
   result: GenerationResult | null,
 ): result is VideoEnhancerResult {
   return result !== null && 'improved_caption' in result
+}
+
+export function isProductToVideoResult(
+  result: GenerationResult | null,
+): result is ProductToVideoResult {
+  return result !== null && 'concept_title' in result
 }

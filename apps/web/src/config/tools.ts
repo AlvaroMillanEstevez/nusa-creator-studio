@@ -57,10 +57,11 @@ export const tools = [
       'Create a storyboard, scene plan, voiceover directions and on-screen text from product details.',
     long_description:
       'Build a production-ready vertical video plan before recording any product footage.',
-    status: 'coming_soon',
+    status: 'available',
     category: 'Video production',
-    credit_cost_label: 'Credit cost coming soon',
-    badge: 'Coming soon',
+    credit_cost_label: '1 credit',
+    route: '/product-to-video/new',
+    badge: 'Available now',
   },
   {
     id: 'ai_voiceover',

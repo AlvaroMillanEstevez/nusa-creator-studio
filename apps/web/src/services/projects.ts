@@ -8,6 +8,9 @@ import type {
   CreatorProject,
   CreatorProjectSettings,
   ProjectGenerationHistoryResponse,
+  ProductToVideoForm,
+  ProductToVideoGenerationResponse,
+  ProductToVideoProject,
   VideoEnhancerForm,
   VideoEnhancerGenerationResponse,
   VideoEnhancerProject,
@@ -60,6 +63,27 @@ export async function createVideoEnhancerProject(
 
   return response.data
 }
+export async function createProductToVideoProject(
+  brief: ProductToVideoForm,
+): Promise<ProductToVideoProject> {
+  const payload: CreateProjectPayload<ProductToVideoForm, CreatorProjectSettings> = {
+    title: brief.product_name,
+    type: 'product_to_video',
+    status: 'draft',
+    input_payload: brief,
+    settings: {
+      platform: 'tiktok',
+      format: 'vertical_9_16',
+    },
+  }
+
+  const response = await apiPost<
+    ResourceResponse<ProductToVideoProject>,
+    CreateProjectPayload<ProductToVideoForm, CreatorProjectSettings>
+  >('/projects', payload)
+
+  return response.data
+}
 
 export async function getCampaignProject(projectId: number | string): Promise<CampaignProject> {
   const response = await apiGet<ResourceResponse<CampaignProject>>('/projects/' + projectId)
@@ -87,6 +111,14 @@ export function generateVideoEnhancerProject(
 ): Promise<VideoEnhancerGenerationResponse> {
   return apiPost<VideoEnhancerGenerationResponse, Record<string, never>>(
     '/projects/' + projectId + '/generate-video-enhancer',
+    {},
+  )
+}
+export function generateProductVideoScript(
+  projectId: number | string,
+): Promise<ProductToVideoGenerationResponse> {
+  return apiPost<ProductToVideoGenerationResponse, Record<string, never>>(
+    '/projects/' + projectId + '/generate-product-video-script',
     {},
   )
 }

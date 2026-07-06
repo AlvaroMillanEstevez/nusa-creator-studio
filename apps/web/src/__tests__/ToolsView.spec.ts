@@ -15,6 +15,7 @@ async function mountToolsView() {
       { path: '/tools', component: ToolsView },
       { path: '/dashboard', component: placeholder },
       { path: '/video-enhancer/new', component: placeholder },
+      { path: '/product-to-video/new', component: placeholder },
       { path: '/campaigns/new', component: placeholder },
     ],
   })
@@ -35,6 +36,7 @@ describe('ToolsView', () => {
     const text = wrapper.text()
     const affiliateCard = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
     const videoEnhancerCard = wrapper.get('[data-testid="tool-card-video_enhancer"]')
+    const productVideoCard = wrapper.get('[data-testid="tool-card-product_to_video"]')
 
     expect(text).toContain('What do you want to create today?')
     expect(text.indexOf('Available tools')).toBeLessThan(text.indexOf('Coming soon'))
@@ -43,6 +45,9 @@ describe('ToolsView', () => {
     expect(videoEnhancerCard.element.tagName).toBe('A')
     expect(videoEnhancerCard.attributes('href')).toBe('/video-enhancer/new')
     expect(videoEnhancerCard.text()).toContain('Video Enhancer / Caption Pack')
+    expect(productVideoCard.element.tagName).toBe('A')
+    expect(productVideoCard.attributes('href')).toBe('/product-to-video/new')
+    expect(productVideoCard.text()).toContain('Product-to-Video Script Pack')
     expect(affiliateCard.text()).toContain('Affiliate Campaign Generator')
     expect(availableTools.every((tool) => Boolean(tool.route))).toBe(true)
   })
@@ -50,7 +55,7 @@ describe('ToolsView', () => {
   it('renders coming soon services without broken links', async () => {
     const wrapper = await mountToolsView()
 
-    expect(comingSoonTools).toHaveLength(4)
+    expect(comingSoonTools).toHaveLength(3)
 
     for (const tool of comingSoonTools) {
       const card = wrapper.get(`[data-testid="tool-card-${tool.id}"]`)

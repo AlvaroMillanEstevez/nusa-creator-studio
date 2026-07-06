@@ -26,6 +26,11 @@ const router = createRouter({
       component: () => import('../views/NewVideoEnhancerView.vue'),
     },
     {
+      path: '/product-to-video/new',
+      name: 'product-to-video-create',
+      component: () => import('../views/NewProductToVideoView.vue'),
+    },
+    {
       path: '/campaigns/new',
       name: 'campaign-create',
       component: () => import('../views/NewCampaignView.vue'),

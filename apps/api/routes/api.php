@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
+use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
 use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
@@ -32,6 +33,10 @@ Route::prefix('v1')->group(function () {
         'projects/{project}/generate-video-enhancer',
         GenerateVideoEnhancerController::class,
     )->name('projects.generate-video-enhancer');
+    Route::post(
+        'projects/{project}/generate-product-video-script',
+        GenerateProductVideoScriptController::class,
+    )->name('projects.generate-product-video-script');
     Route::apiResource('projects', ProjectController::class);
 
     Route::get('/health', function () {

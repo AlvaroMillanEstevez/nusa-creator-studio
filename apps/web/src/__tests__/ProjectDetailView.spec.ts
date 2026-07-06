@@ -7,6 +7,7 @@ import ProjectDetailView from '@/views/ProjectDetailView.vue'
 import type {
   CampaignProject,
   CreatorProject,
+  ProductToVideoProject,
   ProjectGenerationHistoryResponse,
   VideoEnhancerProject,
 } from '@/types/project'
@@ -55,6 +56,27 @@ const videoEnhancerProject: VideoEnhancerProject = {
   updated_at: '2026-07-06T02:00:00.000000Z',
 }
 
+const productVideoProject: ProductToVideoProject = {
+  id: 88,
+  user_id: 1,
+  title: 'Portable key light',
+  type: 'product_to_video',
+  status: 'draft',
+  input_payload: {
+    product_name: 'Portable key light',
+    product_description: 'A small light for creator desk setups.',
+    key_benefits: 'Portable, adjustable and easy to set up.',
+    target_audience: 'Creators filming in small rooms',
+    video_goal: 'product_demo',
+    video_style: 'storytelling',
+    duration_seconds: 45,
+    language: 'english',
+  },
+  settings: { platform: 'tiktok', format: 'vertical_9_16' },
+  created_at: '2026-07-06T04:00:00.000000Z',
+  updated_at: '2026-07-06T04:00:00.000000Z',
+}
+
 const emptyHistory: ProjectGenerationHistoryResponse = {
   data: [],
   links: { first: null, last: null, prev: null, next: null },
@@ -70,6 +92,7 @@ async function mountProjectDetail(
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/tools', component: { template: '<div />' } },
+      { path: '/product-to-video/new', component: { template: '<div />' } },
       { path: '/dashboard', component: { template: '<div />' } },
       { path: '/campaigns/new', component: { template: '<div />' } },
       { path: '/video-enhancer/new', component: { template: '<div />' } },
@@ -214,5 +237,60 @@ describe('ProjectDetailView', () => {
     expect(renderedText).toContain('Cut plan')
     expect(renderedText).toContain('On-screen text')
     expect(renderedText).toContain('Posting text')
+  })
+  it('renders a product-to-video brief and restores its script pack', async () => {
+    const history: ProjectGenerationHistoryResponse = {
+      ...emptyHistory,
+      data: [
+        {
+          id: 15,
+          user_id: 1,
+          project_id: 88,
+          job_type: 'generate_product_video_script',
+          provider: 'mock',
+          status: 'completed',
+          cost_usd: '0.0000',
+          credits_charged: 1,
+          request_payload: null,
+          result_payload: {
+            concept_title: 'Portable key light production plan',
+            video_angle: 'A practical product demo angle.',
+            storyboard: [
+              {
+                scene_number: 1,
+                timestamp: '0-3s',
+                scene_goal: 'Stop the scroll',
+                visual_direction: 'Open on the product.',
+                voiceover: 'Meet the portable key light.',
+                on_screen_text: 'Portable lighting',
+              },
+            ],
+            shot_list: ['Vertical hero shot'],
+            asset_checklist: ['Product and accessories'],
+            caption: 'A practical product video plan.',
+            hashtags: ['#PortableKeyLight'],
+            cta: 'Review the details.',
+            editing_notes: ['Keep the cut concise.'],
+            compliance_notes: ['This is a production plan, not a rendered video.'],
+          },
+          started_at: '2026-07-06T05:00:00.000000Z',
+          finished_at: '2026-07-06T05:00:00.000000Z',
+          created_at: '2026-07-06T05:00:00.000000Z',
+        },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
+    }
+
+    const wrapper = await mountProjectDetail(productVideoProject, history)
+    const text = wrapper.text()
+
+    expect(text).toContain('Product video brief')
+    expect(text).toContain('Portable, adjustable and easy to set up.')
+    expect(text).toContain('Generate video script pack')
+    expect(text).toContain('Concept title')
+    expect(text).toContain('Storyboard')
+    expect(text).toContain('Shot list')
+    expect(text).toContain('Asset checklist')
+    expect(text).toContain('Compliance notes')
   })
 })
