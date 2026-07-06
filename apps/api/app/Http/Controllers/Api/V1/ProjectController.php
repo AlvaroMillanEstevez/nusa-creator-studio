@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\ToolAvailabilityService;
 use App\Support\CurrentUserResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,10 @@ use Illuminate\Http\Response;
 
 class ProjectController extends Controller
 {
-    public function __construct(private readonly CurrentUserResolver $currentUser) {}
+    public function __construct(
+        private readonly CurrentUserResolver $currentUser,
+        private readonly ToolAvailabilityService $tools,
+    ) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -32,6 +36,14 @@ class ProjectController extends Controller
     public function store(StoreProjectRequest $request): JsonResponse
     {
         $data = $request->validated();
+
+        if (! $this->tools->isAvailableForProjectType($data['type'])) {
+            return response()->json([
+                'message' => 'This tool is currently unavailable.',
+                'code' => 'tool_unavailable',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $data['status'] ??= 'draft';
 
         $project = $this->currentUser

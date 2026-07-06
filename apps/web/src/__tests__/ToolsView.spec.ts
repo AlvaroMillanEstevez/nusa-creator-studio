@@ -1,13 +1,73 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
-import { availableTools, comingSoonTools } from '@/config/tools'
+import { API_BASE_URL } from '@/services/api'
+import type { CreatorTool } from '@/types/tool'
 import ToolsView from '@/views/ToolsView.vue'
 
-async function mountToolsView() {
+const tools: CreatorTool[] = [
+  {
+    key: 'affiliate_campaign',
+    title: 'Affiliate Campaign Generator',
+    short_description: 'Generate a complete campaign pack.',
+    long_description: 'Turn a brief into structured TikTok campaign content.',
+    category: 'campaign_creation',
+    status: 'available',
+    route: '/campaigns/new',
+    credit_cost: 1,
+    credit_cost_label: '1 credit',
+    badge_label: 'Available now',
+    is_recommended: true,
+    sort_order: 10,
+  },
+  {
+    key: 'ai_voiceover',
+    title: 'AI Voiceover',
+    short_description: 'Create natural voice tracks.',
+    long_description: null,
+    category: 'audio',
+    status: 'coming_soon',
+    route: null,
+    credit_cost: 1,
+    credit_cost_label: 'Credit cost coming soon',
+    badge_label: 'Coming soon',
+    is_recommended: false,
+    sort_order: 20,
+  },
+  {
+    key: 'video_enhancer',
+    title: 'Video Enhancer / Caption Pack',
+    short_description: 'Polish an existing video.',
+    long_description: null,
+    category: 'video_production',
+    status: 'maintenance',
+    route: '/video-enhancer/new',
+    credit_cost: 1,
+    credit_cost_label: '1 credit',
+    badge_label: 'Maintenance',
+    is_recommended: false,
+    sort_order: 30,
+  },
+  {
+    key: 'hidden_tool',
+    title: 'Disabled internal tool',
+    short_description: 'Should never be displayed.',
+    long_description: null,
+    category: 'internal',
+    status: 'disabled',
+    route: '/hidden',
+    credit_cost: 0,
+    credit_cost_label: null,
+    badge_label: null,
+    is_recommended: false,
+    sort_order: 40,
+  },
+]
+
+async function mountToolsView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) {
   const placeholder = { template: '<div />' }
   const router = createRouter({
     history: createMemoryHistory(),
@@ -15,57 +75,90 @@ async function mountToolsView() {
       { path: '/', component: placeholder },
       { path: '/tools', component: ToolsView },
       { path: '/dashboard', component: placeholder },
-      { path: '/video-enhancer/new', component: placeholder },
-      { path: '/product-to-video/new', component: placeholder },
+      { path: '/login', component: placeholder },
+      { path: '/register', component: placeholder },
       { path: '/campaigns/new', component: placeholder },
+      { path: '/video-enhancer/new', component: placeholder },
     ],
   })
 
+  vi.stubGlobal('fetch', fetchMock)
   await router.push('/tools')
   await router.isReady()
 
-  return mount(ToolsView, {
+  const wrapper = mount(ToolsView, {
     global: {
       plugins: [createPinia(), router],
     },
   })
+  await flushPromises()
+
+  return wrapper
 }
 
 describe('ToolsView', () => {
-  it('renders available tools first and links the campaign generator', async () => {
-    const wrapper = await mountToolsView()
-    const text = wrapper.text()
-    const affiliateCard = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
-    const videoEnhancerCard = wrapper.get('[data-testid="tool-card-video_enhancer"]')
-    const productVideoCard = wrapper.get('[data-testid="tool-card-product_to_video"]')
-
-    expect(text).toContain('What do you want to create today?')
-    expect(text.indexOf('Available tools')).toBeLessThan(text.indexOf('Coming soon'))
-    expect(affiliateCard.element.tagName).toBe('A')
-    expect(affiliateCard.attributes('href')).toBe('/campaigns/new')
-    expect(videoEnhancerCard.element.tagName).toBe('A')
-    expect(videoEnhancerCard.attributes('href')).toBe('/video-enhancer/new')
-    expect(videoEnhancerCard.text()).toContain('Video Enhancer / Caption Pack')
-    expect(productVideoCard.element.tagName).toBe('A')
-    expect(productVideoCard.attributes('href')).toBe('/product-to-video/new')
-    expect(productVideoCard.text()).toContain('Product-to-Video Script Pack')
-    expect(affiliateCard.text()).toContain('Affiliate Campaign Generator')
-    expect(availableTools.every((tool) => Boolean(tool.route))).toBe(true)
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
-  it('renders coming soon services without broken links', async () => {
-    const wrapper = await mountToolsView()
+  it('loads tools from the API and links available tools', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
 
-    expect(comingSoonTools).toHaveLength(3)
+    const wrapper = await mountToolsView(fetchMock)
+    const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
 
-    for (const tool of comingSoonTools) {
-      const card = wrapper.get(`[data-testid="tool-card-${tool.id}"]`)
+    expect(wrapper.text()).toContain('What do you want to create today?')
+    expect(card.element.tagName).toBe('A')
+    expect(card.attributes('href')).toBe('/campaigns/new')
+    expect(card.text()).toContain('Affiliate Campaign Generator')
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/tools',
+      expect.objectContaining({ headers: expect.any(Headers) }),
+    )
+  })
 
-      expect(card.element.tagName).toBe('ARTICLE')
-      expect(card.attributes('aria-disabled')).toBe('true')
-      expect(card.find('a').exists()).toBe(false)
-      expect(card.text()).toContain(tool.title)
-      expect('route' in tool).toBe(false)
-    }
+  it('keeps coming-soon and maintenance tools non-clickable and hides disabled tools', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+    const comingSoon = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
+    const maintenance = wrapper.get('[data-testid="tool-card-video_enhancer"]')
+
+    expect(comingSoon.element.tagName).toBe('ARTICLE')
+    expect(comingSoon.attributes('aria-disabled')).toBe('true')
+    expect(comingSoon.find('a').exists()).toBe(false)
+    expect(maintenance.element.tagName).toBe('ARTICLE')
+    expect(maintenance.find('a').exists()).toBe(false)
+    expect(maintenance.text()).toContain(
+      'Temporarily unavailable while improvements are being made.',
+    )
+    expect(wrapper.find('[data-testid="tool-card-hidden_tool"]').exists()).toBe(false)
+  })
+
+  it('shows a friendly retry state when the catalog cannot load', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Service unavailable.' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Tools unavailable')
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      'Something went wrong. Please try again.',
+    )
+    expect(wrapper.get('button').text()).toBe('Try again')
   })
 })

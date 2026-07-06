@@ -7,6 +7,12 @@ import type {
   AdminUserFilters,
   AdminUserListResponse,
 } from '@/types/admin'
+import type {
+  AdminCreatorTool,
+  AdminCreatorToolListResponse,
+  AdminCreatorToolResponse,
+  AdminCreatorToolUpdate,
+} from '@/types/tool'
 
 export function getAdminSummary(): Promise<AdminSummary> {
   return apiGet<AdminSummary>('/admin/summary')
@@ -52,6 +58,32 @@ export async function updateAdminUserAccess(
 ): Promise<AdminUserDetail> {
   const response = await apiPatch<AdminUserDetailResponse, AdminUserAccessUpdate>(
     '/admin/users/' + userId + '/access',
+    payload,
+  )
+
+  return response.data
+}
+
+export async function getAdminTools(): Promise<AdminCreatorTool[]> {
+  const response = await apiGet<AdminCreatorToolListResponse>('/admin/tools')
+
+  return response.data
+}
+
+export async function getAdminTool(key: string): Promise<AdminCreatorTool> {
+  const response = await apiGet<AdminCreatorToolResponse>(
+    '/admin/tools/' + encodeURIComponent(key),
+  )
+
+  return response.data
+}
+
+export async function updateAdminTool(
+  key: string,
+  payload: AdminCreatorToolUpdate,
+): Promise<AdminCreatorTool> {
+  const response = await apiPatch<AdminCreatorToolResponse, AdminCreatorToolUpdate>(
+    '/admin/tools/' + encodeURIComponent(key),
     payload,
   )
 

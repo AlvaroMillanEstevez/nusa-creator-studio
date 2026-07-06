@@ -64,6 +64,7 @@ function testRouter() {
       { path: '/campaigns/new', component: { template: '<div />' } },
       { path: '/account', component: { template: '<div />' } },
       { path: '/admin', component: AdminView },
+      { path: '/admin/tools', component: { template: '<div />' } },
       { path: '/admin/users/:id', component: { template: '<div />' } },
       { path: '/admin/unavailable', component: AdminUnavailableView },
       { path: '/login', component: { template: '<div />' } },
@@ -117,6 +118,7 @@ describe('AdminView', () => {
     expect(text).toContain('managed@example.test')
     expect(text).toContain('42 credits')
     expect(wrapper.find('a[href="/admin/users/9"]').text()).toBe('Manage')
+    expect(wrapper.find('a[href="/admin/tools"]').text()).toBe('Manage creator tools')
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/admin/summary',
       expect.objectContaining({ headers: expect.any(Headers) }),

@@ -98,8 +98,14 @@ onMounted(() => {
         <p class="text-sm font-medium text-emerald-400">Platform administration</p>
         <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Admin Panel</h1>
         <p class="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-          Monitor users, credits and mock generation activity.
+          Monitor users, credits, tool availability and mock generation activity.
         </p>
+        <RouterLink
+          to="/admin/tools"
+          class="mt-5 inline-flex min-h-11 items-center rounded-xl border border-emerald-800 bg-emerald-950/40 px-4 text-sm font-semibold text-emerald-300 transition hover:border-emerald-600 hover:bg-emerald-950"
+        >
+          Manage creator tools
+        </RouterLink>
       </header>
 
       <section class="mt-9">

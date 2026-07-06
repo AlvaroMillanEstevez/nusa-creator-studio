@@ -8,6 +8,7 @@ use App\Http\Resources\GenerationResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\ProductVideoScriptGenerationService;
+use App\Services\ToolAvailabilityService;
 use App\Support\CurrentUserResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class GenerateProductVideoScriptController extends Controller
     public function __construct(
         private readonly CurrentUserResolver $currentUser,
         private readonly ProductVideoScriptGenerationService $scripts,
+        private readonly ToolAvailabilityService $tools,
     ) {}
 
     public function __invoke(Request $request, Project $project): JsonResponse
@@ -30,6 +32,13 @@ class GenerateProductVideoScriptController extends Controller
             return response()->json([
                 'message' => 'Only product-to-video projects can generate video script packs.',
                 'code' => 'invalid_project_type',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if (! $this->tools->isAvailable('product_to_video')) {
+            return response()->json([
+                'message' => 'This tool is temporarily unavailable.',
+                'code' => 'tool_unavailable',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

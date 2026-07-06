@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdminCreatorToolController;
 use App\Http\Controllers\Api\V1\Admin\AdminSummaryController;
 use App\Http\Controllers\Api\V1\Admin\AdminUserAccessController;
 use App\Http\Controllers\Api\V1\Admin\AdminUserController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CreatorToolController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
@@ -38,6 +40,8 @@ Route::prefix('v1')->group(function () {
         });
     });
 
+    Route::get('tools', CreatorToolController::class)->name('tools.index');
+
     Route::prefix('admin')
         ->middleware(['auth:sanctum', 'admin'])
         ->name('admin.')
@@ -47,6 +51,12 @@ Route::prefix('v1')->group(function () {
             Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
             Route::patch('users/{user}/access', AdminUserAccessController::class)
                 ->name('users.access.update');
+            Route::get('tools', [AdminCreatorToolController::class, 'index'])
+                ->name('tools.index');
+            Route::get('tools/{tool}', [AdminCreatorToolController::class, 'show'])
+                ->name('tools.show');
+            Route::patch('tools/{tool}', [AdminCreatorToolController::class, 'update'])
+                ->name('tools.update');
         });
 
     Route::middleware('auth:sanctum')->group(function () {

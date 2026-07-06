@@ -101,6 +101,16 @@ describe('authentication route guard', () => {
     expect(router.currentRoute.value.name).toBe('admin-unavailable')
   })
 
+  it('redirects an authenticated non-admin away from tool management', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = user
+    auth.initialized = true
+
+    await router.push('/admin/tools')
+
+    expect(router.currentRoute.value.name).toBe('admin-unavailable')
+  })
+
   it('allows an admin into the admin panel', async () => {
     const auth = useAuthStore(pinia)
     auth.user = {
