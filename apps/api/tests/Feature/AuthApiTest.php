@@ -30,15 +30,34 @@ class AuthApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('user.name', 'Nusa Creator')
             ->assertJsonPath('user.email', 'creator@example.com')
+            ->assertJsonPath('user.role', 'free_user')
+            ->assertJsonPath('user.plan_key', 'free')
+            ->assertJsonPath('user.is_unlimited', false)
+            ->assertJsonPath('user.monthly_credit_allowance', 20)
             ->assertJsonPath('user.credits_balance', 20)
             ->assertJsonStructure([
-                'user' => ['id', 'name', 'email', 'credits_balance', 'created_at'],
+                'user' => [
+                    'id',
+                    'name',
+                    'email',
+                    'role',
+                    'plan_key',
+                    'is_unlimited',
+                    'monthly_credit_allowance',
+                    'credits_balance',
+                    'created_at',
+                ],
             ]);
 
         $user = User::query()->where('email', 'creator@example.com')->firstOrFail();
 
         $this->assertAuthenticatedAs($user);
         $this->assertTrue(Hash::check('strong-password', $user->password));
+        $this->assertSame('free_user', $user->role);
+        $this->assertSame('free', $user->plan_key);
+        $this->assertFalse($user->is_unlimited);
+        $this->assertSame(20, $user->monthly_credit_allowance);
+        $this->assertSame(20, $user->credits_balance);
     }
 
     public function test_user_can_login_with_email_and_password(): void
@@ -91,6 +110,10 @@ class AuthApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.email', $user->email)
+            ->assertJsonPath('user.role', 'free_user')
+            ->assertJsonPath('user.plan_key', 'free')
+            ->assertJsonPath('user.is_unlimited', false)
+            ->assertJsonPath('user.monthly_credit_allowance', 20)
             ->assertJsonPath('user.credits_balance', 14);
     }
 

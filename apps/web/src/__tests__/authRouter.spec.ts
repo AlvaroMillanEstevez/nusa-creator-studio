@@ -9,6 +9,10 @@ const user: AuthUser = {
   id: 1,
   name: 'Nusa Creator',
   email: 'creator@example.com',
+  role: 'free_user',
+  plan_key: 'free',
+  is_unlimited: false,
+  monthly_credit_allowance: 20,
   credits_balance: 20,
   created_at: '2026-07-06T00:00:00.000000Z',
 }

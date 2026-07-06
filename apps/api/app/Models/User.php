@@ -13,12 +13,47 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable([
+    'name',
+    'email',
+    'password',
+    'credits_balance',
+    'role',
+    'plan_key',
+    'is_unlimited',
+    'monthly_credit_allowance',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'credits_balance' => 20,
+        'role' => 'free_user',
+        'plan_key' => 'free',
+        'is_unlimited' => false,
+        'monthly_credit_allowance' => 20,
+    ];
+
+    public const ROLES = [
+        'admin',
+        'internal_creator',
+        'subscriber',
+        'free_user',
+    ];
+
+    public const PLAN_KEYS = [
+        'free',
+        'starter',
+        'creator',
+        'pro',
+        'internal_unlimited',
+    ];
 
     protected static function booted(): void
     {
@@ -26,7 +61,39 @@ class User extends Authenticatable
             if ($user->credits_balance !== null && $user->credits_balance < 0) {
                 throw new DomainException('Platform credit balance cannot be negative.');
             }
+
+            if (! in_array($user->role, self::ROLES, true)) {
+                throw new DomainException('Invalid user role.');
+            }
+
+            if (! in_array($user->plan_key, self::PLAN_KEYS, true)) {
+                throw new DomainException('Invalid user plan.');
+            }
+
+            if ($user->monthly_credit_allowance !== null && $user->monthly_credit_allowance < 0) {
+                throw new DomainException('Monthly credit allowance cannot be negative.');
+            }
         });
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isInternalCreator(): bool
+    {
+        return $this->role === 'internal_creator';
+    }
+
+    public function isSubscriber(): bool
+    {
+        return $this->role === 'subscriber';
+    }
+
+    public function hasUnlimitedAccess(): bool
+    {
+        return $this->is_unlimited;
     }
 
     /**
@@ -70,6 +137,8 @@ class User extends Authenticatable
     {
         return [
             'credits_balance' => 'integer',
+            'is_unlimited' => 'boolean',
+            'monthly_credit_allowance' => 'integer',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];

@@ -64,7 +64,16 @@ class DashboardApiTest extends TestCase
         $this->getJson('/api/v1/dashboard')
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.role', 'free_user')
+            ->assertJsonPath('user.plan_key', 'free')
+            ->assertJsonPath('user.is_unlimited', false)
+            ->assertJsonPath('user.monthly_credit_allowance', 20)
             ->assertJsonPath('user.credits_balance', 13)
+            ->assertJsonPath('access.label', 'Free plan')
+            ->assertJsonPath('access.is_unlimited', false)
+            ->assertJsonPath('access.monthly_credit_allowance', 20)
+            ->assertJsonPath('access.credits_balance', 13)
+            ->assertJsonPath('access.can_generate_without_credits', false)
             ->assertJsonPath('stats.total_projects', 4)
             ->assertJsonPath('stats.total_generations', 3)
             ->assertJsonPath('stats.completed_generations', 2)
@@ -74,6 +83,30 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('stats.affiliate_campaign_projects', 2)
             ->assertJsonPath('stats.video_enhancer_projects', 1)
             ->assertJsonPath('stats.product_to_video_projects', 1);
+    }
+
+    public function test_dashboard_reports_unlimited_internal_access_without_counting_zero_usage(): void
+    {
+        $user = User::factory()->internalCreator()->create(['credits_balance' => 0]);
+
+        CreditTransaction::factory()->for($user)->create([
+            'type' => CreditTransactionType::Usage,
+            'amount' => 0,
+            'balance_after' => 0,
+            'metadata' => ['unlimited_access' => true],
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('user.role', 'internal_creator')
+            ->assertJsonPath('user.plan_key', 'internal_unlimited')
+            ->assertJsonPath('user.is_unlimited', true)
+            ->assertJsonPath('user.credits_balance', 0)
+            ->assertJsonPath('access.label', 'Unlimited internal access')
+            ->assertJsonPath('access.is_unlimited', true)
+            ->assertJsonPath('access.can_generate_without_credits', true)
+            ->assertJsonPath('stats.total_credits_spent', 0);
     }
 
     public function test_recent_projects_are_limited_and_ordered_newest_first_with_generation_summary(): void

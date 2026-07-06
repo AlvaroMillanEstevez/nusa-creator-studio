@@ -30,6 +30,10 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'credits_balance' => 20,
+            'role' => 'free_user',
+            'plan_key' => 'free',
+            'is_unlimited' => false,
+            'monthly_credit_allowance' => 20,
             'remember_token' => Str::random(10),
         ];
     }
@@ -41,6 +45,47 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+        ]);
+    }
+
+    public function internalCreator(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'internal_creator',
+            'plan_key' => 'internal_unlimited',
+            'is_unlimited' => true,
+        ]);
+    }
+
+    public function subscriber(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'subscriber',
+            'plan_key' => 'starter',
+        ]);
+    }
+
+    public function freeUser(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'free_user',
+            'plan_key' => 'free',
+            'is_unlimited' => false,
+            'monthly_credit_allowance' => 20,
+        ]);
+    }
+
+    public function unlimited(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_unlimited' => true,
         ]);
     }
 }

@@ -42,7 +42,7 @@ class CampaignGenerationService
                 'provider' => 'mock',
                 'status' => 'completed',
                 'cost_usd' => 0,
-                'credits_charged' => self::CREDIT_COST,
+                'credits_charged' => 0,
                 'request_payload' => $requestPayload,
                 'result_payload' => $resultPayload,
                 'started_at' => $now,

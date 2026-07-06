@@ -85,7 +85,18 @@ class DashboardSummaryService
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->role,
+                'plan_key' => $user->plan_key,
+                'is_unlimited' => $user->is_unlimited,
+                'monthly_credit_allowance' => $user->monthly_credit_allowance,
                 'credits_balance' => $user->credits_balance,
+            ],
+            'access' => [
+                'label' => $this->accessLabel($user),
+                'is_unlimited' => $user->is_unlimited,
+                'monthly_credit_allowance' => $user->monthly_credit_allowance,
+                'credits_balance' => $user->credits_balance,
+                'can_generate_without_credits' => $user->hasUnlimitedAccess(),
             ],
             'stats' => [
                 'total_projects' => (int) $projectStats->total_projects,
@@ -95,6 +106,7 @@ class DashboardSummaryService
                 'draft_projects' => (int) $projectStats->draft_projects,
                 'total_credits_spent' => (int) $user->creditTransactions()
                     ->where('type', CreditTransactionType::Usage->value)
+                    ->where('amount', '>', 0)
                     ->sum('amount'),
                 'affiliate_campaign_projects' => (int) $projectStats->affiliate_campaign_projects,
                 'video_enhancer_projects' => (int) $projectStats->video_enhancer_projects,
@@ -103,5 +115,20 @@ class DashboardSummaryService
             'recent_projects' => $recentProjects,
             'recent_generations' => $recentGenerations,
         ];
+    }
+
+    private function accessLabel(User $user): string
+    {
+        if ($user->hasUnlimitedAccess()) {
+            return 'Unlimited internal access';
+        }
+
+        return match ($user->plan_key) {
+            'starter' => 'Starter plan',
+            'creator' => 'Creator plan',
+            'pro' => 'Pro plan',
+            'internal_unlimited' => 'Internal plan',
+            default => 'Free plan',
+        };
     }
 }

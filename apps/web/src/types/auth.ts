@@ -1,7 +1,15 @@
+export type UserRole = 'admin' | 'internal_creator' | 'subscriber' | 'free_user'
+
+export type PlanKey = 'free' | 'starter' | 'creator' | 'pro' | 'internal_unlimited'
+
 export interface AuthUser {
   id: number
   name: string
   email: string
+  role: UserRole
+  plan_key: PlanKey
+  is_unlimited: boolean
+  monthly_credit_allowance: number
   credits_balance: number
   created_at: string | null
 }

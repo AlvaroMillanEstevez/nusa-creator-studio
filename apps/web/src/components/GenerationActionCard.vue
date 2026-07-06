@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { useAuthStore } from '@/stores/auth'
 import type { ProjectType } from '@/types/project'
 
 interface GenerationActionCopy {
@@ -19,6 +20,9 @@ const props = defineProps<{
 }>()
 
 defineEmits<{ generate: [] }>()
+
+const auth = useAuthStore()
+const hasUnlimitedAccess = computed(() => auth.user?.is_unlimited === true)
 
 const copy = computed<GenerationActionCopy>(() => {
   if (props.projectType === 'product_to_video') {
@@ -67,13 +71,16 @@ const copy = computed<GenerationActionCopy>(() => {
       <span
         class="shrink-0 rounded-full border border-neutral-700 bg-neutral-950/70 px-3 py-1 text-xs text-neutral-300"
       >
-        1 credit
+        {{ hasUnlimitedAccess ? 'Unlimited access' : '1 credit' }}
       </span>
     </div>
 
     <p class="mt-3 text-sm leading-6 text-neutral-400">{{ copy.description }}</p>
 
-    <p v-if="remainingCredits !== null" class="mt-3 text-sm font-medium text-emerald-300">
+    <p v-if="hasUnlimitedAccess" class="mt-3 text-sm font-medium text-emerald-300">
+      No credit charge for this account
+    </p>
+    <p v-else-if="remainingCredits !== null" class="mt-3 text-sm font-medium text-emerald-300">
       {{ remainingCredits }} credits remaining
     </p>
 

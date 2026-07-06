@@ -8,14 +8,9 @@ import { nextTick } from 'vue'
 import AppNav from '@/components/AppNav.vue'
 import { useAuthStore } from '@/stores/auth'
 
-const routes = [
-  '/',
-  '/tools',
-  '/dashboard',
-  '/campaigns/new',
-  '/login',
-  '/register',
-].map((path) => ({ path, component: { template: '<div />' } }))
+const routes = ['/', '/tools', '/dashboard', '/campaigns/new', '/login', '/register'].map(
+  (path) => ({ path, component: { template: '<div />' } }),
+)
 
 describe('AppNav', () => {
   it('switches between guest and authenticated navigation', async () => {
@@ -43,6 +38,10 @@ describe('AppNav', () => {
       id: 1,
       name: 'Nusa Creator',
       email: 'creator@example.com',
+      role: 'free_user',
+      plan_key: 'free',
+      is_unlimited: false,
+      monthly_credit_allowance: 20,
       credits_balance: 20,
       created_at: null,
     }

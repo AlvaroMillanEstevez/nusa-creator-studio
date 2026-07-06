@@ -85,19 +85,27 @@ onMounted(loadDashboard)
           {{ dashboard ? 'Welcome back, ' + dashboard.user.name + '.' : 'Your creator workspace.' }}
         </h1>
         <p class="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-          Track projects, generated content and internal platform credits from one focused workspace.
+          Track projects, generated content and internal platform credits from one focused
+          workspace.
         </p>
       </header>
 
       <section v-if="isLoading" class="mt-9 space-y-5" aria-live="polite">
         <div class="h-40 animate-pulse rounded-3xl bg-neutral-900" />
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div v-for="index in 6" :key="index" class="h-24 animate-pulse rounded-2xl bg-neutral-900" />
+          <div
+            v-for="index in 6"
+            :key="index"
+            class="h-24 animate-pulse rounded-2xl bg-neutral-900"
+          />
         </div>
         <p class="text-sm text-neutral-500">Loading dashboard...</p>
       </section>
 
-      <section v-else-if="loadError" class="mt-9 rounded-3xl border border-rose-900/60 bg-rose-950/30 p-5">
+      <section
+        v-else-if="loadError"
+        class="mt-9 rounded-3xl border border-rose-900/60 bg-rose-950/30 p-5"
+      >
         <p class="text-sm font-medium text-rose-300">Dashboard unavailable</p>
         <h2 class="mt-2 text-xl font-semibold">Your workspace needs another try.</h2>
         <p role="alert" class="mt-3 text-sm leading-6 text-rose-100/70">{{ loadError }}</p>
@@ -111,28 +119,52 @@ onMounted(loadDashboard)
       </section>
 
       <template v-else-if="dashboard">
-        <section class="mt-9 overflow-hidden rounded-3xl border border-emerald-900/60 bg-gradient-to-br from-emerald-950/60 to-neutral-900 p-5 sm:p-6">
+        <section
+          class="mt-9 overflow-hidden rounded-3xl border border-emerald-900/60 bg-gradient-to-br from-emerald-950/60 to-neutral-900 p-5 sm:p-6"
+        >
           <div class="flex items-start justify-between gap-5">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                Platform credits
+                Plan access
               </p>
-              <p class="mt-3 text-5xl font-bold tracking-tight">{{ dashboard.user.credits_balance }}</p>
-              <p class="mt-2 text-sm text-neutral-400">available internal credits</p>
+              <template v-if="dashboard.access.is_unlimited">
+                <h2 class="mt-3 text-3xl font-bold tracking-tight">Unlimited internal access</h2>
+                <p class="mt-3 max-w-lg text-sm leading-6 text-emerald-100/70">
+                  Generations do not consume credits for this account.
+                </p>
+              </template>
+              <template v-else>
+                <p class="mt-3 text-sm font-semibold text-emerald-300">
+                  {{ dashboard.access.label }}
+                </p>
+                <p class="mt-2 text-5xl font-bold tracking-tight">
+                  {{ dashboard.access.credits_balance }}
+                </p>
+                <p class="mt-2 text-sm text-neutral-400">available internal credits</p>
+                <p class="mt-2 text-xs text-neutral-500">
+                  {{ dashboard.access.monthly_credit_allowance }} credits monthly allowance
+                </p>
+              </template>
             </div>
-            <div class="rounded-2xl border border-emerald-800/70 bg-neutral-950/50 px-3 py-2 text-right">
+            <div
+              class="rounded-2xl border border-emerald-800/70 bg-neutral-950/50 px-3 py-2 text-right"
+            >
               <p class="text-xs text-neutral-500">Used so far</p>
-              <p class="mt-1 font-semibold text-emerald-300">{{ dashboard.stats.total_credits_spent }}</p>
+              <p class="mt-1 font-semibold text-emerald-300">
+                {{ dashboard.stats.total_credits_spent }}
+              </p>
             </div>
           </div>
           <p class="mt-5 border-t border-emerald-900/60 pt-4 text-xs text-neutral-500">
-            Development user: {{ dashboard.user.email }}
+            {{ dashboard.user.name }} · {{ dashboard.user.email }}
           </p>
         </section>
 
         <section class="mt-8">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Overview</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              Overview
+            </p>
             <h2 class="mt-2 text-xl font-semibold">Workspace activity</h2>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -148,7 +180,9 @@ onMounted(loadDashboard)
         </section>
 
         <section class="mt-8 rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5 sm:p-6">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Quick actions</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+            Quick actions
+          </p>
           <h2 class="mt-2 text-xl font-semibold">Create something new</h2>
           <div class="mt-5 grid gap-3 sm:grid-cols-2">
             <RouterLink
@@ -171,7 +205,9 @@ onMounted(loadDashboard)
         <section class="mt-8">
           <div class="flex items-end justify-between gap-4">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Projects</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                Projects
+              </p>
               <h2 class="mt-2 text-xl font-semibold">Recent projects</h2>
             </div>
             <span v-if="dashboard.recent_projects.length" class="text-xs text-neutral-500">
@@ -229,7 +265,9 @@ onMounted(loadDashboard)
         <section class="mt-8">
           <div class="flex items-end justify-between gap-4">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Generations</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                Generations
+              </p>
               <h2 class="mt-2 text-xl font-semibold">Recent generations</h2>
             </div>
             <span v-if="dashboard.recent_generations.length" class="text-xs text-neutral-500">
@@ -253,9 +291,7 @@ onMounted(loadDashboard)
               v-for="generation in dashboard.recent_generations"
               :key="generation.id"
               v-bind="
-                generation.project_id === null
-                  ? {}
-                  : { to: '/projects/' + generation.project_id }
+                generation.project_id === null ? {} : { to: '/projects/' + generation.project_id }
               "
               class="block rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4 transition hover:border-neutral-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
             >
@@ -264,7 +300,9 @@ onMounted(loadDashboard)
                   <p class="truncate text-sm font-semibold text-neutral-100">
                     {{ generation.project_title ?? 'Project unavailable' }}
                   </p>
-                  <p class="mt-1 text-xs text-neutral-500">{{ formatLabel(generation.job_type) }}</p>
+                  <p class="mt-1 text-xs text-neutral-500">
+                    {{ formatLabel(generation.job_type) }}
+                  </p>
                 </div>
                 <span
                   class="shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"

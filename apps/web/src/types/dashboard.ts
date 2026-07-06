@@ -1,10 +1,14 @@
+import type { AuthUser } from '@/types/auth'
 import type { ProjectStatus, ProjectType } from '@/types/project'
 
-export interface DashboardUser {
-  id: number
-  name: string
-  email: string
+export type DashboardUser = Omit<AuthUser, 'created_at'>
+
+export interface DashboardAccess {
+  label: string
+  is_unlimited: boolean
+  monthly_credit_allowance: number
   credits_balance: number
+  can_generate_without_credits: boolean
 }
 
 export interface DashboardStats {
@@ -47,6 +51,7 @@ export interface DashboardRecentGeneration {
 
 export interface DashboardSummary {
   user: DashboardUser
+  access: DashboardAccess
   stats: DashboardStats
   recent_projects: DashboardRecentProject[]
   recent_generations: DashboardRecentGeneration[]

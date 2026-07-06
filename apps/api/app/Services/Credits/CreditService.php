@@ -28,23 +28,33 @@ class CreditService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedUser->credits_balance < $amount) {
+            $isUnlimited = $lockedUser->hasUnlimitedAccess();
+            $chargedAmount = $isUnlimited ? 0 : $amount;
+
+            if ($lockedUser->credits_balance < $chargedAmount) {
                 throw new InsufficientCreditsException(
                     availableCredits: $lockedUser->credits_balance,
-                    requiredCredits: $amount,
+                    requiredCredits: $chargedAmount,
                 );
             }
 
-            $balanceAfter = $lockedUser->credits_balance - $amount;
+            $balanceAfter = $lockedUser->credits_balance - $chargedAmount;
 
-            $lockedUser->forceFill(['credits_balance' => $balanceAfter])->save();
+            if ($chargedAmount > 0) {
+                $lockedUser->forceFill(['credits_balance' => $balanceAfter])->save();
+            }
+
+            $generation->forceFill(['credits_charged' => $chargedAmount])->save();
 
             return $lockedUser->creditTransactions()->create([
                 'generation_id' => $generation->getKey(),
                 'type' => CreditTransactionType::Usage,
-                'amount' => $amount,
+                'amount' => $chargedAmount,
                 'balance_after' => $balanceAfter,
-                'reason' => $reason,
+                'reason' => $isUnlimited
+                    ? "{$reason} (unlimited/internal access)"
+                    : $reason,
+                'metadata' => $isUnlimited ? ['unlimited_access' => true] : null,
             ]);
         });
     }

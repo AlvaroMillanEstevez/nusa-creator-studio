@@ -20,6 +20,10 @@ class AuthenticatedUserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'role' => $this->role,
+            'plan_key' => $this->plan_key,
+            'is_unlimited' => $this->is_unlimited,
+            'monthly_credit_allowance' => $this->monthly_credit_allowance,
             'credits_balance' => $this->credits_balance,
             'created_at' => $this->created_at?->toISOString(),
         ];

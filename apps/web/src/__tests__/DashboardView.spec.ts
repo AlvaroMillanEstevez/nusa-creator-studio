@@ -13,7 +13,18 @@ const populatedDashboard: DashboardSummary = {
     id: 1,
     name: 'Nusa Creator',
     email: 'creator@nusa.test',
+    role: 'free_user',
+    plan_key: 'free',
+    is_unlimited: false,
+    monthly_credit_allowance: 20,
     credits_balance: 17,
+  },
+  access: {
+    label: 'Free plan',
+    is_unlimited: false,
+    monthly_credit_allowance: 20,
+    credits_balance: 17,
+    can_generate_without_credits: false,
   },
   stats: {
     total_projects: 3,
@@ -105,6 +116,8 @@ describe('DashboardView', () => {
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
     expect(text).toContain('17')
+    expect(text).toContain('Free plan')
+    expect(text).toContain('20 credits monthly allowance')
     expect(text).toContain('available internal credits')
     expect(text).toContain('Total projects')
     expect(text).toContain('Completed generations')
@@ -119,6 +132,37 @@ describe('DashboardView', () => {
     expect(wrapper.find('a[href="/video-enhancer/new"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/product-to-video/new"]').exists()).toBe(true)
     expect(wrapper.findAll('a[href="/projects/42"]')).toHaveLength(2)
+  })
+
+  it('renders unlimited internal access without a misleading credit balance', async () => {
+    const { wrapper } = await mountDashboard({
+      ...populatedDashboard,
+      user: {
+        ...populatedDashboard.user,
+        role: 'internal_creator',
+        plan_key: 'internal_unlimited',
+        is_unlimited: true,
+        credits_balance: 0,
+      },
+      access: {
+        label: 'Unlimited internal access',
+        is_unlimited: true,
+        monthly_credit_allowance: 20,
+        credits_balance: 0,
+        can_generate_without_credits: true,
+      },
+      stats: {
+        ...populatedDashboard.stats,
+        total_credits_spent: 0,
+      },
+    })
+
+    const text = wrapper.text()
+
+    expect(text).toContain('Unlimited internal access')
+    expect(text).toContain('Generations do not consume credits for this account.')
+    expect(text).not.toContain('available internal credits')
+    expect(text).not.toContain('0 credits monthly allowance')
   })
 
   it('shows friendly empty states without hiding quick actions', async () => {
