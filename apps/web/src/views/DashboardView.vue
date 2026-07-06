@@ -155,9 +155,19 @@ onMounted(loadDashboard)
               </p>
             </div>
           </div>
-          <p class="mt-5 border-t border-emerald-900/60 pt-4 text-xs text-neutral-500">
-            {{ dashboard.user.name }} · {{ dashboard.user.email }}
-          </p>
+          <div
+            class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/60 pt-4"
+          >
+            <p class="text-xs text-neutral-500">
+              {{ dashboard.user.name }} · {{ dashboard.user.email }}
+            </p>
+            <RouterLink
+              to="/account#plan"
+              class="text-xs font-semibold text-emerald-400 transition hover:text-emerald-300"
+            >
+              Manage account / plan
+            </RouterLink>
+          </div>
         </section>
 
         <section class="mt-8">

@@ -96,6 +96,34 @@ class User extends Authenticatable
         return $this->is_unlimited;
     }
 
+    public function roleLabel(): string
+    {
+        return match ($this->role) {
+            'admin' => 'Admin',
+            'internal_creator' => 'Internal Creator',
+            'subscriber' => 'Subscriber',
+            default => 'Free User',
+        };
+    }
+
+    public function planLabel(): string
+    {
+        return match ($this->plan_key) {
+            'starter' => 'Starter',
+            'creator' => 'Creator',
+            'pro' => 'Pro',
+            'internal_unlimited' => 'Internal Unlimited',
+            default => 'Free',
+        };
+    }
+
+    public function accessLabel(): string
+    {
+        return $this->hasUnlimitedAccess()
+            ? 'Unlimited internal access'
+            : 'Current plan credits';
+    }
+
     /**
      * @return HasMany<Project, $this>
      */

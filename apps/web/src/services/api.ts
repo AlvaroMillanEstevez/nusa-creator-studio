@@ -21,9 +21,7 @@ function csrfToken(): string | null {
     return null
   }
 
-  const tokenCookie = document.cookie
-    .split('; ')
-    .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
+  const tokenCookie = document.cookie.split('; ').find((cookie) => cookie.startsWith('XSRF-TOKEN='))
 
   return tokenCookie ? decodeURIComponent(tokenCookie.slice('XSRF-TOKEN='.length)) : null
 }
@@ -105,6 +103,13 @@ export function apiGet<T>(path: string): Promise<T> {
 export function apiPost<T, TPayload>(path: string, payload: TPayload): Promise<T> {
   return apiRequest<T>(path, {
     method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function apiPatch<T, TPayload>(path: string, payload: TPayload): Promise<T> {
+  return apiRequest<T>(path, {
+    method: 'PATCH',
     body: JSON.stringify(payload),
   })
 }

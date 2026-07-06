@@ -37,6 +37,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/account',
+      name: 'account',
+      component: () => import('../views/AccountView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/video-enhancer/new',
       name: 'video-enhancer-create',
       component: () => import('../views/NewVideoEnhancerView.vue'),
@@ -61,7 +67,13 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to) => {
+    if (to.hash) {
+      return { el: to.hash, top: 24 }
+    }
+
+    return { top: 0 }
+  },
 })
 
 router.beforeEach(async (to) => {

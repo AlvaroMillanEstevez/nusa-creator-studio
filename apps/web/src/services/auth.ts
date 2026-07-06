@@ -1,9 +1,12 @@
-import { apiGet, apiPost, ensureCsrfCookie } from '@/services/api'
+import { apiGet, apiPatch, apiPost, ensureCsrfCookie } from '@/services/api'
 import type {
   AuthResponse,
   AuthUser,
   LoginPayload,
   LogoutResponse,
+  PasswordUpdatePayload,
+  PasswordUpdateResponse,
+  ProfileUpdatePayload,
   RegisterPayload,
 } from '@/types/auth'
 
@@ -30,4 +33,21 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   const response = await apiGet<AuthResponse>('/auth/me')
 
   return response.user
+}
+
+export async function updateUserProfile(payload: ProfileUpdatePayload): Promise<AuthUser> {
+  await ensureCsrfCookie()
+  const response = await apiPatch<AuthResponse, ProfileUpdatePayload>('/auth/profile', payload)
+
+  return response.user
+}
+
+export async function updateUserPassword(payload: PasswordUpdatePayload): Promise<string> {
+  await ensureCsrfCookie()
+  const response = await apiPatch<PasswordUpdateResponse, PasswordUpdatePayload>(
+    '/auth/password',
+    payload,
+  )
+
+  return response.message
 }

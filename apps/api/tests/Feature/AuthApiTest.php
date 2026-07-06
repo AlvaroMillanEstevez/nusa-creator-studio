@@ -31,8 +31,11 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('user.name', 'Nusa Creator')
             ->assertJsonPath('user.email', 'creator@example.com')
             ->assertJsonPath('user.role', 'free_user')
+            ->assertJsonPath('user.role_label', 'Free User')
             ->assertJsonPath('user.plan_key', 'free')
+            ->assertJsonPath('user.plan_label', 'Free')
             ->assertJsonPath('user.is_unlimited', false)
+            ->assertJsonPath('user.access_label', 'Current plan credits')
             ->assertJsonPath('user.monthly_credit_allowance', 20)
             ->assertJsonPath('user.credits_balance', 20)
             ->assertJsonStructure([
@@ -41,8 +44,11 @@ class AuthApiTest extends TestCase
                     'name',
                     'email',
                     'role',
+                    'role_label',
                     'plan_key',
+                    'plan_label',
                     'is_unlimited',
+                    'access_label',
                     'monthly_credit_allowance',
                     'credits_balance',
                     'created_at',
@@ -111,8 +117,11 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.email', $user->email)
             ->assertJsonPath('user.role', 'free_user')
+            ->assertJsonPath('user.role_label', 'Free User')
             ->assertJsonPath('user.plan_key', 'free')
+            ->assertJsonPath('user.plan_label', 'Free')
             ->assertJsonPath('user.is_unlimited', false)
+            ->assertJsonPath('user.access_label', 'Current plan credits')
             ->assertJsonPath('user.monthly_credit_allowance', 20)
             ->assertJsonPath('user.credits_balance', 14);
     }

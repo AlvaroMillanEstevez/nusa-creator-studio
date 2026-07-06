@@ -7,8 +7,11 @@ export interface AuthUser {
   name: string
   email: string
   role: UserRole
+  role_label: string
   plan_key: PlanKey
+  plan_label: string
   is_unlimited: boolean
+  access_label: string
   monthly_credit_allowance: number
   credits_balance: number
   created_at: string | null
@@ -26,8 +29,23 @@ export interface RegisterPayload {
   password_confirmation: string
 }
 
+export interface ProfileUpdatePayload {
+  name: string
+  email: string
+}
+
+export interface PasswordUpdatePayload {
+  current_password: string
+  password: string
+  password_confirmation: string
+}
+
 export interface AuthResponse {
   user: AuthUser
+}
+
+export interface PasswordUpdateResponse {
+  message: string
 }
 
 export interface LogoutResponse {

@@ -17,8 +17,11 @@ describe('GenerationActionCard', () => {
       name: 'Internal Creator',
       email: 'internal@example.test',
       role: 'internal_creator',
+      role_label: 'Internal Creator',
       plan_key: 'internal_unlimited',
+      plan_label: 'Internal Unlimited',
       is_unlimited: true,
+      access_label: 'Unlimited internal access',
       monthly_credit_allowance: 20,
       credits_balance: 0,
       created_at: null,
@@ -42,8 +45,11 @@ describe('GenerationActionCard', () => {
     auth.user = {
       ...auth.user,
       role: 'free_user',
+      role_label: 'Free User',
       plan_key: 'free',
+      plan_label: 'Free',
       is_unlimited: false,
+      access_label: 'Current plan credits',
       credits_balance: 20,
     }
     await wrapper.vm.$nextTick()

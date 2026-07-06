@@ -7,8 +7,16 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  updateUserPassword,
+  updateUserProfile,
 } from '@/services/auth'
-import type { AuthUser, LoginPayload, RegisterPayload } from '@/types/auth'
+import type {
+  AuthUser,
+  LoginPayload,
+  PasswordUpdatePayload,
+  ProfileUpdatePayload,
+  RegisterPayload,
+} from '@/types/auth'
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback
@@ -76,7 +84,41 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = await registerUser(payload)
       initialized.value = true
     } catch (requestError: unknown) {
-      error.value = errorMessage(requestError, 'We could not create your account. Please try again.')
+      error.value = errorMessage(
+        requestError,
+        'We could not create your account. Please try again.',
+      )
+      throw requestError
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function updateProfile(payload: ProfileUpdatePayload): Promise<AuthUser> {
+    isLoading.value = true
+    error.value = ''
+
+    try {
+      const updatedUser = await updateUserProfile(payload)
+      user.value = updatedUser
+
+      return updatedUser
+    } catch (requestError: unknown) {
+      error.value = errorMessage(requestError, 'We could not update your profile.')
+      throw requestError
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function updatePassword(payload: PasswordUpdatePayload): Promise<string> {
+    isLoading.value = true
+    error.value = ''
+
+    try {
+      return await updateUserPassword(payload)
+    } catch (requestError: unknown) {
+      error.value = errorMessage(requestError, 'We could not update your password.')
       throw requestError
     } finally {
       isLoading.value = false
@@ -109,6 +151,8 @@ export const useAuthStore = defineStore('auth', () => {
     fetchMe,
     login,
     register,
+    updateProfile,
+    updatePassword,
     logout,
   }
 })

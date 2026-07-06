@@ -10,8 +10,11 @@ const user: AuthUser = {
   name: 'Nusa Creator',
   email: 'creator@example.com',
   role: 'free_user',
+  role_label: 'Free User',
   plan_key: 'free',
+  plan_label: 'Free',
   is_unlimited: false,
+  access_label: 'Current plan credits',
   monthly_credit_allowance: 20,
   credits_balance: 20,
   created_at: '2026-07-06T00:00:00.000000Z',
@@ -42,6 +45,28 @@ describe('authentication route guard', () => {
 
     expect(router.currentRoute.value.name).toBe('login')
     expect(router.currentRoute.value.query.redirect).toBe('/dashboard')
+  })
+
+  it('redirects an unauthenticated account route to login with a return URL', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = null
+    auth.initialized = false
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Unauthenticated.' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+
+    await router.push('/')
+    await router.push('/account')
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.query.redirect).toBe('/account')
   })
 
   it('allows an initialized authenticated user into the dashboard', async () => {

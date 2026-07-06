@@ -14,8 +14,11 @@ const populatedDashboard: DashboardSummary = {
     name: 'Nusa Creator',
     email: 'creator@nusa.test',
     role: 'free_user',
+    role_label: 'Free User',
     plan_key: 'free',
+    plan_label: 'Free',
     is_unlimited: false,
+    access_label: 'Current plan credits',
     monthly_credit_allowance: 20,
     credits_balance: 17,
   },
@@ -74,6 +77,7 @@ async function mountDashboard(summary: DashboardSummary) {
       { path: '/', component: { template: '<div />' } },
       { path: '/tools', component: { template: '<div />' } },
       { path: '/dashboard', component: DashboardView },
+      { path: '/account', component: { template: '<div />' } },
       { path: '/campaigns/new', component: { template: '<div />' } },
       { path: '/video-enhancer/new', component: { template: '<div />' } },
       { path: '/product-to-video/new', component: { template: '<div />' } },
@@ -128,6 +132,7 @@ describe('DashboardView', () => {
     expect(text).toContain('1 credit charged')
 
     expect(wrapper.find('a[href="/tools"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/account#plan"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/campaigns/new"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/video-enhancer/new"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/product-to-video/new"]').exists()).toBe(true)
@@ -140,8 +145,11 @@ describe('DashboardView', () => {
       user: {
         ...populatedDashboard.user,
         role: 'internal_creator',
+        role_label: 'Internal Creator',
         plan_key: 'internal_unlimited',
+        plan_label: 'Internal Unlimited',
         is_unlimited: true,
+        access_label: 'Unlimited internal access',
         credits_balance: 0,
       },
       access: {
