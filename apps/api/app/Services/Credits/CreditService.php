@@ -23,6 +23,19 @@ class CreditService
         }
 
         return DB::transaction(function () use ($user, $generation, $amount, $reason) {
+            $lockedGeneration = Generation::query()
+                ->whereKey($generation->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $existingCharge = $lockedGeneration->creditTransactions()
+                ->where('type', CreditTransactionType::Usage->value)
+                ->first();
+
+            if ($existingCharge !== null) {
+                return $existingCharge;
+            }
+
             $lockedUser = User::query()
                 ->whereKey($user->getKey())
                 ->lockForUpdate()
@@ -44,10 +57,10 @@ class CreditService
                 $lockedUser->forceFill(['credits_balance' => $balanceAfter])->save();
             }
 
-            $generation->forceFill(['credits_charged' => $chargedAmount])->save();
+            $lockedGeneration->forceFill(['credits_charged' => $chargedAmount])->save();
 
             return $lockedUser->creditTransactions()->create([
-                'generation_id' => $generation->getKey(),
+                'generation_id' => $lockedGeneration->getKey(),
                 'type' => CreditTransactionType::Usage,
                 'amount' => $chargedAmount,
                 'balance_after' => $balanceAfter,
@@ -55,6 +68,50 @@ class CreditService
                     ? "{$reason} (unlimited/internal access)"
                     : $reason,
                 'metadata' => $isUnlimited ? ['unlimited_access' => true] : null,
+            ]);
+        });
+    }
+
+    public function refundUsage(Generation $generation, string $reason): ?CreditTransaction
+    {
+        return DB::transaction(function () use ($generation, $reason) {
+            $lockedGeneration = Generation::query()
+                ->whereKey($generation->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $existingRefund = $lockedGeneration->creditTransactions()
+                ->where('type', CreditTransactionType::Refund->value)
+                ->first();
+
+            if ($existingRefund !== null) {
+                return $existingRefund;
+            }
+
+            $refundAmount = $lockedGeneration->credits_charged;
+
+            if ($refundAmount === 0) {
+                return null;
+            }
+
+            $lockedUser = User::query()
+                ->whereKey($lockedGeneration->user_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $balanceAfter = $lockedUser->credits_balance + $refundAmount;
+            $lockedUser->forceFill(['credits_balance' => $balanceAfter])->save();
+
+            return $lockedUser->creditTransactions()->create([
+                'generation_id' => $lockedGeneration->getKey(),
+                'type' => CreditTransactionType::Refund,
+                'amount' => $refundAmount,
+                'balance_after' => $balanceAfter,
+                'reason' => $reason,
+                'metadata' => [
+                    'failed_generation_id' => $lockedGeneration->getKey(),
+                    'refund_reason' => 'internal_generation_failure',
+                ],
             ]);
         });
     }

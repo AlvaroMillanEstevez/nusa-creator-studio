@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
 use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
+use App\Http\Controllers\Api\V1\GenerationController;
 use App\Http\Controllers\Api\V1\MediaAssetController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
@@ -72,6 +73,8 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard.show');
+        Route::get('generations/{generation}', GenerationController::class)
+            ->name('generations.show');
         Route::get(
             'projects/{project}/media-assets',
             ProjectMediaAssetController::class,

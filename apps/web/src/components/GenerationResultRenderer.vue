@@ -5,6 +5,7 @@ import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
 import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
 import {
+  generationOutput,
   isCampaignGenerationResult,
   isProductToVideoResult,
   isVideoEnhancerResult,
@@ -12,9 +13,14 @@ import {
 } from '@/types/project'
 import { formatDate } from '@/utils/formatters'
 
-const props = defineProps<{ generation: CreatorGeneration | null }>()
+const props = defineProps<{
+  generation: CreatorGeneration | null
+  showQueueWorkerHint?: boolean
+}>()
 
-const result = computed(() => props.generation?.result_payload ?? null)
+const result = computed(() =>
+  props.generation === null ? null : generationOutput(props.generation),
+)
 const campaignResult = computed(() =>
   props.generation?.job_type === 'generate_affiliate_campaign' &&
   isCampaignGenerationResult(result.value)
@@ -22,8 +28,7 @@ const campaignResult = computed(() =>
     : null,
 )
 const videoEnhancerResult = computed(() =>
-  props.generation?.job_type === 'generate_video_enhancer' &&
-  isVideoEnhancerResult(result.value)
+  props.generation?.job_type === 'generate_video_enhancer' && isVideoEnhancerResult(result.value)
     ? result.value
     : null,
 )
@@ -39,17 +44,74 @@ const hasSupportedResult = computed(
     videoEnhancerResult.value !== null ||
     productToVideoResult.value !== null,
 )
+const isQueued = computed(
+  () => props.generation?.status === 'queued' || props.generation?.status === 'pending',
+)
 </script>
 
 <template>
+  <section
+    v-if="generation && isQueued"
+    data-testid="generation-status"
+    class="mt-5 rounded-3xl border border-sky-900/60 bg-sky-950/20 p-5"
+    aria-live="polite"
+  >
+    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-400">Queued</p>
+    <h2 class="mt-2 text-lg font-semibold">Your generation is queued.</h2>
+    <p class="mt-2 text-sm leading-6 text-neutral-400">
+      We will start creating your result as soon as a worker is available.
+    </p>
+    <p v-if="showQueueWorkerHint" class="mt-3 text-xs text-amber-300">
+      Queue worker may not be running.
+    </p>
+  </section>
+
+  <section
+    v-else-if="generation?.status === 'processing'"
+    data-testid="generation-status"
+    class="mt-5 rounded-3xl border border-emerald-900/60 bg-emerald-950/20 p-5"
+    aria-live="polite"
+  >
+    <div class="flex items-center gap-3">
+      <span
+        class="size-5 animate-spin rounded-full border-2 border-emerald-900 border-t-emerald-300"
+        aria-hidden="true"
+      />
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Processing</p>
+        <h2 class="mt-1 text-lg font-semibold">Creating your result...</h2>
+      </div>
+    </div>
+    <p v-if="showQueueWorkerHint" class="mt-3 text-xs text-amber-300">
+      Queue worker may not be running.
+    </p>
+  </section>
+
+  <section
+    v-else-if="generation?.status === 'failed'"
+    data-testid="generation-status"
+    role="alert"
+    class="mt-5 rounded-3xl border border-rose-900/60 bg-rose-950/30 p-5"
+  >
+    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-rose-400">Failed</p>
+    <h2 class="mt-2 text-lg font-semibold">Generation failed. Please try again.</h2>
+    <p class="mt-2 text-sm leading-6 text-rose-200">
+      Your charged credits are returned automatically for an internal processing failure.
+    </p>
+  </section>
+
   <div
-    v-if="generation && !hasSupportedResult"
+    v-else-if="generation && generation.status === 'completed' && !hasSupportedResult"
     class="mt-5 rounded-2xl border border-neutral-800 bg-neutral-900 p-4 text-sm text-neutral-400"
   >
-    This generation does not have a supported result payload to display.
+    This generation does not have a supported output payload to display.
   </div>
 
-  <div v-else-if="generation && hasSupportedResult" class="mt-8" aria-live="polite">
+  <div
+    v-else-if="generation && generation.status === 'completed' && hasSupportedResult"
+    class="mt-8"
+    aria-live="polite"
+  >
     <section class="mb-5 rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
       <div class="flex items-start justify-between gap-4">
         <div>
@@ -65,10 +127,7 @@ const hasSupportedResult = computed(
     </section>
 
     <CampaignGenerationResult v-if="campaignResult" :result="campaignResult" />
-    <VideoEnhancerGenerationResult
-      v-else-if="videoEnhancerResult"
-      :result="videoEnhancerResult"
-    />
+    <VideoEnhancerGenerationResult v-else-if="videoEnhancerResult" :result="videoEnhancerResult" />
     <ProductToVideoGenerationResult
       v-else-if="productToVideoResult"
       :result="productToVideoResult"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import AffiliateCampaignBrief from '@/components/AffiliateCampaignBrief.vue'
@@ -11,16 +11,20 @@ import ProductToVideoBrief from '@/components/ProductToVideoBrief.vue'
 import ProjectAssets from '@/components/ProjectAssets.vue'
 import VideoEnhancerBrief from '@/components/VideoEnhancerBrief.vue'
 import { ApiError } from '@/services/api'
-import { getCreatorTools } from '@/services/tools'
 import {
   generateCampaignProject,
   generateProductVideoScript,
   generateVideoEnhancerProject,
   getCreatorProject,
+  getGeneration,
   getProjectGenerations,
 } from '@/services/projects'
-import type { CreatorGeneration, CreatorProject } from '@/types/project'
+import { getCreatorTools } from '@/services/tools'
+import type { CreatorGeneration, CreatorProject, GenerationStatus } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
+
+const POLL_INTERVAL_MS = 2_000
+const QUEUE_HINT_AFTER_POLLS = 3
 
 const route = useRoute()
 const project = ref<CreatorProject | null>(null)
@@ -35,6 +39,11 @@ const generationError = ref('')
 const historyError = ref('')
 const remainingCredits = ref<number | null>(null)
 const toolCreditCost = ref<number | null>(null)
+const showQueueWorkerHint = ref(false)
+
+let pollTimer: ReturnType<typeof setTimeout> | null = null
+let pollingGenerationId: number | null = null
+let pollCount = 0
 
 const emptyHistoryCopy = computed(() => {
   if (project.value?.type === 'product_to_video') {
@@ -54,8 +63,96 @@ function currentProjectId(): string | undefined {
   return routeId || undefined
 }
 
+function isTerminalStatus(status: GenerationStatus): boolean {
+  return status === 'completed' || status === 'failed'
+}
+
+function stopPolling(): void {
+  if (pollTimer !== null) {
+    clearTimeout(pollTimer)
+    pollTimer = null
+  }
+
+  pollingGenerationId = null
+  pollCount = 0
+  showQueueWorkerHint.value = false
+}
+
+function upsertGeneration(updated: CreatorGeneration, select = false): void {
+  generationHistory.value = [
+    updated,
+    ...generationHistory.value.filter((item) => item.id !== updated.id),
+  ]
+
+  if (select || generation.value?.id === updated.id) {
+    generation.value = updated
+  }
+}
+
+function schedulePoll(): void {
+  if (pollingGenerationId === null || pollTimer !== null) {
+    return
+  }
+
+  pollTimer = setTimeout(() => {
+    pollTimer = null
+    void pollGeneration()
+  }, POLL_INTERVAL_MS)
+}
+
+async function pollGeneration(): Promise<void> {
+  const generationId = pollingGenerationId
+
+  if (generationId === null) {
+    return
+  }
+
+  try {
+    const updated = await getGeneration(generationId)
+
+    if (pollingGenerationId !== generationId) {
+      return
+    }
+
+    upsertGeneration(updated)
+
+    if (isTerminalStatus(updated.status)) {
+      stopPolling()
+      isGenerating.value = false
+      return
+    }
+
+    pollCount += 1
+    showQueueWorkerHint.value = import.meta.env.DEV && pollCount >= QUEUE_HINT_AFTER_POLLS
+    schedulePoll()
+  } catch {
+    if (pollingGenerationId !== generationId) {
+      return
+    }
+
+    stopPolling()
+    isGenerating.value = false
+    generationError.value = 'We could not check the generation status. Please try again.'
+  }
+}
+
+function startPolling(target: CreatorGeneration): void {
+  if (isTerminalStatus(target.status)) {
+    return
+  }
+
+  stopPolling()
+  pollingGenerationId = target.id
+  isGenerating.value = true
+  schedulePoll()
+}
+
 function selectGeneration(selected: CreatorGeneration): void {
   generation.value = selected
+
+  if (!isTerminalStatus(selected.status) && pollingGenerationId !== selected.id) {
+    startPolling(selected)
+  }
 }
 
 async function loadGenerationHistory(projectId: string): Promise<void> {
@@ -66,9 +163,11 @@ async function loadGenerationHistory(projectId: string): Promise<void> {
     const response = await getProjectGenerations(projectId)
 
     generationHistory.value = response.data
-    generation.value =
-      response.data.find((item) => item.status === 'completed' && item.result_payload !== null) ??
-      null
+    generation.value = response.data[0] ?? null
+
+    if (generation.value !== null && !isTerminalStatus(generation.value.status)) {
+      startPolling(generation.value)
+    }
   } catch (error: unknown) {
     historyError.value =
       error instanceof ApiError
@@ -133,6 +232,7 @@ async function generateContent(): Promise<void> {
     return
   }
 
+  stopPolling()
   generationError.value = ''
   isGenerating.value = true
 
@@ -155,13 +255,17 @@ async function generateContent(): Promise<void> {
     }
 
     historyError.value = ''
-    generation.value = generated
-    generationHistory.value = [
-      generated,
-      ...generationHistory.value.filter((item) => item.id !== generated.id),
-    ]
+    upsertGeneration(generated, true)
     remainingCredits.value = creditsBalance
+
+    if (isTerminalStatus(generated.status)) {
+      isGenerating.value = false
+    } else {
+      startPolling(generated)
+    }
   } catch (error: unknown) {
+    isGenerating.value = false
+
     if (
       error instanceof ApiError &&
       (error.code === 'insufficient_credits' || error.status === 402)
@@ -178,12 +282,11 @@ async function generateContent(): Promise<void> {
           ? error.message
           : 'We could not generate this content. Please try again.'
     }
-  } finally {
-    isGenerating.value = false
   }
 }
 
 onMounted(loadProject)
+onBeforeUnmount(stopPolling)
 </script>
 
 <template>
@@ -253,14 +356,8 @@ onMounted(loadProject)
           <p class="mt-3 text-sm text-neutral-500">Project #{{ project.id }}</p>
         </section>
 
-        <AffiliateCampaignBrief
-          v-if="project.type === 'affiliate_campaign'"
-          :project="project"
-        />
-        <VideoEnhancerBrief
-          v-else-if="project.type === 'video_enhancer'"
-          :project="project"
-        />
+        <AffiliateCampaignBrief v-if="project.type === 'affiliate_campaign'" :project="project" />
+        <VideoEnhancerBrief v-else-if="project.type === 'video_enhancer'" :project="project" />
         <ProductToVideoBrief v-else :project="project" />
 
         <ProjectAssets :project-id="project.id" />
@@ -285,7 +382,10 @@ onMounted(loadProject)
           @retry="loadGenerationHistory(String(project.id))"
         />
 
-        <GenerationResultRenderer :generation="generation" />
+        <GenerationResultRenderer
+          :generation="generation"
+          :show-queue-worker-hint="showQueueWorkerHint"
+        />
       </template>
     </div>
   </main>

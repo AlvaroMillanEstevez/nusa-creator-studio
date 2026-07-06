@@ -7,6 +7,7 @@ import type {
   CreateProjectPayload,
   CreatorProject,
   CreatorProjectSettings,
+  CreatorGeneration,
   ProjectGenerationHistoryResponse,
   ProductToVideoForm,
   ProductToVideoGenerationResponse,
@@ -95,6 +96,12 @@ export async function getCreatorProject(projectId: number | string): Promise<Cre
   const response = await apiGet<ResourceResponse<CreatorProject>>('/projects/' + projectId)
 
   return response.data
+}
+
+export function getGeneration(generationId: number | string): Promise<CreatorGeneration> {
+  return apiGet<ResourceResponse<CreatorGeneration>>('/generations/' + generationId).then(
+    (response) => response.data,
+  )
 }
 
 export function generateCampaignProject(

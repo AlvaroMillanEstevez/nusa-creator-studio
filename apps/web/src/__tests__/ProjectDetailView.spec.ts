@@ -207,6 +207,9 @@ describe('ProjectDetailView', () => {
           status: 'completed',
           cost_usd: '0.0000',
           credits_charged: 1,
+          input_payload: null,
+          output_payload: null,
+          error_message: null,
           request_payload: null,
           result_payload: {
             hooks: ['¿Quieres crear contenido rápido?'],
@@ -259,6 +262,9 @@ describe('ProjectDetailView', () => {
           status: 'completed',
           cost_usd: '0.0000',
           credits_charged: 1,
+          input_payload: null,
+          output_payload: null,
+          error_message: null,
           request_payload: null,
           result_payload: {
             improved_caption: 'A clearer caption for the portable key light.',
@@ -313,6 +319,9 @@ describe('ProjectDetailView', () => {
           status: 'completed',
           cost_usd: '0.0000',
           credits_charged: 1,
+          input_payload: null,
+          output_payload: null,
+          error_message: null,
           request_payload: null,
           result_payload: {
             concept_title: 'Portable key light production plan',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CreatorGeneration } from '@/types/project'
+import type { CreatorGeneration, GenerationStatus } from '@/types/project'
 import { formatDate } from '@/utils/formatters'
 
 defineProps<{
@@ -14,6 +14,22 @@ defineEmits<{
   select: [generation: CreatorGeneration]
   retry: []
 }>()
+
+function statusClasses(status: GenerationStatus): string {
+  if (status === 'completed') {
+    return 'bg-emerald-950 text-emerald-300'
+  }
+
+  if (status === 'failed') {
+    return 'bg-rose-950 text-rose-300'
+  }
+
+  if (status === 'processing') {
+    return 'bg-sky-950 text-sky-300'
+  }
+
+  return 'bg-amber-950 text-amber-300'
+}
 </script>
 
 <template>
@@ -83,11 +99,7 @@ defineEmits<{
           </div>
           <span
             class="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-            :class="
-              item.status === 'completed'
-                ? 'bg-emerald-950 text-emerald-300'
-                : 'bg-neutral-800 text-neutral-300'
-            "
+            :class="statusClasses(item.status)"
           >
             {{ item.status }}
           </span>
@@ -95,7 +107,10 @@ defineEmits<{
         <div class="mt-3 flex items-center gap-3 text-xs text-neutral-400">
           <span>{{ item.provider ?? 'Unknown provider' }}</span>
           <span aria-hidden="true">&bull;</span>
-          <span>{{ item.credits_charged }} credit charged</span>
+          <span>
+            {{ item.credits_charged }}
+            {{ item.credits_charged === 1 ? 'credit' : 'credits' }} charged
+          </span>
         </div>
       </button>
     </div>

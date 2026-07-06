@@ -83,6 +83,9 @@ describe('project service', () => {
         status: 'completed',
         cost_usd: '0.0000',
         credits_charged: 1,
+        input_payload: null,
+        output_payload: null,
+        error_message: null,
         request_payload: null,
         result_payload: {
           hooks: ['Hook'],
@@ -154,6 +157,9 @@ describe('project service', () => {
           status: 'completed',
           cost_usd: '0.0000',
           credits_charged: 1,
+          input_payload: null,
+          output_payload: null,
+          error_message: null,
           request_payload: null,
           result_payload: {
             hooks: ['Saved hook'],
@@ -200,6 +206,9 @@ describe('project service', () => {
         status: 'completed',
         cost_usd: '0.0000',
         credits_charged: 1,
+        input_payload: null,
+        output_payload: null,
+        error_message: null,
         request_payload: null,
         result_payload: {
           improved_caption: 'Improved caption',

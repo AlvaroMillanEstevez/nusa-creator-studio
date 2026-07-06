@@ -25,8 +25,14 @@ class GenerationResource extends JsonResource
             'status' => $this->status,
             'cost_usd' => $this->cost_usd,
             'credits_charged' => $this->credits_charged,
-            'request_payload' => $this->request_payload,
-            'result_payload' => $this->result_payload,
+            'input_payload' => $this->input_payload,
+            'output_payload' => $this->output_payload,
+            'error_message' => $this->status === Generation::STATUS_FAILED
+                ? $this->error_message
+                : null,
+            // Temporary response aliases for existing clients.
+            'request_payload' => $this->input_payload,
+            'result_payload' => $this->output_payload,
             'started_at' => $this->started_at?->toISOString(),
             'finished_at' => $this->finished_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),

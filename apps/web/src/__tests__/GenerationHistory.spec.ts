@@ -3,18 +3,25 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import GenerationHistory from '@/components/GenerationHistory.vue'
-import type { CreatorGeneration } from '@/types/project'
+import type { CreatorGeneration, GenerationStatus } from '@/types/project'
 
-function makeGeneration(id: number, createdAt: string): CreatorGeneration {
+function makeGeneration(
+  id: number,
+  createdAt: string,
+  status: GenerationStatus = 'completed',
+): CreatorGeneration {
   return {
     id,
     user_id: 1,
     project_id: 42,
     job_type: 'generate_affiliate_campaign',
     provider: 'mock',
-    status: 'completed',
+    status,
     cost_usd: '0.0000',
     credits_charged: 1,
+    input_payload: null,
+    output_payload: null,
+    error_message: null,
     request_payload: null,
     result_payload: null,
     started_at: createdAt,
@@ -47,5 +54,24 @@ describe('GenerationHistory', () => {
     await historyButtons[1]?.trigger('click')
 
     expect(wrapper.emitted('select')?.[0]?.[0]).toEqual(previous)
+  })
+  it('renders queued, processing, completed, and failed history statuses', () => {
+    const statuses: GenerationStatus[] = ['queued', 'processing', 'completed', 'failed']
+    const generations = statuses.map((status, index) =>
+      makeGeneration(index + 1, `2026-07-06T0${index + 1}:00:00.000000Z`, status),
+    )
+    const wrapper = mount(GenerationHistory, {
+      props: {
+        generations,
+        selectedGeneration: generations[0] ?? null,
+        isLoading: false,
+        error: '',
+        emptyCopy: 'No saved generations yet.',
+      },
+    })
+
+    for (const status of statuses) {
+      expect(wrapper.text()).toContain(status)
+    }
   })
 })

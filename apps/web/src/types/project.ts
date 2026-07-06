@@ -48,6 +48,7 @@ export type ProductVideoDuration = (typeof productVideoDurationOptions)[number]
 
 export type ProjectType = 'affiliate_campaign' | 'video_enhancer' | 'product_to_video'
 export type ProjectStatus = 'draft' | 'pending' | 'processing' | 'completed' | 'failed'
+export type GenerationStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'pending'
 
 export interface CampaignFormPayload {
   product_name: string
@@ -185,17 +186,26 @@ export interface Generation<TResult = GenerationResult> {
   project_id: number | null
   job_type: string
   provider: string | null
-  status: ProjectStatus
+  status: GenerationStatus
   cost_usd: string
   credits_charged: number
-  request_payload: Record<string, unknown> | null
-  result_payload: TResult | null
+  input_payload: Record<string, unknown> | null
+  output_payload: TResult | null
+  error_message: string | null
+  request_payload?: Record<string, unknown> | null
+  result_payload?: TResult | null
   started_at: string | null
   finished_at: string | null
   created_at: string | null
 }
 
 export type CreatorGeneration = Generation<GenerationResult>
+
+export function generationOutput<TResult extends GenerationResult>(
+  generation: Generation<TResult>,
+): TResult | null {
+  return generation.output_payload ?? generation.result_payload ?? null
+}
 
 export interface GenerationResponse<TResult extends GenerationResult> {
   data: Generation<TResult>
