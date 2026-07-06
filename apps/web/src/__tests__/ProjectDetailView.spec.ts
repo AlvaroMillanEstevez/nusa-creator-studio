@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import ProjectDetailView from '@/views/ProjectDetailView.vue'
@@ -92,6 +93,8 @@ async function mountProjectDetail(
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/tools', component: { template: '<div />' } },
+      { path: '/login', component: { template: '<div />' } },
+      { path: '/register', component: { template: '<div />' } },
       { path: '/product-to-video/new', component: { template: '<div />' } },
       { path: '/dashboard', component: { template: '<div />' } },
       { path: '/campaigns/new', component: { template: '<div />' } },
@@ -119,7 +122,44 @@ async function mountProjectDetail(
 
   const wrapper = mount(ProjectDetailView, {
     global: {
-      plugins: [router],
+      plugins: [createPinia(), router],
+    },
+  })
+
+  await flushPromises()
+
+  return wrapper
+}
+
+async function mountUnavailableProject(status: 403 | 404) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: { template: '<div />' } },
+      { path: '/tools', component: { template: '<div />' } },
+      { path: '/dashboard', component: { template: '<div />' } },
+      { path: '/login', component: { template: '<div />' } },
+      { path: '/register', component: { template: '<div />' } },
+      { path: '/projects/:id', component: ProjectDetailView },
+    ],
+  })
+
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ message: status === 403 ? 'Forbidden' : 'Not Found' }), {
+        status,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      }),
+    ),
+  )
+
+  await router.push('/projects/999')
+  await router.isReady()
+
+  const wrapper = mount(ProjectDetailView, {
+    global: {
+      plugins: [createPinia(), router],
     },
   })
 
@@ -132,6 +172,27 @@ describe('ProjectDetailView', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
+
+  it.each([403, 404] as const)(
+    'renders the friendly unavailable state for an API %s response',
+    async (status) => {
+      const wrapper = await mountUnavailableProject(status)
+
+      expect(wrapper.get('h1').text()).toBe('Project unavailable')
+      expect(wrapper.text()).toContain(
+        'This project does not exist or you do not have access to it.',
+      )
+      expect(
+        wrapper
+          .findAll('a[href="/dashboard"]')
+          .some((link) => link.text().includes('Back to dashboard')),
+      ).toBe(true)
+      expect(
+        wrapper.findAll('a[href="/tools"]').some((link) => link.text().includes('Browse tools')),
+      ).toBe(true)
+      expect(wrapper.text()).not.toContain('This page needs another try.')
+    },
+  )
 
   it('renders Spanish campaign project and generation text without losing Unicode', async () => {
     const history: ProjectGenerationHistoryResponse = {

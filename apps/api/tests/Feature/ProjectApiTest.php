@@ -11,9 +11,10 @@ class ProjectApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_development_user_can_manage_projects_through_the_api(): void
+    public function test_authenticated_user_can_manage_projects_through_the_api(): void
     {
         $user = User::factory()->create();
+        $this->actingAs($user);
 
         $createResponse = $this->postJson('/api/v1/projects', [
             'title' => 'Summer affiliate launch',
@@ -60,7 +61,8 @@ class ProjectApiTest extends TestCase
 
     public function test_project_text_round_trips_unicode_without_mojibake(): void
     {
-        User::factory()->create();
+        $user = User::factory()->create();
+        $this->actingAs($user);
 
         $title = 'Campaña ÁÉÍÓÚ áéíóú para España: ñ Ñ ¿? ¡!';
         $description = 'Diseñado para creadores que necesitan automatización.';
@@ -102,7 +104,8 @@ class ProjectApiTest extends TestCase
 
     public function test_project_payloads_are_validated(): void
     {
-        User::factory()->create();
+        $user = User::factory()->create();
+        $this->actingAs($user);
 
         $this->postJson('/api/v1/projects', [
             'type' => 'unsupported_type',
@@ -112,17 +115,15 @@ class ProjectApiTest extends TestCase
             ->assertJsonValidationErrors(['title', 'type', 'status']);
     }
 
-    public function test_a_development_user_is_created_when_the_database_has_no_users(): void
+    public function test_unauthenticated_user_cannot_create_a_project(): void
     {
         $this->postJson('/api/v1/projects', [
             'title' => 'First project',
             'type' => 'product_to_video',
         ])
-            ->assertCreated()
-            ->assertJsonPath('data.status', 'draft');
+            ->assertUnauthorized();
 
-        $this->assertDatabaseCount('users', 1);
-        $this->assertDatabaseCount('projects', 1);
+        $this->assertDatabaseCount('projects', 0);
     }
 
     public function test_an_authenticated_user_cannot_access_another_users_project(): void

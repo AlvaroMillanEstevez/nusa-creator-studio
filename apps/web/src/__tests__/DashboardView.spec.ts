@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
+import { API_BASE_URL } from '@/services/api'
 import type { DashboardSummary } from '@/types/dashboard'
 import DashboardView from '@/views/DashboardView.vue'
 
@@ -80,7 +82,7 @@ async function mountDashboard(summary: DashboardSummary) {
 
   const wrapper = mount(DashboardView, {
     global: {
-      plugins: [router],
+      plugins: [createPinia(), router],
     },
   })
 
@@ -99,7 +101,7 @@ describe('DashboardView', () => {
     const text = wrapper.text()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/dashboard'),
+      API_BASE_URL + '/dashboard',
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
     expect(text).toContain('17')

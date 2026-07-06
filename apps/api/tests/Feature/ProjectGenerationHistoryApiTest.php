@@ -16,6 +16,8 @@ class ProjectGenerationHistoryApiTest extends TestCase
     public function test_project_generations_are_listed_newest_first_with_results(): void
     {
         $user = User::factory()->create();
+        $this->actingAs($user);
+
         $project = Project::factory()->for($user)->create(['type' => 'affiliate_campaign']);
         $otherProject = Project::factory()->for($user)->create(['type' => 'affiliate_campaign']);
 
@@ -71,6 +73,8 @@ class ProjectGenerationHistoryApiTest extends TestCase
     public function test_listing_generation_history_does_not_charge_credits(): void
     {
         $user = User::factory()->create(['credits_balance' => 7]);
+        $this->actingAs($user);
+
         $project = Project::factory()->for($user)->create(['type' => 'affiliate_campaign']);
         $generation = $this->generation($user, $project, 'Saved hook', now());
         $transactionCount = CreditTransaction::query()->count();

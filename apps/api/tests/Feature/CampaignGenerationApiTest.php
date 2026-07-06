@@ -19,7 +19,8 @@ class CampaignGenerationApiTest extends TestCase
         $user = User::factory()->create(['credits_balance' => 20]);
         $project = $this->affiliateProject($user);
 
-        $response = $this->postJson("/api/v1/projects/{$project->id}/generate-campaign");
+        $response = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign");
 
         $response
             ->assertCreated()
@@ -109,7 +110,8 @@ class CampaignGenerationApiTest extends TestCase
             ->for($user)
             ->create(['type' => 'video_enhancer']);
 
-        $this->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
             ->assertUnprocessable()
             ->assertJsonPath('code', 'invalid_project_type')
             ->assertJsonPath(
@@ -170,7 +172,8 @@ class CampaignGenerationApiTest extends TestCase
                 ],
             ]);
 
-        $response = $this->postJson("/api/v1/projects/{$project->id}/generate-campaign");
+        $response = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign");
 
         $response
             ->assertCreated()
@@ -222,6 +225,8 @@ class CampaignGenerationApiTest extends TestCase
 
     private function affiliateProject(User $user, string $language = 'english'): Project
     {
+        $this->actingAs($user);
+
         return Project::factory()
             ->for($user)
             ->create([

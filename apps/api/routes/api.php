@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
@@ -22,24 +23,36 @@ Route::get('/health', function () {
 });
 
 Route::prefix('v1')->group(function () {
-    Route::get('dashboard', DashboardController::class)->name('dashboard.show');
-    Route::get(
-        'projects/{project}/generations',
-        ProjectGenerationController::class,
-    )->name('projects.generations.index');
-    Route::post(
-        'projects/{project}/generate-campaign',
-        GenerateCampaignController::class,
-    )->name('projects.generate-campaign');
-    Route::post(
-        'projects/{project}/generate-video-enhancer',
-        GenerateVideoEnhancerController::class,
-    )->name('projects.generate-video-enhancer');
-    Route::post(
-        'projects/{project}/generate-product-video-script',
-        GenerateProductVideoScriptController::class,
-    )->name('projects.generate-product-video-script');
-    Route::apiResource('projects', ProjectController::class);
+    Route::prefix('auth')->group(function () {
+        Route::post('register', [AuthController::class, 'register'])->name('auth.register');
+        Route::post('login', [AuthController::class, 'login'])->name('auth.login');
+
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::post('logout', [AuthController::class, 'logout'])->name('auth.logout');
+            Route::get('me', [AuthController::class, 'me'])->name('auth.me');
+        });
+    });
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('dashboard', DashboardController::class)->name('dashboard.show');
+        Route::get(
+            'projects/{project}/generations',
+            ProjectGenerationController::class,
+        )->name('projects.generations.index');
+        Route::post(
+            'projects/{project}/generate-campaign',
+            GenerateCampaignController::class,
+        )->name('projects.generate-campaign');
+        Route::post(
+            'projects/{project}/generate-video-enhancer',
+            GenerateVideoEnhancerController::class,
+        )->name('projects.generate-video-enhancer');
+        Route::post(
+            'projects/{project}/generate-product-video-script',
+            GenerateProductVideoScriptController::class,
+        )->name('projects.generate-product-video-script');
+        Route::apiResource('projects', ProjectController::class);
+    });
 
     Route::get('/health', function () {
         return response()->json([

@@ -17,6 +17,8 @@ class DashboardApiTest extends TestCase
     public function test_dashboard_returns_current_user_balance_and_scoped_stats(): void
     {
         $user = User::factory()->create(['credits_balance' => 13]);
+        $this->actingAs($user);
+
         $otherUser = User::factory()->create(['credits_balance' => 99]);
 
         $affiliateDraft = Project::factory()->for($user)->create([
@@ -77,6 +79,8 @@ class DashboardApiTest extends TestCase
     public function test_recent_projects_are_limited_and_ordered_newest_first_with_generation_summary(): void
     {
         $user = User::factory()->create();
+        $this->actingAs($user);
+
         $projects = collect();
 
         foreach (range(1, 6) as $index) {
@@ -116,6 +120,8 @@ class DashboardApiTest extends TestCase
     public function test_recent_generations_are_newest_first_and_do_not_expose_payloads(): void
     {
         $user = User::factory()->create();
+        $this->actingAs($user);
+
         $project = Project::factory()->for($user)->create([
             'title' => 'Portable light campaign',
             'type' => 'product_to_video',
@@ -149,12 +155,13 @@ class DashboardApiTest extends TestCase
         }
     }
 
-    public function test_dashboard_respects_authenticated_and_development_user_ownership(): void
+    public function test_dashboard_respects_authenticated_user_ownership(): void
     {
         $developmentUser = User::factory()->create(['name' => 'Development Owner']);
         $otherUser = User::factory()->create(['name' => 'Authenticated Owner']);
         Project::factory()->for($developmentUser)->create(['title' => 'Development project']);
         Project::factory()->for($otherUser)->create(['title' => 'Authenticated project']);
+        $this->actingAs($developmentUser);
 
         $this->getJson('/api/v1/dashboard')
             ->assertOk()

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import { API_BASE_URL } from '@/services/api'
@@ -71,7 +72,7 @@ describe('NewVideoEnhancerView', () => {
 
     const wrapper = mount(NewVideoEnhancerView, {
       global: {
-        plugins: [router],
+        plugins: [createPinia(), router],
       },
     })
 

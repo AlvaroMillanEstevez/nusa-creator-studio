@@ -1,0 +1,154 @@
+<script setup lang="ts">
+import { reactive, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+
+import AppNav from '@/components/AppNav.vue'
+import { useAuthStore } from '@/stores/auth'
+import type { RegisterPayload } from '@/types/auth'
+
+const auth = useAuthStore()
+const router = useRouter()
+const validationError = ref('')
+
+const form = reactive<RegisterPayload>({
+  name: '',
+  email: '',
+  password: '',
+  password_confirmation: '',
+})
+
+async function submit(): Promise<void> {
+  validationError.value = ''
+
+  if (!form.name.trim() || !form.email.trim()) {
+    validationError.value = 'Enter your name and email.'
+    return
+  }
+
+  if (form.password.length < 8) {
+    validationError.value = 'Use at least 8 characters for your password.'
+    return
+  }
+
+  if (form.password !== form.password_confirmation) {
+    validationError.value = 'Your password confirmation does not match.'
+    return
+  }
+
+  try {
+    await auth.register({
+      name: form.name.trim(),
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
+      password_confirmation: form.password_confirmation,
+    })
+
+    await router.push({ name: 'dashboard' })
+  } catch {
+    // The store exposes a friendly server error.
+  }
+}
+</script>
+
+<template>
+  <main class="min-h-screen bg-neutral-950 text-white">
+    <div class="mx-auto min-h-screen max-w-md px-5 pb-12 pt-6 sm:px-6">
+      <AppNav />
+
+      <section class="mt-12">
+        <p class="text-sm font-medium text-emerald-400">Start creating</p>
+        <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Create your studio account.</h1>
+        <p class="mt-4 text-sm leading-6 text-neutral-400">
+          Your account starts with 20 internal platform credits for the mock creator workflows.
+        </p>
+      </section>
+
+      <form
+        class="mt-9 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6"
+        novalidate
+        @submit.prevent="submit"
+      >
+        <div>
+          <label for="register-name" class="text-sm font-semibold text-neutral-200">Name</label>
+          <input
+            id="register-name"
+            v-model="form.name"
+            name="name"
+            type="text"
+            autocomplete="name"
+            placeholder="Your creator name"
+            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          />
+        </div>
+
+        <div class="mt-6">
+          <label for="register-email" class="text-sm font-semibold text-neutral-200">Email</label>
+          <input
+            id="register-email"
+            v-model="form.email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            placeholder="creator@example.com"
+            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          />
+        </div>
+
+        <div class="mt-6">
+          <label for="register-password" class="text-sm font-semibold text-neutral-200">Password</label>
+          <input
+            id="register-password"
+            v-model="form.password"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          />
+          <p class="mt-2 text-xs text-neutral-600">Use at least 8 characters.</p>
+        </div>
+
+        <div class="mt-6">
+          <label for="register-confirmation" class="text-sm font-semibold text-neutral-200">
+            Confirm password
+          </label>
+          <input
+            id="register-confirmation"
+            v-model="form.password_confirmation"
+            name="password_confirmation"
+            type="password"
+            autocomplete="new-password"
+            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          />
+        </div>
+
+        <div
+          v-if="validationError || auth.error"
+          role="alert"
+          class="mt-5 rounded-2xl border border-rose-900/60 bg-rose-950/50 px-4 py-3 text-sm leading-6 text-rose-200"
+        >
+          {{ validationError || auth.error }}
+        </div>
+
+        <button
+          type="submit"
+          :disabled="auth.isLoading"
+          class="mt-6 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+        >
+          <span
+            v-if="auth.isLoading"
+            class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950"
+            aria-hidden="true"
+          />
+          {{ auth.isLoading ? 'Creating account...' : 'Create account' }}
+        </button>
+
+        <p class="mt-5 text-center text-sm text-neutral-500">
+          Already have an account?
+          <RouterLink to="/login" class="font-semibold text-emerald-400 hover:text-emerald-300">
+            Log in
+          </RouterLink>
+        </p>
+      </form>
+    </div>
+  </main>
+</template>

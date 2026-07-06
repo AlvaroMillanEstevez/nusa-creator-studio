@@ -111,7 +111,8 @@ class VideoEnhancerGenerationApiTest extends TestCase
             ->for($user)
             ->create(['type' => 'affiliate_campaign']);
 
-        $this->postJson("/api/v1/projects/{$project->id}/generate-video-enhancer")
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-video-enhancer")
             ->assertUnprocessable()
             ->assertJsonPath('code', 'invalid_project_type')
             ->assertJsonPath(
@@ -210,6 +211,8 @@ class VideoEnhancerGenerationApiTest extends TestCase
         string $language = 'english',
         array $overrides = [],
     ): Project {
+        $this->actingAs($user);
+
         return Project::factory()
             ->for($user)
             ->create([

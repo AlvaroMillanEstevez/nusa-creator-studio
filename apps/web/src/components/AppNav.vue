@@ -1,12 +1,42 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 
-const navigationItems = [
-  { label: 'Home', to: '/' },
-  { label: 'Tools', to: '/tools' },
-  { label: 'Dashboard', to: '/dashboard' },
-  { label: 'Create', to: '/campaigns/new' },
-] as const
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const router = useRouter()
+
+const navigationItems = computed(() => {
+  const publicItems = [
+    { label: 'Home', to: '/' },
+    { label: 'Tools', to: '/tools' },
+  ]
+
+  if (auth.isAuthenticated) {
+    return [
+      ...publicItems,
+      { label: 'Dashboard', to: '/dashboard' },
+      { label: 'Create', to: '/campaigns/new' },
+    ]
+  }
+
+  return [
+    ...publicItems,
+    { label: 'Login', to: '/login' },
+    { label: 'Register', to: '/register' },
+  ]
+})
+
+async function logout(): Promise<void> {
+  try {
+    await auth.logout()
+  } catch {
+    // Local state is cleared even if the server session has already expired.
+  }
+
+  await router.push({ name: 'login' })
+}
 </script>
 
 <template>
@@ -24,5 +54,15 @@ const navigationItems = [
     >
       {{ item.label }}
     </RouterLink>
+
+    <button
+      v-if="auth.isAuthenticated"
+      type="button"
+      :disabled="auth.isLoading"
+      class="flex min-h-10 shrink-0 items-center justify-center rounded-xl px-3 text-xs font-semibold text-neutral-400 transition hover:bg-neutral-800 hover:text-white disabled:opacity-50"
+      @click="logout"
+    >
+      Logout
+    </button>
   </nav>
 </template>

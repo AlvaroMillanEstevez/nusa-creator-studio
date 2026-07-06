@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import { API_BASE_URL } from '@/services/api'
@@ -56,7 +57,7 @@ describe('NewProductToVideoView', () => {
     await router.push('/product-to-video/new')
     await router.isReady()
 
-    const wrapper = mount(NewProductToVideoView, { global: { plugins: [router] } })
+    const wrapper = mount(NewProductToVideoView, { global: { plugins: [createPinia(), router] } })
 
     expect(wrapper.text()).toContain('Product-to-Video Script Pack')
     expect(wrapper.text()).toContain('not a rendered video')

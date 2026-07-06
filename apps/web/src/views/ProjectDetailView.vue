@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 
 import AffiliateCampaignBrief from '@/components/AffiliateCampaignBrief.vue'
 import AppNav from '@/components/AppNav.vue'
@@ -28,6 +28,7 @@ const isLoading = ref(true)
 const isGenerating = ref(false)
 const isHistoryLoading = ref(false)
 const loadError = ref('')
+const loadErrorStatus = ref<number | null>(null)
 const generationError = ref('')
 const historyError = ref('')
 const remainingCredits = ref<number | null>(null)
@@ -78,6 +79,7 @@ async function loadGenerationHistory(projectId: string): Promise<void> {
 async function loadProject(): Promise<void> {
   isLoading.value = true
   loadError.value = ''
+  loadErrorStatus.value = null
 
   const projectId = currentProjectId()
 
@@ -92,10 +94,15 @@ async function loadProject(): Promise<void> {
   try {
     project.value = await getCreatorProject(projectId)
   } catch (error: unknown) {
-    loadError.value =
-      error instanceof ApiError
-        ? error.message
-        : 'We could not load this project. Check the API connection and try again.'
+    if (error instanceof ApiError && [403, 404].includes(error.status)) {
+      loadErrorStatus.value = error.status
+      loadError.value = 'This project does not exist or you do not have access to it.'
+    } else {
+      loadError.value =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not load this project. Check the API connection and try again.'
+    }
   } finally {
     isLoading.value = false
     await historyRequest
@@ -169,6 +176,31 @@ onMounted(loadProject)
         <div class="mt-3 h-10 w-3/5 animate-pulse rounded-xl bg-neutral-800" />
         <div class="mt-10 h-56 animate-pulse rounded-3xl bg-neutral-900" />
         <p class="mt-5 text-sm text-neutral-500">Loading project...</p>
+      </section>
+
+      <section
+        v-else-if="loadErrorStatus === 403 || loadErrorStatus === 404"
+        class="mt-12 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-6"
+      >
+        <p class="text-sm font-medium text-amber-400">Project access</p>
+        <h1 class="mt-3 text-3xl font-bold">Project unavailable</h1>
+        <p role="alert" class="mt-4 leading-7 text-neutral-400">
+          This project does not exist or you do not have access to it.
+        </p>
+        <div class="mt-7 grid gap-3 sm:grid-cols-2">
+          <RouterLink
+            to="/dashboard"
+            class="flex min-h-12 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+          >
+            Back to dashboard
+          </RouterLink>
+          <RouterLink
+            to="/tools"
+            class="flex min-h-12 items-center justify-center rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800"
+          >
+            Browse tools
+          </RouterLink>
+        </div>
       </section>
 
       <section v-else-if="loadError" class="mt-16">

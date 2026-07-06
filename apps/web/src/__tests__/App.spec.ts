@@ -4,6 +4,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import App from '../App.vue'
 import router from '../router'
+import { pinia } from '../stores'
+import { useAuthStore } from '../stores/auth'
 
 describe('App', () => {
   afterEach(() => {
@@ -14,20 +16,34 @@ describe('App', () => {
     vi.stubGlobal('scrollTo', vi.fn<() => void>())
     vi.stubGlobal(
       'fetch',
-      vi.fn<typeof fetch>().mockResolvedValue(
-        new Response(JSON.stringify({ status: 'ok', version: 'v1' }), {
+      vi.fn<typeof fetch>().mockImplementation(async (input) => {
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+        if (url.endsWith('/auth/me')) {
+          return new Response(JSON.stringify({ message: 'Unauthenticated.' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+
+        return new Response(JSON.stringify({ status: 'ok', version: 'v1' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
+        })
+      }),
     )
+
+    const auth = useAuthStore(pinia)
+    auth.user = null
+    auth.initialized = false
 
     await router.push('/')
     await router.isReady()
 
     const wrapper = mount(App, {
       global: {
-        plugins: [router],
+        plugins: [pinia, router],
       },
     })
 

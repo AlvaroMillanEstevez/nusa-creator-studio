@@ -1,0 +1,75 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { createPinia, setActivePinia } from 'pinia'
+
+import { API_BASE_URL, API_ORIGIN } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+import type { AuthUser } from '@/types/auth'
+
+const user: AuthUser = {
+  id: 1,
+  name: 'Nusa Creator',
+  email: 'creator@example.com',
+  credits_balance: 20,
+  created_at: '2026-07-06T00:00:00.000000Z',
+}
+
+describe('auth store', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('uses the Sanctum and typed auth endpoints for the full session lifecycle', async () => {
+    setActivePinia(createPinia())
+
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+      if (url.endsWith('/sanctum/csrf-cookie')) {
+        return new Response(null, { status: 204 })
+      }
+
+      if (url.endsWith('/auth/logout')) {
+        return new Response(JSON.stringify({ message: 'Logged out successfully.' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ user }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const auth = useAuthStore()
+
+    await auth.fetchMe()
+    expect(auth.user).toEqual(user)
+    expect(auth.isAuthenticated).toBe(true)
+
+    await auth.login({ email: user.email, password: 'strong-password' })
+    await auth.register({
+      name: user.name,
+      email: user.email,
+      password: 'strong-password',
+      password_confirmation: 'strong-password',
+    })
+    await auth.logout()
+
+    const requestedUrls = fetchMock.mock.calls.map(([input]) =>
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
+    )
+
+    expect(requestedUrls).toContain(API_BASE_URL + '/auth/me')
+    expect(requestedUrls).toContain(API_BASE_URL + '/auth/login')
+    expect(requestedUrls).toContain(API_BASE_URL + '/auth/register')
+    expect(requestedUrls).toContain(API_BASE_URL + '/auth/logout')
+    expect(requestedUrls.filter((url) => url === API_ORIGIN + '/sanctum/csrf-cookie')).toHaveLength(3)
+    expect(fetchMock.mock.calls.every(([, options]) => options?.credentials === 'include')).toBe(true)
+    expect(auth.user).toBeNull()
+    expect(auth.isAuthenticated).toBe(false)
+  })
+})

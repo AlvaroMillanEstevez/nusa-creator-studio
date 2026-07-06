@@ -117,7 +117,8 @@ class ProductVideoScriptGenerationApiTest extends TestCase
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['type' => 'video_enhancer']);
 
-        $this->postJson("/api/v1/projects/{$project->id}/generate-product-video-script")
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-product-video-script")
             ->assertUnprocessable()
             ->assertJsonPath('code', 'invalid_project_type')
             ->assertJsonPath(
@@ -212,6 +213,8 @@ class ProductVideoScriptGenerationApiTest extends TestCase
         string $language = 'english',
         array $overrides = [],
     ): Project {
+        $this->actingAs($user);
+
         return Project::factory()
             ->for($user)
             ->create([
