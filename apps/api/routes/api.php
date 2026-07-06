@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
 use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
@@ -21,6 +22,7 @@ Route::get('/health', function () {
 });
 
 Route::prefix('v1')->group(function () {
+    Route::get('dashboard', DashboardController::class)->name('dashboard.show');
     Route::get(
         'projects/{project}/generations',
         ProjectGenerationController::class,
