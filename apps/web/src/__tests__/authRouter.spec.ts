@@ -25,6 +25,55 @@ describe('authentication route guard', () => {
     vi.unstubAllGlobals()
   })
 
+  it('hydrates an existing session when a public tools route opens', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = null
+    auth.initialized = true
+    await router.push('/')
+    auth.initialized = false
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ user }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await router.push('/tools')
+
+    expect(router.currentRoute.value.name).toBe('tools')
+    expect(auth.user).toEqual(user)
+    expect(auth.initialized).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/auth/me')
+  })
+
+  it('confirms guest state without exposing an expected 401 as an auth error', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = user
+    auth.initialized = true
+    await router.push('/')
+    auth.user = null
+    auth.initialized = false
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Unauthenticated.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await router.push('/tools')
+
+    expect(router.currentRoute.value.name).toBe('tools')
+    expect(auth.user).toBeNull()
+    expect(auth.initialized).toBe(true)
+    expect(auth.error).toBe('')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('redirects an unauthenticated protected route to login', async () => {
     const auth = useAuthStore(pinia)
     auth.user = null

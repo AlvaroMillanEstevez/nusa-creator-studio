@@ -6,6 +6,38 @@ import App from '../App.vue'
 import router from '../router'
 import { pinia } from '../stores'
 import { useAuthStore } from '../stores/auth'
+import type { AuthUser } from '../types/auth'
+import type { CreatorTool } from '../types/tool'
+
+const user: AuthUser = {
+  id: 1,
+  name: 'Nusa Creator',
+  email: 'creator@example.com',
+  role: 'free_user',
+  role_label: 'Free User',
+  plan_key: 'free',
+  plan_label: 'Free',
+  is_unlimited: false,
+  access_label: 'Current plan credits',
+  monthly_credit_allowance: 20,
+  credits_balance: 15,
+  created_at: null,
+}
+
+const availableTool: CreatorTool = {
+  key: 'affiliate_campaign',
+  title: 'Affiliate Campaign Generator',
+  short_description: 'Generate a complete campaign pack.',
+  long_description: null,
+  category: 'campaign_creation',
+  status: 'available',
+  route: '/campaigns/new',
+  credit_cost: 1,
+  credit_cost_label: '1 credit',
+  badge_label: 'Available now',
+  is_recommended: true,
+  sort_order: 10,
+}
 
 describe('App', () => {
   afterEach(() => {
@@ -57,5 +89,86 @@ describe('App', () => {
     expect(wrapper.text()).not.toContain('Video Enhancer / Caption Pack')
     expect(wrapper.find('[data-testid^="tool-card-"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('API ok - v1')
+  })
+  it('hydrates the user menu when an authenticated user opens tools directly', async () => {
+    vi.stubGlobal('scrollTo', vi.fn<() => void>())
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+      if (url.endsWith('/auth/me')) {
+        return new Response(JSON.stringify({ user }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ data: [availableTool] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const auth = useAuthStore(pinia)
+    auth.user = null
+    auth.initialized = true
+    await router.push('/')
+    auth.initialized = false
+
+    await router.push('/tools')
+    const wrapper = mount(App, { global: { plugins: [pinia, router] } })
+    await flushPromises()
+
+    expect(wrapper.find('details').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Hi, Nusa')
+    expect(wrapper.find('a[href="/login"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="tool-card-affiliate_campaign"]').text()).toContain(
+      'Open tool',
+    )
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).includes('/auth/me')),
+    ).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('shows confirmed guest navigation and login tool CTAs after auth returns 401', async () => {
+    vi.stubGlobal('scrollTo', vi.fn<() => void>())
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+      if (url.endsWith('/auth/me')) {
+        return new Response(JSON.stringify({ message: 'Unauthenticated.' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ data: [availableTool] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const auth = useAuthStore(pinia)
+    auth.user = null
+    auth.initialized = true
+    await router.push('/')
+    auth.initialized = false
+
+    await router.push('/tools')
+    const wrapper = mount(App, { global: { plugins: [pinia, router] } })
+    await flushPromises()
+
+    expect(wrapper.find('a[href="/login"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/register"]').exists()).toBe(true)
+    expect(wrapper.find('details').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="tool-card-affiliate_campaign"]').text()).toContain(
+      'Log in to use',
+    )
+    expect(auth.error).toBe('')
+    wrapper.unmount()
   })
 })

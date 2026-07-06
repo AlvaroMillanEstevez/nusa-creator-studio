@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import { ApiError } from '@/services/api'
 import { getCreatorTools } from '@/services/tools'
+import { useAuthStore } from '@/stores/auth'
 import type { CreatorTool } from '@/types/tool'
 import { formatLabel } from '@/utils/formatters'
 
 const tools = ref<CreatorTool[]>([])
 const isLoading = ref(true)
 const error = ref('')
+const auth = useAuthStore()
 
 const visibleTools = computed(() => tools.value.filter((tool) => tool.status !== 'disabled'))
 const availableTools = computed(() =>
@@ -22,6 +24,10 @@ const maintenanceTools = computed(() =>
 const comingSoonTools = computed(() =>
   visibleTools.value.filter((tool) => tool.status === 'coming_soon'),
 )
+
+function toolDestination(route: string): RouteLocationRaw {
+  return auth.isAuthenticated ? route : { path: '/login', query: { redirect: route } }
+}
 
 async function loadTools(): Promise<void> {
   isLoading.value = true
@@ -98,7 +104,7 @@ onMounted(() => {
             <template v-for="tool in availableTools" :key="tool.key">
               <RouterLink
                 v-if="tool.route"
-                :to="tool.route"
+                :to="toolDestination(tool.route)"
                 :data-testid="'tool-card-' + tool.key"
                 class="group block rounded-3xl border border-emerald-900/70 bg-gradient-to-br from-neutral-900 via-neutral-900 to-emerald-950/50 p-5 transition hover:-translate-y-0.5 hover:border-emerald-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
               >
@@ -123,12 +129,15 @@ onMounted(() => {
                   {{ tool.long_description }}
                 </p>
 
-                <div class="mt-5 flex items-center justify-between border-t border-neutral-800 pt-4">
+                <div
+                  class="mt-5 flex items-center justify-between border-t border-neutral-800 pt-4"
+                >
                   <span class="text-xs font-medium text-neutral-400">
                     {{ tool.credit_cost_label ?? tool.credit_cost + ' credits' }}
                   </span>
                   <span class="text-sm font-semibold text-emerald-300">
-                    Open tool <span aria-hidden="true">&rarr;</span>
+                    {{ auth.isAuthenticated ? 'Open tool' : 'Log in to use' }}
+                    <span aria-hidden="true">&rarr;</span>
                   </span>
                 </div>
               </RouterLink>
@@ -207,7 +216,9 @@ onMounted(() => {
                   </p>
                   <h3 class="mt-2 text-lg font-semibold text-neutral-200">{{ tool.title }}</h3>
                 </div>
-                <span class="shrink-0 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
+                <span
+                  class="shrink-0 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400"
+                >
                   {{ tool.badge_label ?? 'Coming soon' }}
                 </span>
               </div>

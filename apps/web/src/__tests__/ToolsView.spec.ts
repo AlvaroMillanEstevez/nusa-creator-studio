@@ -5,8 +5,25 @@ import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import { API_BASE_URL } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+import type { AuthUser } from '@/types/auth'
 import type { CreatorTool } from '@/types/tool'
 import ToolsView from '@/views/ToolsView.vue'
+
+const authenticatedUser: AuthUser = {
+  id: 1,
+  name: 'Nusa Creator',
+  email: 'creator@example.com',
+  role: 'free_user',
+  role_label: 'Free User',
+  plan_key: 'free',
+  plan_label: 'Free',
+  is_unlimited: false,
+  access_label: 'Current plan credits',
+  monthly_credit_allowance: 20,
+  credits_balance: 12,
+  created_at: null,
+}
 
 const tools: CreatorTool[] = [
   {
@@ -67,7 +84,10 @@ const tools: CreatorTool[] = [
   },
 ]
 
-async function mountToolsView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) {
+async function mountToolsView(
+  fetchMock: ReturnType<typeof vi.fn<typeof fetch>>,
+  user: AuthUser | null = authenticatedUser,
+) {
   const placeholder = { template: '<div />' }
   const router = createRouter({
     history: createMemoryHistory(),
@@ -75,6 +95,8 @@ async function mountToolsView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>)
       { path: '/', component: placeholder },
       { path: '/tools', component: ToolsView },
       { path: '/dashboard', component: placeholder },
+      { path: '/pricing', component: placeholder },
+      { path: '/account', component: placeholder },
       { path: '/login', component: placeholder },
       { path: '/register', component: placeholder },
       { path: '/campaigns/new', component: placeholder },
@@ -83,12 +105,18 @@ async function mountToolsView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>)
   })
 
   vi.stubGlobal('fetch', fetchMock)
+  vi.stubGlobal('scrollTo', vi.fn<() => void>())
+  const pinia = createPinia()
+  const auth = useAuthStore(pinia)
+  auth.user = user
+  auth.initialized = true
+
   await router.push('/tools')
   await router.isReady()
 
   const wrapper = mount(ToolsView, {
     global: {
-      plugins: [createPinia(), router],
+      plugins: [pinia, router],
     },
   })
   await flushPromises()
@@ -116,10 +144,26 @@ describe('ToolsView', () => {
     expect(card.element.tagName).toBe('A')
     expect(card.attributes('href')).toBe('/campaigns/new')
     expect(card.text()).toContain('Affiliate Campaign Generator')
+    expect(card.text()).toContain('Open tool')
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/tools',
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
+  })
+
+  it('sends guests through login with the intended tool route', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock, null)
+    const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
+
+    expect(card.attributes('href')).toBe('/login?redirect=/campaigns/new')
+    expect(card.text()).toContain('Log in to use')
   })
 
   it('keeps coming-soon and maintenance tools non-clickable and hides disabled tools', async () => {
@@ -159,6 +203,6 @@ describe('ToolsView', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain(
       'Something went wrong. Please try again.',
     )
-    expect(wrapper.get('button').text()).toBe('Try again')
+    expect(wrapper.get('[role=alert] button').text()).toBe('Try again')
   })
 })

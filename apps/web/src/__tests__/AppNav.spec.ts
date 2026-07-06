@@ -35,7 +35,7 @@ const freeUser: AuthUser = {
   created_at: null,
 }
 
-async function mountNav(user: AuthUser | null) {
+async function mountNav(user: AuthUser | null, initialized = true) {
   const pinia = createPinia()
   setActivePinia(pinia)
   const router = createRouter({
@@ -46,7 +46,7 @@ async function mountNav(user: AuthUser | null) {
   await router.isReady()
 
   const auth = useAuthStore(pinia)
-  auth.initialized = true
+  auth.initialized = initialized
   auth.user = user
 
   const wrapper = mount(AppNav, {
@@ -57,6 +57,14 @@ async function mountNav(user: AuthUser | null) {
 }
 
 describe('AppNav', () => {
+  it('shows a neutral session state while authentication is being checked', async () => {
+    const { wrapper } = await mountNav(null, false)
+
+    expect(wrapper.get('[data-testid="auth-nav-loading"]').text()).toContain('Checking session')
+    expect(wrapper.find('a[href="/login"]').exists()).toBe(false)
+    expect(wrapper.find('a[href="/register"]').exists()).toBe(false)
+    expect(wrapper.find('details').exists()).toBe(false)
+  })
   it('shows guest links without the authenticated user menu', async () => {
     const { wrapper } = await mountNav(null)
 

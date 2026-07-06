@@ -6,8 +6,24 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { nextTick } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
+import type { AuthUser } from '@/types/auth'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
+
+const authenticatedUser: AuthUser = {
+  id: 1,
+  name: 'Nusa Creator',
+  email: 'creator@example.test',
+  role: 'free_user',
+  role_label: 'Free User',
+  plan_key: 'free',
+  plan_label: 'Free',
+  is_unlimited: false,
+  access_label: 'Current plan credits',
+  monthly_credit_allowance: 20,
+  credits_balance: 20,
+  created_at: null,
+}
 
 function testRouter() {
   return createRouter({
@@ -34,6 +50,25 @@ function mockAuthFailure(message: string, status = 500) {
 
     return new Response(JSON.stringify({ message }), {
       status,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+  vi.stubGlobal('fetch', fetchMock)
+
+  return fetchMock
+}
+
+function mockAuthSuccess() {
+  const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+    const url =
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+    if (url.endsWith('/sanctum/csrf-cookie')) {
+      return new Response(null, { status: 204 })
+    }
+
+    return new Response(JSON.stringify({ user: authenticatedUser }), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
   })
@@ -147,6 +182,42 @@ describe('authentication views', () => {
     expect(wrapper.get('h1').text()).toBe('Welcome back.')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect(auth.error).toBe('')
+  })
+
+  it('redirects to a safe internal destination after login', async () => {
+    mockAuthSuccess()
+    const router = testRouter()
+    await router.push('/login?redirect=/campaigns/new')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: { plugins: [createPinia(), router] },
+    })
+
+    await wrapper.get('input[name="email"]').setValue('creator@example.test')
+    await wrapper.get('input[name="password"]').setValue('strong-password')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/campaigns/new')
+  })
+
+  it('ignores an unsafe external redirect after login', async () => {
+    mockAuthSuccess()
+    const router = testRouter()
+    await router.push('/login?redirect=//malicious.example/path')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: { plugins: [createPinia(), router] },
+    })
+
+    await wrapper.get('input[name="email"]').setValue('creator@example.test')
+    await wrapper.get('input[name="password"]').setValue('strong-password')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/dashboard')
   })
 
   it('shows a safe login error instead of a raw SQL exception', async () => {

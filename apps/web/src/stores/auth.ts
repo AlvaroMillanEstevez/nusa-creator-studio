@@ -30,6 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
   let initialization: Promise<void> | null = null
 
   const isAuthenticated = computed(() => user.value !== null)
+  const isCheckingAuth = computed(() => !initialized.value && isLoading.value)
 
   function clearError(): void {
     error.value = ''
@@ -148,6 +149,7 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user,
     isAuthenticated,
+    isCheckingAuth,
     isLoading,
     error,
     initialized,

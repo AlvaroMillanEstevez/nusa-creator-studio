@@ -5,6 +5,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { LoginPayload } from '@/types/auth'
+import { safeInternalRedirect } from '@/utils/redirects'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -33,8 +34,7 @@ async function submit(): Promise<void> {
       password: form.password,
     })
 
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
-    await router.push(redirect)
+    await router.push(safeInternalRedirect(route.query.redirect))
   } catch {
     // The store exposes a friendly server error.
   }

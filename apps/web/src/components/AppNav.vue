@@ -15,6 +15,10 @@ const navigationItems = computed(() => {
     { label: 'Pricing', to: '/pricing' },
   ]
 
+  if (!auth.initialized) {
+    return publicItems
+  }
+
   if (auth.isAuthenticated) {
     const authenticatedItems = [
       ...publicItems,
@@ -79,7 +83,17 @@ async function logout(): Promise<void> {
       </RouterLink>
     </div>
 
-    <details v-if="auth.user" ref="userMenu" class="group relative shrink-0">
+    <div
+      v-if="!auth.initialized"
+      data-testid="auth-nav-loading"
+      class="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950/60 px-3"
+      aria-label="Checking session"
+    >
+      <span class="size-2 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />
+      <span class="text-[10px] font-medium text-neutral-500">Checking session</span>
+    </div>
+
+    <details v-else-if="auth.user" ref="userMenu" class="group relative shrink-0">
       <summary
         class="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-950/70 px-3 text-left transition hover:border-neutral-600 hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 [&::-webkit-details-marker]:hidden"
       >
