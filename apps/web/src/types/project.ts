@@ -195,6 +195,8 @@ export interface Generation<TResult = GenerationResult> {
   created_at: string | null
 }
 
+export type CreatorGeneration = Generation<GenerationResult>
+
 export interface GenerationResponse<TResult extends GenerationResult> {
   data: Generation<TResult>
   meta: { credits_balance: number }
