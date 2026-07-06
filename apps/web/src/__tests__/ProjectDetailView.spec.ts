@@ -4,9 +4,14 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import ProjectDetailView from '@/views/ProjectDetailView.vue'
-import type { CampaignProject, ProjectGenerationHistoryResponse } from '@/types/project'
+import type {
+  CampaignProject,
+  CreatorProject,
+  ProjectGenerationHistoryResponse,
+  VideoEnhancerProject,
+} from '@/types/project'
 
-const project: CampaignProject = {
+const campaignProject: CampaignProject = {
   id: 42,
   user_id: 1,
   title: 'Campaña para pequeños creadores en España',
@@ -27,13 +32,39 @@ const project: CampaignProject = {
   updated_at: '2026-07-06T00:00:00.000000Z',
 }
 
+const videoEnhancerProject: VideoEnhancerProject = {
+  id: 77,
+  user_id: 1,
+  title: 'Morning desk setup',
+  type: 'video_enhancer',
+  status: 'draft',
+  input_payload: {
+    video_title: 'Morning desk setup',
+    product_name: 'Portable key light',
+    video_context: 'A creator shows the desk before and after turning on the key light.',
+    spoken_summary: 'The creator explains how the light fits a small filming space.',
+    target_audience: 'Creators filming in small rooms',
+    language: 'english',
+    style: 'educational',
+  },
+  settings: {
+    platform: 'tiktok',
+    format: 'vertical_9_16',
+  },
+  created_at: '2026-07-06T02:00:00.000000Z',
+  updated_at: '2026-07-06T02:00:00.000000Z',
+}
+
 const emptyHistory: ProjectGenerationHistoryResponse = {
   data: [],
   links: { first: null, last: null, prev: null, next: null },
   meta: { current_page: 1, last_page: 1, per_page: 10, total: 0 },
 }
 
-async function mountProjectDetail(history: ProjectGenerationHistoryResponse) {
+async function mountProjectDetail(
+  currentProject: CreatorProject,
+  history: ProjectGenerationHistoryResponse,
+) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -41,6 +72,7 @@ async function mountProjectDetail(history: ProjectGenerationHistoryResponse) {
       { path: '/tools', component: { template: '<div />' } },
       { path: '/dashboard', component: { template: '<div />' } },
       { path: '/campaigns/new', component: { template: '<div />' } },
+      { path: '/video-enhancer/new', component: { template: '<div />' } },
       { path: '/projects/:id', component: ProjectDetailView },
     ],
   })
@@ -50,7 +82,7 @@ async function mountProjectDetail(history: ProjectGenerationHistoryResponse) {
     vi.fn<typeof fetch>().mockImplementation(async (input) => {
       const url =
         typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-      const body = url.endsWith('/projects/42/generations') ? history : { data: project }
+      const body = url.endsWith('/generations') ? history : { data: currentProject }
 
       return new Response(JSON.stringify(body), {
         status: 200,
@@ -59,7 +91,7 @@ async function mountProjectDetail(history: ProjectGenerationHistoryResponse) {
     }),
   )
 
-  await router.push('/projects/42')
+  await router.push('/projects/' + currentProject.id)
   await router.isReady()
 
   const wrapper = mount(ProjectDetailView, {
@@ -78,7 +110,7 @@ describe('ProjectDetailView', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders Spanish project and generation text without losing Unicode characters', async () => {
+  it('renders Spanish campaign project and generation text without losing Unicode', async () => {
     const history: ProjectGenerationHistoryResponse = {
       ...emptyHistory,
       data: [
@@ -112,7 +144,7 @@ describe('ProjectDetailView', () => {
       meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
     }
 
-    const wrapper = await mountProjectDetail(history)
+    const wrapper = await mountProjectDetail(campaignProject, history)
     const renderedText = wrapper.text()
 
     expect(renderedText).toContain('¿Quieres crear contenido rápido?')
@@ -122,10 +154,65 @@ describe('ProjectDetailView', () => {
   })
 
   it('explains what generating the first saved campaign will create', async () => {
-    const wrapper = await mountProjectDetail(emptyHistory)
+    const wrapper = await mountProjectDetail(campaignProject, emptyHistory)
 
     expect(wrapper.text()).toContain(
       'No saved generations yet. Generate your first campaign to create hooks, script, caption and hashtags.',
     )
+  })
+
+  it('renders a video enhancer brief and restores its saved result', async () => {
+    const history: ProjectGenerationHistoryResponse = {
+      ...emptyHistory,
+      data: [
+        {
+          id: 12,
+          user_id: 1,
+          project_id: 77,
+          job_type: 'generate_video_enhancer',
+          provider: 'mock',
+          status: 'completed',
+          cost_usd: '0.0000',
+          credits_charged: 1,
+          request_payload: null,
+          result_payload: {
+            improved_caption: 'A clearer caption for the portable key light.',
+            subtitle_plan: [{ timestamp: '0-3s', text: 'Meet the portable key light' }],
+            cut_plan: [
+              {
+                timestamp: '0-3s',
+                edit_direction: 'Open on the illuminated desk.',
+                reason: 'Show the context immediately.',
+              },
+            ],
+            on_screen_text: ['Small desk lighting'],
+            posting_text: 'A practical desk-lighting edit plan.',
+            hashtags: ['#PortableKeyLight'],
+            cta: 'Review the product details.',
+            notes: ['Match subtitle timing to the real recording.'],
+          },
+          started_at: '2026-07-06T03:00:00.000000Z',
+          finished_at: '2026-07-06T03:00:00.000000Z',
+          created_at: '2026-07-06T03:00:00.000000Z',
+        },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
+    }
+
+    const wrapper = await mountProjectDetail(videoEnhancerProject, history)
+    const renderedText = wrapper.text()
+
+    expect(renderedText).toContain('Recorded video brief')
+    expect(renderedText).toContain(
+      'A creator shows the desk before and after turning on the key light.',
+    )
+    expect(renderedText).toContain('The creator explains how the light fits a small filming space.')
+    expect(renderedText).toContain('Generate caption pack')
+    expect(renderedText).toContain('Improved caption')
+    expect(renderedText).toContain('A clearer caption for the portable key light.')
+    expect(renderedText).toContain('Subtitle plan')
+    expect(renderedText).toContain('Cut plan')
+    expect(renderedText).toContain('On-screen text')
+    expect(renderedText).toContain('Posting text')
   })
 })

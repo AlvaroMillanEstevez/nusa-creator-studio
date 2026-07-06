@@ -5,7 +5,12 @@ import type {
   CampaignProject,
   CampaignProjectSettings,
   CreateProjectPayload,
+  CreatorProject,
+  CreatorProjectSettings,
   ProjectGenerationHistoryResponse,
+  VideoEnhancerForm,
+  VideoEnhancerGenerationResponse,
+  VideoEnhancerProject,
 } from '@/types/project'
 
 interface ResourceResponse<T> {
@@ -34,8 +39,36 @@ export async function createCampaignProject(
   return response.data
 }
 
+export async function createVideoEnhancerProject(
+  brief: VideoEnhancerForm,
+): Promise<VideoEnhancerProject> {
+  const payload: CreateProjectPayload<VideoEnhancerForm, CreatorProjectSettings> = {
+    title: brief.video_title,
+    type: 'video_enhancer',
+    status: 'draft',
+    input_payload: brief,
+    settings: {
+      platform: 'tiktok',
+      format: 'vertical_9_16',
+    },
+  }
+
+  const response = await apiPost<
+    ResourceResponse<VideoEnhancerProject>,
+    CreateProjectPayload<VideoEnhancerForm, CreatorProjectSettings>
+  >('/projects', payload)
+
+  return response.data
+}
+
 export async function getCampaignProject(projectId: number | string): Promise<CampaignProject> {
   const response = await apiGet<ResourceResponse<CampaignProject>>('/projects/' + projectId)
+
+  return response.data
+}
+
+export async function getCreatorProject(projectId: number | string): Promise<CreatorProject> {
+  const response = await apiGet<ResourceResponse<CreatorProject>>('/projects/' + projectId)
 
   return response.data
 }
@@ -45,6 +78,15 @@ export function generateCampaignProject(
 ): Promise<CampaignGenerationResponse> {
   return apiPost<CampaignGenerationResponse, Record<string, never>>(
     '/projects/' + projectId + '/generate-campaign',
+    {},
+  )
+}
+
+export function generateVideoEnhancerProject(
+  projectId: number | string,
+): Promise<VideoEnhancerGenerationResponse> {
+  return apiPost<VideoEnhancerGenerationResponse, Record<string, never>>(
+    '/projects/' + projectId + '/generate-video-enhancer',
     {},
   )
 }

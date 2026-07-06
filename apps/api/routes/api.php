@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
+use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
 use Illuminate\Http\Request;
@@ -27,6 +28,10 @@ Route::prefix('v1')->group(function () {
         'projects/{project}/generate-campaign',
         GenerateCampaignController::class,
     )->name('projects.generate-campaign');
+    Route::post(
+        'projects/{project}/generate-video-enhancer',
+        GenerateVideoEnhancerController::class,
+    )->name('projects.generate-video-enhancer');
     Route::apiResource('projects', ProjectController::class);
 
     Route::get('/health', function () {

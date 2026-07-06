@@ -3,20 +3,29 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
+import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
 import { ApiError } from '@/services/api'
 import {
   generateCampaignProject,
-  getCampaignProject,
+  generateVideoEnhancerProject,
+  getCreatorProject,
   getProjectGenerations,
 } from '@/services/projects'
-import type { CampaignGenerationResult, CampaignProject, Generation } from '@/types/project'
+import {
+  isCampaignGenerationResult,
+  isVideoEnhancerResult,
+  type CreatorProject,
+  type Generation,
+  type GenerationResult,
+} from '@/types/project'
 
-type CampaignGeneration = Generation<CampaignGenerationResult>
+type CreatorGeneration = Generation<GenerationResult>
 
 const route = useRoute()
-const project = ref<CampaignProject | null>(null)
-const generation = ref<CampaignGeneration | null>(null)
-const generationHistory = ref<CampaignGeneration[]>([])
+const project = ref<CreatorProject | null>(null)
+const generation = ref<CreatorGeneration | null>(null)
+const generationHistory = ref<CreatorGeneration[]>([])
 const isLoading = ref(true)
 const isGenerating = ref(false)
 const isHistoryLoading = ref(false)
@@ -25,7 +34,30 @@ const generationError = ref('')
 const historyError = ref('')
 const remainingCredits = ref<number | null>(null)
 
-const generationResult = computed(() => generation.value?.result_payload ?? null)
+const selectedResult = computed(() => generation.value?.result_payload ?? null)
+const campaignResult = computed(() =>
+  isCampaignGenerationResult(selectedResult.value) ? selectedResult.value : null,
+)
+const videoEnhancerResult = computed(() =>
+  isVideoEnhancerResult(selectedResult.value) ? selectedResult.value : null,
+)
+const hasSelectedResult = computed(
+  () => campaignResult.value !== null || videoEnhancerResult.value !== null,
+)
+const isVideoEnhancer = computed(() => project.value?.type === 'video_enhancer')
+const generationTitle = computed(() =>
+  isVideoEnhancer.value ? 'Generate caption pack' : 'Create campaign content',
+)
+const generationDescription = computed(() =>
+  isVideoEnhancer.value
+    ? 'Create a deterministic caption, subtitle timing, cut plan, posting copy and editing notes from this written brief.'
+    : 'Generate deterministic hooks, a TikTok script, caption, hashtags, CTA, and practical filming notes.',
+)
+const emptyHistoryCopy = computed(() =>
+  isVideoEnhancer.value
+    ? 'No saved generations yet. Generate your first caption pack to create subtitles, cuts, posting text and hashtags.'
+    : 'No saved generations yet. Generate your first campaign to create hooks, script, caption and hashtags.',
+)
 
 function formatLabel(value: string | undefined): string {
   if (!value) {
@@ -58,7 +90,7 @@ function currentProjectId(): string | undefined {
   return routeId || undefined
 }
 
-function selectGeneration(selected: CampaignGeneration): void {
+function selectGeneration(selected: CreatorGeneration): void {
   generation.value = selected
 }
 
@@ -77,7 +109,7 @@ async function loadGenerationHistory(projectId: string): Promise<void> {
     historyError.value =
       error instanceof ApiError
         ? error.message
-        : 'We could not load generation history. You can still generate a new campaign.'
+        : 'We could not load generation history. You can still generate a new result.'
   } finally {
     isHistoryLoading.value = false
   }
@@ -98,7 +130,7 @@ async function loadProject(): Promise<void> {
   const historyRequest = loadGenerationHistory(projectId)
 
   try {
-    project.value = await getCampaignProject(projectId)
+    project.value = await getCreatorProject(projectId)
   } catch (error: unknown) {
     loadError.value =
       error instanceof ApiError
@@ -110,7 +142,7 @@ async function loadProject(): Promise<void> {
   }
 }
 
-async function generateCampaign(): Promise<void> {
+async function generateContent(): Promise<void> {
   const projectId = currentProjectId()
 
   if (!projectId || !project.value) {
@@ -121,27 +153,38 @@ async function generateCampaign(): Promise<void> {
   isGenerating.value = true
 
   try {
-    const response = await generateCampaignProject(projectId)
+    let generated: CreatorGeneration
+    let creditsBalance: number
+
+    if (project.value.type === 'video_enhancer') {
+      const response = await generateVideoEnhancerProject(projectId)
+      generated = response.data
+      creditsBalance = response.meta.credits_balance
+    } else {
+      const response = await generateCampaignProject(projectId)
+      generated = response.data
+      creditsBalance = response.meta.credits_balance
+    }
 
     historyError.value = ''
-    generation.value = response.data
+    generation.value = generated
     generationHistory.value = [
-      response.data,
-      ...generationHistory.value.filter((item) => item.id !== response.data.id),
+      generated,
+      ...generationHistory.value.filter((item) => item.id !== generated.id),
     ]
-    remainingCredits.value = response.meta.credits_balance
+    remainingCredits.value = creditsBalance
   } catch (error: unknown) {
     if (
       error instanceof ApiError &&
       (error.code === 'insufficient_credits' || error.status === 402)
     ) {
       generationError.value =
-        'You need at least 1 platform credit to generate this campaign. Your balance was not changed.'
+        'You need at least 1 platform credit to generate this content. Your balance was not changed.'
     } else {
       generationError.value =
         error instanceof ApiError
           ? error.message
-          : 'We could not generate the campaign. Please try again.'
+          : 'We could not generate this content. Please try again.'
     }
   } finally {
     isGenerating.value = false
@@ -161,11 +204,11 @@ onMounted(loadProject)
         <div class="mt-5 h-10 w-4/5 animate-pulse rounded-xl bg-neutral-800" />
         <div class="mt-3 h-10 w-3/5 animate-pulse rounded-xl bg-neutral-800" />
         <div class="mt-10 h-56 animate-pulse rounded-3xl bg-neutral-900" />
-        <p class="mt-5 text-sm text-neutral-500">Loading campaign...</p>
+        <p class="mt-5 text-sm text-neutral-500">Loading project...</p>
       </section>
 
       <section v-else-if="loadError" class="mt-16">
-        <p class="text-sm font-medium text-rose-400">Unable to load campaign</p>
+        <p class="text-sm font-medium text-rose-400">Unable to load project</p>
         <h1 class="mt-3 text-3xl font-bold">This page needs another try.</h1>
         <p role="alert" class="mt-4 leading-7 text-neutral-400">{{ loadError }}</p>
         <button
@@ -189,22 +232,21 @@ onMounted(loadProject)
               {{ formatLabel(project.type) }}
             </span>
           </div>
-
-          <h1 class="mt-5 text-3xl font-bold leading-tight sm:text-4xl">
-            {{ project.title }}
-          </h1>
+          <h1 class="mt-5 text-3xl font-bold leading-tight sm:text-4xl">{{ project.title }}</h1>
           <p class="mt-3 text-sm text-neutral-500">Project #{{ project.id }}</p>
         </section>
 
         <section class="mt-9 rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold">Campaign brief</h2>
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="text-lg font-semibold">
+              {{ isVideoEnhancer ? 'Recorded video brief' : 'Campaign brief' }}
+            </h2>
             <span class="text-xs font-medium uppercase tracking-wider text-neutral-500">
               TikTok
             </span>
           </div>
 
-          <dl class="mt-6 space-y-6">
+          <dl v-if="project.type === 'affiliate_campaign'" class="mt-6 space-y-6">
             <div>
               <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 Product
@@ -213,7 +255,6 @@ onMounted(loadProject)
                 {{ project.input_payload?.product_name ?? '-' }}
               </dd>
             </div>
-
             <div>
               <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 Description
@@ -222,7 +263,6 @@ onMounted(loadProject)
                 {{ project.input_payload?.product_description ?? '-' }}
               </dd>
             </div>
-
             <div>
               <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 Target audience
@@ -231,7 +271,6 @@ onMounted(loadProject)
                 {{ project.input_payload?.target_audience ?? '-' }}
               </dd>
             </div>
-
             <div class="grid grid-cols-2 gap-4 border-t border-neutral-800 pt-5">
               <div>
                 <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
@@ -251,19 +290,71 @@ onMounted(loadProject)
               </div>
             </div>
           </dl>
+
+          <dl v-else class="mt-6 space-y-6">
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                Product
+              </dt>
+              <dd class="mt-2 text-base font-medium text-neutral-100">
+                {{ project.input_payload?.product_name ?? '-' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                Video context
+              </dt>
+              <dd class="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-300">
+                {{ project.input_payload?.video_context ?? '-' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                Spoken summary
+              </dt>
+              <dd class="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-300">
+                {{ project.input_payload?.spoken_summary ?? '-' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                Target audience
+              </dt>
+              <dd class="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-300">
+                {{ project.input_payload?.target_audience ?? '-' }}
+              </dd>
+            </div>
+            <div class="grid grid-cols-2 gap-4 border-t border-neutral-800 pt-5">
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                  Language
+                </dt>
+                <dd class="mt-2 text-sm font-medium text-neutral-200">
+                  {{ formatLabel(project.input_payload?.language) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                  Style
+                </dt>
+                <dd class="mt-2 text-sm font-medium text-neutral-200">
+                  {{ formatLabel(project.input_payload?.style) }}
+                </dd>
+              </div>
+            </div>
+          </dl>
         </section>
 
         <section
-          v-if="project.type === 'affiliate_campaign'"
           class="mt-5 rounded-3xl border border-emerald-900/70 bg-gradient-to-br from-neutral-900 to-emerald-950/40 p-5"
         >
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                Mock AI studio
+                Mock creator studio
               </p>
               <h2 class="mt-2 text-xl font-semibold">
-                {{ generation ? 'Generate another version' : 'Create campaign content' }}
+                {{ generation ? 'Generate another version' : generationTitle }}
               </h2>
             </div>
             <span
@@ -273,10 +364,7 @@ onMounted(loadProject)
             </span>
           </div>
 
-          <p class="mt-3 text-sm leading-6 text-neutral-400">
-            Generate deterministic hooks, a TikTok script, caption, hashtags, CTA, and practical
-            filming notes.
-          </p>
+          <p class="mt-3 text-sm leading-6 text-neutral-400">{{ generationDescription }}</p>
 
           <p v-if="remainingCredits !== null" class="mt-3 text-sm font-medium text-emerald-300">
             {{ remainingCredits }} credits remaining
@@ -294,7 +382,7 @@ onMounted(loadProject)
             type="button"
             :disabled="isGenerating"
             class="mt-5 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
-            @click="generateCampaign"
+            @click="generateContent"
           >
             <span
               v-if="isGenerating"
@@ -303,10 +391,14 @@ onMounted(loadProject)
             />
             {{
               isGenerating
-                ? 'Generating campaign...'
-                : generation
-                  ? 'Generate again'
-                  : 'Generate campaign'
+                ? isVideoEnhancer
+                  ? 'Generating caption pack...'
+                  : 'Generating campaign...'
+                : isVideoEnhancer
+                  ? 'Generate caption pack'
+                  : generation
+                    ? 'Generate again'
+                    : 'Generate campaign'
             }}
           </button>
         </section>
@@ -350,10 +442,9 @@ onMounted(loadProject)
 
           <p
             v-else-if="generationHistory.length === 0"
-            class="mt-5 rounded-2xl bg-neutral-950/70 p-4 text-sm text-neutral-400"
+            class="mt-5 rounded-2xl bg-neutral-950/70 p-4 text-sm leading-6 text-neutral-400"
           >
-            No saved generations yet. Generate your first campaign to create hooks, script, caption
-            and hashtags.
+            {{ emptyHistoryCopy }}
           </p>
 
           <div v-else class="mt-5 space-y-3">
@@ -397,14 +488,14 @@ onMounted(loadProject)
         </section>
 
         <div
-          v-if="generation && !generationResult"
+          v-if="generation && !hasSelectedResult"
           class="mt-5 rounded-2xl border border-neutral-800 bg-neutral-900 p-4 text-sm text-neutral-400"
         >
-          This generation does not have a result payload to display.
+          This generation does not have a supported result payload to display.
         </div>
 
-        <div v-if="generationResult" class="mt-8 space-y-5" aria-live="polite">
-          <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+        <div v-if="hasSelectedResult" class="mt-8" aria-live="polite">
+          <section class="mb-5 rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
@@ -418,114 +509,13 @@ onMounted(loadProject)
                 {{ generation?.provider ?? 'Unknown provider' }}
               </span>
             </div>
-
-            <h2 class="mt-5 text-2xl font-bold">Hooks</h2>
-            <ol class="mt-5 space-y-3">
-              <li
-                v-for="(hook, index) in generationResult.hooks"
-                :key="hook"
-                class="flex gap-3 rounded-2xl bg-neutral-950/70 p-4 text-sm leading-6 text-neutral-200"
-              >
-                <span class="font-bold text-emerald-400">{{ index + 1 }}</span>
-                <span>{{ hook }}</span>
-              </li>
-            </ol>
           </section>
 
-          <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                  TikTok script
-                </p>
-                <h2 class="mt-2 text-xl font-bold">{{ generationResult.script.title }}</h2>
-              </div>
-              <span class="shrink-0 text-sm text-neutral-400">
-                {{ generationResult.script.duration_seconds }}s
-              </span>
-            </div>
-
-            <div class="mt-6 space-y-4">
-              <article
-                v-for="(scene, index) in generationResult.script.scenes"
-                :key="scene.timestamp"
-                class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4"
-              >
-                <div class="flex items-center justify-between gap-3">
-                  <p class="text-sm font-semibold text-white">Scene {{ index + 1 }}</p>
-                  <span class="rounded-full bg-neutral-800 px-3 py-1 text-xs text-emerald-300">
-                    {{ scene.timestamp }}
-                  </span>
-                </div>
-
-                <dl class="mt-4 space-y-4 text-sm">
-                  <div>
-                    <dt class="font-semibold text-neutral-500">Voiceover</dt>
-                    <dd class="mt-1 leading-6 text-neutral-200">{{ scene.voiceover }}</dd>
-                  </div>
-                  <div>
-                    <dt class="font-semibold text-neutral-500">Visual direction</dt>
-                    <dd class="mt-1 leading-6 text-neutral-300">
-                      {{ scene.visual_direction }}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt class="font-semibold text-neutral-500">On-screen text</dt>
-                    <dd class="mt-1 font-medium text-emerald-300">
-                      {{ scene.on_screen_text }}
-                    </dd>
-                  </div>
-                </dl>
-              </article>
-            </div>
-          </section>
-
-          <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-              Caption
-            </p>
-            <p class="mt-3 whitespace-pre-line text-sm leading-7 text-neutral-200">
-              {{ generationResult.caption }}
-            </p>
-          </section>
-
-          <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-              Hashtags
-            </p>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <span
-                v-for="hashtag in generationResult.hashtags"
-                :key="hashtag"
-                class="rounded-full border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs font-medium text-neutral-300"
-              >
-                {{ hashtag }}
-              </span>
-            </div>
-          </section>
-
-          <section class="rounded-3xl border border-emerald-900/60 bg-emerald-950/30 p-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">CTA</p>
-            <p class="mt-3 text-base font-semibold leading-7 text-white">
-              {{ generationResult.cta }}
-            </p>
-          </section>
-
-          <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-              Practical notes
-            </p>
-            <ul class="mt-4 space-y-3">
-              <li
-                v-for="note in generationResult.notes"
-                :key="note"
-                class="flex gap-3 text-sm leading-6 text-neutral-300"
-              >
-                <span class="text-emerald-400" aria-hidden="true">&#10003;</span>
-                <span>{{ note }}</span>
-              </li>
-            </ul>
-          </section>
+          <CampaignGenerationResult v-if="campaignResult" :result="campaignResult" />
+          <VideoEnhancerGenerationResult
+            v-else-if="videoEnhancerResult"
+            :result="videoEnhancerResult"
+          />
         </div>
       </template>
     </div>

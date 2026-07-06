@@ -14,6 +14,7 @@ async function mountToolsView() {
       { path: '/', component: placeholder },
       { path: '/tools', component: ToolsView },
       { path: '/dashboard', component: placeholder },
+      { path: '/video-enhancer/new', component: placeholder },
       { path: '/campaigns/new', component: placeholder },
     ],
   })
@@ -33,11 +34,15 @@ describe('ToolsView', () => {
     const wrapper = await mountToolsView()
     const text = wrapper.text()
     const affiliateCard = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
+    const videoEnhancerCard = wrapper.get('[data-testid="tool-card-video_enhancer"]')
 
     expect(text).toContain('What do you want to create today?')
     expect(text.indexOf('Available tools')).toBeLessThan(text.indexOf('Coming soon'))
     expect(affiliateCard.element.tagName).toBe('A')
     expect(affiliateCard.attributes('href')).toBe('/campaigns/new')
+    expect(videoEnhancerCard.element.tagName).toBe('A')
+    expect(videoEnhancerCard.attributes('href')).toBe('/video-enhancer/new')
+    expect(videoEnhancerCard.text()).toContain('Video Enhancer / Caption Pack')
     expect(affiliateCard.text()).toContain('Affiliate Campaign Generator')
     expect(availableTools.every((tool) => Boolean(tool.route))).toBe(true)
   })
@@ -45,7 +50,7 @@ describe('ToolsView', () => {
   it('renders coming soon services without broken links', async () => {
     const wrapper = await mountToolsView()
 
-    expect(comingSoonTools).toHaveLength(5)
+    expect(comingSoonTools).toHaveLength(4)
 
     for (const tool of comingSoonTools) {
       const card = wrapper.get(`[data-testid="tool-card-${tool.id}"]`)

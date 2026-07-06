@@ -4,6 +4,7 @@ import { API_BASE_URL } from '@/services/api'
 import {
   createCampaignProject,
   generateCampaignProject,
+  generateVideoEnhancerProject,
   getProjectGenerations,
 } from '@/services/projects'
 import type {
@@ -11,6 +12,7 @@ import type {
   CampaignGenerationResponse,
   CampaignProject,
   ProjectGenerationHistoryResponse,
+  VideoEnhancerGenerationResponse,
 } from '@/types/project'
 
 describe('project service', () => {
@@ -184,6 +186,59 @@ describe('project service', () => {
       API_BASE_URL + '/projects/42/generations',
       expect.objectContaining({
         headers: expect.any(Headers),
+      }),
+    )
+  })
+  it('posts to the mock video enhancer generation endpoint', async () => {
+    const response: VideoEnhancerGenerationResponse = {
+      data: {
+        id: 10,
+        user_id: 1,
+        project_id: 77,
+        job_type: 'generate_video_enhancer',
+        provider: 'mock',
+        status: 'completed',
+        cost_usd: '0.0000',
+        credits_charged: 1,
+        request_payload: null,
+        result_payload: {
+          improved_caption: 'Improved caption',
+          subtitle_plan: [{ timestamp: '0-3s', text: 'Opening subtitle' }],
+          cut_plan: [
+            {
+              timestamp: '0-3s',
+              edit_direction: 'Open on the product.',
+              reason: 'Immediate context.',
+            },
+          ],
+          on_screen_text: ['Meet the product'],
+          posting_text: 'Posting text',
+          hashtags: ['#Product'],
+          cta: 'Review the details.',
+          notes: ['Match timing to the real recording.'],
+        },
+        started_at: '2026-07-06T02:00:00.000000Z',
+        finished_at: '2026-07-06T02:00:00.000000Z',
+        created_at: '2026-07-06T02:00:00.000000Z',
+      },
+      meta: { credits_balance: 18 },
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(generateVideoEnhancerProject(77)).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/77/generate-video-enhancer',
+      expect.objectContaining({
+        method: 'POST',
+        body: '{}',
       }),
     )
   })

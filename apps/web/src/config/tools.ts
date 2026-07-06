@@ -44,10 +44,11 @@ export const tools = [
       'Turn a recorded product video brief into subtitles, cut ideas, captions, CTA and posting text.',
     long_description:
       'Polish recorded product videos with a practical edit plan and a complete posting copy pack.',
-    status: 'coming_soon',
+    status: 'available',
     category: 'Video production',
-    credit_cost_label: 'Credit cost coming soon',
-    badge: 'Coming soon',
+    credit_cost_label: '1 credit',
+    route: '/video-enhancer/new',
+    badge: 'Available now',
   },
   {
     id: 'product_to_video',
