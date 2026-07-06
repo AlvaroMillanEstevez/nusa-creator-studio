@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\AdminCreatorToolController;
+use App\Http\Controllers\Api\V1\Admin\AdminSubscriptionPlanController;
 use App\Http\Controllers\Api\V1\Admin\AdminSummaryController;
 use App\Http\Controllers\Api\V1\Admin\AdminUserAccessController;
 use App\Http\Controllers\Api\V1\Admin\AdminUserController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
 use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
+use App\Http\Controllers\Api\V1\SubscriptionPlanController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +43,7 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::get('tools', CreatorToolController::class)->name('tools.index');
+    Route::get('plans', SubscriptionPlanController::class)->name('plans.index');
 
     Route::prefix('admin')
         ->middleware(['auth:sanctum', 'admin'])
@@ -57,6 +60,12 @@ Route::prefix('v1')->group(function () {
                 ->name('tools.show');
             Route::patch('tools/{tool}', [AdminCreatorToolController::class, 'update'])
                 ->name('tools.update');
+            Route::get('plans', [AdminSubscriptionPlanController::class, 'index'])
+                ->name('plans.index');
+            Route::get('plans/{plan}', [AdminSubscriptionPlanController::class, 'show'])
+                ->name('plans.show');
+            Route::patch('plans/{plan}', [AdminSubscriptionPlanController::class, 'update'])
+                ->name('plans.update');
         });
 
     Route::middleware('auth:sanctum')->group(function () {

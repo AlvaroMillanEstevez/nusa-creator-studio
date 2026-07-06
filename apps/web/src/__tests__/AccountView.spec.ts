@@ -21,6 +21,15 @@ const freeUser: AuthUser = {
   access_label: 'Current plan credits',
   monthly_credit_allowance: 20,
   credits_balance: 13,
+  current_plan: {
+    key: 'free',
+    name: 'Free',
+    monthly_credits: 20,
+    price_amount: '0.00',
+    currency: 'IDR',
+    billing_interval: 'month',
+    features: ['20 monthly credits', 'Saved project history'],
+  },
   created_at: '2026-07-01T08:00:00.000000Z',
 }
 
@@ -32,6 +41,7 @@ async function mountAccount(user: AuthUser) {
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/tools', component: { template: '<div />' } },
+      { path: '/pricing', component: { template: '<div />' } },
       { path: '/dashboard', component: { template: '<div />' } },
       { path: '/campaigns/new', component: { template: '<div />' } },
       { path: '/account', component: AccountView },
@@ -76,8 +86,12 @@ describe('AccountView', () => {
     expect(text).toContain('13')
     expect(text).toContain('Available credits')
     expect(text).toContain('20')
-    expect(text).toContain('Monthly allowance')
+    expect(text).toContain('Monthly credits')
+    expect(text).toContain('Saved project history')
     expect(text).toContain('Manage subscription')
+    expect(
+      wrapper.findAll('a[href="/pricing"]').some((link) => link.text() === 'View creator plans'),
+    ).toBe(true)
     expect(text).toContain('Subscription management will be connected when billing is enabled.')
     expect(text).toContain('User ID')
     expect(text).toContain('#7')
@@ -153,6 +167,15 @@ describe('AccountView', () => {
       is_unlimited: true,
       access_label: 'Unlimited internal access',
       credits_balance: 0,
+      current_plan: {
+        key: 'internal_unlimited',
+        name: 'Internal Unlimited',
+        monthly_credits: 0,
+        price_amount: null,
+        currency: 'IDR',
+        billing_interval: 'internal',
+        features: ['Internal unlimited access'],
+      },
     })
 
     const text = wrapper.text()

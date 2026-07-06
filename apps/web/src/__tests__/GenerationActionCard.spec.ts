@@ -34,6 +34,7 @@ describe('GenerationActionCard', () => {
         isGenerating: false,
         error: '',
         remainingCredits: 0,
+        creditCost: 3,
       },
       global: { plugins: [pinia] },
     })
@@ -54,7 +55,7 @@ describe('GenerationActionCard', () => {
     }
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('1 credit')
+    expect(wrapper.text()).toContain('3 credits')
     expect(wrapper.text()).toContain('0 credits remaining')
   })
 })

@@ -8,6 +8,12 @@ import type {
   AdminUserListResponse,
 } from '@/types/admin'
 import type {
+  AdminSubscriptionPlan,
+  AdminSubscriptionPlanListResponse,
+  AdminSubscriptionPlanResponse,
+  AdminSubscriptionPlanUpdate,
+} from '@/types/plan'
+import type {
   AdminCreatorTool,
   AdminCreatorToolListResponse,
   AdminCreatorToolResponse,
@@ -58,6 +64,32 @@ export async function updateAdminUserAccess(
 ): Promise<AdminUserDetail> {
   const response = await apiPatch<AdminUserDetailResponse, AdminUserAccessUpdate>(
     '/admin/users/' + userId + '/access',
+    payload,
+  )
+
+  return response.data
+}
+
+export async function getAdminPlans(): Promise<AdminSubscriptionPlan[]> {
+  const response = await apiGet<AdminSubscriptionPlanListResponse>('/admin/plans')
+
+  return response.data
+}
+
+export async function getAdminPlan(key: string): Promise<AdminSubscriptionPlan> {
+  const response = await apiGet<AdminSubscriptionPlanResponse>(
+    '/admin/plans/' + encodeURIComponent(key),
+  )
+
+  return response.data
+}
+
+export async function updateAdminPlan(
+  key: string,
+  payload: AdminSubscriptionPlanUpdate,
+): Promise<AdminSubscriptionPlan> {
+  const response = await apiPatch<AdminSubscriptionPlanResponse, AdminSubscriptionPlanUpdate>(
+    '/admin/plans/' + encodeURIComponent(key),
     payload,
   )
 

@@ -7,16 +7,16 @@ use App\Models\Generation;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Credits\CreditService;
+use App\Services\ToolAvailabilityService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class CampaignGenerationService
 {
-    public const CREDIT_COST = 1;
-
     public function __construct(
         private readonly AffiliateCampaignProvider $provider,
         private readonly CreditService $credits,
+        private readonly ToolAvailabilityService $tools,
     ) {}
 
     public function generate(Project $project, User $user): Generation
@@ -24,6 +24,8 @@ class CampaignGenerationService
         if ($project->type !== 'affiliate_campaign') {
             throw new DomainException('Only affiliate campaign projects can use campaign generation.');
         }
+
+        $creditCost = $this->tools->creditCost('affiliate_campaign');
 
         $requestPayload = $project->input_payload ?? [];
         $resultPayload = $this->provider->generate($requestPayload);
@@ -35,6 +37,7 @@ class CampaignGenerationService
             $requestPayload,
             $resultPayload,
             $now,
+            $creditCost,
         ) {
             $generation = $project->generations()->create([
                 'user_id' => $user->getKey(),
@@ -52,7 +55,7 @@ class CampaignGenerationService
             $this->credits->chargeUsage(
                 user: $user,
                 generation: $generation,
-                amount: self::CREDIT_COST,
+                amount: $creditCost,
                 reason: 'Mock affiliate campaign generation',
             );
 

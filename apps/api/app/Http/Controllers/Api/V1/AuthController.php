@@ -80,6 +80,8 @@ class AuthController extends Controller
 
     private function userResponse(Request $request, User $user, int $status = 200): JsonResponse
     {
+        $user->load('subscriptionPlan');
+
         return response()->json([
             'user' => (new AuthenticatedUserResource($user))->resolve($request),
         ], $status);

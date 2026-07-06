@@ -28,6 +28,13 @@ class AuthenticatedUserResource extends JsonResource
             'access_label' => $this->accessLabel(),
             'monthly_credit_allowance' => $this->monthly_credit_allowance,
             'credits_balance' => $this->credits_balance,
+            'current_plan' => $this->subscriptionPlan
+                && (
+                    $this->subscriptionPlan->is_internal
+                    || ($this->subscriptionPlan->is_public && $this->subscriptionPlan->is_active)
+                )
+                    ? (new CurrentSubscriptionPlanResource($this->subscriptionPlan))->resolve($request)
+                    : null,
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

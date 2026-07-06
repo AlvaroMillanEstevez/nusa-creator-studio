@@ -17,12 +17,28 @@ const props = defineProps<{
   isGenerating: boolean
   error: string
   remainingCredits: number | null
+  creditCost: number | null
 }>()
 
 defineEmits<{ generate: [] }>()
 
 const auth = useAuthStore()
 const hasUnlimitedAccess = computed(() => auth.user?.is_unlimited === true)
+const creditCostLabel = computed(() => {
+  if (hasUnlimitedAccess.value) {
+    return 'Unlimited access'
+  }
+
+  if (props.creditCost === null) {
+    return 'Credit cost unavailable'
+  }
+
+  if (props.creditCost === 0) {
+    return 'No credit charge'
+  }
+
+  return props.creditCost + (props.creditCost === 1 ? ' credit' : ' credits')
+})
 
 const copy = computed<GenerationActionCopy>(() => {
   if (props.projectType === 'product_to_video') {
@@ -71,7 +87,7 @@ const copy = computed<GenerationActionCopy>(() => {
       <span
         class="shrink-0 rounded-full border border-neutral-700 bg-neutral-950/70 px-3 py-1 text-xs text-neutral-300"
       >
-        {{ hasUnlimitedAccess ? 'Unlimited access' : '1 credit' }}
+        {{ creditCostLabel }}
       </span>
     </div>
 

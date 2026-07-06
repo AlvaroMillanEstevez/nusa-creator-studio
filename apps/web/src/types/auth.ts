@@ -1,3 +1,5 @@
+import type { CurrentSubscriptionPlan } from '@/types/plan'
+
 export type UserRole = 'admin' | 'internal_creator' | 'subscriber' | 'free_user'
 
 export type PlanKey = 'free' | 'starter' | 'creator' | 'pro' | 'internal_unlimited'
@@ -14,6 +16,7 @@ export interface AuthUser {
   access_label: string
   monthly_credit_allowance: number
   credits_balance: number
+  current_plan?: CurrentSubscriptionPlan | null
   created_at: string | null
 }
 

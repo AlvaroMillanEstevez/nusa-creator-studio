@@ -12,6 +12,7 @@ const navigationItems = computed(() => {
   const publicItems = [
     { label: 'Home', to: '/' },
     { label: 'Tools', to: '/tools' },
+    { label: 'Pricing', to: '/pricing' },
   ]
 
   if (auth.isAuthenticated) {

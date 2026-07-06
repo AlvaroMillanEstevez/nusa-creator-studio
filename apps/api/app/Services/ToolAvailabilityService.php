@@ -27,6 +27,19 @@ class ToolAvailabilityService
             ->exists();
     }
 
+    public function creditCost(string $key): int
+    {
+        $cost = CreatorTool::query()
+            ->where('key', $key)
+            ->value('credit_cost');
+
+        if ($cost === null) {
+            throw new \DomainException("Creator tool [{$key}] is not configured.");
+        }
+
+        return (int) $cost;
+    }
+
     public function keyForProjectType(string $projectType): ?string
     {
         return self::PROJECT_TYPE_TO_TOOL_KEY[$projectType] ?? null;

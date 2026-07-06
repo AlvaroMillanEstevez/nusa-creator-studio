@@ -2,10 +2,10 @@
 
 namespace Tests;
 
-use Database\Seeders\CreatorToolSeeder;
+use Database\Seeders\ApplicationFoundationSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
-    protected string $seeder = CreatorToolSeeder::class;
+    protected string $seeder = ApplicationFoundationSeeder::class;
 }

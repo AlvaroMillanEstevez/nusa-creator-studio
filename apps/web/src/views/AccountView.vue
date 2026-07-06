@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import { ApiError } from '@/services/api'
@@ -264,17 +265,31 @@ async function savePassword(): Promise<void> {
           </div>
 
           <div v-else class="mt-4">
-            <h2 class="text-2xl font-bold">{{ user.plan_label }} plan</h2>
+            <h2 class="text-2xl font-bold">
+              {{ user.current_plan?.name ?? user.plan_label }} plan
+            </h2>
             <div class="mt-5 grid grid-cols-2 gap-3">
               <div class="rounded-2xl border border-neutral-800 bg-neutral-950/50 p-4">
                 <p class="text-2xl font-bold">{{ user.credits_balance }}</p>
                 <p class="mt-1 text-xs text-neutral-500">Available credits</p>
               </div>
               <div class="rounded-2xl border border-neutral-800 bg-neutral-950/50 p-4">
-                <p class="text-2xl font-bold">{{ user.monthly_credit_allowance }}</p>
-                <p class="mt-1 text-xs text-neutral-500">Monthly allowance</p>
+                <p class="text-2xl font-bold">
+                  {{ user.current_plan?.monthly_credits ?? user.monthly_credit_allowance }}
+                </p>
+                <p class="mt-1 text-xs text-neutral-500">Monthly credits</p>
               </div>
             </div>
+
+            <ul
+              v-if="user.current_plan?.features.length"
+              class="mt-5 space-y-2 text-sm text-neutral-300"
+            >
+              <li v-for="feature in user.current_plan.features" :key="feature" class="flex gap-2">
+                <span class="text-emerald-400" aria-hidden="true">✓</span>
+                <span>{{ feature }}</span>
+              </li>
+            </ul>
           </div>
 
           <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
@@ -299,6 +314,12 @@ async function savePassword(): Promise<void> {
           <p v-if="!user.is_unlimited" class="mt-3 text-xs leading-5 text-neutral-500">
             Subscription management will be connected when billing is enabled.
           </p>
+          <RouterLink
+            to="/pricing"
+            class="mt-4 inline-flex min-h-11 items-center rounded-xl border border-emerald-800 px-4 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-950"
+          >
+            View creator plans
+          </RouterLink>
         </section>
 
         <section class="mt-6 rounded-3xl border border-neutral-800 bg-neutral-900/40 p-5">

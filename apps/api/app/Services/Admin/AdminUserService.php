@@ -4,11 +4,14 @@ namespace App\Services\Admin;
 
 use App\Enums\CreditTransactionType;
 use App\Models\User;
+use App\Services\PlanService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AdminUserService
 {
+    public function __construct(private readonly PlanService $plans) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -77,6 +80,15 @@ class AdminUserService
      */
     public function updateAccess(User $user, array $attributes): User
     {
+        if (
+            array_key_exists('plan_key', $attributes)
+            && ! array_key_exists('monthly_credit_allowance', $attributes)
+        ) {
+            $attributes['monthly_credit_allowance'] = $this->plans
+                ->findByKeyOrFail($attributes['plan_key'])
+                ->monthly_credits;
+        }
+
         return DB::transaction(function () use ($user, $attributes): User {
             $adminIds = User::query()
                 ->where('role', 'admin')

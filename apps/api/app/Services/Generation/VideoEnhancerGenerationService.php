@@ -7,16 +7,16 @@ use App\Models\Generation;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Credits\CreditService;
+use App\Services\ToolAvailabilityService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class VideoEnhancerGenerationService
 {
-    public const CREDIT_COST = 1;
-
     public function __construct(
         private readonly VideoEnhancerProvider $provider,
         private readonly CreditService $credits,
+        private readonly ToolAvailabilityService $tools,
     ) {}
 
     public function generate(Project $project, User $user): Generation
@@ -24,6 +24,8 @@ class VideoEnhancerGenerationService
         if ($project->type !== 'video_enhancer') {
             throw new DomainException('Only video enhancer projects can use video enhancer generation.');
         }
+
+        $creditCost = $this->tools->creditCost('video_enhancer');
 
         $requestPayload = $project->input_payload ?? [];
         $resultPayload = $this->provider->generate($requestPayload);
@@ -35,6 +37,7 @@ class VideoEnhancerGenerationService
             $requestPayload,
             $resultPayload,
             $now,
+            $creditCost,
         ) {
             $generation = $project->generations()->create([
                 'user_id' => $user->getKey(),
@@ -52,7 +55,7 @@ class VideoEnhancerGenerationService
             $this->credits->chargeUsage(
                 user: $user,
                 generation: $generation,
-                amount: self::CREDIT_COST,
+                amount: $creditCost,
                 reason: 'Mock video enhancer generation',
             );
 

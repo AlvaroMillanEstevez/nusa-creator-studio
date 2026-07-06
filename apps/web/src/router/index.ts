@@ -19,6 +19,11 @@ const router = createRouter({
       component: () => import('../views/ToolsView.vue'),
     },
     {
+      path: '/pricing',
+      name: 'pricing',
+      component: () => import('../views/PricingView.vue'),
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
@@ -52,6 +57,12 @@ const router = createRouter({
       path: '/admin/tools',
       name: 'admin-tools',
       component: () => import('../views/AdminToolsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/plans',
+      name: 'admin-plans',
+      component: () => import('../views/AdminPlansView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {

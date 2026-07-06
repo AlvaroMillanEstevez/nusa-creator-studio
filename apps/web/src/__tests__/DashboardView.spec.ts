@@ -76,6 +76,7 @@ async function mountDashboard(summary: DashboardSummary) {
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/tools', component: { template: '<div />' } },
+      { path: '/pricing', component: { template: '<div />' } },
       { path: '/dashboard', component: DashboardView },
       { path: '/account', component: { template: '<div />' } },
       { path: '/campaigns/new', component: { template: '<div />' } },
@@ -135,6 +136,9 @@ describe('DashboardView', () => {
     expect(text).toContain('1 credit charged')
 
     expect(wrapper.find('a[href="/tools"]').exists()).toBe(true)
+    expect(
+      wrapper.findAll('a[href="/pricing"]').some((link) => link.text() === 'View plans'),
+    ).toBe(true)
     expect(wrapper.find('a[href="/account#plan"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/campaigns/new"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/video-enhancer/new"]').exists()).toBe(true)

@@ -11,6 +11,7 @@ import type { AuthUser } from '@/types/auth'
 const routes = [
   '/',
   '/tools',
+  '/pricing',
   '/dashboard',
   '/campaigns/new',
   '/account',
@@ -61,6 +62,7 @@ describe('AppNav', () => {
 
     expect(wrapper.find('a[href="/login"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/register"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/pricing"]').text()).toBe('Pricing')
     expect(wrapper.find('details').exists()).toBe(false)
   })
 

@@ -10,6 +10,7 @@ import GenerationResultRenderer from '@/components/GenerationResultRenderer.vue'
 import ProductToVideoBrief from '@/components/ProductToVideoBrief.vue'
 import VideoEnhancerBrief from '@/components/VideoEnhancerBrief.vue'
 import { ApiError } from '@/services/api'
+import { getCreatorTools } from '@/services/tools'
 import {
   generateCampaignProject,
   generateProductVideoScript,
@@ -32,6 +33,7 @@ const loadErrorStatus = ref<number | null>(null)
 const generationError = ref('')
 const historyError = ref('')
 const remainingCredits = ref<number | null>(null)
+const toolCreditCost = ref<number | null>(null)
 
 const emptyHistoryCopy = computed(() => {
   if (project.value?.type === 'product_to_video') {
@@ -76,6 +78,19 @@ async function loadGenerationHistory(projectId: string): Promise<void> {
   }
 }
 
+async function loadToolCreditCost(): Promise<void> {
+  try {
+    const tools = await getCreatorTools()
+    const tool = Array.isArray(tools)
+      ? tools.find((item) => item.key === project.value?.type)
+      : undefined
+
+    toolCreditCost.value = tool?.credit_cost ?? null
+  } catch {
+    toolCreditCost.value = null
+  }
+}
+
 async function loadProject(): Promise<void> {
   isLoading.value = true
   loadError.value = ''
@@ -93,6 +108,7 @@ async function loadProject(): Promise<void> {
 
   try {
     project.value = await getCreatorProject(projectId)
+    await loadToolCreditCost()
   } catch (error: unknown) {
     if (error instanceof ApiError && [403, 404].includes(error.status)) {
       loadErrorStatus.value = error.status
@@ -149,8 +165,12 @@ async function generateContent(): Promise<void> {
       error instanceof ApiError &&
       (error.code === 'insufficient_credits' || error.status === 402)
     ) {
+      const requiredCredits = toolCreditCost.value
+
       generationError.value =
-        'You need at least 1 platform credit to generate this content. Your balance was not changed.'
+        requiredCredits === null
+          ? 'You do not have enough platform credits to generate this content. Your balance was not changed.'
+          : `You need at least ${requiredCredits} platform ${requiredCredits === 1 ? 'credit' : 'credits'} to generate this content. Your balance was not changed.`
     } else {
       generationError.value =
         error instanceof ApiError
@@ -248,6 +268,7 @@ onMounted(loadProject)
           :is-generating="isGenerating"
           :error="generationError"
           :remaining-credits="remainingCredits"
+          :credit-cost="toolCreditCost"
           @generate="generateContent"
         />
 

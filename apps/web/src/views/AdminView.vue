@@ -100,12 +100,20 @@ onMounted(() => {
         <p class="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
           Monitor users, credits, tool availability and mock generation activity.
         </p>
-        <RouterLink
-          to="/admin/tools"
-          class="mt-5 inline-flex min-h-11 items-center rounded-xl border border-emerald-800 bg-emerald-950/40 px-4 text-sm font-semibold text-emerald-300 transition hover:border-emerald-600 hover:bg-emerald-950"
-        >
-          Manage creator tools
-        </RouterLink>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <RouterLink
+            to="/admin/tools"
+            class="inline-flex min-h-11 items-center rounded-xl border border-emerald-800 bg-emerald-950/40 px-4 text-sm font-semibold text-emerald-300 transition hover:border-emerald-600 hover:bg-emerald-950"
+          >
+            Manage creator tools
+          </RouterLink>
+          <RouterLink
+            to="/admin/plans"
+            class="inline-flex min-h-11 items-center rounded-xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800"
+          >
+            Manage plans
+          </RouterLink>
+        </div>
       </header>
 
       <section class="mt-9">
