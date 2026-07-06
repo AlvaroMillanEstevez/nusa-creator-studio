@@ -43,6 +43,24 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('../views/AdminView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/users/:id',
+      name: 'admin-user',
+      component: () => import('../views/AdminUserView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/unavailable',
+      name: 'admin-unavailable',
+      component: () => import('../views/AdminUnavailableView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/video-enhancer/new',
       name: 'video-enhancer-create',
       component: () => import('../views/NewVideoEnhancerView.vue'),
@@ -86,6 +104,10 @@ router.beforeEach(async (to) => {
       name: 'login',
       query: { redirect: to.fullPath },
     }
+  }
+
+  if (to.meta.requiresAdmin && auth.user?.role !== 'admin') {
+    return { name: 'admin-unavailable' }
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated) {

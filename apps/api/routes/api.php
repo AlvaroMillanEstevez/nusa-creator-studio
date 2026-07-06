@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdminSummaryController;
+use App\Http\Controllers\Api\V1\Admin\AdminUserAccessController;
+use App\Http\Controllers\Api\V1\Admin\AdminUserController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
@@ -34,6 +37,17 @@ Route::prefix('v1')->group(function () {
             Route::patch('password', [AuthController::class, 'updatePassword'])->name('auth.password.update');
         });
     });
+
+    Route::prefix('admin')
+        ->middleware(['auth:sanctum', 'admin'])
+        ->name('admin.')
+        ->group(function () {
+            Route::get('summary', AdminSummaryController::class)->name('summary');
+            Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+            Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
+            Route::patch('users/{user}/access', AdminUserAccessController::class)
+                ->name('users.access.update');
+        });
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard.show');

@@ -69,6 +69,52 @@ describe('authentication route guard', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/account')
   })
 
+  it('redirects unauthenticated admin access to login', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = null
+    auth.initialized = false
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Unauthenticated.' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+
+    await router.push('/')
+    await router.push('/admin')
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.query.redirect).toBe('/admin')
+  })
+
+  it('redirects an authenticated non-admin to the friendly unavailable page', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = user
+    auth.initialized = true
+
+    await router.push('/admin')
+
+    expect(router.currentRoute.value.name).toBe('admin-unavailable')
+  })
+
+  it('allows an admin into the admin panel', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = {
+      ...user,
+      role: 'admin',
+      role_label: 'Admin',
+    }
+    auth.initialized = true
+
+    await router.push('/admin')
+
+    expect(router.currentRoute.value.name).toBe('admin')
+  })
+
   it('allows an initialized authenticated user into the dashboard', async () => {
     const auth = useAuthStore(pinia)
     auth.user = user

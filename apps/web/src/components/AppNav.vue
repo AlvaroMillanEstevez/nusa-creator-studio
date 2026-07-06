@@ -15,11 +15,17 @@ const navigationItems = computed(() => {
   ]
 
   if (auth.isAuthenticated) {
-    return [
+    const authenticatedItems = [
       ...publicItems,
       { label: 'Dashboard', to: '/dashboard' },
       { label: 'Create', to: '/campaigns/new' },
     ]
+
+    if (auth.user?.role === 'admin') {
+      authenticatedItems.push({ label: 'Admin', to: '/admin' })
+    }
+
+    return authenticatedItems
   }
 
   return [...publicItems, { label: 'Login', to: '/login' }, { label: 'Register', to: '/register' }]

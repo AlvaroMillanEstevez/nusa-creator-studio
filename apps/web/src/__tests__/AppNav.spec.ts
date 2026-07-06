@@ -14,6 +14,7 @@ const routes = [
   '/dashboard',
   '/campaigns/new',
   '/account',
+  '/admin',
   '/login',
   '/register',
 ].map((path) => ({ path, component: { template: '<div />' } }))
@@ -76,6 +77,17 @@ describe('AppNav', () => {
     expect(wrapper.find('a[href="/account#plan"]').text()).toBe('Manage plan')
     expect(wrapper.find('button').text()).toBe('Logout')
     expect(wrapper.find('a[href="/login"]').exists()).toBe(false)
+    expect(wrapper.find('a[href="/admin"]').exists()).toBe(false)
+  })
+
+  it('shows the Admin link only for an admin user', async () => {
+    const { wrapper } = await mountNav({
+      ...freeUser,
+      role: 'admin',
+      role_label: 'Admin',
+    })
+
+    expect(wrapper.find('a[href="/admin"]').text()).toBe('Admin')
   })
 
   it('shows unlimited access for an internal unlimited user', async () => {
