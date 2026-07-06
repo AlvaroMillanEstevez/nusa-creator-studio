@@ -119,6 +119,9 @@ describe('DashboardView', () => {
       API_BASE_URL + '/dashboard',
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
+    expect(wrapper.get('[aria-label="Primary navigation"]').attributes('aria-label')).toBe(
+      'Primary navigation',
+    )
     expect(text).toContain('17')
     expect(text).toContain('Free plan')
     expect(text).toContain('20 credits monthly allowance')

@@ -2,18 +2,100 @@ const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 const API_BASE_URL = configuredBaseUrl.replace(/\/$/, '')
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1$/, '')
 
-interface ApiErrorPayload {
-  message: string
-  code?: string
+type ErrorPayloadRecord = Record<string, unknown>
+
+const INTERNAL_ERROR_PATTERNS = [
+  /SQLSTATE/i,
+  /stack trace/i,
+  /\b(?:App|Illuminate|Symfony)\\(?:[A-Za-z_][A-Za-z0-9_]*\\?)+/,
+  /\b(?:PDOException|QueryException|ErrorException|TypeError|RuntimeException)\b/i,
+  /(?:^|[\\/])vendor[\\/]/i,
+  /(?:\.php:\d+|\.php on line \d+)/i,
+  /#\d+\s+(?:[A-Za-z]:\\|\/)/,
+  /\b(?:select|insert into|update|delete from)\b[\s\S]*\b(?:from|set|values|where)\b/i,
+  /\bconnection:\s*\w+/i,
+]
+
+function errorPayload(value: unknown): ErrorPayloadRecord | null {
+  return typeof value === 'object' && value !== null ? (value as ErrorPayloadRecord) : null
 }
 
-function hasErrorMessage(value: unknown): value is ApiErrorPayload {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'message' in value &&
-    typeof value.message === 'string'
-  )
+function safeMessage(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const message = value.trim()
+
+  if (
+    message.length === 0 ||
+    message.length > 500 ||
+    INTERNAL_ERROR_PATTERNS.some((pattern) => pattern.test(message))
+  ) {
+    return null
+  }
+
+  return message
+}
+
+function firstValidationMessage(payload: ErrorPayloadRecord | null): string | null {
+  if (!payload || typeof payload.errors !== 'object' || payload.errors === null) {
+    return null
+  }
+
+  for (const value of Object.values(payload.errors)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const message = safeMessage(item)
+
+        if (message) {
+          return message
+        }
+      }
+    } else {
+      const message = safeMessage(value)
+
+      if (message) {
+        return message
+      }
+    }
+  }
+
+  return null
+}
+
+export function sanitizeApiErrorMessage(status: number, rawPayload: unknown): string {
+  if (status === 401) {
+    return 'Please log in to continue.'
+  }
+
+  if (status === 403) {
+    return 'You do not have access to this resource.'
+  }
+
+  if (status === 404) {
+    return 'This resource could not be found.'
+  }
+
+  if (status === 419) {
+    return 'Your session expired. Please try again.'
+  }
+
+  if (status >= 500) {
+    return 'Something went wrong. Please try again.'
+  }
+
+  const payload = errorPayload(rawPayload)
+
+  if (status === 422) {
+    return (
+      firstValidationMessage(payload) ??
+      safeMessage(payload?.message) ??
+      'Please check the form and try again.'
+    )
+  }
+
+  return safeMessage(payload?.message) ?? 'Something went wrong. Please try again.'
 }
 
 function csrfToken(): string | null {
@@ -60,24 +142,18 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   })
 
   if (!response.ok) {
-    let message =
-      response.status === 401
-        ? 'Your session has expired. Please log in again.'
-        : 'The API request failed. Please try again.'
-    let code: string | undefined
+    let payload: unknown = null
 
     try {
-      const payload: unknown = await response.json()
-
-      if (hasErrorMessage(payload)) {
-        message = payload.message
-        code = payload.code
-      }
+      payload = await response.json()
     } catch {
       // The API may return an empty or non-JSON error response.
     }
 
-    throw new ApiError(message, response.status, code)
+    const payloadRecord = errorPayload(payload)
+    const code = typeof payloadRecord?.code === 'string' ? payloadRecord.code : undefined
+
+    throw new ApiError(sanitizeApiErrorMessage(response.status, payload), response.status, code)
   }
 
   return response.json() as Promise<T>
@@ -92,7 +168,7 @@ export async function ensureCsrfCookie(): Promise<void> {
   })
 
   if (!response.ok) {
-    throw new ApiError('We could not start a secure session. Please try again.', response.status)
+    throw new ApiError(sanitizeApiErrorMessage(response.status, null), response.status)
   }
 }
 

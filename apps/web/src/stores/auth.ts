@@ -31,9 +31,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => user.value !== null)
 
+  function clearError(): void {
+    error.value = ''
+  }
+
   async function fetchMe(): Promise<void> {
     isLoading.value = true
-    error.value = ''
+    clearError()
 
     try {
       user.value = await fetchCurrentUser()
@@ -63,7 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(payload: LoginPayload): Promise<void> {
     isLoading.value = true
-    error.value = ''
+    clearError()
 
     try {
       user.value = await loginUser(payload)
@@ -78,7 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function register(payload: RegisterPayload): Promise<void> {
     isLoading.value = true
-    error.value = ''
+    clearError()
 
     try {
       user.value = await registerUser(payload)
@@ -96,7 +100,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updateProfile(payload: ProfileUpdatePayload): Promise<AuthUser> {
     isLoading.value = true
-    error.value = ''
+    clearError()
 
     try {
       const updatedUser = await updateUserProfile(payload)
@@ -113,7 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updatePassword(payload: PasswordUpdatePayload): Promise<string> {
     isLoading.value = true
-    error.value = ''
+    clearError()
 
     try {
       return await updateUserPassword(payload)
@@ -127,7 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout(): Promise<void> {
     isLoading.value = true
-    error.value = ''
+    clearError()
 
     try {
       await logoutUser()
@@ -147,6 +151,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     error,
     initialized,
+    clearError,
     initialize,
     fetchMe,
     login,

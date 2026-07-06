@@ -76,6 +76,10 @@ describe('auth store', () => {
 
     const auth = useAuthStore()
 
+    auth.error = 'Stale auth error'
+    auth.clearError()
+    expect(auth.error).toBe('')
+
     await auth.fetchMe()
     expect(auth.user).toEqual(user)
     expect(auth.user?.role).toBe('free_user')
