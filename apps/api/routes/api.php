@@ -11,8 +11,10 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
 use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
+use App\Http\Controllers\Api\V1\MediaAssetController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
+use App\Http\Controllers\Api\V1\ProjectMediaAssetController;
 use App\Http\Controllers\Api\V1\SubscriptionPlanController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -71,6 +73,10 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard.show');
         Route::get(
+            'projects/{project}/media-assets',
+            ProjectMediaAssetController::class,
+        )->name('projects.media-assets.index');
+        Route::get(
             'projects/{project}/generations',
             ProjectGenerationController::class,
         )->name('projects.generations.index');
@@ -86,6 +92,12 @@ Route::prefix('v1')->group(function () {
             'projects/{project}/generate-product-video-script',
             GenerateProductVideoScriptController::class,
         )->name('projects.generate-product-video-script');
+        Route::get('media-assets', [MediaAssetController::class, 'index'])
+            ->name('media-assets.index');
+        Route::post('media-assets', [MediaAssetController::class, 'store'])
+            ->name('media-assets.store');
+        Route::delete('media-assets/{mediaAsset}', [MediaAssetController::class, 'destroy'])
+            ->name('media-assets.destroy');
         Route::apiResource('projects', ProjectController::class);
     });
 

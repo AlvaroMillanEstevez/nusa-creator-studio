@@ -8,6 +8,7 @@ import GenerationActionCard from '@/components/GenerationActionCard.vue'
 import GenerationHistory from '@/components/GenerationHistory.vue'
 import GenerationResultRenderer from '@/components/GenerationResultRenderer.vue'
 import ProductToVideoBrief from '@/components/ProductToVideoBrief.vue'
+import ProjectAssets from '@/components/ProjectAssets.vue'
 import VideoEnhancerBrief from '@/components/VideoEnhancerBrief.vue'
 import { ApiError } from '@/services/api'
 import { getCreatorTools } from '@/services/tools'
@@ -261,6 +262,8 @@ onMounted(loadProject)
           :project="project"
         />
         <ProductToVideoBrief v-else :project="project" />
+
+        <ProjectAssets :project-id="project.id" />
 
         <GenerationActionCard
           :project-type="project.type"

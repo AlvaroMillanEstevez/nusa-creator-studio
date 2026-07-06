@@ -240,6 +240,7 @@ describe('ProjectDetailView', () => {
   it('explains what generating the first saved campaign will create', async () => {
     const wrapper = await mountProjectDetail(campaignProject, emptyHistory)
 
+    expect(wrapper.get('[data-testid="project-assets"]').text()).toContain('Project assets')
     expect(wrapper.text()).toContain(
       'No saved generations yet. Generate your first campaign to create hooks, script, caption and hashtags.',
     )

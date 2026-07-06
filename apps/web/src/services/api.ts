@@ -123,7 +123,9 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   const headers = new Headers(options.headers)
   headers.set('Accept', 'application/json')
 
-  if (options.body && !headers.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+
+  if (options.body && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
@@ -187,6 +189,19 @@ export function apiPatch<T, TPayload>(path: string, payload: TPayload): Promise<
   return apiRequest<T>(path, {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  })
+}
+
+export function apiPostForm<T>(path: string, payload: FormData): Promise<T> {
+  return apiRequest<T>(path, {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export function apiDelete<T>(path: string): Promise<T> {
+  return apiRequest<T>(path, {
+    method: 'DELETE',
   })
 }
 
