@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Models\MediaAsset;
-use App\Services\Media\MediaFileInspector;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,9 +19,12 @@ class MediaAssetIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'search' => ['nullable', 'string', 'max:120'],
             'project_id' => ['nullable', 'integer'],
-            'type' => ['nullable', 'string', Rule::in(MediaFileInspector::TYPES)],
+            'type' => ['nullable', 'string', Rule::in(MediaAsset::TYPES)],
             'usage_role' => ['nullable', 'string', Rule::in(MediaAsset::USAGE_ROLES)],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ];
     }
 }

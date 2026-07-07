@@ -22,6 +22,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class MediaAsset extends Model
 {
+    public const TYPES = [
+        'image',
+        'video',
+        'audio',
+        'document',
+        'other',
+    ];
+
     public const USAGE_ROLES = [
         'general',
         'product_image',

@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { API_BASE_URL } from '@/services/api'
-import { deleteMediaAsset, uploadMediaAsset } from '@/services/media'
+import {
+  deleteMediaAsset,
+  getMediaAssetStats,
+  listMediaAssets,
+  uploadMediaAsset,
+} from '@/services/media'
 import type { MediaAsset } from '@/types/media'
 import {
   MEDIA_TOO_LARGE_MESSAGE,
@@ -61,6 +66,80 @@ describe('media service and validation', () => {
     expect(body.get('project_id')).toBe('42')
     expect(body.get('usage_role')).toBe('model_reference')
     expect(headers.has('Content-Type')).toBe(false)
+  })
+
+  it('lists media assets with library filters and pagination', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [asset],
+          meta: { current_page: 2, last_page: 3, per_page: 12, total: 25 },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await listMediaAssets({
+      search: 'product',
+      type: 'image',
+      usage_role: 'model_reference',
+      page: 2,
+      per_page: 12,
+    })
+
+    expect(response.data[0]?.id).toBe(12)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL +
+        '/media-assets?search=product&type=image&usage_role=model_reference&page=2&per_page=12',
+      expect.objectContaining({ headers: expect.any(Headers) }),
+    )
+  })
+
+  it('loads media asset stats', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            total_assets: 1,
+            total_size_bytes: 68,
+            total_size_label: '68 B',
+            images_count: 1,
+            videos_count: 0,
+            audio_count: 0,
+            documents_count: 0,
+            other_count: 0,
+            by_usage_role: {
+              general: 0,
+              product_image: 0,
+              source_video: 0,
+              audio_track: 0,
+              model_reference: 1,
+              garment_reference: 0,
+              background_reference: 0,
+              brand_reference: 0,
+            },
+            recent_uploads_count: 1,
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await getMediaAssetStats()
+
+    expect(response.data.total_assets).toBe(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/media-assets/stats',
+      expect.objectContaining({ headers: expect.any(Headers) }),
+    )
   })
 
   it('calls the correct delete endpoint', async () => {

@@ -13,6 +13,7 @@ const routes = [
   '/tools',
   '/pricing',
   '/dashboard',
+  '/media',
   '/campaigns/new',
   '/account',
   '/admin',
@@ -71,6 +72,7 @@ describe('AppNav', () => {
     expect(wrapper.find('a[href="/login"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/register"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/pricing"]').text()).toBe('Pricing')
+    expect(wrapper.find('a[href="/media"]').exists()).toBe(false)
     expect(wrapper.find('details').exists()).toBe(false)
   })
 
@@ -84,6 +86,8 @@ describe('AppNav', () => {
     expect(text).toContain('13 credits')
     expect(wrapper.find('a[href="/account"]').text()).toBe('Account')
     expect(wrapper.find('a[href="/dashboard"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/media"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Media Library')
     expect(wrapper.find('a[href="/account#plan"]').text()).toBe('Manage plan')
     expect(wrapper.find('button').text()).toBe('Logout')
     expect(wrapper.find('a[href="/login"]').exists()).toBe(false)

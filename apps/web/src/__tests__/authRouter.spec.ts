@@ -96,6 +96,28 @@ describe('authentication route guard', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/dashboard')
   })
 
+  it('redirects an unauthenticated media library route to login with a return URL', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = null
+    auth.initialized = false
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Unauthenticated.' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+
+    await router.push('/')
+    await router.push('/media')
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.query.redirect).toBe('/media')
+  })
+
   it('redirects an unauthenticated account route to login with a return URL', async () => {
     const auth = useAuthStore(pinia)
     auth.user = null

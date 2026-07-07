@@ -112,6 +112,8 @@ Route::prefix('v1')->group(function () {
         )->name('projects.generate-motion-video');
         Route::get('media-assets', [MediaAssetController::class, 'index'])
             ->name('media-assets.index');
+        Route::get('media-assets/stats', [MediaAssetController::class, 'stats'])
+            ->name('media-assets.stats');
         Route::post('media-assets', [MediaAssetController::class, 'store'])
             ->name('media-assets.store');
         Route::delete('media-assets/{mediaAsset}', [MediaAssetController::class, 'destroy'])

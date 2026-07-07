@@ -23,6 +23,7 @@ const navigationItems = computed(() => {
     const authenticatedItems = [
       ...publicItems,
       { label: 'Dashboard', to: '/dashboard' },
+      { label: 'Media', to: '/media' },
       { label: 'Create', to: '/campaigns/new' },
     ]
 
@@ -133,6 +134,13 @@ async function logout(): Promise<void> {
             @click="closeUserMenu"
           >
             Dashboard
+          </RouterLink>
+          <RouterLink
+            to="/media"
+            class="flex min-h-10 items-center rounded-xl px-3 text-sm text-neutral-300 transition hover:bg-neutral-800 hover:text-white"
+            @click="closeUserMenu"
+          >
+            Media Library
           </RouterLink>
           <RouterLink
             to="/account#plan"

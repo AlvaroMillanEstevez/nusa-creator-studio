@@ -29,6 +29,11 @@ class MediaAssetResource extends JsonResource
             'size_bytes' => $this->size_bytes,
             'size_label' => $this->sizeLabel(),
             'metadata' => $this->metadata,
+            'project' => $this->whenLoaded('project', fn (): ?array => $this->project === null ? null : [
+                'id' => $this->project->id,
+                'title' => $this->project->title,
+                'type' => $this->project->type,
+            ]),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

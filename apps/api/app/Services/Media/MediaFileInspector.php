@@ -8,7 +8,7 @@ use Illuminate\Validation\ValidationException;
 
 class MediaFileInspector
 {
-    public const TYPES = ['image', 'video', 'audio', 'document'];
+    public const TYPES = ['image', 'video', 'audio', 'document', 'other'];
 
     public const ALLOWED_EXTENSIONS = [
         'jpg', 'jpeg', 'png', 'webp',

@@ -20,6 +20,7 @@ class ProjectMediaAssetController extends Controller
 
         return MediaAssetResource::collection(
             $project->mediaAssets()
+                ->with('project:id,title,type')
                 ->latest('created_at')
                 ->latest('id')
                 ->paginate(20),

@@ -213,9 +213,124 @@ class MediaAssetApiTest extends TestCase
         $asset = MediaAsset::factory()->create();
 
         $this->getJson('/api/v1/media-assets')->assertUnauthorized();
+        $this->getJson('/api/v1/media-assets/stats')->assertUnauthorized();
         $this->postJson('/api/v1/media-assets')->assertUnauthorized();
         $this->getJson("/api/v1/projects/{$project->id}/media-assets")->assertUnauthorized();
         $this->deleteJson("/api/v1/media-assets/{$asset->id}")->assertUnauthorized();
+    }
+
+    public function test_media_library_index_supports_search_usage_role_pagination_and_project_summary(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create([
+            'title' => 'Spain launch kit',
+            'type' => 'affiliate_campaign',
+        ]);
+        $matching = MediaAsset::factory()->for($user)->create([
+            'project_id' => $project->id,
+            'type' => 'image',
+            'usage_role' => 'product_image',
+            'original_name' => 'camera hero.png',
+            'size_bytes' => 2048,
+            'created_at' => now()->subMinute(),
+        ]);
+        MediaAsset::factory()->for($user)->create([
+            'project_id' => $project->id,
+            'type' => 'video',
+            'usage_role' => 'source_video',
+            'original_name' => 'source clip.mp4',
+        ]);
+        MediaAsset::factory()->for(User::factory()->create())->create([
+            'type' => 'image',
+            'usage_role' => 'product_image',
+            'original_name' => 'camera hero.png',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/media-assets?search=camera&type=image&usage_role=product_image&per_page=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $matching->id)
+            ->assertJsonPath('data.0.project.id', $project->id)
+            ->assertJsonPath('data.0.project.title', 'Spain launch kit')
+            ->assertJsonPath('data.0.project.type', 'affiliate_campaign')
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonMissingPath('data.0.path');
+    }
+
+    public function test_media_library_project_filter_is_scoped_to_owned_projects(): void
+    {
+        $user = User::factory()->create();
+        $ownProject = Project::factory()->for($user)->create();
+        $otherProject = Project::factory()->for(User::factory()->create())->create();
+        $asset = MediaAsset::factory()->for($user)->create(['project_id' => $ownProject->id]);
+        MediaAsset::factory()->create(['project_id' => $otherProject->id]);
+
+        $this->actingAs($user)
+            ->getJson("/api/v1/media-assets?project_id={$ownProject->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $asset->id);
+
+        $this->actingAs($user)
+            ->getJson("/api/v1/media-assets?project_id={$otherProject->id}")
+            ->assertNotFound();
+    }
+
+    public function test_media_stats_returns_counts_sizes_usage_roles_and_recent_uploads(): void
+    {
+        $user = User::factory()->create();
+
+        MediaAsset::factory()->for($user)->create([
+            'type' => 'image',
+            'usage_role' => 'product_image',
+            'size_bytes' => 1024,
+            'created_at' => now()->subDay(),
+        ]);
+        MediaAsset::factory()->for($user)->create([
+            'type' => 'video',
+            'usage_role' => 'source_video',
+            'size_bytes' => 2048,
+            'created_at' => now()->subDays(8),
+        ]);
+        MediaAsset::factory()->for($user)->create([
+            'type' => 'audio',
+            'usage_role' => 'audio_track',
+            'size_bytes' => 512,
+        ]);
+        MediaAsset::factory()->for($user)->create([
+            'type' => 'document',
+            'usage_role' => 'general',
+            'size_bytes' => 256,
+        ]);
+        MediaAsset::factory()->for($user)->create([
+            'type' => 'other',
+            'usage_role' => null,
+            'size_bytes' => 128,
+        ]);
+        MediaAsset::factory()->for(User::factory()->create())->create([
+            'type' => 'image',
+            'size_bytes' => 9999,
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/media-assets/stats')
+            ->assertOk()
+            ->assertJsonPath('data.total_assets', 5)
+            ->assertJsonPath('data.total_size_bytes', 3968)
+            ->assertJsonPath('data.total_size_label', '3.9 KB')
+            ->assertJsonPath('data.images_count', 1)
+            ->assertJsonPath('data.videos_count', 1)
+            ->assertJsonPath('data.audio_count', 1)
+            ->assertJsonPath('data.documents_count', 1)
+            ->assertJsonPath('data.other_count', 1)
+            ->assertJsonPath('data.by_usage_role.product_image', 1)
+            ->assertJsonPath('data.by_usage_role.source_video', 1)
+            ->assertJsonPath('data.by_usage_role.audio_track', 1)
+            ->assertJsonPath('data.by_usage_role.general', 1)
+            ->assertJsonPath('data.by_usage_role.brand_reference', 0)
+            ->assertJsonPath('data.recent_uploads_count', 4);
     }
 
     public function test_disallowed_and_script_extensions_are_rejected(): void

@@ -1,4 +1,4 @@
-export type MediaAssetType = 'image' | 'video' | 'audio' | 'document'
+export type MediaAssetType = 'image' | 'video' | 'audio' | 'document' | 'other'
 export type MediaAssetUsageRole =
   | 'general'
   | 'product_image'
@@ -8,6 +8,12 @@ export type MediaAssetUsageRole =
   | 'garment_reference'
   | 'background_reference'
   | 'brand_reference'
+
+export interface MediaAssetProjectSummary {
+  id: number
+  title: string
+  type: string
+}
 
 export interface MediaAsset {
   id: number
@@ -26,6 +32,7 @@ export interface MediaAsset {
     uploaded_extension?: string
     validation_source?: 'server'
   } | null
+  project?: MediaAssetProjectSummary | null
   created_at: string | null
   updated_at: string | null
 }
@@ -51,9 +58,29 @@ export interface MediaAssetResponse {
 }
 
 export interface MediaAssetFilters {
+  search?: string
   project_id?: number | string
   type?: MediaAssetType
   usage_role?: MediaAssetUsageRole
+  page?: number
+  per_page?: number
+}
+
+export interface MediaAssetStats {
+  total_assets: number
+  total_size_bytes: number
+  total_size_label: string
+  images_count: number
+  videos_count: number
+  audio_count: number
+  documents_count: number
+  other_count: number
+  by_usage_role: Record<MediaAssetUsageRole, number>
+  recent_uploads_count: number
+}
+
+export interface MediaAssetStatsResponse {
+  data: MediaAssetStats
 }
 
 export interface DeleteMediaAssetResponse {
