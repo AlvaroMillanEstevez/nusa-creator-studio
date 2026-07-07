@@ -176,6 +176,35 @@ describe('MediaLibraryView', () => {
     expect(wrapper.text()).toContain('Affiliate Campaign')
   })
 
+  it('keeps long asset filenames inside responsive card markup', async () => {
+    const longName =
+      'super-ultra-long-product-photo-file-name-without-spaces-and-extra-long-suffix-for-mobile-overflow-testing.png'
+    const longProjectTitle =
+      'A very long campaign project title for mobile overflow checks and creator workflow previews'
+    const fetchMock = createFetchMock({
+      assets: [
+        {
+          ...asset,
+          original_name: longName,
+          project: asset.project ? { ...asset.project, title: longProjectTitle } : null,
+        },
+      ],
+    })
+    const wrapper = await mountMediaLibrary(fetchMock)
+    const card = wrapper.get('[data-testid="media-library-asset-12"]')
+
+    expect(wrapper.text()).toContain(longName)
+    expect(wrapper.text()).toContain(longProjectTitle)
+    expect(card.classes()).toEqual(
+      expect.arrayContaining(['min-w-0', 'max-w-full', 'overflow-hidden']),
+    )
+    expect(card.get('h3').classes()).toContain('break-words')
+    expect(card.get('dl').classes()).toEqual(
+      expect.arrayContaining(['grid-cols-1', 'min-w-0']),
+    )
+    expect(card.get('button').classes()).toContain('w-full')
+  })
+
   it('calls the API with search, type and usage role filters', async () => {
     const fetchMock = createFetchMock()
     const wrapper = await mountMediaLibrary(fetchMock)

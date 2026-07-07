@@ -241,7 +241,7 @@ onMounted(loadLibrary)
             <p class="text-xs text-neutral-500">{{ t('media.matchingAssets', { count: totalAssets }) }}</p>
           </div>
 
-          <form class="mt-5 grid gap-3 sm:grid-cols-3" @submit.prevent="applyFilters">
+          <form class="mt-5 grid min-w-0 gap-3 sm:grid-cols-3" @submit.prevent="applyFilters">
             <label class="sm:col-span-3 lg:col-span-1">
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
                 {{ t('media.search') }}
@@ -291,18 +291,18 @@ onMounted(loadLibrary)
               </select>
             </label>
 
-            <div class="flex gap-3 sm:col-span-3">
+            <div class="grid min-w-0 gap-3 sm:col-span-3 sm:flex">
               <button
                 type="submit"
                 :disabled="isFiltering"
-                class="min-h-12 flex-1 rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:opacity-60"
+                class="min-h-12 w-full rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:opacity-60 sm:flex-1"
               >
                 {{ isFiltering ? t('media.filtering') : t('common.applyFilters') }}
               </button>
               <button
                 type="button"
                 :disabled="isFiltering || !hasActiveFilters"
-                class="min-h-12 rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                class="min-h-12 w-full rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 @click="clearFilters"
               >
                 {{ t('common.clear') }}
@@ -362,21 +362,21 @@ onMounted(loadLibrary)
             </div>
           </div>
 
-          <div v-else class="mt-5 grid gap-4 lg:grid-cols-2">
+          <div v-else class="mt-5 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
             <article
               v-for="asset in assets"
               :key="asset.id"
               :data-testid="'media-library-asset-' + asset.id"
-              class="nusa-card-soft rounded-[2rem] p-5"
+              class="nusa-card-soft min-w-0 max-w-full overflow-hidden rounded-[2rem] p-4 sm:p-5"
             >
-              <div class="flex items-start gap-4">
+              <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
                 <div
-                  class="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-neutral-700 bg-neutral-950 text-xs font-semibold text-emerald-300"
+                  class="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-neutral-700 bg-neutral-950 text-xs font-semibold text-emerald-300 sm:size-14"
                 >
                   {{ assetIcon(asset.type) }}
                 </div>
-                <div class="min-w-0 flex-1">
-                  <h3 class="truncate text-base font-semibold text-neutral-100">
+                <div class="min-w-0 max-w-full flex-1 overflow-hidden">
+                  <h3 class="max-w-full break-words text-base font-semibold leading-6 text-neutral-100">
                     {{ asset.original_name ?? t('media.uploadedAsset') }}
                   </h3>
                   <div class="mt-3 flex flex-wrap gap-2">
@@ -395,21 +395,21 @@ onMounted(loadLibrary)
                 </div>
               </div>
 
-              <dl class="mt-5 grid grid-cols-2 gap-3 border-t border-neutral-800 pt-4 text-sm">
-                <div>
+              <dl class="mt-5 grid min-w-0 grid-cols-1 gap-3 border-t border-neutral-800 pt-4 text-sm sm:grid-cols-2">
+                <div class="min-w-0">
                   <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.size') }}</dt>
                   <dd class="mt-1 text-neutral-300">
                     {{ asset.size_label ?? t('media.sizeUnavailable') }}
                   </dd>
                 </div>
-                <div>
+                <div class="min-w-0">
                   <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.uploaded') }}</dt>
                   <dd class="mt-1 text-neutral-300">{{ formatDate(asset.created_at) }}</dd>
                 </div>
-                <div v-if="asset.project" class="col-span-2">
+                <div v-if="asset.project" class="min-w-0 sm:col-span-2">
                   <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.project') }}</dt>
-                  <dd class="mt-1 text-neutral-300">
-                    {{ asset.project.title }} ? {{ formatLabel(asset.project.type) }}
+                  <dd class="mt-1 max-w-full break-words text-neutral-300">
+                    {{ asset.project.title }} · {{ formatLabel(asset.project.type) }}
                   </dd>
                 </div>
               </dl>

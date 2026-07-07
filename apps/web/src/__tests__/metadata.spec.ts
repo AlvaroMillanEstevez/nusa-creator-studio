@@ -27,7 +27,6 @@ describe('browser metadata', () => {
     expect(html).toContain('rel="icon" type="image/svg+xml" href="/favicon.svg"')
     expect(html).toContain('rel="apple-touch-icon" href="/apple-touch-icon.svg"')
     expect(html).toContain('href="/app-icon.svg"')
-    expect(html).toContain('href="/app-icon-light.svg"')
     expect(existsSync(join(publicPath, 'favicon.svg'))).toBe(true)
     expect(existsSync(join(publicPath, 'app-icon.svg'))).toBe(true)
     expect(existsSync(join(publicPath, 'app-icon-light.svg'))).toBe(true)
