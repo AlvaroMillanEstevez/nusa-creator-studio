@@ -86,22 +86,22 @@ async function logout(): Promise<void> {
   <header
     data-testid="app-shell"
     :aria-label="t('nav.appShell')"
-    class="nusa-card relative z-20 rounded-[1.75rem] p-2"
+    class="nusa-card nusa-app-shell relative z-20 rounded-[1.75rem] p-2"
   >
     <div
       data-testid="app-shell-top-row"
-      class="flex min-w-0 items-center justify-between gap-3 rounded-3xl border border-white/5 bg-slate-950/45 px-3 py-3 sm:px-4"
+      class="flex min-w-0 items-center justify-between gap-3 rounded-3xl border border-white/5 bg-slate-950/45 px-3 py-3.5 sm:px-4"
     >
       <RouterLink
         to="/"
         :aria-label="t('brand.homeLabel')"
         class="nusa-focus-ring min-w-0 shrink rounded-2xl"
       >
-        <BrandLogo class="max-w-[15rem]" />
+        <BrandLogo mark-size="md" class="max-w-[16rem]" />
       </RouterLink>
 
       <div class="flex min-w-0 shrink-0 items-center justify-end gap-2">
-        <LanguageSwitcher class="w-24 shrink-0" />
+        <LanguageSwitcher class="w-16 shrink-0 sm:w-24" />
 
         <div
           v-if="!auth.initialized"
@@ -214,7 +214,7 @@ async function logout(): Promise<void> {
     <nav
       data-testid="app-shell-nav-row"
       :aria-label="t('nav.primaryNavigation')"
-      class="nusa-scrollbar mt-2 flex min-w-0 gap-2 overflow-x-auto px-1 pb-1"
+      class="nusa-scrollbar mt-2 flex min-w-0 gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0 lg:justify-center"
     >
       <RouterLink
         v-for="item in navigationItems"

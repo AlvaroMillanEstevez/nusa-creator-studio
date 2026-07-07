@@ -105,7 +105,7 @@ async function savePassword(): Promise<void> {
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="nusa-page-container mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-5xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
       <header class="pt-12">
@@ -117,25 +117,25 @@ async function savePassword(): Promise<void> {
       </header>
 
       <template v-if="user">
-        <section class="mt-9 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6">
+        <section class="nusa-form-card mt-9 rounded-[2rem] p-5 sm:p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{{ t('account.profile') }}</p>
           <h2 class="mt-2 text-xl font-semibold">{{ t('account.details') }}</h2>
 
           <form class="mt-6 space-y-5" novalidate @submit.prevent="saveProfile">
             <div>
-              <label for="account-name" class="text-sm font-semibold text-neutral-200">{{ t('auth.name') }}</label>
+              <label for="account-name" class="nusa-label">{{ t('auth.name') }}</label>
               <input
                 id="account-name"
                 v-model="profile.name"
                 name="name"
                 type="text"
                 autocomplete="name"
-                class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+                class="nusa-input mt-2"
               />
             </div>
 
             <div>
-              <label for="account-email" class="text-sm font-semibold text-neutral-200"
+              <label for="account-email" class="nusa-label"
                 >{{ t('auth.email') }}</label
               >
               <input
@@ -144,7 +144,7 @@ async function savePassword(): Promise<void> {
                 name="email"
                 type="email"
                 autocomplete="email"
-                class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+                class="nusa-input mt-2"
               />
             </div>
 
@@ -166,14 +166,14 @@ async function savePassword(): Promise<void> {
             <button
               type="submit"
               :disabled="isProfileSaving"
-              class="flex min-h-12 w-full items-center justify-center rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 sm:w-auto"
+              class="nusa-button-primary nusa-focus-ring flex min-h-12 w-full items-center justify-center rounded-2xl px-5 font-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {{ isProfileSaving ? t('account.savingProfile') : t('account.saveProfile') }}
             </button>
           </form>
         </section>
 
-        <section class="mt-6 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6">
+        <section class="nusa-form-card mt-6 rounded-[2rem] p-5 sm:p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{{ t('account.security') }}</p>
           <h2 class="mt-2 text-xl font-semibold">{{ t('account.updatePassword') }}</h2>
           <p class="mt-3 text-sm leading-6 text-neutral-500">
@@ -182,7 +182,7 @@ async function savePassword(): Promise<void> {
 
           <form class="mt-6 space-y-5" novalidate @submit.prevent="savePassword">
             <div>
-              <label for="current-password" class="text-sm font-semibold text-neutral-200">
+              <label for="current-password" class="nusa-label">
                 {{ t('account.currentPassword') }}
               </label>
               <input
@@ -191,12 +191,12 @@ async function savePassword(): Promise<void> {
                 name="current_password"
                 type="password"
                 autocomplete="current-password"
-                class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+                class="nusa-input mt-2"
               />
             </div>
 
             <div>
-              <label for="new-password" class="text-sm font-semibold text-neutral-200">
+              <label for="new-password" class="nusa-label">
                 {{ t('account.newPassword') }}
               </label>
               <input
@@ -205,12 +205,12 @@ async function savePassword(): Promise<void> {
                 name="password"
                 type="password"
                 autocomplete="new-password"
-                class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+                class="nusa-input mt-2"
               />
             </div>
 
             <div>
-              <label for="password-confirmation" class="text-sm font-semibold text-neutral-200">
+              <label for="password-confirmation" class="nusa-label">
                 {{ t('account.confirmNewPassword') }}
               </label>
               <input
@@ -219,7 +219,7 @@ async function savePassword(): Promise<void> {
                 name="password_confirmation"
                 type="password"
                 autocomplete="new-password"
-                class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+                class="nusa-input mt-2"
               />
             </div>
 
@@ -241,7 +241,7 @@ async function savePassword(): Promise<void> {
             <button
               type="submit"
               :disabled="isPasswordSaving"
-              class="flex min-h-12 w-full items-center justify-center rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 sm:w-auto"
+              class="nusa-button-primary nusa-focus-ring flex min-h-12 w-full items-center justify-center rounded-2xl px-5 font-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {{ isPasswordSaving ? t('account.updatingPassword') : t('account.updatePassword') }}
             </button>
@@ -271,11 +271,11 @@ async function savePassword(): Promise<void> {
               {{ t('account.planName', { name: user.current_plan?.name ?? user.plan_label }) }}
             </h2>
             <div class="mt-5 grid grid-cols-2 gap-3">
-              <div class="rounded-2xl border border-neutral-800 bg-neutral-950/50 p-4">
+              <div class="nusa-card-soft rounded-2xl p-4">
                 <p class="text-2xl font-bold">{{ user.credits_balance }}</p>
                 <p class="mt-1 text-xs text-neutral-500">{{ t('account.availableCredits') }}</p>
               </div>
-              <div class="rounded-2xl border border-neutral-800 bg-neutral-950/50 p-4">
+              <div class="nusa-card-soft rounded-2xl p-4">
                 <p class="text-2xl font-bold">
                   {{ user.current_plan?.monthly_credits ?? user.monthly_credit_allowance }}
                 </p>
@@ -295,11 +295,11 @@ async function savePassword(): Promise<void> {
           </div>
 
           <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-            <div class="rounded-2xl border border-neutral-800/80 bg-neutral-950/40 p-4">
+            <div class="nusa-card-soft rounded-2xl p-4">
               <dt class="text-neutral-500">{{ t('account.role') }}</dt>
               <dd class="mt-1 font-semibold text-neutral-200">{{ user.role_label }}</dd>
             </div>
-            <div class="rounded-2xl border border-neutral-800/80 bg-neutral-950/40 p-4">
+            <div class="nusa-card-soft rounded-2xl p-4">
               <dt class="text-neutral-500">{{ t('account.plan') }}</dt>
               <dd class="mt-1 font-semibold text-neutral-200">{{ user.plan_label }}</dd>
             </div>
@@ -325,7 +325,7 @@ async function savePassword(): Promise<void> {
         </section>
 
 
-        <section class="mt-6 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6">
+        <section class="nusa-form-card mt-6 rounded-[2rem] p-5 sm:p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
             {{ t('account.language') }}
           </p>
@@ -336,7 +336,7 @@ async function savePassword(): Promise<void> {
           <LanguageSwitcher class="mt-5" :compact="false" />
         </section>
 
-        <section class="mt-6 rounded-3xl border border-neutral-800 bg-neutral-900/40 p-5">
+        <section class="nusa-card-soft mt-6 rounded-[2rem] p-5">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
             {{ t('account.metadata') }}
           </p>

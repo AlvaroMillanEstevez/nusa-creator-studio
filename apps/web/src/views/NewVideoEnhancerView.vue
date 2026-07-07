@@ -91,11 +91,11 @@ async function submitBrief(): Promise<void> {
 </script>
 
 <template>
-  <main class="min-h-screen bg-neutral-950 text-white">
-    <div class="mx-auto min-h-screen max-w-md px-5 pb-14 pt-5 sm:px-6">
+  <main class="nusa-page min-h-screen text-white">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-3xl px-5 pb-14 pt-5 sm:px-6">
       <AppNav />
 
-      <header class="mt-10">
+      <header class="max-w-2xl">
         <p class="text-sm font-medium text-emerald-400">Video Enhancer / Caption Pack</p>
         <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">
           Turn your recorded video brief into an edit-ready pack.
@@ -106,9 +106,9 @@ async function submitBrief(): Promise<void> {
         </p>
       </header>
 
-      <form class="mt-9 space-y-7" novalidate @submit.prevent="submitBrief">
+      <form class="nusa-form-card mt-8 space-y-7 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitBrief">
         <div>
-          <label for="video-title" class="text-sm font-semibold text-neutral-200">
+          <label for="video-title" class="nusa-label">
             Video title
           </label>
           <input
@@ -119,7 +119,7 @@ async function submitBrief(): Promise<void> {
             maxlength="255"
             placeholder="e.g. Morning desk setup demo"
             :aria-invalid="Boolean(fieldErrors.video_title)"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-input mt-2"
           />
           <p v-if="fieldErrors.video_title" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.video_title }}
@@ -127,7 +127,7 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="product-name" class="text-sm font-semibold text-neutral-200">
+          <label for="product-name" class="nusa-label">
             Product name
           </label>
           <input
@@ -137,7 +137,7 @@ async function submitBrief(): Promise<void> {
             type="text"
             placeholder="e.g. Portable key light"
             :aria-invalid="Boolean(fieldErrors.product_name)"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-input mt-2"
           />
           <p v-if="fieldErrors.product_name" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.product_name }}
@@ -145,7 +145,7 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="video-context" class="text-sm font-semibold text-neutral-200">
+          <label for="video-context" class="nusa-label">
             What happens in the video?
           </label>
           <textarea
@@ -155,7 +155,7 @@ async function submitBrief(): Promise<void> {
             rows="4"
             placeholder="Describe the shots, product demonstration and ending."
             :aria-invalid="Boolean(fieldErrors.video_context)"
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-textarea mt-2"
           />
           <p v-if="fieldErrors.video_context" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.video_context }}
@@ -163,7 +163,7 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="spoken-summary" class="text-sm font-semibold text-neutral-200">
+          <label for="spoken-summary" class="nusa-label">
             Spoken summary
           </label>
           <textarea
@@ -173,7 +173,7 @@ async function submitBrief(): Promise<void> {
             rows="4"
             placeholder="Summarize the words already spoken in the recording."
             :aria-invalid="Boolean(fieldErrors.spoken_summary)"
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-textarea mt-2"
           />
           <p v-if="fieldErrors.spoken_summary" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.spoken_summary }}
@@ -181,7 +181,7 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="target-audience" class="text-sm font-semibold text-neutral-200">
+          <label for="target-audience" class="nusa-label">
             Target audience
           </label>
           <textarea
@@ -191,7 +191,7 @@ async function submitBrief(): Promise<void> {
             rows="3"
             placeholder="e.g. Creators improving small filming spaces"
             :aria-invalid="Boolean(fieldErrors.target_audience)"
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-textarea mt-2"
           />
           <p v-if="fieldErrors.target_audience" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.target_audience }}
@@ -199,12 +199,12 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="language" class="text-sm font-semibold text-neutral-200">Language</label>
+          <label for="language" class="nusa-label">Language</label>
           <select
             id="language"
             v-model="form.language"
             name="language"
-            class="mt-2 w-full appearance-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-select mt-2"
           >
             <option
               v-for="option in campaignLanguageOptions"
@@ -217,16 +217,16 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <fieldset>
-          <legend class="text-sm font-semibold text-neutral-200">Editing style</legend>
-          <div class="mt-3 grid grid-cols-2 gap-3">
+          <legend class="nusa-label">Editing style</legend>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <label
               v-for="option in videoEnhancerStyleOptions"
               :key="option.value"
-              class="flex min-h-14 cursor-pointer items-center rounded-2xl border px-4 py-3 text-sm font-medium transition"
+              class="nusa-choice flex items-center"
               :class="
                 form.style === option.value
-                  ? 'border-emerald-400 bg-emerald-400/10 text-emerald-300'
-                  : 'border-neutral-800 bg-neutral-900 text-neutral-300 hover:border-neutral-700'
+                  ? 'nusa-choice-active'
+                  : 'nusa-choice-idle'
               "
             >
               <input
@@ -252,7 +252,7 @@ async function submitBrief(): Promise<void> {
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+          class="nusa-button-primary nusa-focus-ring flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 font-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span
             v-if="isSubmitting"

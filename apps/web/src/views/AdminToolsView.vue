@@ -130,7 +130,7 @@ onMounted(() => {
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="nusa-page-container mx-auto min-h-screen max-w-6xl px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-7xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
       <header class="pt-12">
@@ -185,11 +185,11 @@ onMounted(() => {
               v-for="tool in tools"
               :key="tool.key"
               :data-testid="'admin-tool-' + tool.key"
-              class="rounded-3xl border p-5 transition"
+              class="nusa-card-interactive rounded-[2rem] p-5 transition"
               :class="
                 selectedTool?.key === tool.key
-                  ? 'border-emerald-700 bg-emerald-950/20'
-                  : 'border-neutral-800 bg-neutral-900/70'
+                  ? 'ring-1 ring-cyan-300/40'
+                  : ''
               "
             >
               <div class="flex flex-wrap items-start justify-between gap-3">
@@ -238,7 +238,7 @@ onMounted(() => {
         </section>
 
         <section
-          class="rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 lg:sticky lg:top-5"
+          class="nusa-form-card rounded-[2rem] p-5 lg:sticky lg:top-5"
         >
           <template v-if="selectedTool">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
@@ -361,7 +361,7 @@ onMounted(() => {
 
               <div class="grid gap-3 sm:grid-cols-2">
                 <label
-                  class="flex min-h-12 items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-950 px-3 text-sm text-neutral-300"
+                  class="nusa-card-soft flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm text-neutral-300"
                 >
                   <input
                     v-model="form.is_recommended"
@@ -372,7 +372,7 @@ onMounted(() => {
                   Recommended
                 </label>
                 <label
-                  class="flex min-h-12 items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-950 px-3 text-sm text-neutral-300"
+                  class="nusa-card-soft flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm text-neutral-300"
                 >
                   <input
                     v-model="form.is_visible"

@@ -36,14 +36,14 @@ const freeUser: AuthUser = {
   created_at: null,
 }
 
-async function mountNav(user: AuthUser | null, initialized = true) {
+async function mountNav(user: AuthUser | null, initialized = true, initialPath = '/') {
   const pinia = createPinia()
   setActivePinia(pinia)
   const router = createRouter({
     history: createMemoryHistory(),
     routes,
   })
-  await router.push('/')
+  await router.push(initialPath)
   await router.isReady()
 
   const auth = useAuthStore(pinia)
@@ -64,8 +64,26 @@ describe('AppNav', () => {
     expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="brand-logo"]').text()).toContain('Nusa Creator Studio')
     expect(wrapper.find('[data-testid="app-shell-top-row"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="brand-mark"]').classes()).toContain('size-12')
+    expect(wrapper.get('[data-testid="brand-mark"]').classes()).toContain('sm:size-14')
     expect(wrapper.get('[data-testid="app-shell-nav-row"]').classes()).toContain('overflow-x-auto')
     expect(wrapper.find('select').exists()).toBe(true)
+  })
+
+  it('keeps the language selector accessible and compact', async () => {
+    const { wrapper } = await mountNav(null)
+    const select = wrapper.get('select')
+
+    expect(select.attributes('aria-label')).toBe('Preferred language')
+    expect(select.classes()).toContain('nusa-select-compact')
+  })
+
+  it('marks the current main nav route', async () => {
+    const { wrapper } = await mountNav(null, true, '/tools')
+    const toolsLink = wrapper.get('a[href="/tools"]')
+
+    expect(toolsLink.classes()).toContain('text-cyan-100')
+    expect(toolsLink.classes()).toContain('bg-cyan-400/10')
   })
 
   it('shows a neutral session state while authentication is being checked', async () => {

@@ -33,7 +33,7 @@ function statusClasses(status: GenerationStatus): string {
 </script>
 
 <template>
-  <section class="mt-5 rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5">
+  <section class="nusa-card-soft mt-5 rounded-[2rem] p-5">
     <div class="flex items-center justify-between gap-3">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">

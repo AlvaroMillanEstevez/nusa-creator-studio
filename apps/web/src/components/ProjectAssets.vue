@@ -163,7 +163,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section data-testid="project-assets" class="mt-5 rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5">
+  <section data-testid="project-assets" class="nusa-card-soft mt-5 rounded-[2rem] p-5">
     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Project assets</p>
     <h2 class="mt-2 text-xl font-semibold">Upload source files</h2>
     <template v-if="isFashionTryOnProject">
@@ -171,8 +171,8 @@ onMounted(() => {
         Upload a model/person reference image and a garment/product reference image before generating.
       </p>
       <div class="mt-4 grid gap-2 text-sm text-neutral-300">
-        <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">Upload a model/person reference image.</p>
-        <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">Upload a garment/product reference image.</p>
+        <p class="nusa-card-soft rounded-2xl p-3">Upload a model/person reference image.</p>
+        <p class="nusa-card-soft rounded-2xl p-3">Upload a garment/product reference image.</p>
       </div>
     </template>
     <template v-else-if="isMotionVideoProject">
@@ -180,8 +180,8 @@ onMounted(() => {
         Upload a product image, source video, background reference or brand reference before generating.
       </p>
       <div class="mt-4 grid gap-2 text-sm text-neutral-300">
-        <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">Upload a product image, source video, background reference or brand reference.</p>
-        <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">Optional: upload an audio track for future video sync.</p>
+        <p class="nusa-card-soft rounded-2xl p-3">Upload a product image, source video, background reference or brand reference.</p>
+        <p class="nusa-card-soft rounded-2xl p-3">Optional: upload an audio track for future video sync.</p>
       </div>
     </template>
     <p v-else class="mt-3 text-sm leading-6 text-neutral-400">
@@ -189,16 +189,16 @@ onMounted(() => {
     </p>
 
     <div v-if="usesAssetRoles" class="mt-5">
-      <label for="asset-role" class="text-sm font-semibold text-neutral-200">Asset role</label>
-      <select id="asset-role" v-model="selectedUsageRole" name="usage_role" class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none focus:border-emerald-500">
+      <label for="asset-role" class="nusa-label">Asset role</label>
+      <select id="asset-role" v-model="selectedUsageRole" name="usage_role" class="nusa-select mt-2">
         <option v-for="option in roleOptions" :key="option.value" :value="option.value">
           {{ option.label }}
         </option>
       </select>
     </div>
 
-    <label class="mt-5 flex cursor-pointer flex-col items-center rounded-2xl border border-dashed border-neutral-700 bg-neutral-950/60 px-4 py-7 text-center transition hover:border-emerald-700">
-      <span class="text-sm font-semibold text-neutral-200">Choose a project asset</span>
+    <label class="nusa-card-soft mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-dashed px-4 py-7 text-center transition hover:border-cyan-300/40">
+      <span class="nusa-label">Choose a project asset</span>
       <span class="mt-2 text-xs leading-5 text-neutral-500">
         JPG, PNG, WEBP, MP4, MOV, WEBM, MP3, WAV, M4A, PDF, TXT or CSV · max
         {{ MEDIA_MAX_SIZE_BYTES / 1024 / 1024 }} MB
@@ -206,7 +206,7 @@ onMounted(() => {
       <input ref="fileInput" name="media_file" type="file" :accept="MEDIA_ACCEPT" class="sr-only" @change="chooseFile" />
     </label>
 
-    <div v-if="selectedFile" class="mt-3 rounded-xl bg-neutral-950/70 p-3 text-sm">
+    <div v-if="selectedFile" class="nusa-card-soft mt-3 rounded-xl p-3 text-sm">
       <p class="truncate font-medium text-neutral-200">{{ selectedFile.name }}</p>
       <p class="mt-1 text-xs text-neutral-500">{{ (selectedFile.size / 1024 / 1024).toFixed(1) }} MB selected</p>
       <p v-if="usesAssetRoles" class="mt-1 text-xs text-emerald-300">Role: {{ formatLabel(selectedUsageRole) }}</p>
@@ -236,7 +236,7 @@ onMounted(() => {
       </div>
 
       <div v-else class="space-y-3">
-        <article v-for="asset in assets" :key="asset.id" :data-testid="'media-asset-' + asset.id" class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
+        <article v-for="asset in assets" :key="asset.id" :data-testid="'media-asset-' + asset.id" class="nusa-card-soft rounded-2xl p-4">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="truncate text-sm font-semibold text-neutral-200">{{ asset.original_name ?? 'Uploaded asset' }}</p>

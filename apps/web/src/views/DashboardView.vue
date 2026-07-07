@@ -81,7 +81,7 @@ onMounted(loadDashboard)
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="nusa-page-container mx-auto min-h-screen max-w-5xl px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-7xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
       <header class="pt-12">
@@ -193,7 +193,7 @@ onMounted(loadDashboard)
             <article
               v-for="stat in statCards"
               :key="stat.label"
-              class="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4"
+              class="nusa-card-soft rounded-2xl p-4"
             >
               <p class="text-2xl font-bold text-neutral-100">{{ stat.value }}</p>
               <p class="mt-2 text-xs leading-5 text-neutral-500">{{ stat.label }}</p>
@@ -201,7 +201,7 @@ onMounted(loadDashboard)
           </div>
         </section>
 
-        <section class="mt-8 rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5 sm:p-6">
+        <section class="nusa-card-soft mt-8 rounded-[2rem] p-5 sm:p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
             {{ t('dashboard.quickActions') }}
           </p>
@@ -239,7 +239,7 @@ onMounted(loadDashboard)
 
           <div
             v-if="dashboard.recent_projects.length === 0"
-            class="mt-4 rounded-3xl border border-dashed border-neutral-800 bg-neutral-900/40 p-6"
+            class="nusa-card-soft mt-4 rounded-[2rem] border-dashed p-6"
           >
             <h3 class="font-semibold text-neutral-200">{{ t('dashboard.noProjects') }}</h3>
             <p class="mt-2 text-sm leading-6 text-neutral-500">
@@ -258,7 +258,7 @@ onMounted(loadDashboard)
               v-for="project in dashboard.recent_projects"
               :key="project.id"
               :to="'/projects/' + project.id"
-              class="rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 transition hover:border-neutral-700 hover:bg-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+              class="nusa-card-interactive nusa-focus-ring rounded-[2rem] p-5 transition"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
@@ -299,7 +299,7 @@ onMounted(loadDashboard)
 
           <div
             v-if="dashboard.recent_generations.length === 0"
-            class="mt-4 rounded-3xl border border-dashed border-neutral-800 bg-neutral-900/40 p-6"
+            class="nusa-card-soft mt-4 rounded-[2rem] border-dashed p-6"
           >
             <h3 class="font-semibold text-neutral-200">{{ t('dashboard.noGenerations') }}</h3>
             <p class="mt-2 text-sm leading-6 text-neutral-500">
@@ -315,7 +315,7 @@ onMounted(loadDashboard)
               v-bind="
                 generation.project_id === null ? {} : { to: '/projects/' + generation.project_id }
               "
-              class="block rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4 transition hover:border-neutral-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+              class="nusa-card-interactive nusa-focus-ring block rounded-2xl p-4 transition"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">

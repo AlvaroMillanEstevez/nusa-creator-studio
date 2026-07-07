@@ -77,6 +77,9 @@ describe('NewVideoEnhancerView', () => {
     })
 
     expect(wrapper.text()).toContain('Video Enhancer / Caption Pack')
+    expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(true)
+    expect(wrapper.get('main').classes()).toContain('nusa-page')
+    expect(wrapper.get('form').classes()).toContain('nusa-form-card')
     expect(wrapper.find('[name="video_context"]').exists()).toBe(true)
     expect(wrapper.find('[name="spoken_summary"]').exists()).toBe(true)
 

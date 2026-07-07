@@ -91,7 +91,7 @@ onMounted(() => {
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="nusa-page-container mx-auto min-h-screen max-w-6xl px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-7xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
       <header class="pt-12">
@@ -153,7 +153,7 @@ onMounted(() => {
             <article
               v-for="card in summaryCards"
               :key="card.label"
-              class="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4"
+              class="nusa-card-soft rounded-2xl p-4"
             >
               <p class="text-2xl font-bold">{{ card.value }}</p>
               <p class="mt-2 text-xs leading-5 text-neutral-500">{{ card.label }}</p>
@@ -161,7 +161,7 @@ onMounted(() => {
           </div>
 
           <div class="mt-4 grid gap-3 md:grid-cols-2">
-            <article class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-4">
+            <article class="nusa-card-soft rounded-2xl p-4">
               <h3 class="text-sm font-semibold">Projects by type</h3>
               <dl class="mt-3 space-y-2 text-xs">
                 <div
@@ -174,7 +174,7 @@ onMounted(() => {
                 </div>
               </dl>
             </article>
-            <article class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-4">
+            <article class="nusa-card-soft rounded-2xl p-4">
               <h3 class="text-sm font-semibold">Generations by job</h3>
               <dl class="mt-3 space-y-2 text-xs">
                 <div
@@ -198,7 +198,7 @@ onMounted(() => {
         <h2 class="mt-2 text-xl font-semibold">Platform users</h2>
 
         <form
-          class="mt-5 grid gap-3 rounded-3xl border border-neutral-800 bg-neutral-900/60 p-4 sm:grid-cols-2 lg:grid-cols-5"
+          class="nusa-form-card mt-5 grid gap-3 rounded-[2rem] p-4 sm:grid-cols-2 lg:grid-cols-5"
           @submit.prevent="loadUsers(1)"
         >
           <input
@@ -206,12 +206,12 @@ onMounted(() => {
             name="search"
             type="search"
             placeholder="Search name or email"
-            class="min-h-11 rounded-xl border border-neutral-800 bg-neutral-950 px-3 text-sm outline-none focus:border-emerald-500 lg:col-span-2"
+            class="nusa-input"
           />
           <select
             v-model="filters.role"
             name="role"
-            class="min-h-11 rounded-xl border border-neutral-800 bg-neutral-950 px-3 text-sm outline-none focus:border-emerald-500"
+            class="nusa-select"
           >
             <option value="">All roles</option>
             <option v-for="role in roles" :key="role" :value="role">{{ formatLabel(role) }}</option>
@@ -219,7 +219,7 @@ onMounted(() => {
           <select
             v-model="filters.plan_key"
             name="plan_key"
-            class="min-h-11 rounded-xl border border-neutral-800 bg-neutral-950 px-3 text-sm outline-none focus:border-emerald-500"
+            class="nusa-select"
           >
             <option value="">All plans</option>
             <option v-for="plan in plans" :key="plan" :value="plan">{{ formatLabel(plan) }}</option>
@@ -227,7 +227,7 @@ onMounted(() => {
           <select
             v-model="filters.is_unlimited"
             name="is_unlimited"
-            class="min-h-11 rounded-xl border border-neutral-800 bg-neutral-950 px-3 text-sm outline-none focus:border-emerald-500"
+            class="nusa-select"
           >
             <option value="">All access</option>
             <option value="1">Unlimited</option>
@@ -236,7 +236,7 @@ onMounted(() => {
           <button
             type="submit"
             :disabled="isUsersLoading"
-            class="min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:bg-neutral-700 sm:col-span-2 lg:col-span-5"
+            class="nusa-button-primary nusa-focus-ring min-h-11 rounded-xl px-4 text-sm font-black transition hover:brightness-105 disabled:opacity-60 sm:col-span-2 lg:col-span-5"
           >
             {{ isUsersLoading ? 'Loading users...' : 'Apply filters' }}
           </button>
@@ -260,7 +260,7 @@ onMounted(() => {
           <article
             v-for="user in users"
             :key="user.id"
-            class="rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5"
+            class="nusa-card-soft rounded-[2rem] p-5"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">

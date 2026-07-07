@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Nusa Creator Studio">
+  <defs>
+    <linearGradient id="nusa-favicon-gradient" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.42" stop-color="#8b5cf6"/>
+      <stop offset="0.72" stop-color="#fb7185"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#f8fafc"/>
+  <path d="M13 50V14h11.4l15.2 20.3V14H51v36H39.6L24.4 29.8V50H13Z" fill="url(#nusa-favicon-gradient)"/>
+  <path d="M13 50V14h11.4l15.2 20.3V14H51v36H39.6L24.4 29.8V50H13Z" fill="none" stroke="#050817" stroke-opacity="0.22" stroke-width="2" stroke-linejoin="round"/>
+</svg>

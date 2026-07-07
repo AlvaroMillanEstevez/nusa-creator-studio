@@ -6,7 +6,7 @@ import AppNav from '@/components/AppNav.vue'
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="mx-auto min-h-screen max-w-2xl px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
       <section class="mt-12 rounded-3xl border border-amber-900/60 bg-amber-950/20 p-6">

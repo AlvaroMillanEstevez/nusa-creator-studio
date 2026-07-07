@@ -6,7 +6,7 @@ defineProps<{ result: AiVoiceoverResult }>()
 
 <template>
   <div class="space-y-5">
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Voiceover title
       </p>
@@ -19,7 +19,7 @@ defineProps<{ result: AiVoiceoverResult }>()
       </p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Narration script
       </p>
@@ -28,7 +28,7 @@ defineProps<{ result: AiVoiceoverResult }>()
       </p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Scene timing
       </p>
@@ -36,7 +36,7 @@ defineProps<{ result: AiVoiceoverResult }>()
         <article
           v-for="scene in result.scene_timing"
           :key="scene.timestamp + scene.section"
-          class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4"
+          class="nusa-card-soft rounded-2xl p-4"
         >
           <div class="flex items-center justify-between gap-3">
             <p class="font-semibold">{{ scene.section }}</p>
@@ -58,7 +58,7 @@ defineProps<{ result: AiVoiceoverResult }>()
       </div>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Voice direction
       </p>
@@ -66,7 +66,7 @@ defineProps<{ result: AiVoiceoverResult }>()
     </section>
 
     <section class="grid gap-5">
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
           Pronunciation notes
         </p>
@@ -74,7 +74,7 @@ defineProps<{ result: AiVoiceoverResult }>()
           <li v-for="note in result.pronunciation_notes" :key="note">&bull; {{ note }}</li>
         </ul>
       </div>
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
           Pacing notes
         </p>
@@ -82,7 +82,7 @@ defineProps<{ result: AiVoiceoverResult }>()
           <li v-for="note in result.pacing_notes" :key="note">&bull; {{ note }}</li>
         </ul>
       </div>
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
           Platform notes
         </p>
@@ -104,7 +104,7 @@ defineProps<{ result: AiVoiceoverResult }>()
       </p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Usage notes
       </p>

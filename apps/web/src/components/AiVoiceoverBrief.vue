@@ -6,7 +6,7 @@ defineProps<{ project: AiVoiceoverProject }>()
 </script>
 
 <template>
-  <section class="mt-9 rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+  <section class="nusa-card-premium mt-9 rounded-[2rem] p-5">
     <div class="flex items-center justify-between gap-4">
       <h2 class="text-lg font-semibold">Voiceover brief</h2>
       <span class="text-xs font-medium uppercase tracking-wider text-neutral-500">

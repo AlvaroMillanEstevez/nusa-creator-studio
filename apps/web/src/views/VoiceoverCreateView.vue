@@ -122,11 +122,11 @@ async function submitVoiceover(): Promise<void> {
 </script>
 
 <template>
-  <main class="min-h-screen bg-neutral-950 text-white">
-    <div class="mx-auto min-h-screen max-w-md px-5 pb-14 pt-5 sm:px-6">
+  <main class="nusa-page min-h-screen text-white">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-3xl px-5 pb-14 pt-5 sm:px-6">
       <AppNav />
 
-      <header class="mt-10">
+      <header class="max-w-2xl">
         <p class="text-sm font-medium text-emerald-400">AI Voiceover</p>
         <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">
           Shape a voiceover-ready narration plan.
@@ -137,9 +137,9 @@ async function submitVoiceover(): Promise<void> {
         </p>
       </header>
 
-      <form class="mt-9 space-y-7" novalidate @submit.prevent="submitVoiceover">
+      <form class="nusa-form-card mt-8 space-y-7 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitVoiceover">
         <div>
-          <label for="voiceover-title" class="text-sm font-semibold text-neutral-200">
+          <label for="voiceover-title" class="nusa-label">
             Project title
           </label>
           <input
@@ -150,7 +150,7 @@ async function submitVoiceover(): Promise<void> {
             maxlength="255"
             placeholder="e.g. Portable key light voiceover"
             :aria-invalid="Boolean(fieldErrors.title)"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-input mt-2"
           />
           <p v-if="fieldErrors.title" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.title }}
@@ -158,7 +158,7 @@ async function submitVoiceover(): Promise<void> {
         </div>
 
         <div>
-          <label for="source-text" class="text-sm font-semibold text-neutral-200">
+          <label for="source-text" class="nusa-label">
             Source text / existing script
           </label>
           <textarea
@@ -167,13 +167,13 @@ async function submitVoiceover(): Promise<void> {
             name="source_text"
             rows="5"
             placeholder="Paste a rough script, campaign hook, or talking points."
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-textarea mt-2"
           />
         </div>
 
         <div class="grid gap-5">
           <div>
-            <label for="product-name" class="text-sm font-semibold text-neutral-200">
+            <label for="product-name" class="nusa-label">
               Product name
             </label>
             <input
@@ -182,12 +182,12 @@ async function submitVoiceover(): Promise<void> {
               name="product_name"
               type="text"
               placeholder="e.g. Portable creator light"
-              class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+              class="nusa-input mt-2"
             />
           </div>
 
           <div>
-            <label for="product-description" class="text-sm font-semibold text-neutral-200">
+            <label for="product-description" class="nusa-label">
               Product description
             </label>
             <textarea
@@ -196,12 +196,12 @@ async function submitVoiceover(): Promise<void> {
               name="product_description"
               rows="4"
               placeholder="Describe the product without exaggerated claims."
-              class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+              class="nusa-textarea mt-2"
             />
           </div>
 
           <div>
-            <label for="target-audience" class="text-sm font-semibold text-neutral-200">
+            <label for="target-audience" class="nusa-label">
               Target audience
             </label>
             <textarea
@@ -210,7 +210,7 @@ async function submitVoiceover(): Promise<void> {
               name="target_audience"
               rows="3"
               placeholder="Who should this narration speak to?"
-              class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+              class="nusa-textarea mt-2"
             />
           </div>
         </div>
@@ -219,14 +219,14 @@ async function submitVoiceover(): Promise<void> {
           {{ fieldErrors.brief }}
         </p>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label for="language" class="text-sm font-semibold text-neutral-200">Language</label>
+            <label for="language" class="nusa-label">Language</label>
             <select
               id="language"
               v-model="form.language"
               name="language"
-              class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500"
+              class="nusa-select mt-2"
             >
               <option
                 v-for="option in campaignLanguageOptions"
@@ -239,12 +239,12 @@ async function submitVoiceover(): Promise<void> {
           </div>
 
           <div>
-            <label for="duration" class="text-sm font-semibold text-neutral-200">Duration</label>
+            <label for="duration" class="nusa-label">Duration</label>
             <select
               id="duration"
               v-model="form.duration_seconds"
               name="duration_seconds"
-              class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500"
+              class="nusa-select mt-2"
             >
               <option
                 v-for="duration in voiceoverDurationOptions"
@@ -258,14 +258,14 @@ async function submitVoiceover(): Promise<void> {
         </div>
 
         <div>
-          <label for="voice-style" class="text-sm font-semibold text-neutral-200">
+          <label for="voice-style" class="nusa-label">
             Voice style
           </label>
           <select
             id="voice-style"
             v-model="form.voice_style"
             name="voice_style"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none focus:border-emerald-500"
+            class="nusa-select mt-2"
           >
             <option
               v-for="option in voiceoverStyleOptions"
@@ -277,14 +277,14 @@ async function submitVoiceover(): Promise<void> {
           </select>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label for="tone" class="text-sm font-semibold text-neutral-200">Tone</label>
+            <label for="tone" class="nusa-label">Tone</label>
             <select
               id="tone"
               v-model="form.tone"
               name="tone"
-              class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500"
+              class="nusa-select mt-2"
             >
               <option
                 v-for="option in voiceoverToneOptions"
@@ -296,12 +296,12 @@ async function submitVoiceover(): Promise<void> {
             </select>
           </div>
           <div>
-            <label for="pace" class="text-sm font-semibold text-neutral-200">Pace</label>
+            <label for="pace" class="nusa-label">Pace</label>
             <select
               id="pace"
               v-model="form.pace"
               name="pace"
-              class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500"
+              class="nusa-select mt-2"
             >
               <option
                 v-for="option in voiceoverPaceOptions"
@@ -315,12 +315,12 @@ async function submitVoiceover(): Promise<void> {
         </div>
 
         <div>
-          <label for="platform" class="text-sm font-semibold text-neutral-200">Platform</label>
+          <label for="platform" class="nusa-label">Platform</label>
           <select
             id="platform"
             v-model="form.platform"
             name="platform"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none focus:border-emerald-500"
+            class="nusa-select mt-2"
           >
             <option
               v-for="option in voiceoverPlatformOptions"
@@ -333,14 +333,14 @@ async function submitVoiceover(): Promise<void> {
         </div>
 
         <div>
-          <label for="notes" class="text-sm font-semibold text-neutral-200">Notes</label>
+          <label for="notes" class="nusa-label">Notes</label>
           <textarea
             id="notes"
             v-model="form.notes"
             name="notes"
             rows="3"
             placeholder="Pronunciation, delivery, words to avoid, or editing notes."
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            class="nusa-textarea mt-2"
           />
         </div>
 
@@ -355,7 +355,7 @@ async function submitVoiceover(): Promise<void> {
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+          class="nusa-button-primary nusa-focus-ring flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 font-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span
             v-if="isSubmitting"

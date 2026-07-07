@@ -53,12 +53,12 @@ async function submit(): Promise<void> {
     </section>
 
     <form
-      class="mt-9 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6"
+      class="nusa-form-card mt-9 rounded-[2rem] p-5 sm:p-6"
       novalidate
       @submit.prevent="submit"
     >
       <div>
-        <label for="login-email" class="text-sm font-semibold text-neutral-200">{{ t('auth.email') }}</label>
+        <label for="login-email" class="nusa-label">{{ t('auth.email') }}</label>
         <input
           id="login-email"
           v-model="form.email"
@@ -66,19 +66,19 @@ async function submit(): Promise<void> {
           type="email"
           autocomplete="email"
           placeholder="creator@example.com"
-          class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          class="nusa-input mt-2"
         />
       </div>
 
       <div class="mt-6">
-        <label for="login-password" class="text-sm font-semibold text-neutral-200">{{ t('auth.password') }}</label>
+        <label for="login-password" class="nusa-label">{{ t('auth.password') }}</label>
         <input
           id="login-password"
           v-model="form.password"
           name="password"
           type="password"
           autocomplete="current-password"
-          class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          class="nusa-input mt-2"
         />
       </div>
 

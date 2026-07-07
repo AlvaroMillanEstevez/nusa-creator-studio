@@ -53,7 +53,7 @@ async function changeLocale(value: string): Promise<void> {
 </script>
 
 <template>
-  <label class="block" :class="compact ? 'min-w-24' : ''">
+  <label class="block" :class="compact ? 'min-w-20 sm:min-w-24' : ''">
     <span
       v-if="!compact"
       class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500"
@@ -64,8 +64,8 @@ async function changeLocale(value: string): Promise<void> {
       v-model="selectedLocale"
       :aria-label="label ?? t('account.preferredLanguage')"
       :disabled="isSaving"
-      class="min-h-10 rounded-xl border border-neutral-800 bg-neutral-950/80 px-2 text-xs font-semibold text-neutral-300 outline-none transition hover:border-neutral-700 focus:border-emerald-500 disabled:opacity-60"
-      :class="compact ? 'w-full' : 'mt-2 w-full min-h-12 px-4 text-sm'"
+      class="nusa-select"
+      :class="compact ? 'nusa-select-compact w-full' : 'mt-2 w-full min-h-12 px-4 text-sm'"
     >
       <option v-for="option in localeOptions" :key="option.value" :value="option.value">
         {{ option.label }}

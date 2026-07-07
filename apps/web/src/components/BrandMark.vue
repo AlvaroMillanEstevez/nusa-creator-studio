@@ -1,7 +1,7 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    size?: 'sm' | 'md' | 'lg'
+    size?: 'sm' | 'md' | 'lg' | 'xl'
     decorative?: boolean
   }>(),
   {
@@ -19,9 +19,10 @@ withDefaults(
     xmlns="http://www.w3.org/2000/svg"
     :aria-hidden="decorative"
     :class="{
-      'size-8': size === 'sm',
-      'size-10': size === 'md',
-      'size-12': size === 'lg',
+      'size-10': size === 'sm',
+      'size-12 sm:size-14': size === 'md',
+      'size-14 sm:size-16': size === 'lg',
+      'size-16 sm:size-20': size === 'xl',
     }"
   >
     <rect width="64" height="64" rx="20" fill="#071024" />

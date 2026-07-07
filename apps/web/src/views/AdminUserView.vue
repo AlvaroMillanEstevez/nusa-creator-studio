@@ -102,7 +102,7 @@ onMounted(loadUser)
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="mx-auto min-h-screen max-w-4xl px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-5xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
       <section v-if="isLoading" class="mt-12" aria-live="polite">
@@ -146,7 +146,7 @@ onMounted(loadUser)
               ['Credits spent', user.stats.credits_spent],
             ]"
             :key="String(stat[0])"
-            class="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4"
+            class="nusa-card-soft rounded-2xl p-4"
           >
             <p class="text-2xl font-bold">{{ stat[1] }}</p>
             <p class="mt-2 text-xs text-neutral-500">{{ stat[0] }}</p>
@@ -164,12 +164,12 @@ onMounted(loadUser)
 
           <form class="mt-6 grid gap-5 sm:grid-cols-2" @submit.prevent="saveAccess">
             <div>
-              <label for="admin-role" class="text-sm font-semibold text-neutral-200">Role</label>
+              <label for="admin-role" class="nusa-label">Role</label>
               <select
                 id="admin-role"
                 v-model="form.role"
                 name="role"
-                class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm outline-none focus:border-emerald-500"
+                class="nusa-select mt-2"
               >
                 <option v-for="role in roles" :key="role" :value="role">
                   {{ formatLabel(role) }}
@@ -178,12 +178,12 @@ onMounted(loadUser)
             </div>
 
             <div>
-              <label for="admin-plan" class="text-sm font-semibold text-neutral-200">Plan</label>
+              <label for="admin-plan" class="nusa-label">Plan</label>
               <select
                 id="admin-plan"
                 v-model="form.plan_key"
                 name="plan_key"
-                class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm outline-none focus:border-emerald-500"
+                class="nusa-select mt-2"
               >
                 <option v-for="plan in plans" :key="plan" :value="plan">
                   {{ formatLabel(plan) }}
@@ -192,7 +192,7 @@ onMounted(loadUser)
             </div>
 
             <div>
-              <label for="admin-credits" class="text-sm font-semibold text-neutral-200">
+              <label for="admin-credits" class="nusa-label">
                 Credits balance
               </label>
               <input
@@ -201,12 +201,12 @@ onMounted(loadUser)
                 name="credits_balance"
                 type="number"
                 min="0"
-                class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm outline-none focus:border-emerald-500"
+                class="nusa-input mt-2"
               />
             </div>
 
             <div>
-              <label for="admin-allowance" class="text-sm font-semibold text-neutral-200">
+              <label for="admin-allowance" class="nusa-label">
                 Monthly allowance
               </label>
               <input
@@ -215,12 +215,12 @@ onMounted(loadUser)
                 name="monthly_credit_allowance"
                 type="number"
                 min="0"
-                class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm outline-none focus:border-emerald-500"
+                class="nusa-input mt-2"
               />
             </div>
 
             <label
-              class="flex min-h-12 items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm sm:col-span-2"
+              class="nusa-card-soft flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm sm:col-span-2"
             >
               <input
                 v-model="form.is_unlimited"
@@ -266,7 +266,7 @@ onMounted(loadUser)
               <article
                 v-for="project in user.recent_projects"
                 :key="project.id"
-                class="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4"
+                class="nusa-card-soft rounded-2xl p-4"
               >
                 <p class="font-semibold">{{ project.title }}</p>
                 <p class="mt-2 text-xs text-neutral-500">
@@ -284,7 +284,7 @@ onMounted(loadUser)
               <article
                 v-for="generation in user.recent_generations"
                 :key="generation.id"
-                class="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4"
+                class="nusa-card-soft rounded-2xl p-4"
               >
                 <p class="font-semibold">{{ generation.project_title ?? 'Project unavailable' }}</p>
                 <p class="mt-2 text-xs text-neutral-500">

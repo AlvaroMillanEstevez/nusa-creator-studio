@@ -82,7 +82,7 @@ onMounted(() => {
         <div
           v-for="index in 4"
           :key="index"
-          class="h-96 animate-pulse rounded-3xl border border-neutral-800 bg-neutral-900"
+          class="h-96 animate-pulse rounded-[2rem] border border-slate-800/70 bg-slate-900/60"
         />
       </div>
 
@@ -107,17 +107,17 @@ onMounted(() => {
           v-for="plan in publicPlans"
           :key="plan.key"
           :data-testid="'pricing-plan-' + plan.key"
-          class="relative flex flex-col rounded-3xl border p-6"
+          class="nusa-card-interactive relative flex flex-col rounded-[2rem] p-6 transition"
           :class="
             plan.is_featured
-              ? 'border-emerald-500 bg-gradient-to-b from-emerald-950/70 to-neutral-900 shadow-xl shadow-emerald-950/30'
-              : 'border-neutral-800 bg-neutral-900/70'
+              ? 'ring-1 ring-cyan-300/40'
+              : ''
           "
         >
           <span
             v-if="plan.is_featured"
             data-testid="featured-plan-badge"
-            class="absolute -top-3 left-5 rounded-full bg-emerald-400 px-3 py-1 text-xs font-bold text-emerald-950"
+            class="absolute -top-3 left-5 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-950 shadow-lg shadow-cyan-950/30"
           >
             {{ t('pricing.recommended') }}
           </span>
@@ -146,11 +146,11 @@ onMounted(() => {
 
           <RouterLink
             :to="ctaRoute"
-            class="mt-7 flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold transition"
+            class="nusa-focus-ring mt-7 flex min-h-12 items-center justify-center rounded-2xl px-4 text-sm font-black transition"
             :class="
               plan.is_featured
-                ? 'bg-emerald-300 text-emerald-950 hover:bg-emerald-200'
-                : 'bg-white text-neutral-950 hover:bg-neutral-200'
+                ? 'bg-white text-slate-950 hover:bg-cyan-100'
+                : 'border border-slate-700/80 bg-slate-950/70 text-slate-100 hover:border-cyan-300/40 hover:bg-slate-900'
             "
           >
             {{ plan.cta_label ?? t('pricing.viewPlan') }}
@@ -159,7 +159,7 @@ onMounted(() => {
       </section>
 
       <p
-        class="mx-auto mt-10 max-w-2xl rounded-2xl border border-neutral-800 bg-neutral-900/50 p-4 text-center text-xs leading-5 text-neutral-500"
+        class="nusa-card-soft mx-auto mt-10 max-w-2xl rounded-2xl p-4 text-center text-xs leading-5 text-neutral-400"
       >
         {{ t('pricing.billingNotice') }}
       </p>

@@ -115,11 +115,11 @@ async function submitTryOn(): Promise<void> {
 </script>
 
 <template>
-  <main class="min-h-screen bg-neutral-950 text-white">
-    <div class="mx-auto min-h-screen max-w-md px-5 pb-14 pt-5 sm:px-6">
+  <main class="nusa-page min-h-screen text-white">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-3xl px-5 pb-14 pt-5 sm:px-6">
       <AppNav />
 
-      <header class="mt-10">
+      <header class="max-w-2xl">
         <p class="text-sm font-medium text-emerald-400">Fashion Try-On</p>
         <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">
           Prepare a product-model try-on concept.
@@ -130,9 +130,9 @@ async function submitTryOn(): Promise<void> {
         </p>
       </header>
 
-      <form class="mt-9 space-y-7" novalidate @submit.prevent="submitTryOn">
+      <form class="nusa-form-card mt-8 space-y-7 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitTryOn">
         <div>
-          <label for="try-on-title" class="text-sm font-semibold text-neutral-200">Project title</label>
+          <label for="try-on-title" class="nusa-label">Project title</label>
           <input
             id="try-on-title"
             v-model="form.title"
@@ -141,25 +141,25 @@ async function submitTryOn(): Promise<void> {
             maxlength="255"
             placeholder="e.g. Streetwear jacket try-on"
             :aria-invalid="Boolean(fieldErrors.title)"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500"
+            class="nusa-input mt-2"
           />
           <p v-if="fieldErrors.title" class="mt-2 text-sm text-rose-400">{{ fieldErrors.title }}</p>
         </div>
 
         <div>
-          <label for="product-name" class="text-sm font-semibold text-neutral-200">Product name</label>
+          <label for="product-name" class="nusa-label">Product name</label>
           <input
             id="product-name"
             v-model="form.product_name"
             name="product_name"
             type="text"
             placeholder="e.g. Everyday creator jacket"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500"
+            class="nusa-input mt-2"
           />
         </div>
 
         <div>
-          <label for="product-description" class="text-sm font-semibold text-neutral-200">Product description</label>
+          <label for="product-description" class="nusa-label">Product description</label>
           <textarea
             id="product-description"
             v-model="form.product_description"
@@ -167,25 +167,25 @@ async function submitTryOn(): Promise<void> {
             rows="4"
             placeholder="Describe the garment honestly. Avoid guaranteed fit claims."
             :aria-invalid="Boolean(fieldErrors.product_description)"
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500"
+            class="nusa-textarea mt-2"
           />
           <p v-if="fieldErrors.product_description" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.product_description }}
           </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label for="garment-type" class="text-sm font-semibold text-neutral-200">Garment</label>
-            <select id="garment-type" v-model="form.garment_type" name="garment_type" class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500">
+            <label for="garment-type" class="nusa-label">Garment</label>
+            <select id="garment-type" v-model="form.garment_type" name="garment_type" class="nusa-select mt-2">
               <option v-for="option in fashionGarmentTypeOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
               </option>
             </select>
           </div>
           <div>
-            <label for="language" class="text-sm font-semibold text-neutral-200">Language</label>
-            <select id="language" v-model="form.language" name="language" class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500">
+            <label for="language" class="nusa-label">Language</label>
+            <select id="language" v-model="form.language" name="language" class="nusa-select mt-2">
               <option v-for="option in campaignLanguageOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
               </option>
@@ -193,18 +193,18 @@ async function submitTryOn(): Promise<void> {
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label for="style-goal" class="text-sm font-semibold text-neutral-200">Style goal</label>
-            <select id="style-goal" v-model="form.style_goal" name="style_goal" class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500">
+            <label for="style-goal" class="nusa-label">Style goal</label>
+            <select id="style-goal" v-model="form.style_goal" name="style_goal" class="nusa-select mt-2">
               <option v-for="option in fashionStyleGoalOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
               </option>
             </select>
           </div>
           <div>
-            <label for="output-style" class="text-sm font-semibold text-neutral-200">Output style</label>
-            <select id="output-style" v-model="form.output_style" name="output_style" class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500">
+            <label for="output-style" class="nusa-label">Output style</label>
+            <select id="output-style" v-model="form.output_style" name="output_style" class="nusa-select mt-2">
               <option v-for="option in fashionOutputStyleOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
               </option>
@@ -213,8 +213,8 @@ async function submitTryOn(): Promise<void> {
         </div>
 
         <div>
-          <label for="platform" class="text-sm font-semibold text-neutral-200">Platform</label>
-          <select id="platform" v-model="form.platform" name="platform" class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none focus:border-emerald-500">
+          <label for="platform" class="nusa-label">Platform</label>
+          <select id="platform" v-model="form.platform" name="platform" class="nusa-select mt-2">
             <option v-for="option in fashionPlatformOptions" :key="option.value" :value="option.value">
               {{ option.label }}
             </option>
@@ -222,27 +222,27 @@ async function submitTryOn(): Promise<void> {
         </div>
 
         <div>
-          <label for="target-audience" class="text-sm font-semibold text-neutral-200">Target audience</label>
-          <textarea id="target-audience" v-model="form.target_audience" name="target_audience" rows="3" placeholder="Who is this try-on concept for?" class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500" />
+          <label for="target-audience" class="nusa-label">Target audience</label>
+          <textarea id="target-audience" v-model="form.target_audience" name="target_audience" rows="3" placeholder="Who is this try-on concept for?" class="nusa-textarea mt-2" />
         </div>
 
         <div>
-          <label for="background" class="text-sm font-semibold text-neutral-200">Background preference</label>
-          <textarea id="background" v-model="form.background_preference" name="background_preference" rows="3" placeholder="Clean studio, streetwear wall, ecommerce white, etc." class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500" />
+          <label for="background" class="nusa-label">Background preference</label>
+          <textarea id="background" v-model="form.background_preference" name="background_preference" rows="3" placeholder="Clean studio, streetwear wall, ecommerce white, etc." class="nusa-textarea mt-2" />
         </div>
 
         <div class="grid gap-5">
           <div>
-            <label for="model-notes" class="text-sm font-semibold text-neutral-200">Model notes</label>
-            <textarea id="model-notes" v-model="form.model_notes" name="model_notes" rows="3" placeholder="Pose, framing, body crop, or safety notes." class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500" />
+            <label for="model-notes" class="nusa-label">Model notes</label>
+            <textarea id="model-notes" v-model="form.model_notes" name="model_notes" rows="3" placeholder="Pose, framing, body crop, or safety notes." class="nusa-textarea mt-2" />
           </div>
           <div>
-            <label for="garment-notes" class="text-sm font-semibold text-neutral-200">Garment notes</label>
-            <textarea id="garment-notes" v-model="form.garment_notes" name="garment_notes" rows="3" placeholder="Details that should stay visible: collar, zipper, pattern, color." class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500" />
+            <label for="garment-notes" class="nusa-label">Garment notes</label>
+            <textarea id="garment-notes" v-model="form.garment_notes" name="garment_notes" rows="3" placeholder="Details that should stay visible: collar, zipper, pattern, color." class="nusa-textarea mt-2" />
           </div>
           <div>
-            <label for="notes" class="text-sm font-semibold text-neutral-200">Notes</label>
-            <textarea id="notes" v-model="form.notes" name="notes" rows="3" placeholder="Campaign constraints, words to avoid, or creator direction." class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500" />
+            <label for="notes" class="nusa-label">Notes</label>
+            <textarea id="notes" v-model="form.notes" name="notes" rows="3" placeholder="Campaign constraints, words to avoid, or creator direction." class="nusa-textarea mt-2" />
           </div>
         </div>
 
@@ -250,7 +250,7 @@ async function submitTryOn(): Promise<void> {
           {{ submitError }}
         </div>
 
-        <button type="submit" :disabled="isSubmitting" class="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400">
+        <button type="submit" :disabled="isSubmitting" class="nusa-button-primary nusa-focus-ring flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 font-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60">
           <span v-if="isSubmitting" class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950" aria-hidden="true" />
           {{ isSubmitting ? 'Creating try-on project...' : 'Create try-on project' }}
         </button>

@@ -72,11 +72,11 @@ async function submitBrief(): Promise<void> {
 </script>
 
 <template>
-  <main class="min-h-screen bg-neutral-950 text-white">
-    <div class="mx-auto min-h-screen max-w-md px-5 pb-14 pt-5 sm:px-6">
+  <main class="nusa-page min-h-screen text-white">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-3xl px-5 pb-14 pt-5 sm:px-6">
       <AppNav />
 
-      <header class="mt-10">
+      <header class="max-w-2xl">
         <p class="text-sm font-medium text-emerald-400">Product-to-Video Script Pack</p>
         <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">
           Plan a short-form product video before you film.
@@ -87,9 +87,9 @@ async function submitBrief(): Promise<void> {
         </p>
       </header>
 
-      <form class="mt-9 space-y-7" novalidate @submit.prevent="submitBrief">
+      <form class="nusa-form-card mt-8 space-y-7 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitBrief">
         <div>
-          <label for="product-name" class="text-sm font-semibold text-neutral-200">
+          <label for="product-name" class="nusa-label">
             Product name
           </label>
           <input
@@ -100,7 +100,7 @@ async function submitBrief(): Promise<void> {
             maxlength="255"
             placeholder="e.g. Portable key light"
             :aria-invalid="Boolean(fieldErrors.product_name)"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500"
+            class="nusa-input mt-2"
           />
           <p v-if="fieldErrors.product_name" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.product_name }}
@@ -108,7 +108,7 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="product-description" class="text-sm font-semibold text-neutral-200">
+          <label for="product-description" class="nusa-label">
             Product description
           </label>
           <textarea
@@ -118,7 +118,7 @@ async function submitBrief(): Promise<void> {
             rows="4"
             placeholder="What is the product and how is it used?"
             :aria-invalid="Boolean(fieldErrors.product_description)"
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none placeholder:text-neutral-600 focus:border-emerald-500"
+            class="nusa-textarea mt-2"
           />
           <p v-if="fieldErrors.product_description" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.product_description }}
@@ -126,7 +126,7 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="key-benefits" class="text-sm font-semibold text-neutral-200">
+          <label for="key-benefits" class="nusa-label">
             Key benefits
           </label>
           <textarea
@@ -136,7 +136,7 @@ async function submitBrief(): Promise<void> {
             rows="4"
             placeholder="List only benefits you can verify."
             :aria-invalid="Boolean(fieldErrors.key_benefits)"
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none placeholder:text-neutral-600 focus:border-emerald-500"
+            class="nusa-textarea mt-2"
           />
           <p v-if="fieldErrors.key_benefits" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.key_benefits }}
@@ -144,7 +144,7 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="target-audience" class="text-sm font-semibold text-neutral-200">
+          <label for="target-audience" class="nusa-label">
             Target audience
           </label>
           <textarea
@@ -154,23 +154,23 @@ async function submitBrief(): Promise<void> {
             rows="3"
             placeholder="Who should this video help?"
             :aria-invalid="Boolean(fieldErrors.target_audience)"
-            class="mt-2 w-full resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base leading-6 text-white outline-none placeholder:text-neutral-600 focus:border-emerald-500"
+            class="nusa-textarea mt-2"
           />
           <p v-if="fieldErrors.target_audience" class="mt-2 text-sm text-rose-400">
             {{ fieldErrors.target_audience }}
           </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label for="video-goal" class="text-sm font-semibold text-neutral-200"
+            <label for="video-goal" class="nusa-label"
               >Video goal</label
             >
             <select
               id="video-goal"
               v-model="form.video_goal"
               name="video_goal"
-              class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500"
+              class="nusa-select mt-2"
             >
               <option
                 v-for="option in productVideoGoalOptions"
@@ -182,12 +182,12 @@ async function submitBrief(): Promise<void> {
             </select>
           </div>
           <div>
-            <label for="duration" class="text-sm font-semibold text-neutral-200">Duration</label>
+            <label for="duration" class="nusa-label">Duration</label>
             <select
               id="duration"
               v-model="form.duration_seconds"
               name="duration_seconds"
-              class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500"
+              class="nusa-select mt-2"
             >
               <option
                 v-for="duration in productVideoDurationOptions"
@@ -201,14 +201,14 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="video-style" class="text-sm font-semibold text-neutral-200"
+          <label for="video-style" class="nusa-label"
             >Video style</label
           >
           <select
             id="video-style"
             v-model="form.video_style"
             name="video_style"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none focus:border-emerald-500"
+            class="nusa-select mt-2"
           >
             <option
               v-for="option in productVideoStyleOptions"
@@ -221,12 +221,12 @@ async function submitBrief(): Promise<void> {
         </div>
 
         <div>
-          <label for="language" class="text-sm font-semibold text-neutral-200">Language</label>
+          <label for="language" class="nusa-label">Language</label>
           <select
             id="language"
             v-model="form.language"
             name="language"
-            class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3.5 text-base text-white outline-none focus:border-emerald-500"
+            class="nusa-select mt-2"
           >
             <option
               v-for="option in campaignLanguageOptions"

@@ -206,6 +206,29 @@ describe('authentication route guard', () => {
     expect(router.currentRoute.value.name).toBe('admin')
   })
 
+  it('uses the default app title for the home route', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = null
+    auth.initialized = true
+
+    await router.push('/pricing')
+    await router.push('/')
+
+    expect(document.title).toBe('Nusa Creator Studio')
+  })
+
+  it('updates the document title from route metadata', async () => {
+    const auth = useAuthStore(pinia)
+    auth.user = user
+    auth.initialized = true
+
+    await router.push('/tools')
+    expect(document.title).toBe('Tools · Nusa Creator Studio')
+
+    await router.push('/projects/42')
+    expect(document.title).toBe('Project · Nusa Creator Studio')
+  })
+
   it('allows an initialized authenticated user into the dashboard', async () => {
     const auth = useAuthStore(pinia)
     auth.user = user

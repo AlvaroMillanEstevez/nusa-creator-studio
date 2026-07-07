@@ -68,12 +68,12 @@ async function submit(): Promise<void> {
     </section>
 
     <form
-      class="mt-9 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6"
+      class="nusa-form-card mt-9 rounded-[2rem] p-5 sm:p-6"
       novalidate
       @submit.prevent="submit"
     >
       <div>
-        <label for="register-name" class="text-sm font-semibold text-neutral-200">{{ t('auth.name') }}</label>
+        <label for="register-name" class="nusa-label">{{ t('auth.name') }}</label>
         <input
           id="register-name"
           v-model="form.name"
@@ -81,12 +81,12 @@ async function submit(): Promise<void> {
           type="text"
           autocomplete="name"
           :placeholder="t('auth.creatorName')"
-          class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          class="nusa-input mt-2"
         />
       </div>
 
       <div class="mt-6">
-        <label for="register-email" class="text-sm font-semibold text-neutral-200">{{ t('auth.email') }}</label>
+        <label for="register-email" class="nusa-label">{{ t('auth.email') }}</label>
         <input
           id="register-email"
           v-model="form.email"
@@ -94,12 +94,12 @@ async function submit(): Promise<void> {
           type="email"
           autocomplete="email"
           placeholder="creator@example.com"
-          class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          class="nusa-input mt-2"
         />
       </div>
 
       <div class="mt-6">
-        <label for="register-password" class="text-sm font-semibold text-neutral-200"
+        <label for="register-password" class="nusa-label"
           >{{ t('auth.password') }}</label
         >
         <input
@@ -108,13 +108,13 @@ async function submit(): Promise<void> {
           name="password"
           type="password"
           autocomplete="new-password"
-          class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          class="nusa-input mt-2"
         />
         <p class="mt-2 text-xs text-neutral-600">{{ t('auth.useAtLeast8') }}</p>
       </div>
 
       <div class="mt-6">
-        <label for="register-confirmation" class="text-sm font-semibold text-neutral-200">
+        <label for="register-confirmation" class="nusa-label">
           {{ t('auth.confirmPassword') }}
         </label>
         <input
@@ -123,7 +123,7 @@ async function submit(): Promise<void> {
           name="password_confirmation"
           type="password"
           autocomplete="new-password"
-          class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+          class="nusa-input mt-2"
         />
       </div>
 

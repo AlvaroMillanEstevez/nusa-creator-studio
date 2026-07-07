@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Nusa Creator Studio light app icon">
+  <defs>
+    <linearGradient id="nusa-light-n" x1="80" y1="66" x2="432" y2="446" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.42" stop-color="#8b5cf6"/>
+      <stop offset="0.74" stop-color="#fb7185"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="124" fill="#f8fafc"/>
+  <circle cx="392" cy="116" r="94" fill="#38bdf8" opacity="0.14"/>
+  <circle cx="120" cy="400" r="110" fill="#fb7185" opacity="0.12"/>
+  <path d="M118 382V130h75l126 160V130h75v252h-75L193 222v160h-75Z" fill="url(#nusa-light-n)"/>
+  <path d="M118 382V130h75l126 160V130h75v252h-75L193 222v160h-75Z" fill="none" stroke="#050817" stroke-opacity="0.18" stroke-width="12" stroke-linejoin="round"/>
+</svg>

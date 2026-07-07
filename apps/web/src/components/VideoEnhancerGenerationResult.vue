@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
   <div class="space-y-5">
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Improved caption
       </p>
@@ -17,7 +17,7 @@ defineProps<{
       </p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Subtitle plan
       </p>
@@ -35,13 +35,13 @@ defineProps<{
       </div>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Cut plan</p>
       <div class="mt-4 space-y-4">
         <article
           v-for="cut in result.cut_plan"
           :key="cut.timestamp"
-          class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4"
+          class="nusa-card-soft rounded-2xl p-4"
         >
           <span class="rounded-full bg-neutral-800 px-3 py-1 text-xs text-emerald-300">
             {{ cut.timestamp }}
@@ -54,7 +54,7 @@ defineProps<{
       </div>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         On-screen text
       </p>
@@ -69,14 +69,14 @@ defineProps<{
       </ul>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Posting text</p>
       <p class="mt-3 whitespace-pre-line text-sm leading-7 text-neutral-200">
         {{ result.posting_text }}
       </p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Hashtags</p>
       <div class="mt-4 flex flex-wrap gap-2">
         <span
@@ -94,7 +94,7 @@ defineProps<{
       <p class="mt-3 text-base font-semibold leading-7 text-white">{{ result.cta }}</p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Practical notes
       </p>

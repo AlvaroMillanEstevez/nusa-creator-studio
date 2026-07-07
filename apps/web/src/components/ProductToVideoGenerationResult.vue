@@ -6,7 +6,7 @@ defineProps<{ result: ProductToVideoResult }>()
 
 <template>
   <div class="space-y-5">
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Concept title
       </p>
@@ -17,13 +17,13 @@ defineProps<{ result: ProductToVideoResult }>()
       <p class="mt-2 text-sm leading-7 text-neutral-200">{{ result.video_angle }}</p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Storyboard</p>
       <div class="mt-4 space-y-4">
         <article
           v-for="scene in result.storyboard"
           :key="scene.scene_number"
-          class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4"
+          class="nusa-card-soft rounded-2xl p-4"
         >
           <div class="flex items-center justify-between gap-3">
             <p class="font-semibold">Scene {{ scene.scene_number }}</p>
@@ -51,13 +51,13 @@ defineProps<{ result: ProductToVideoResult }>()
     </section>
 
     <section class="grid gap-5">
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Shot list</p>
         <ul class="mt-4 space-y-2 text-sm text-neutral-300">
           <li v-for="shot in result.shot_list" :key="shot">&bull; {{ shot }}</li>
         </ul>
       </div>
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
           Asset checklist
         </p>
@@ -67,12 +67,12 @@ defineProps<{ result: ProductToVideoResult }>()
       </div>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Caption</p>
       <p class="mt-3 text-sm leading-7 text-neutral-200">{{ result.caption }}</p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Hashtags</p>
       <div class="mt-4 flex flex-wrap gap-2">
         <span
@@ -90,7 +90,7 @@ defineProps<{ result: ProductToVideoResult }>()
       <p class="mt-3 font-semibold leading-7">{{ result.cta }}</p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Editing notes
       </p>

@@ -5,7 +5,7 @@ import BrandWordmark from '@/components/BrandWordmark.vue'
 withDefaults(
   defineProps<{
     compact?: boolean
-    markSize?: 'sm' | 'md' | 'lg'
+    markSize?: 'sm' | 'md' | 'lg' | 'xl'
   }>(),
   {
     compact: false,
@@ -15,7 +15,7 @@ withDefaults(
 </script>
 
 <template>
-  <span data-testid="brand-logo" class="inline-flex min-w-0 items-center gap-3">
+  <span data-testid="brand-logo" class="inline-flex min-w-0 items-center gap-3.5">
     <BrandMark :size="markSize" />
     <BrandWordmark :compact="compact" />
   </span>

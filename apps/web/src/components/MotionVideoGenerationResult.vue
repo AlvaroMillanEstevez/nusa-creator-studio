@@ -7,7 +7,7 @@ defineProps<{ result: MotionVideoResult }>()
 
 <template>
   <div class="space-y-5">
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Motion video concept</p>
       <h2 class="mt-3 text-xl font-bold">{{ result.video_title }}</h2>
       <p class="mt-4 text-sm leading-7 text-neutral-200">{{ result.concept_summary }}</p>
@@ -21,15 +21,15 @@ defineProps<{ result: MotionVideoResult }>()
       </p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Selected references</p>
       <div class="mt-4 space-y-3">
         <article
           v-for="asset in result.selected_references.visual_references"
           :key="'visual-' + asset.id"
-          class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3"
+          class="nusa-card-soft rounded-2xl p-3"
         >
-          <p class="text-sm font-semibold text-neutral-200">{{ asset.original_name ?? 'Uploaded visual asset' }}</p>
+          <p class="nusa-label">{{ asset.original_name ?? 'Uploaded visual asset' }}</p>
           <p class="mt-1 text-xs text-neutral-500">
             {{ formatLabel(asset.type) }} · {{ formatLabel(asset.usage_role ?? undefined) }}
           </p>
@@ -37,9 +37,9 @@ defineProps<{ result: MotionVideoResult }>()
         <article
           v-for="asset in result.selected_references.audio_tracks"
           :key="'audio-' + asset.id"
-          class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3"
+          class="nusa-card-soft rounded-2xl p-3"
         >
-          <p class="text-sm font-semibold text-neutral-200">{{ asset.original_name ?? 'Uploaded audio asset' }}</p>
+          <p class="nusa-label">{{ asset.original_name ?? 'Uploaded audio asset' }}</p>
           <p class="mt-1 text-xs text-neutral-500">Audio track</p>
         </article>
         <p v-if="result.selected_references.visual_references.length === 0" class="text-sm text-neutral-500">
@@ -48,7 +48,7 @@ defineProps<{ result: MotionVideoResult }>()
       </div>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Scene plan</p>
       <div class="mt-4 space-y-4">
         <article v-for="scene in result.scene_plan" :key="scene.timestamp" class="rounded-2xl bg-neutral-950/70 p-4">
@@ -60,7 +60,7 @@ defineProps<{ result: MotionVideoResult }>()
       </div>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Motion prompt</p>
       <p class="mt-4 whitespace-pre-line rounded-2xl bg-neutral-950/70 p-4 text-sm leading-7 text-neutral-200">
         {{ result.motion_prompt }}
@@ -70,25 +70,25 @@ defineProps<{ result: MotionVideoResult }>()
     </section>
 
     <section class="grid gap-5">
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Camera motion notes</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
           <li v-for="item in result.camera_motion_notes" :key="item">&bull; {{ item }}</li>
         </ul>
       </div>
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Editing plan</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
           <li v-for="item in result.editing_plan" :key="item">&bull; {{ item }}</li>
         </ul>
       </div>
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Audio sync notes</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
           <li v-for="item in result.audio_sync_notes" :key="item">&bull; {{ item }}</li>
         </ul>
       </div>
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Platform usage</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
           <li v-for="item in result.platform_usage_notes" :key="item">&bull; {{ item }}</li>
@@ -97,13 +97,13 @@ defineProps<{ result: MotionVideoResult }>()
     </section>
 
     <section class="grid gap-5">
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Quality checklist</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
           <li v-for="item in result.quality_checklist" :key="item">✓ {{ item }}</li>
         </ul>
       </div>
-      <div class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Recommended asset improvements</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
           <li v-for="item in result.recommended_asset_improvements" :key="item">&bull; {{ item }}</li>
@@ -111,7 +111,7 @@ defineProps<{ result: MotionVideoResult }>()
       </div>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">API-ready payload preview</p>
       <pre class="mt-4 overflow-x-auto whitespace-pre-wrap rounded-2xl bg-neutral-950/70 p-4 text-xs leading-6 text-neutral-300">{{ JSON.stringify(result.api_ready_payload_preview, null, 2) }}</pre>
     </section>

@@ -38,6 +38,17 @@ describe('i18n locale foundation', () => {
     expect(resolveInitialLocale()).toBe('en')
   })
 
+  it('provides localized document title labels', () => {
+    setLocale('en', false)
+    expect(t('metadata.titles.tools')).toBe('Tools')
+
+    setLocale('es', false)
+    expect(t('metadata.titles.tools')).toBe('Herramientas')
+
+    setLocale('id', false)
+    expect(t('metadata.titles.pricing')).toBe('Harga')
+  })
+
   it('persists manual locale changes and falls back to English messages', () => {
     setLocale('es')
 

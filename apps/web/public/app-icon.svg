@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Nusa Creator Studio app icon">
+  <defs>
+    <radialGradient id="nusa-dark-glow" cx="30%" cy="18%" r="78%">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="0.45" stop-color="#111827"/>
+      <stop offset="1" stop-color="#050817"/>
+    </radialGradient>
+    <linearGradient id="nusa-dark-n" x1="80" y1="66" x2="432" y2="446" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.42" stop-color="#8b5cf6"/>
+      <stop offset="0.74" stop-color="#fb7185"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="124" fill="url(#nusa-dark-glow)"/>
+  <circle cx="398" cy="112" r="96" fill="#22d3ee" opacity="0.16"/>
+  <circle cx="118" cy="404" r="112" fill="#fb7185" opacity="0.14"/>
+  <path d="M118 382V130h75l126 160V130h75v252h-75L193 222v160h-75Z" fill="url(#nusa-dark-n)"/>
+  <path d="M118 382V130h75l126 160V130h75v252h-75L193 222v160h-75Z" fill="none" stroke="rgba(255,255,255,0.38)" stroke-width="12" stroke-linejoin="round"/>
+</svg>

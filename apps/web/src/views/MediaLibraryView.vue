@@ -179,7 +179,7 @@ onMounted(loadLibrary)
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="nusa-page-container mx-auto min-h-screen max-w-5xl px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-7xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
       <header class="pt-12">
@@ -223,14 +223,14 @@ onMounted(loadLibrary)
           <article
             v-for="card in summaryCards"
             :key="card.label"
-            class="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4"
+            class="nusa-card-soft rounded-2xl p-4"
           >
             <p class="text-2xl font-bold text-neutral-100">{{ card.value }}</p>
             <p class="mt-2 text-xs leading-5 text-neutral-500">{{ card.label }}</p>
           </article>
         </section>
 
-        <section class="mt-8 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6">
+        <section class="nusa-form-card mt-8 rounded-[2rem] p-5 sm:p-6">
           <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
@@ -340,7 +340,7 @@ onMounted(loadLibrary)
 
           <div
             v-if="assets.length === 0"
-            class="mt-5 rounded-3xl border border-dashed border-neutral-800 bg-neutral-900/40 p-6 text-center"
+            class="nusa-card-soft mt-5 rounded-[2rem] border-dashed p-6 text-center"
           >
             <p class="text-lg font-semibold">{{ t('media.emptyTitle') }}</p>
             <p class="mt-3 text-sm leading-6 text-neutral-400">
@@ -367,7 +367,7 @@ onMounted(loadLibrary)
               v-for="asset in assets"
               :key="asset.id"
               :data-testid="'media-library-asset-' + asset.id"
-              class="rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5"
+              class="nusa-card-soft rounded-[2rem] p-5"
             >
               <div class="flex items-start gap-4">
                 <div

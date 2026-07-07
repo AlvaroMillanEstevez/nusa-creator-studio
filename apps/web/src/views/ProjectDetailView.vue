@@ -364,7 +364,7 @@ onBeforeUnmount(stopPolling)
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="nusa-page-container mx-auto min-h-screen max-w-md px-5 pb-16 pt-6 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-7xl px-5 pb-16 pt-6 sm:px-6">
       <AppNav />
 
       <section v-if="isLoading" class="mt-16" aria-live="polite">
@@ -377,7 +377,7 @@ onBeforeUnmount(stopPolling)
 
       <section
         v-else-if="loadErrorStatus === 403 || loadErrorStatus === 404"
-        class="mt-12 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-6"
+        class="nusa-card-premium mt-12 rounded-[2rem] p-6"
       >
         <p class="text-sm font-medium text-amber-400">Project access</p>
         <h1 class="mt-3 text-3xl font-bold">Project unavailable</h1>

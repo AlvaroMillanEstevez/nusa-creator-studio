@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
   <div class="space-y-5">
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <h2 class="text-2xl font-bold">Hooks</h2>
       <ol class="mt-5 space-y-3">
         <li
@@ -22,7 +22,7 @@ defineProps<{
       </ol>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <div class="flex items-start justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
@@ -39,7 +39,7 @@ defineProps<{
         <article
           v-for="(scene, index) in result.script.scenes"
           :key="scene.timestamp"
-          class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4"
+          class="nusa-card-soft rounded-2xl p-4"
         >
           <div class="flex items-center justify-between gap-3">
             <p class="text-sm font-semibold text-white">Scene {{ index + 1 }}</p>
@@ -65,14 +65,14 @@ defineProps<{
       </div>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Caption</p>
       <p class="mt-3 whitespace-pre-line text-sm leading-7 text-neutral-200">
         {{ result.caption }}
       </p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Hashtags</p>
       <div class="mt-4 flex flex-wrap gap-2">
         <span
@@ -90,7 +90,7 @@ defineProps<{
       <p class="mt-3 text-base font-semibold leading-7 text-white">{{ result.cta }}</p>
     </section>
 
-    <section class="rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
         Practical notes
       </p>

@@ -126,7 +126,7 @@ const isQueued = computed(
 
   <div
     v-else-if="generation && generation.status === 'completed' && !hasSupportedResult"
-    class="mt-5 rounded-2xl border border-neutral-800 bg-neutral-900 p-4 text-sm text-neutral-400"
+    class="nusa-card-soft mt-5 rounded-2xl p-4 text-sm text-neutral-400"
   >
     This generation does not have a supported output payload to display.
   </div>
@@ -136,7 +136,7 @@ const isQueued = computed(
     class="mt-8"
     aria-live="polite"
   >
-    <section class="mb-5 rounded-3xl border border-neutral-800 bg-neutral-900/80 p-5">
+    <section class="nusa-card-premium mb-5 rounded-[2rem] p-5">
       <div class="flex items-start justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">

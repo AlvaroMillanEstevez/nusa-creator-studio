@@ -53,10 +53,10 @@ onMounted(() => {
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="nusa-page-container mx-auto min-h-screen max-w-md px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-6xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
-      <header class="pt-12">
+      <header class="mx-auto max-w-3xl pt-12 text-center lg:pt-16">
         <p class="text-sm font-medium text-emerald-400">{{ t('tools.kicker') }}</p>
         <h1 class="mt-3 text-4xl font-bold leading-tight">{{ t('tools.headline') }}</h1>
         <p class="mt-4 text-sm leading-6 text-neutral-400">
@@ -68,7 +68,7 @@ onMounted(() => {
         <div
           v-for="index in 3"
           :key="index"
-          class="h-52 animate-pulse rounded-3xl border border-neutral-800 bg-neutral-900/70"
+          class="h-52 animate-pulse rounded-[2rem] border border-slate-800/70 bg-slate-900/60"
         />
       </div>
 
@@ -100,13 +100,13 @@ onMounted(() => {
             <span class="text-xs text-neutral-500">{{ t('tools.live', { count: availableTools.length }) }}</span>
           </div>
 
-          <div v-if="availableTools.length" class="mt-5 space-y-4">
+          <div v-if="availableTools.length" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <template v-for="tool in availableTools" :key="tool.key">
               <RouterLink
                 v-if="tool.route"
                 :to="toolDestination(tool.route)"
                 :data-testid="'tool-card-' + tool.key"
-                class="group block rounded-3xl border border-emerald-900/70 bg-gradient-to-br from-neutral-900 via-neutral-900 to-emerald-950/50 p-5 transition hover:-translate-y-0.5 hover:border-emerald-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+                class="nusa-card-interactive nusa-focus-ring group block rounded-[2rem] p-5 transition"
               >
                 <div class="flex items-start justify-between gap-4">
                   <div>
@@ -116,7 +116,7 @@ onMounted(() => {
                     <h3 class="mt-2 text-xl font-semibold">{{ tool.title }}</h3>
                   </div>
                   <span
-                    class="shrink-0 rounded-full border border-emerald-800 bg-emerald-950 px-3 py-1 text-xs font-semibold text-emerald-300"
+                    class="nusa-badge shrink-0 rounded-full px-3 py-1 text-xs font-bold"
                   >
                     {{ tool.badge_label ?? t('common.available') }}
                   </span>
@@ -146,7 +146,7 @@ onMounted(() => {
                 v-else
                 :data-testid="'tool-card-' + tool.key"
                 aria-disabled="true"
-                class="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5 opacity-75"
+                class="nusa-card-soft rounded-[2rem] p-5 opacity-75"
               >
                 <h3 class="text-lg font-semibold">{{ tool.title }}</h3>
                 <p class="mt-3 text-sm leading-6 text-neutral-400">{{ tool.short_description }}</p>
@@ -168,13 +168,13 @@ onMounted(() => {
           </p>
           <h2 class="mt-1 text-xl font-semibold">{{ t('tools.temporarilyUnavailable') }}</h2>
 
-          <div class="mt-5 space-y-3">
+          <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <article
               v-for="tool in maintenanceTools"
               :key="tool.key"
               :data-testid="'tool-card-' + tool.key"
               aria-disabled="true"
-              class="rounded-3xl border border-amber-900/50 bg-amber-950/10 p-5"
+              class="nusa-card-soft rounded-[2rem] p-5"
             >
               <div class="flex items-start justify-between gap-4">
                 <div>
@@ -201,13 +201,13 @@ onMounted(() => {
           </p>
           <h2 class="mt-1 text-xl font-semibold">{{ t('tools.comingSoon') }}</h2>
 
-          <div class="mt-5 space-y-3">
+          <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <article
               v-for="tool in comingSoonTools"
               :key="tool.key"
               :data-testid="'tool-card-' + tool.key"
               aria-disabled="true"
-              class="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5 opacity-75"
+              class="nusa-card-soft rounded-[2rem] p-5 opacity-75"
             >
               <div class="flex items-start justify-between gap-4">
                 <div>
