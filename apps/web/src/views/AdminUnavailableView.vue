@@ -5,7 +5,7 @@ import AppNav from '@/components/AppNav.vue'
 </script>
 
 <template>
-  <main class="min-h-screen bg-neutral-950 text-white">
+  <main class="nusa-page min-h-screen text-white">
     <div class="mx-auto min-h-screen max-w-2xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 

@@ -19,19 +19,19 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-neutral-950 text-white">
-    <div class="mx-auto min-h-screen max-w-md px-5 pb-14 pt-5 sm:px-6">
+  <main class="nusa-page min-h-screen text-white">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-md px-5 pb-14 pt-5 sm:px-6">
       <AppNav />
 
       <section class="pt-14">
         <div
-          class="inline-flex items-center gap-2 rounded-full border border-emerald-900/70 bg-emerald-950/40 px-3 py-1.5 text-xs font-semibold text-emerald-300"
+          class="nusa-badge inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold"
         >
           <span class="size-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
           {{ t('home.badge') }}
         </div>
 
-        <h1 class="mt-6 text-4xl font-bold leading-[1.08] sm:text-5xl">
+        <h1 class="nusa-gradient-text mt-6 text-4xl font-black leading-[1.08] sm:text-5xl">
           {{ t('home.headline') }}
         </h1>
 
@@ -42,7 +42,7 @@ onMounted(async () => {
         <div class="mt-9 space-y-3">
           <RouterLink
             to="/tools"
-            class="flex min-h-14 items-center justify-between rounded-2xl bg-white px-5 py-4 font-semibold text-neutral-950 transition hover:bg-emerald-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+            class="nusa-button-primary nusa-focus-ring flex min-h-14 items-center justify-between rounded-2xl px-5 py-4 font-black transition hover:brightness-110"
           >
             <span>{{ t('home.openStudio') }}</span>
             <span aria-hidden="true">&rarr;</span>
@@ -50,14 +50,14 @@ onMounted(async () => {
 
           <RouterLink
             to="/dashboard"
-            class="flex min-h-14 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4 font-semibold text-neutral-200 transition hover:border-neutral-700 hover:bg-neutral-800"
+            class="nusa-button-secondary nusa-focus-ring flex min-h-14 items-center justify-center rounded-2xl px-5 py-4 font-bold transition hover:border-cyan-400/40 hover:text-white"
           >
             {{ t('home.viewDashboard') }}
           </RouterLink>
         </div>
       </section>
 
-      <section class="mt-12 border-y border-neutral-900 py-6">
+      <section class="nusa-card-soft mt-12 rounded-3xl p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
           {{ t('home.workflowKicker') }}
         </p>
@@ -85,7 +85,7 @@ onMounted(async () => {
         </ul>
       </section>
 
-      <div class="mt-5 rounded-2xl border border-neutral-900 bg-neutral-900/60 px-4 py-3">
+      <div class="nusa-card-soft mt-5 rounded-2xl px-4 py-3">
         <div class="flex items-center justify-between gap-3">
           <p class="text-xs text-neutral-500">{{ t('home.developmentStatus') }}</p>
           <p class="text-xs font-semibold text-neutral-300">{{ apiStatus }}</p>

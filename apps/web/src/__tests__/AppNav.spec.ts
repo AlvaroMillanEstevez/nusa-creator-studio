@@ -58,6 +58,16 @@ async function mountNav(user: AuthUser | null, initialized = true) {
 }
 
 describe('AppNav', () => {
+  it('renders the branded two-row app shell', async () => {
+    const { wrapper } = await mountNav(null)
+
+    expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="brand-logo"]').text()).toContain('Nusa Creator Studio')
+    expect(wrapper.find('[data-testid="app-shell-top-row"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="app-shell-nav-row"]').classes()).toContain('overflow-x-auto')
+    expect(wrapper.find('select').exists()).toBe(true)
+  })
+
   it('shows a neutral session state while authentication is being checked', async () => {
     const { wrapper } = await mountNav(null, false)
 
@@ -118,6 +128,23 @@ describe('AppNav', () => {
 
     expect(wrapper.get('summary').text()).toContain('Unlimited')
     expect(wrapper.text()).toContain('Unlimited internal access')
+    expect(wrapper.text()).not.toContain('0 credits')
+  })
+
+  it('does not show Free for internal users even when their plan label is stale', async () => {
+    const { wrapper } = await mountNav({
+      ...freeUser,
+      role: 'internal_creator',
+      role_label: 'Internal Creator',
+      plan_key: 'free',
+      plan_label: 'Free',
+      is_unlimited: false,
+      access_label: 'Unlimited internal access',
+      credits_balance: 0,
+    })
+
+    expect(wrapper.get('[data-testid="plan-badge"]').text()).toBe('Unlimited')
+    expect(wrapper.get('[data-testid="plan-badge"]').text()).not.toBe('Free')
     expect(wrapper.text()).not.toContain('0 credits')
   })
 })

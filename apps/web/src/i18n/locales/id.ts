@@ -2,6 +2,10 @@ import en from './en'
 
 export default {
   ...en,
+  brand: {
+    ...en.brand,
+    homeLabel: 'Beranda Nusa Creator Studio',
+  },
   app: {
     name: 'Nusa Creator Studio',
     category: 'Studio konten AI untuk kreator social commerce',
@@ -26,6 +30,10 @@ export default {
     checkingSession: 'Memeriksa sesi',
     hi: 'Hai, {name}',
     backToHome: 'Kembali ke Beranda',
+    appShell: 'Header aplikasi',
+    authActions: 'Aksi autentikasi',
+    openUserMenu: 'Buka menu pengguna',
+    freePlan: 'Gratis',
   },
   auth: {
     ...en.auth,

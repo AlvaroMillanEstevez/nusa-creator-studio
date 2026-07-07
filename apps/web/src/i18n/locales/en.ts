@@ -1,4 +1,7 @@
 export default {
+  brand: {
+    homeLabel: 'Nusa Creator Studio home',
+  },
   app: {
     name: 'Nusa Creator Studio',
     category: 'AI content studio for social commerce creators',
@@ -28,6 +31,10 @@ export default {
     backToHome: 'Back to Home',
     authNavigation: 'Authentication navigation',
     primaryNavigation: 'Primary navigation',
+    appShell: 'Application header',
+    authActions: 'Authentication actions',
+    openUserMenu: 'Open user menu',
+    freePlan: 'Free',
   },
   auth: {
     creatorAccount: 'Creator account',

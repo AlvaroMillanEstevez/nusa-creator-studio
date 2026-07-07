@@ -2,6 +2,10 @@ import en from './en'
 
 export default {
   ...en,
+  brand: {
+    ...en.brand,
+    homeLabel: 'Inicio de Nusa Creator Studio',
+  },
   app: {
     name: 'Nusa Creator Studio',
     category: 'Estudio de contenido con IA para creadores de social commerce',
@@ -26,6 +30,10 @@ export default {
     checkingSession: 'Comprobando sesión',
     hi: 'Hola, {name}',
     backToHome: 'Volver al inicio',
+    appShell: 'Encabezado de la aplicaci?n',
+    authActions: 'Acciones de autenticaci?n',
+    openUserMenu: 'Abrir men? de usuario',
+    freePlan: 'Gratis',
   },
   auth: {
     ...en.auth,

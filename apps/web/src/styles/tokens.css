@@ -1,0 +1,97 @@
+:root {
+  --nusa-bg: #050817;
+  --nusa-bg-elevated: #0a1024;
+  --nusa-surface: #10172f;
+  --nusa-surface-soft: rgba(17, 24, 49, 0.72);
+  --nusa-border: rgba(148, 163, 184, 0.16);
+  --nusa-border-strong: rgba(167, 139, 250, 0.42);
+  --nusa-text-primary: #f8fafc;
+  --nusa-text-secondary: #cbd5e1;
+  --nusa-text-muted: #7b8498;
+  --nusa-accent-purple: #8b5cf6;
+  --nusa-accent-blue: #38bdf8;
+  --nusa-accent-coral: #fb7185;
+  --nusa-accent-orange: #f59e0b;
+  --nusa-accent-mint: #34d399;
+  --nusa-success: #34d399;
+  --nusa-warning: #f59e0b;
+  --nusa-danger: #fb7185;
+  --nusa-info: #38bdf8;
+  --nusa-gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #38bdf8 35%, #fb7185 70%, #f59e0b 100%);
+  --nusa-gradient-ai: radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.28), transparent 28%),
+    radial-gradient(circle at 85% 10%, rgba(56, 189, 248, 0.22), transparent 30%),
+    radial-gradient(circle at 70% 80%, rgba(251, 113, 133, 0.16), transparent 34%);
+  --nusa-radius-sm: 0.875rem;
+  --nusa-radius: 1.25rem;
+  --nusa-radius-lg: 1.75rem;
+  --nusa-shadow-glow: 0 24px 80px rgba(56, 189, 248, 0.12), 0 18px 60px rgba(139, 92, 246, 0.1);
+  --nusa-focus-ring: 0 0 0 3px rgba(56, 189, 248, 0.28);
+}
+
+.nusa-page {
+  background:
+    var(--nusa-gradient-ai),
+    linear-gradient(180deg, #050817 0%, #070a16 46%, #090b12 100%);
+}
+
+.nusa-page-container {
+  position: relative;
+}
+
+.nusa-card {
+  border: 1px solid var(--nusa-border);
+  background:
+    linear-gradient(180deg, rgba(16, 23, 47, 0.86), rgba(8, 12, 27, 0.78)),
+    var(--nusa-surface-soft);
+  box-shadow: var(--nusa-shadow-glow);
+  backdrop-filter: blur(18px);
+}
+
+.nusa-card-soft {
+  border: 1px solid var(--nusa-border);
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(14px);
+}
+
+.nusa-gradient-text {
+  background: var(--nusa-gradient-primary);
+  background-clip: text;
+  color: transparent;
+}
+
+.nusa-badge {
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  background: rgba(6, 78, 59, 0.26);
+  color: #a7f3d0;
+}
+
+.nusa-button-primary {
+  background: var(--nusa-gradient-primary);
+  color: #050817;
+  box-shadow: 0 18px 46px rgba(139, 92, 246, 0.25);
+}
+
+.nusa-button-secondary {
+  border: 1px solid var(--nusa-border);
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--nusa-text-secondary);
+}
+
+.nusa-focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--nusa-focus-ring);
+}
+
+.nusa-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+.nusa-scrollbar::-webkit-scrollbar {
+  height: 0.35rem;
+}
+
+.nusa-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.42);
+}

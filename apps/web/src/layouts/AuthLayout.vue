@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
+import BrandLogo from '@/components/BrandLogo.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { t } from '@/i18n'
 
@@ -11,10 +12,12 @@ defineProps<{
 </script>
 
 <template>
-  <main class="min-h-screen bg-neutral-950 text-white">
-    <div class="mx-auto min-h-screen max-w-md px-5 pb-12 pt-6 sm:px-6">
-      <header class="flex items-center justify-between gap-4">
-        <RouterLink to="/" class="text-sm font-bold text-white"> {{ t('app.name') }} </RouterLink>
+  <main class="nusa-page min-h-screen text-white">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-md px-5 pb-12 pt-6 sm:px-6">
+      <header class="nusa-card flex items-center justify-between gap-4 rounded-[1.75rem] p-3">
+        <RouterLink to="/" :aria-label="t('brand.homeLabel')" class="nusa-focus-ring rounded-2xl">
+          <BrandLogo compact mark-size="sm" />
+        </RouterLink>
         <nav
           :aria-label="t('nav.authNavigation')"
           class="flex shrink-0 items-center gap-3 text-xs"
