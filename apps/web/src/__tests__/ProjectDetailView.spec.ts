@@ -10,6 +10,7 @@ import type {
   CampaignProject,
   CreatorProject,
   FashionTryOnProject,
+  MotionVideoProject,
   ProductToVideoProject,
   ProjectGenerationHistoryResponse,
   VideoEnhancerProject,
@@ -131,6 +132,34 @@ const fashionTryOnProject: FashionTryOnProject = {
   created_at: '2026-07-07T00:00:00.000000Z',
   updated_at: '2026-07-07T00:00:00.000000Z',
 }
+
+const motionVideoProject: MotionVideoProject = {
+  id: 123,
+  user_id: 1,
+  title: 'Portable blender motion video',
+  type: 'motion_ai_video',
+  status: 'draft',
+  input_payload: {
+    title: 'Portable blender motion video',
+    product_name: 'Portable smoothie blender',
+    product_description: 'A compact blender for quick creator product demos.',
+    video_goal: 'product_showcase',
+    motion_style: 'smooth_camera',
+    visual_style: 'ecommerce_clean',
+    duration_seconds: 15,
+    aspect_ratio: 'vertical_9_16',
+    target_audience: 'TikTok affiliate creators',
+    platform: 'tiktok',
+    language: 'english',
+    brand_notes: 'Keep it clean and premium.',
+    scene_notes: 'Open with a close product shot.',
+    audio_notes: 'Use upbeat pacing later.',
+    notes: 'No unrealistic claims.',
+  },
+  settings: { platform: 'tiktok', format: 'vertical_9_16' },
+  created_at: '2026-07-07T02:00:00.000000Z',
+  updated_at: '2026-07-07T02:00:00.000000Z',
+}
 const emptyHistory: ProjectGenerationHistoryResponse = {
   data: [],
   links: { first: null, last: null, prev: null, next: null },
@@ -154,6 +183,7 @@ async function mountProjectDetail(
       { path: '/video-enhancer/new', component: { template: '<div />' } },
       { path: '/voiceover/new', component: { template: '<div />' } },
       { path: '/fashion-try-on/new', component: { template: '<div />' } },
+      { path: '/motion-video/new', component: { template: '<div />' } },
       { path: '/projects/:id', component: ProjectDetailView },
     ],
   })
@@ -542,6 +572,224 @@ describe('ProjectDetailView', () => {
     expect(text).toContain('Vertical fashion try-on mockup.')
   })
 
+
+  it('renders a Motion AI Video brief, missing asset warning and restored result', async () => {
+    const history: ProjectGenerationHistoryResponse = {
+      ...emptyHistory,
+      data: [
+        {
+          id: 55,
+          user_id: 1,
+          project_id: 123,
+          job_type: 'generate_motion_ai_video',
+          provider: 'mock',
+          status: 'completed',
+          cost_usd: '0.0000',
+          credits_charged: 3,
+          input_payload: null,
+          output_payload: null,
+          error_message: null,
+          request_payload: null,
+          result_payload: {
+            video_title: 'Portable blender motion video',
+            concept_summary: 'Prepare a 15-second motion video concept.',
+            selected_references: {
+              visual_references: [
+                {
+                  id: 4,
+                  usage_role: 'product_image',
+                  type: 'image',
+                  original_name: 'product.jpg',
+                  mime_type: 'image/jpeg',
+                  size_bytes: 1200,
+                  metadata: null,
+                },
+              ],
+              audio_tracks: [],
+            },
+            generated_video: {
+              status: 'placeholder',
+              message: 'Real AI video generation will be connected later.',
+              provider: 'mock',
+            },
+            scene_plan: [
+              {
+                timestamp: '0-2s',
+                scene_goal: 'Fast hook',
+                visual_direction: 'Open on the product.',
+                motion_direction: 'Use smooth camera movement.',
+                on_screen_text: 'Meet the blender',
+              },
+            ],
+            motion_prompt: 'Vertical product video prompt.',
+            negative_prompt: 'exaggerated claims, warped product shape',
+            camera_motion_notes: ['Use smooth camera movement.'],
+            editing_plan: ['Start with a direct hook cut.'],
+            audio_sync_notes: ['No audio track is attached.'],
+            platform_usage_notes: ['Use this as a TikTok planning concept.'],
+            quality_checklist: ['Visual references are attached.'],
+            recommended_asset_improvements: ['Upload a clean product image.'],
+            compliance_notes: ['No real video is generated yet.'],
+            api_ready_payload_preview: {
+              provider: 'mock',
+              duration_seconds: 15,
+              aspect_ratio: 'vertical 9 16',
+              prompt: 'Vertical product video prompt.',
+              negative_prompt: 'exaggerated claims, warped product shape',
+              references: {
+                visual_references: [
+                  {
+                    id: 4,
+                    usage_role: 'product_image',
+                    type: 'image',
+                    original_name: 'product.jpg',
+                    mime_type: 'image/jpeg',
+                    size_bytes: 1200,
+                    metadata: null,
+                  },
+                ],
+                audio_tracks: [],
+              },
+            },
+          },
+          started_at: '2026-07-07T03:00:00.000000Z',
+          finished_at: '2026-07-07T03:00:00.000000Z',
+          created_at: '2026-07-07T03:00:00.000000Z',
+        },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
+    }
+
+    const wrapper = await mountProjectDetail(motionVideoProject, history)
+    const text = wrapper.text()
+
+    expect(text).toContain('Motion video brief')
+    expect(text).toContain('Portable smoothie blender')
+    expect(text).toContain(
+      'Add a product image, source video, background reference or brand reference before generating.',
+    )
+    expect(text).toContain('Generate another motion video mock')
+    expect(text).toContain('Motion video concept')
+    expect(text).toContain('Generated video placeholder')
+    expect(text).toContain('Vertical product video prompt.')
+    expect(text).toContain('API-ready payload preview')
+  })
+
+  it('shows a friendly failed state for failed Motion AI Video generations', async () => {
+    const history: ProjectGenerationHistoryResponse = {
+      ...emptyHistory,
+      data: [
+        {
+          id: 56,
+          user_id: 1,
+          project_id: 123,
+          job_type: 'generate_motion_ai_video',
+          provider: 'mock',
+          status: 'failed',
+          cost_usd: '0.0000',
+          credits_charged: 3,
+          input_payload: null,
+          output_payload: null,
+          error_message: 'Generation failed due to an internal processing error.',
+          request_payload: null,
+          result_payload: null,
+          started_at: '2026-07-07T03:00:00.000000Z',
+          finished_at: '2026-07-07T03:01:00.000000Z',
+          created_at: '2026-07-07T03:00:00.000000Z',
+        },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
+    }
+
+    const wrapper = await mountProjectDetail(motionVideoProject, history)
+
+    expect(wrapper.text()).toContain('Generation failed. Please try again.')
+    expect(wrapper.text()).toContain(
+      'Your charged credits are returned automatically for an internal processing failure.',
+    )
+  })
+
+  it('calls the Motion AI Video generation endpoint and shows missing-asset errors', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: { template: '<div />' } },
+        { path: '/tools', component: { template: '<div />' } },
+        { path: '/dashboard', component: { template: '<div />' } },
+        { path: '/login', component: { template: '<div />' } },
+        { path: '/register', component: { template: '<div />' } },
+        { path: '/projects/:id', component: ProjectDetailView },
+      ],
+    })
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      const method = init?.method ?? 'GET'
+
+      if (url.endsWith('/projects/123/generate-motion-video') && method === 'POST') {
+        return Response.json(
+          {
+            message:
+              'Please upload at least one product image, source video, background reference or brand reference before generating a motion video.',
+            code: 'missing_visual_reference_asset',
+          },
+          { status: 422 },
+        )
+      }
+
+      if (url.endsWith('/projects/123/generations')) return Response.json(emptyHistory)
+      if (url.endsWith('/projects/123/media-assets')) return Response.json({ data: [] })
+      if (url.endsWith('/tools')) {
+        return Response.json({
+          data: [
+            {
+              key: 'motion_ai_video',
+              title: 'Motion AI Video',
+              short_description: 'Create motion video concepts.',
+              long_description: null,
+              category: 'ai_video',
+              status: 'available',
+              route: '/motion-video/new',
+              credit_cost: 3,
+              credit_cost_label: '3 credits',
+              badge_label: 'New mock',
+              is_recommended: false,
+              sort_order: 60,
+            },
+          ],
+        })
+      }
+
+      return Response.json({ data: motionVideoProject })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('scrollTo', vi.fn<() => void>())
+
+    await router.push('/projects/123')
+    await router.isReady()
+
+    const wrapper = mount(ProjectDetailView, {
+      global: { plugins: [createPinia(), router] },
+    })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((candidate) =>
+      candidate.text().includes('Generate motion video mock'),
+    )
+
+    expect(button).toBeTruthy()
+    await button?.trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/projects/123/generate-motion-video'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(wrapper.text()).toContain(
+      'Please upload at least one product image, source video, background reference or brand reference before generating a motion video.',
+    )
+  })
   it('calls the Fashion Try-On generation endpoint and shows missing-asset errors', async () => {
     const router = createRouter({
       history: createMemoryHistory(),

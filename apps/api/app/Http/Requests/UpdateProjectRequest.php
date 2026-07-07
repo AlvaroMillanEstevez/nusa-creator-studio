@@ -21,6 +21,13 @@ class UpdateProjectRequest extends FormRequest
     private const FASHION_OUTPUT_STYLES = ['realistic', 'editorial', 'clean_ecommerce', 'lifestyle', 'premium_brand', 'streetwear'];
     private const FASHION_LANGUAGES = ['english', 'indonesian', 'spanish'];
     private const FASHION_PLATFORMS = ['tiktok', 'instagram_reels', 'shopee', 'tokopedia', 'lazada', 'generic_social', 'ecommerce'];
+    private const MOTION_VIDEO_GOALS = ['product_showcase', 'affiliate_ad', 'hook_video', 'product_demo', 'lifestyle_scene', 'before_after', 'brand_story'];
+    private const MOTION_STYLES = ['smooth_camera', 'dynamic_zoom', 'handheld_creator', 'cinematic_pan', 'product_spin', 'fast_cuts', 'slow_reveal'];
+    private const MOTION_VISUAL_STYLES = ['realistic', 'premium_brand', 'ecommerce_clean', 'lifestyle', 'streetwear', 'cinematic', 'ugc_creator'];
+    private const MOTION_DURATIONS = [5, 10, 15, 30];
+    private const MOTION_ASPECT_RATIOS = ['vertical_9_16', 'square_1_1', 'horizontal_16_9'];
+    private const MOTION_PLATFORMS = ['tiktok', 'instagram_reels', 'youtube_shorts', 'shopee', 'tokopedia', 'lazada', 'generic_social'];
+    private const MOTION_LANGUAGES = ['english', 'indonesian', 'spanish'];
 
     public function authorize(): bool
     {
@@ -49,6 +56,7 @@ class UpdateProjectRequest extends FormRequest
         return [
             fn (Validator $validator): null => $this->validateVoiceoverPayload($validator),
             fn (Validator $validator): null => $this->validateFashionTryOnPayload($validator),
+            fn (Validator $validator): null => $this->validateMotionVideoPayload($validator),
         ];
     }
 
@@ -144,6 +152,59 @@ class UpdateProjectRequest extends FormRequest
         $this->validateAllowedValue($validator, $payload, 'platform', self::FASHION_PLATFORMS);
     }
 
+
+    private function validateMotionVideoPayload(Validator $validator): null
+    {
+        /** @var Project|null $project */
+        $project = $this->route('project');
+        $targetType = $this->input('type', $project?->type);
+
+        if ($targetType !== 'motion_ai_video' || ! $this->has('input_payload')) {
+            return null;
+        }
+
+        $payload = $this->input('input_payload');
+
+        if ($payload === null) {
+            return null;
+        }
+
+        if (! is_array($payload)) {
+            $validator->errors()->add('input_payload', 'The input payload must be an object.');
+
+            return null;
+        }
+
+        $this->validateMotionVideoFields($validator, $payload);
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function validateMotionVideoFields(Validator $validator, array $payload): void
+    {
+        $this->validateStringFields($validator, $payload, [
+            'title' => 255,
+            'product_name' => 255,
+            'product_description' => 4000,
+            'target_audience' => 1000,
+            'brand_notes' => 2000,
+            'scene_notes' => 2000,
+            'audio_notes' => 2000,
+            'notes' => 2000,
+        ]);
+
+        $this->validateAllowedValue($validator, $payload, 'video_goal', self::MOTION_VIDEO_GOALS);
+        $this->validateAllowedValue($validator, $payload, 'motion_style', self::MOTION_STYLES);
+        $this->validateAllowedValue($validator, $payload, 'visual_style', self::MOTION_VISUAL_STYLES);
+        $this->validateAllowedValue($validator, $payload, 'aspect_ratio', self::MOTION_ASPECT_RATIOS);
+        $this->validateAllowedValue($validator, $payload, 'platform', self::MOTION_PLATFORMS);
+        $this->validateAllowedValue($validator, $payload, 'language', self::MOTION_LANGUAGES);
+
+        if (array_key_exists('duration_seconds', $payload) && ! in_array((int) $payload['duration_seconds'], self::MOTION_DURATIONS, true)) {
+            $validator->errors()->add('input_payload.duration_seconds', 'The selected duration is invalid.');
+        }
+    }
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<string, int>  $fields

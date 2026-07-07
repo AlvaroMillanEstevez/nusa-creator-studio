@@ -20,6 +20,7 @@ export interface AdminSummary {
     generate_product_video_script: number
     generate_ai_voiceover: number
     generate_fashion_try_on: number
+    generate_motion_ai_video: number
   }
 }
 

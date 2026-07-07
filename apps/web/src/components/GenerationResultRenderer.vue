@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import AiVoiceoverGenerationResult from '@/components/AiVoiceoverGenerationResult.vue'
 import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
 import FashionTryOnGenerationResult from '@/components/FashionTryOnGenerationResult.vue'
+import MotionVideoGenerationResult from '@/components/MotionVideoGenerationResult.vue'
 import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
 import {
@@ -11,6 +12,7 @@ import {
   isAiVoiceoverResult,
   isCampaignGenerationResult,
   isFashionTryOnResult,
+  isMotionVideoResult,
   isProductToVideoResult,
   isVideoEnhancerResult,
   type CreatorGeneration,
@@ -52,13 +54,19 @@ const fashionTryOnResult = computed(() =>
     ? result.value
     : null,
 )
+const motionVideoResult = computed(() =>
+  props.generation?.job_type === 'generate_motion_ai_video' && isMotionVideoResult(result.value)
+    ? result.value
+    : null,
+)
 const hasSupportedResult = computed(
   () =>
     campaignResult.value !== null ||
     videoEnhancerResult.value !== null ||
     productToVideoResult.value !== null ||
     aiVoiceoverResult.value !== null ||
-    fashionTryOnResult.value !== null,
+    fashionTryOnResult.value !== null ||
+    motionVideoResult.value !== null,
 )
 const isQueued = computed(
   () => props.generation?.status === 'queued' || props.generation?.status === 'pending',
@@ -150,5 +158,6 @@ const isQueued = computed(
     />
     <AiVoiceoverGenerationResult v-else-if="aiVoiceoverResult" :result="aiVoiceoverResult" />
     <FashionTryOnGenerationResult v-else-if="fashionTryOnResult" :result="fashionTryOnResult" />
+    <MotionVideoGenerationResult v-else-if="motionVideoResult" :result="motionVideoResult" />
   </div>
 </template>

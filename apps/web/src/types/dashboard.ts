@@ -22,6 +22,7 @@ export interface DashboardStats {
   video_enhancer_projects: number
   product_to_video_projects: number
   fashion_try_on_projects: number
+  motion_ai_video_projects: number
 }
 
 export interface DashboardRecentProject {

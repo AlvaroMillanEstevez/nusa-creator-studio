@@ -40,6 +40,7 @@ const populatedDashboard: DashboardSummary = {
     video_enhancer_projects: 1,
     product_to_video_projects: 1,
     fashion_try_on_projects: 0,
+    motion_ai_video_projects: 0,
   },
   recent_projects: [
     {
@@ -83,6 +84,8 @@ async function mountDashboard(summary: DashboardSummary) {
       { path: '/campaigns/new', component: { template: '<div />' } },
       { path: '/video-enhancer/new', component: { template: '<div />' } },
       { path: '/product-to-video/new', component: { template: '<div />' } },
+      { path: '/fashion-try-on/new', component: { template: '<div />' } },
+      { path: '/motion-video/new', component: { template: '<div />' } },
       { path: '/projects/:id', component: { template: '<div />' } },
     ],
   })
@@ -144,6 +147,8 @@ describe('DashboardView', () => {
     expect(wrapper.find('a[href="/campaigns/new"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/video-enhancer/new"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/product-to-video/new"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/fashion-try-on/new"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/motion-video/new"]').exists()).toBe(true)
     expect(wrapper.findAll('a[href="/projects/42"]')).toHaveLength(2)
   })
 
@@ -195,6 +200,7 @@ describe('DashboardView', () => {
         video_enhancer_projects: 0,
         product_to_video_projects: 0,
         fashion_try_on_projects: 0,
+    motion_ai_video_projects: 0,
       },
       recent_projects: [],
       recent_generations: [],

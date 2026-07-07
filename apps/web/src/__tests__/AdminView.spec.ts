@@ -27,6 +27,7 @@ const summary: AdminSummary = {
     product_to_video: 4,
     ai_voiceover: 0,
     fashion_try_on: 0,
+    motion_ai_video: 0,
   },
   generations_by_job_type: {
     generate_affiliate_campaign: 14,
@@ -34,6 +35,7 @@ const summary: AdminSummary = {
     generate_product_video_script: 6,
     generate_ai_voiceover: 0,
     generate_fashion_try_on: 0,
+    generate_motion_ai_video: 0,
   },
 }
 

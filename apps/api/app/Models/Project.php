@@ -19,6 +19,7 @@ class Project extends Model
         'product_to_video',
         'ai_voiceover',
         'fashion_try_on',
+        'motion_ai_video',
     ];
 
     public const STATUSES = [

@@ -18,6 +18,7 @@ const quickActions = [
   { label: 'Start video enhancer', to: '/video-enhancer/new', primary: false },
   { label: 'Start product-to-video script', to: '/product-to-video/new', primary: false },
   { label: 'Start fashion try-on', to: '/fashion-try-on/new', primary: false },
+  { label: 'Start motion video', to: '/motion-video/new', primary: false },
 ] as const
 
 const statCards = computed(() => {
@@ -38,6 +39,7 @@ const statCards = computed(() => {
     { label: 'Video enhancers', value: stats.video_enhancer_projects },
     { label: 'Product-to-video', value: stats.product_to_video_projects },
     { label: 'Fashion try-on', value: stats.fashion_try_on_projects },
+    { label: 'Motion AI video', value: stats.motion_ai_video_projects },
   ]
 })
 

@@ -14,6 +14,9 @@ import type {
   FashionTryOnFormPayload,
   FashionTryOnGenerationResponse,
   FashionTryOnProject,
+  MotionVideoFormPayload,
+  MotionVideoGenerationResponse,
+  MotionVideoProject,
   ProjectGenerationHistoryResponse,
   ProductToVideoForm,
   ProductToVideoGenerationResponse,
@@ -135,6 +138,28 @@ export async function createFashionTryOnProject(
 
   return response.data
 }
+
+export async function createMotionVideoProject(
+  brief: MotionVideoFormPayload,
+): Promise<MotionVideoProject> {
+  const payload: CreateProjectPayload<MotionVideoFormPayload, CreatorProjectSettings> = {
+    title: brief.title,
+    type: 'motion_ai_video',
+    status: 'draft',
+    input_payload: brief,
+    settings: {
+      platform: brief.platform,
+      format: 'vertical_9_16',
+    },
+  }
+
+  const response = await apiPost<
+    ResourceResponse<MotionVideoProject>,
+    CreateProjectPayload<MotionVideoFormPayload, CreatorProjectSettings>
+  >('/projects', payload)
+
+  return response.data
+}
 export async function getCampaignProject(projectId: number | string): Promise<CampaignProject> {
   const response = await apiGet<ResourceResponse<CampaignProject>>('/projects/' + projectId)
 
@@ -193,6 +218,15 @@ export function generateFashionTryOn(
 ): Promise<FashionTryOnGenerationResponse> {
   return apiPost<FashionTryOnGenerationResponse, Record<string, never>>(
     '/projects/' + projectId + '/generate-fashion-try-on',
+    {},
+  )
+}
+
+export function generateMotionVideo(
+  projectId: number | string,
+): Promise<MotionVideoGenerationResponse> {
+  return apiPost<MotionVideoGenerationResponse, Record<string, never>>(
+    '/projects/' + projectId + '/generate-motion-video',
     {},
   )
 }

@@ -102,6 +102,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/motion-video/new',
+      name: 'motion-video-create',
+      component: () => import('../views/MotionVideoCreateView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/campaigns/new',
       name: 'campaign-create',
       component: () => import('../views/NewCampaignView.vue'),

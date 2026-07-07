@@ -5,9 +5,11 @@ import {
   createAiVoiceoverProject,
   createCampaignProject,
   createFashionTryOnProject,
+  createMotionVideoProject,
   generateAiVoiceover,
   generateCampaignProject,
   generateFashionTryOn,
+  generateMotionVideo,
   generateVideoEnhancerProject,
   getProjectGenerations,
 } from '@/services/projects'
@@ -21,6 +23,9 @@ import type {
   FashionTryOnFormPayload,
   FashionTryOnGenerationResponse,
   FashionTryOnProject,
+  MotionVideoFormPayload,
+  MotionVideoGenerationResponse,
+  MotionVideoProject,
   ProjectGenerationHistoryResponse,
   VideoEnhancerGenerationResponse,
 } from '@/types/project'
@@ -494,6 +499,131 @@ describe('project service', () => {
     await expect(generateFashionTryOn(99)).resolves.toEqual(response)
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/projects/99/generate-fashion-try-on',
+      expect.objectContaining({ method: 'POST', body: '{}' }),
+    )
+  })
+
+  it('creates the Motion AI Video project with the backend project contract', async () => {
+    const brief: MotionVideoFormPayload = {
+      title: 'Portable blender motion video',
+      product_name: 'Portable smoothie blender',
+      product_description: 'A compact blender for quick creator product demos.',
+      video_goal: 'product_showcase',
+      motion_style: 'smooth_camera',
+      visual_style: 'ecommerce_clean',
+      duration_seconds: 15,
+      aspect_ratio: 'vertical_9_16',
+      target_audience: 'TikTok affiliate creators',
+      platform: 'tiktok',
+      language: 'english',
+      brand_notes: 'Keep it clean.',
+      scene_notes: 'Open on the product.',
+      audio_notes: 'Use upbeat pacing later.',
+      notes: null,
+    }
+
+    const project: MotionVideoProject = {
+      id: 123,
+      user_id: 1,
+      title: brief.title,
+      type: 'motion_ai_video',
+      status: 'draft',
+      input_payload: brief,
+      settings: { platform: 'tiktok', format: 'vertical_9_16' },
+      created_at: '2026-07-07T00:00:00.000000Z',
+      updated_at: '2026-07-07T00:00:00.000000Z',
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: project }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createMotionVideoProject(brief)).resolves.toEqual(project)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          title: brief.title,
+          type: 'motion_ai_video',
+          status: 'draft',
+          input_payload: brief,
+          settings: { platform: 'tiktok', format: 'vertical_9_16' },
+        }),
+      }),
+    )
+  })
+
+  it('posts to the mock Motion AI Video generation endpoint', async () => {
+    const response: MotionVideoGenerationResponse = {
+      data: {
+        id: 44,
+        user_id: 1,
+        project_id: 123,
+        job_type: 'generate_motion_ai_video',
+        provider: 'mock',
+        status: 'completed',
+        cost_usd: '0.0000',
+        credits_charged: 3,
+        input_payload: null,
+        output_payload: null,
+        error_message: null,
+        request_payload: null,
+        result_payload: {
+          video_title: 'Portable blender motion video',
+          concept_summary: 'Prepare a motion video concept.',
+          selected_references: {
+            visual_references: [],
+            audio_tracks: [],
+          },
+          generated_video: {
+            status: 'placeholder',
+            message: 'Real AI video generation will be connected later.',
+            provider: 'mock',
+          },
+          scene_plan: [],
+          motion_prompt: 'Motion prompt',
+          negative_prompt: 'exaggerated claims',
+          camera_motion_notes: ['Use smooth movement.'],
+          editing_plan: ['Cut quickly.'],
+          audio_sync_notes: ['No audio attached.'],
+          platform_usage_notes: ['Use for TikTok planning.'],
+          quality_checklist: ['References are attached.'],
+          recommended_asset_improvements: ['Upload a product image.'],
+          compliance_notes: ['No real video generated yet.'],
+          api_ready_payload_preview: {
+            provider: 'mock',
+            duration_seconds: 15,
+            aspect_ratio: 'vertical 9 16',
+            prompt: 'Motion prompt',
+            negative_prompt: 'exaggerated claims',
+            references: { visual_references: [], audio_tracks: [] },
+          },
+        },
+        started_at: '2026-07-07T00:00:00.000000Z',
+        finished_at: '2026-07-07T00:00:00.000000Z',
+        created_at: '2026-07-07T00:00:00.000000Z',
+      },
+      meta: { credits_balance: 17 },
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(generateMotionVideo(123)).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/123/generate-motion-video',
       expect.objectContaining({ method: 'POST', body: '{}' }),
     )
   })

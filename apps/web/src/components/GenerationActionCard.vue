@@ -41,6 +41,16 @@ const creditCostLabel = computed(() => {
 })
 
 const copy = computed<GenerationActionCopy>(() => {
+  if (props.projectType === 'motion_ai_video') {
+    return {
+      title: 'Generate motion video mock',
+      description:
+        'Create a deterministic motion video plan from project assets, including scene direction, prompts, editing notes and a provider-ready payload preview. No real video is generated yet.',
+      button: props.hasGeneration ? 'Generate another motion video mock' : 'Generate motion video mock',
+      loadingButton: 'Generating motion video mock...',
+    }
+  }
+
   if (props.projectType === 'fashion_try_on') {
     return {
       title: 'Generate try-on mock',

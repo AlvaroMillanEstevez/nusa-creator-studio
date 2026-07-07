@@ -9,6 +9,7 @@ import FashionTryOnBrief from '@/components/FashionTryOnBrief.vue'
 import GenerationActionCard from '@/components/GenerationActionCard.vue'
 import GenerationHistory from '@/components/GenerationHistory.vue'
 import GenerationResultRenderer from '@/components/GenerationResultRenderer.vue'
+import MotionVideoBrief from '@/components/MotionVideoBrief.vue'
 import ProductToVideoBrief from '@/components/ProductToVideoBrief.vue'
 import ProjectAssets from '@/components/ProjectAssets.vue'
 import VideoEnhancerBrief from '@/components/VideoEnhancerBrief.vue'
@@ -17,6 +18,7 @@ import {
   generateAiVoiceover,
   generateCampaignProject,
   generateFashionTryOn,
+  generateMotionVideo,
   generateProductVideoScript,
   generateVideoEnhancerProject,
   getCreatorProject,
@@ -60,11 +62,39 @@ const hasRequiredFashionTryOnAssets = computed(() => {
   return hasModelReference && hasGarmentReference
 })
 
+const hasRequiredMotionVideoAssets = computed(() => {
+  if (project.value?.type !== 'motion_ai_video') return true
+
+  const hasRoleTaggedVisualReference = projectAssets.value.some((asset) => {
+    if (asset.type === 'video') {
+      return asset.usage_role === 'source_video'
+    }
+
+    if (asset.type === 'image') {
+      return ['product_image', 'background_reference', 'brand_reference'].includes(
+        asset.usage_role ?? '',
+      )
+    }
+
+    return false
+  })
+
+  const hasFallbackVisualReference = projectAssets.value.some((asset) =>
+    ['image', 'video'].includes(asset.type),
+  )
+
+  return hasRoleTaggedVisualReference || hasFallbackVisualReference
+})
+
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollingGenerationId: number | null = null
 let pollCount = 0
 
 const emptyHistoryCopy = computed(() => {
+  if (project.value?.type === 'motion_ai_video') {
+    return 'No saved generations yet. Generate your first motion video mock to create a scene plan, motion prompt, editing notes and provider-ready payload preview.'
+  }
+
   if (project.value?.type === 'fashion_try_on') {
     return 'No saved generations yet. Generate your first try-on mock to create a concept plan, prompts, reference notes and a quality checklist.'
   }
@@ -271,7 +301,11 @@ async function generateContent(): Promise<void> {
     let generated: CreatorGeneration
     let creditsBalance: number
 
-    if (project.value.type === 'fashion_try_on') {
+    if (project.value.type === 'motion_ai_video') {
+      const response = await generateMotionVideo(projectId)
+      generated = response.data
+      creditsBalance = response.meta.credits_balance
+    } else if (project.value.type === 'fashion_try_on') {
       const response = await generateFashionTryOn(projectId)
       generated = response.data
       creditsBalance = response.meta.credits_balance
@@ -400,6 +434,7 @@ onBeforeUnmount(stopPolling)
         <ProductToVideoBrief v-else-if="project.type === 'product_to_video'" :project="project" />
         <AiVoiceoverBrief v-else-if="project.type === 'ai_voiceover'" :project="project" />
         <FashionTryOnBrief v-else-if="project.type === 'fashion_try_on'" :project="project" />
+        <MotionVideoBrief v-else-if="project.type === 'motion_ai_video'" :project="project" />
 
         <ProjectAssets
           :project-id="project.id"
@@ -412,6 +447,13 @@ onBeforeUnmount(stopPolling)
           class="mt-5 rounded-2xl border border-amber-900/60 bg-amber-950/30 p-4 text-sm leading-6 text-amber-100"
         >
           Add a model reference image and garment reference image before generating.
+        </div>
+
+        <div
+          v-if="project.type === 'motion_ai_video' && !hasRequiredMotionVideoAssets"
+          class="mt-5 rounded-2xl border border-amber-900/60 bg-amber-950/30 p-4 text-sm leading-6 text-amber-100"
+        >
+          Add a product image, source video, background reference or brand reference before generating.
         </div>
 
         <GenerationActionCard

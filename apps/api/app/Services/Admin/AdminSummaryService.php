@@ -58,6 +58,7 @@ class AdminSummaryService
                 'product_to_video' => (int) ($projectsByType['product_to_video'] ?? 0),
                 'ai_voiceover' => (int) ($projectsByType['ai_voiceover'] ?? 0),
                 'fashion_try_on' => (int) ($projectsByType['fashion_try_on'] ?? 0),
+                'motion_ai_video' => (int) ($projectsByType['motion_ai_video'] ?? 0),
             ],
             'generations_by_job_type' => [
                 'generate_affiliate_campaign' => (int) ($generationsByJobType['generate_affiliate_campaign'] ?? 0),
@@ -65,6 +66,7 @@ class AdminSummaryService
                 'generate_product_video_script' => (int) ($generationsByJobType['generate_product_video_script'] ?? 0),
                 'generate_ai_voiceover' => (int) ($generationsByJobType['generate_ai_voiceover'] ?? 0),
                 'generate_fashion_try_on' => (int) ($generationsByJobType['generate_fashion_try_on'] ?? 0),
+                'generate_motion_ai_video' => (int) ($generationsByJobType['generate_motion_ai_video'] ?? 0),
             ],
         ];
     }

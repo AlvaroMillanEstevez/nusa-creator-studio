@@ -24,7 +24,9 @@ const emit = defineEmits<{
 
 const assets = ref<MediaAsset[]>([])
 const selectedFile = ref<File | null>(null)
-const selectedUsageRole = ref<MediaAssetUsageRole>('model_reference')
+const selectedUsageRole = ref<MediaAssetUsageRole>(
+  props.projectType === 'motion_ai_video' ? 'product_image' : 'model_reference',
+)
 const fileInput = ref<HTMLInputElement | null>(null)
 const isLoading = ref(true)
 const isUploading = ref(false)
@@ -34,11 +36,26 @@ const uploadError = ref('')
 const success = ref('')
 
 const isFashionTryOnProject = computed(() => props.projectType === 'fashion_try_on')
-const roleOptions: Array<{ value: MediaAssetUsageRole; label: string }> = [
-  { value: 'model_reference', label: 'Model reference' },
-  { value: 'garment_reference', label: 'Garment reference' },
-  { value: 'general', label: 'General' },
-]
+const isMotionVideoProject = computed(() => props.projectType === 'motion_ai_video')
+const usesAssetRoles = computed(() => isFashionTryOnProject.value || isMotionVideoProject.value)
+const roleOptions = computed<Array<{ value: MediaAssetUsageRole; label: string }>>(() => {
+  if (isMotionVideoProject.value) {
+    return [
+      { value: 'product_image', label: 'Product image' },
+      { value: 'source_video', label: 'Source video' },
+      { value: 'background_reference', label: 'Background reference' },
+      { value: 'audio_track', label: 'Audio track' },
+      { value: 'brand_reference', label: 'Brand reference' },
+      { value: 'general', label: 'General' },
+    ]
+  }
+
+  return [
+    { value: 'model_reference', label: 'Model reference' },
+    { value: 'garment_reference', label: 'Garment reference' },
+    { value: 'general', label: 'General' },
+  ]
+})
 
 function setAssets(nextAssets: MediaAsset[]): void {
   assets.value = nextAssets
@@ -105,7 +122,7 @@ async function uploadSelectedFile(): Promise<void> {
     const asset = await uploadMediaAsset(
       selectedFile.value,
       props.projectId,
-      isFashionTryOnProject.value ? selectedUsageRole.value : undefined,
+      usesAssetRoles.value ? selectedUsageRole.value : undefined,
     )
     setAssets([asset, ...assets.value.filter((item) => item.id !== asset.id)])
     selectedFile.value = null
@@ -114,8 +131,8 @@ async function uploadSelectedFile(): Promise<void> {
       fileInput.value.value = ''
     }
 
-    success.value = isFashionTryOnProject.value
-      ? 'Asset uploaded with its try-on role.'
+    success.value = usesAssetRoles.value
+      ? 'Asset uploaded with its project role.'
       : 'Asset uploaded and saved to this project.'
   } catch (error: unknown) {
     uploadError.value = friendlyError(error, 'We could not upload this asset. Please try again.')
@@ -158,11 +175,20 @@ onMounted(() => {
         <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">Upload a garment/product reference image.</p>
       </div>
     </template>
+    <template v-else-if="isMotionVideoProject">
+      <p class="mt-3 text-sm leading-6 text-neutral-400">
+        Upload a product image, source video, background reference or brand reference before generating.
+      </p>
+      <div class="mt-4 grid gap-2 text-sm text-neutral-300">
+        <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">Upload a product image, source video, background reference or brand reference.</p>
+        <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">Optional: upload an audio track for future video sync.</p>
+      </div>
+    </template>
     <p v-else class="mt-3 text-sm leading-6 text-neutral-400">
       Upload product images, short clips, audio notes or documents.
     </p>
 
-    <div v-if="isFashionTryOnProject" class="mt-5">
+    <div v-if="usesAssetRoles" class="mt-5">
       <label for="asset-role" class="text-sm font-semibold text-neutral-200">Asset role</label>
       <select id="asset-role" v-model="selectedUsageRole" name="usage_role" class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none focus:border-emerald-500">
         <option v-for="option in roleOptions" :key="option.value" :value="option.value">
@@ -183,7 +209,7 @@ onMounted(() => {
     <div v-if="selectedFile" class="mt-3 rounded-xl bg-neutral-950/70 p-3 text-sm">
       <p class="truncate font-medium text-neutral-200">{{ selectedFile.name }}</p>
       <p class="mt-1 text-xs text-neutral-500">{{ (selectedFile.size / 1024 / 1024).toFixed(1) }} MB selected</p>
-      <p v-if="isFashionTryOnProject" class="mt-1 text-xs text-emerald-300">Role: {{ formatLabel(selectedUsageRole) }}</p>
+      <p v-if="usesAssetRoles" class="mt-1 text-xs text-emerald-300">Role: {{ formatLabel(selectedUsageRole) }}</p>
     </div>
 
     <div v-if="uploadError" role="alert" class="mt-4 rounded-xl border border-rose-900/60 bg-rose-950/30 p-3 text-sm leading-6 text-rose-200">

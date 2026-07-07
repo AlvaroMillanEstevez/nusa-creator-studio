@@ -86,15 +86,29 @@ const tools: CreatorTool[] = [
     key: 'motion_ai_video',
     title: 'Motion AI Video',
     short_description: 'Create motion-led concepts.',
-    long_description: null,
+    long_description: 'Turn visual references into a structured motion video plan.',
     category: 'ai_video',
+    status: 'available',
+    route: '/motion-video/new',
+    credit_cost: 3,
+    credit_cost_label: '3 credits',
+    badge_label: 'New mock',
+    is_recommended: false,
+    sort_order: 38,
+  },
+  {
+    key: 'future_tool',
+    title: 'Future studio tool',
+    short_description: 'Coming later.',
+    long_description: null,
+    category: 'future',
     status: 'coming_soon',
     route: null,
-    credit_cost: 1,
+    credit_cost: 0,
     credit_cost_label: 'Credit cost coming soon',
     badge_label: 'Coming soon',
     is_recommended: false,
-    sort_order: 38,
+    sort_order: 39,
   },
   {
     key: 'hidden_tool',
@@ -131,6 +145,7 @@ async function mountToolsView(
       { path: '/video-enhancer/new', component: placeholder },
       { path: '/voiceover/new', component: placeholder },
       { path: '/fashion-try-on/new', component: placeholder },
+      { path: '/motion-video/new', component: placeholder },
     ],
   })
 
@@ -214,6 +229,23 @@ describe('ToolsView', () => {
     expect(card.text()).toContain('Open tool')
   })
 
+  it('links available Motion AI Video to the protected creation route for authenticated users', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+    const card = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
+
+    expect(card.element.tagName).toBe('A')
+    expect(card.attributes('href')).toBe('/motion-video/new')
+    expect(card.text()).toContain('Motion AI Video')
+    expect(card.text()).toContain('Open tool')
+  })
+
   it('sends guests through login with the intended tool route', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
@@ -226,6 +258,7 @@ describe('ToolsView', () => {
     const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
     const voiceoverCard = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
     const fashionCard = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
+    const motionCard = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
 
     expect(card.attributes('href')).toBe('/login?redirect=/campaigns/new')
     expect(card.text()).toContain('Log in to use')
@@ -233,6 +266,8 @@ describe('ToolsView', () => {
     expect(voiceoverCard.text()).toContain('Log in to use')
     expect(fashionCard.attributes('href')).toBe('/login?redirect=/fashion-try-on/new')
     expect(fashionCard.text()).toContain('Log in to use')
+    expect(motionCard.attributes('href')).toBe('/login?redirect=/motion-video/new')
+    expect(motionCard.text()).toContain('Log in to use')
   })
 
   it('keeps coming-soon and maintenance tools non-clickable and hides disabled tools', async () => {
@@ -244,7 +279,7 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
-    const comingSoon = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
+    const comingSoon = wrapper.get('[data-testid="tool-card-future_tool"]')
     const maintenance = wrapper.get('[data-testid="tool-card-video_enhancer"]')
 
     expect(comingSoon.element.tagName).toBe('ARTICLE')

@@ -28,7 +28,7 @@ class CreatorToolSeeder extends Seeder
             return;
         }
 
-        if (! in_array($tool['key'], ['ai_voiceover', 'fashion_try_on'], true)) {
+        if (! in_array($tool['key'], ['ai_voiceover', 'fashion_try_on', 'motion_ai_video'], true)) {
             return;
         }
 
@@ -79,6 +79,10 @@ class CreatorToolSeeder extends Seeder
             'fashion_try_on' => [
                 'short_description' => ['Create creator-led try-on concepts for fashion products.'],
                 'long_description' => ['Plan fashion-focused visual concepts that present products in realistic creator scenarios.'],
+            ],
+            'motion_ai_video' => [
+                'short_description' => ['Create motion-led video concepts from product or creator assets.'],
+                'long_description' => ['Turn product and creator assets into concise vertical-video concepts with clear motion direction.'],
             ],
             default => ['short_description' => [], 'long_description' => []],
         };
@@ -168,14 +172,14 @@ class CreatorToolSeeder extends Seeder
             [
                 'key' => 'motion_ai_video',
                 'title' => 'Motion AI Video',
-                'short_description' => 'Create motion-led video concepts from product or creator assets.',
-                'long_description' => 'Turn product and creator assets into concise vertical-video concepts with clear motion direction.',
+                'short_description' => 'Prepare short-form motion video concepts from product, image, video or brand references.',
+                'long_description' => 'Turn project assets into a structured AI video generation plan for vertical creator content.',
                 'category' => 'ai_video',
-                'status' => 'coming_soon',
-                'route' => null,
-                'credit_cost' => 1,
-                'credit_cost_label' => 'Credit cost coming soon',
-                'badge_label' => 'Coming soon',
+                'status' => 'available',
+                'route' => '/motion-video/new',
+                'credit_cost' => 3,
+                'credit_cost_label' => '3 credits',
+                'badge_label' => 'New mock',
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 60,

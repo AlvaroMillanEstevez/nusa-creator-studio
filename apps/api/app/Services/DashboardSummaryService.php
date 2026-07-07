@@ -19,6 +19,7 @@ class DashboardSummaryService
             ->selectRaw("SUM(CASE WHEN type = 'video_enhancer' THEN 1 ELSE 0 END) AS video_enhancer_projects")
             ->selectRaw("SUM(CASE WHEN type = 'product_to_video' THEN 1 ELSE 0 END) AS product_to_video_projects")
             ->selectRaw("SUM(CASE WHEN type = 'fashion_try_on' THEN 1 ELSE 0 END) AS fashion_try_on_projects")
+            ->selectRaw("SUM(CASE WHEN type = 'motion_ai_video' THEN 1 ELSE 0 END) AS motion_ai_video_projects")
             ->firstOrFail();
 
         $generationStats = $user->generations()
@@ -113,6 +114,7 @@ class DashboardSummaryService
                 'video_enhancer_projects' => (int) $projectStats->video_enhancer_projects,
                 'product_to_video_projects' => (int) $projectStats->product_to_video_projects,
                 'fashion_try_on_projects' => (int) $projectStats->fashion_try_on_projects,
+                'motion_ai_video_projects' => (int) $projectStats->motion_ai_video_projects,
             ],
             'recent_projects' => $recentProjects,
             'recent_generations' => $recentGenerations,

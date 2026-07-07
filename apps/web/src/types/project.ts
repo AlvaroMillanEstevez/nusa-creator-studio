@@ -110,6 +110,53 @@ export const fashionPlatformOptions = [
   { value: 'generic_social', label: 'Generic social' },
   { value: 'ecommerce', label: 'Ecommerce' },
 ] as const
+export const motionVideoGoalOptions = [
+  { value: 'product_showcase', label: 'Product showcase' },
+  { value: 'affiliate_ad', label: 'Affiliate ad' },
+  { value: 'hook_video', label: 'Hook video' },
+  { value: 'product_demo', label: 'Product demo' },
+  { value: 'lifestyle_scene', label: 'Lifestyle scene' },
+  { value: 'before_after', label: 'Before / after' },
+  { value: 'brand_story', label: 'Brand story' },
+] as const
+
+export const motionStyleOptions = [
+  { value: 'smooth_camera', label: 'Smooth camera' },
+  { value: 'dynamic_zoom', label: 'Dynamic zoom' },
+  { value: 'handheld_creator', label: 'Handheld creator' },
+  { value: 'cinematic_pan', label: 'Cinematic pan' },
+  { value: 'product_spin', label: 'Product spin' },
+  { value: 'fast_cuts', label: 'Fast cuts' },
+  { value: 'slow_reveal', label: 'Slow reveal' },
+] as const
+
+export const motionVisualStyleOptions = [
+  { value: 'realistic', label: 'Realistic' },
+  { value: 'premium_brand', label: 'Premium brand' },
+  { value: 'ecommerce_clean', label: 'Ecommerce clean' },
+  { value: 'lifestyle', label: 'Lifestyle' },
+  { value: 'streetwear', label: 'Streetwear' },
+  { value: 'cinematic', label: 'Cinematic' },
+  { value: 'ugc_creator', label: 'UGC creator' },
+] as const
+
+export const motionDurationOptions = [5, 10, 15, 30] as const
+
+export const motionAspectRatioOptions = [
+  { value: 'vertical_9_16', label: 'Vertical 9:16' },
+  { value: 'square_1_1', label: 'Square 1:1' },
+  { value: 'horizontal_16_9', label: 'Horizontal 16:9' },
+] as const
+
+export const motionPlatformOptions = [
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'instagram_reels', label: 'Instagram Reels' },
+  { value: 'youtube_shorts', label: 'YouTube Shorts' },
+  { value: 'shopee', label: 'Shopee' },
+  { value: 'tokopedia', label: 'Tokopedia' },
+  { value: 'lazada', label: 'Lazada' },
+  { value: 'generic_social', label: 'Generic social' },
+] as const
 
 export type CampaignLanguage = (typeof campaignLanguageOptions)[number]['value']
 export type CampaignTone = (typeof campaignToneOptions)[number]['value']
@@ -126,7 +173,13 @@ export type FashionGarmentType = (typeof fashionGarmentTypeOptions)[number]['val
 export type FashionStyleGoal = (typeof fashionStyleGoalOptions)[number]['value']
 export type FashionOutputStyle = (typeof fashionOutputStyleOptions)[number]['value']
 export type FashionPlatform = (typeof fashionPlatformOptions)[number]['value']
-export type CreatorPlatform = VoiceoverPlatform | FashionPlatform
+export type MotionVideoGoal = (typeof motionVideoGoalOptions)[number]['value']
+export type MotionStyle = (typeof motionStyleOptions)[number]['value']
+export type MotionVisualStyle = (typeof motionVisualStyleOptions)[number]['value']
+export type MotionDuration = (typeof motionDurationOptions)[number]
+export type MotionAspectRatio = (typeof motionAspectRatioOptions)[number]['value']
+export type MotionPlatform = (typeof motionPlatformOptions)[number]['value']
+export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionPlatform
 
 export type ProjectType =
   | 'affiliate_campaign'
@@ -134,6 +187,7 @@ export type ProjectType =
   | 'product_to_video'
   | 'ai_voiceover'
   | 'fashion_try_on'
+  | 'motion_ai_video'
 export type ProjectStatus = 'draft' | 'pending' | 'processing' | 'completed' | 'failed'
 export type GenerationStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'pending'
 
@@ -197,6 +251,24 @@ export interface FashionTryOnFormPayload {
   notes: string | null
 }
 
+
+export interface MotionVideoFormPayload {
+  title: string
+  product_name: string | null
+  product_description: string | null
+  video_goal: MotionVideoGoal
+  motion_style: MotionStyle
+  visual_style: MotionVisualStyle
+  duration_seconds: MotionDuration
+  aspect_ratio: MotionAspectRatio
+  target_audience: string | null
+  platform: MotionPlatform
+  language: CampaignLanguage
+  brand_notes: string | null
+  scene_notes: string | null
+  audio_notes: string | null
+  notes: string | null
+}
 export interface CreatorProjectSettings {
   platform: CreatorPlatform
   format: 'vertical_9_16'
@@ -237,12 +309,14 @@ export type VideoEnhancerProject = TypedProject<'video_enhancer', VideoEnhancerF
 export type ProductToVideoProject = TypedProject<'product_to_video', ProductToVideoForm>
 export type AiVoiceoverProject = TypedProject<'ai_voiceover', AiVoiceoverFormPayload>
 export type FashionTryOnProject = TypedProject<'fashion_try_on', FashionTryOnFormPayload>
+export type MotionVideoProject = TypedProject<'motion_ai_video', MotionVideoFormPayload>
 export type CreatorProject =
   | CampaignProject
   | VideoEnhancerProject
   | ProductToVideoProject
   | AiVoiceoverProject
   | FashionTryOnProject
+  | MotionVideoProject
 
 export interface CampaignScriptScene {
   timestamp: string
@@ -355,12 +429,69 @@ export interface FashionTryOnResult {
   compliance_notes: string[]
 }
 
+
+export interface MotionVideoReference {
+  id: number
+  usage_role: string | null
+  type: string
+  original_name: string | null
+  mime_type: string | null
+  size_bytes: number | null
+  metadata: Record<string, unknown> | null
+}
+
+export interface MotionVideoSelectedReferences {
+  visual_references: MotionVideoReference[]
+  audio_tracks: MotionVideoReference[]
+}
+
+export interface MotionVideoGeneratedVideo {
+  status: 'placeholder'
+  message: string
+  provider: 'mock'
+}
+
+export interface MotionVideoScene {
+  timestamp: string
+  scene_goal: string
+  visual_direction: string
+  motion_direction: string
+  on_screen_text: string
+}
+
+export interface MotionVideoApiReadyPayloadPreview {
+  provider: 'mock'
+  duration_seconds: number
+  aspect_ratio: string
+  prompt: string
+  negative_prompt: string
+  references: MotionVideoSelectedReferences
+}
+
+export interface MotionVideoResult {
+  video_title: string
+  concept_summary: string
+  selected_references: MotionVideoSelectedReferences
+  generated_video: MotionVideoGeneratedVideo
+  scene_plan: MotionVideoScene[]
+  motion_prompt: string
+  negative_prompt: string
+  camera_motion_notes: string[]
+  editing_plan: string[]
+  audio_sync_notes: string[]
+  platform_usage_notes: string[]
+  quality_checklist: string[]
+  recommended_asset_improvements: string[]
+  compliance_notes: string[]
+  api_ready_payload_preview: MotionVideoApiReadyPayloadPreview
+}
 export type GenerationResult =
   | CampaignGenerationResult
   | VideoEnhancerResult
   | ProductToVideoResult
   | AiVoiceoverResult
   | FashionTryOnResult
+  | MotionVideoResult
 
 export interface Generation<TResult = GenerationResult> {
   id: number
@@ -399,6 +530,7 @@ export type VideoEnhancerGenerationResponse = GenerationResponse<VideoEnhancerRe
 export type ProductToVideoGenerationResponse = GenerationResponse<ProductToVideoResult>
 export type AiVoiceoverGenerationResponse = GenerationResponse<AiVoiceoverResult>
 export type FashionTryOnGenerationResponse = GenerationResponse<FashionTryOnResult>
+export type MotionVideoGenerationResponse = GenerationResponse<MotionVideoResult>
 
 export interface PaginatedResponse<T> {
   data: T[]
@@ -436,4 +568,10 @@ export function isFashionTryOnResult(
   result: GenerationResult | null,
 ): result is FashionTryOnResult {
   return result !== null && 'try_on_title' in result && 'generated_image' in result
+}
+
+export function isMotionVideoResult(
+  result: GenerationResult | null,
+): result is MotionVideoResult {
+  return result !== null && 'video_title' in result && 'generated_video' in result
 }
