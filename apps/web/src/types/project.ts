@@ -39,14 +39,50 @@ export const productVideoStyleOptions = [
 
 export const productVideoDurationOptions = [15, 30, 45] as const
 
+export const voiceoverStyleOptions = [
+  { value: 'natural_creator', label: 'Natural creator' },
+  { value: 'energetic_seller', label: 'Energetic seller' },
+  { value: 'calm_explainer', label: 'Calm explainer' },
+  { value: 'premium_brand', label: 'Premium brand' },
+  { value: 'friendly_storyteller', label: 'Friendly storyteller' },
+] as const
+
+export const voiceoverToneOptions = [
+  { value: 'natural', label: 'Natural' },
+  { value: 'persuasive', label: 'Persuasive' },
+  { value: 'playful', label: 'Playful' },
+  { value: 'professional', label: 'Professional' },
+  { value: 'emotional', label: 'Emotional' },
+] as const
+
+export const voiceoverPaceOptions = [
+  { value: 'slow', label: 'Slow' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'fast', label: 'Fast' },
+] as const
+
+export const voiceoverDurationOptions = [15, 30, 45, 60] as const
+
+export const voiceoverPlatformOptions = [
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'instagram_reels', label: 'Instagram Reels' },
+  { value: 'youtube_shorts', label: 'YouTube Shorts' },
+  { value: 'generic_vertical_video', label: 'Generic vertical video' },
+] as const
+
 export type CampaignLanguage = (typeof campaignLanguageOptions)[number]['value']
 export type CampaignTone = (typeof campaignToneOptions)[number]['value']
 export type VideoEnhancerStyle = (typeof videoEnhancerStyleOptions)[number]['value']
 export type ProductVideoGoal = (typeof productVideoGoalOptions)[number]['value']
 export type ProductVideoStyle = (typeof productVideoStyleOptions)[number]['value']
 export type ProductVideoDuration = (typeof productVideoDurationOptions)[number]
+export type VoiceoverStyle = (typeof voiceoverStyleOptions)[number]['value']
+export type VoiceoverTone = (typeof voiceoverToneOptions)[number]['value']
+export type VoiceoverPace = (typeof voiceoverPaceOptions)[number]['value']
+export type VoiceoverDuration = (typeof voiceoverDurationOptions)[number]
+export type VoiceoverPlatform = (typeof voiceoverPlatformOptions)[number]['value']
 
-export type ProjectType = 'affiliate_campaign' | 'video_enhancer' | 'product_to_video'
+export type ProjectType = 'affiliate_campaign' | 'video_enhancer' | 'product_to_video' | 'ai_voiceover'
 export type ProjectStatus = 'draft' | 'pending' | 'processing' | 'completed' | 'failed'
 export type GenerationStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'pending'
 
@@ -79,8 +115,23 @@ export interface ProductToVideoForm {
   language: CampaignLanguage
 }
 
+export interface AiVoiceoverFormPayload {
+  title: string
+  source_text: string | null
+  product_name: string | null
+  product_description: string | null
+  target_audience: string | null
+  language: CampaignLanguage
+  voice_style: VoiceoverStyle
+  tone: VoiceoverTone
+  pace: VoiceoverPace
+  duration_seconds: VoiceoverDuration
+  platform: VoiceoverPlatform
+  notes: string | null
+}
+
 export interface CreatorProjectSettings {
-  platform: 'tiktok'
+  platform: VoiceoverPlatform
   format: 'vertical_9_16'
 }
 
@@ -117,7 +168,12 @@ type TypedProject<TType extends ProjectType, TInputPayload> = Omit<
 export type CampaignProject = TypedProject<'affiliate_campaign', CampaignFormPayload>
 export type VideoEnhancerProject = TypedProject<'video_enhancer', VideoEnhancerForm>
 export type ProductToVideoProject = TypedProject<'product_to_video', ProductToVideoForm>
-export type CreatorProject = CampaignProject | VideoEnhancerProject | ProductToVideoProject
+export type AiVoiceoverProject = TypedProject<'ai_voiceover', AiVoiceoverFormPayload>
+export type CreatorProject =
+  | CampaignProject
+  | VideoEnhancerProject
+  | ProductToVideoProject
+  | AiVoiceoverProject
 
 export interface CampaignScriptScene {
   timestamp: string
@@ -178,7 +234,39 @@ export interface ProductToVideoResult {
   compliance_notes: string[]
 }
 
-export type GenerationResult = CampaignGenerationResult | VideoEnhancerResult | ProductToVideoResult
+export interface AiVoiceoverSceneTiming {
+  timestamp: string
+  section: string
+  narration_focus: string
+  delivery_note: string
+}
+
+export interface AiVoiceoverMockAudio {
+  status: 'placeholder'
+  message: string
+  provider: 'mock'
+}
+
+export interface AiVoiceoverResult {
+  voiceover_title: string
+  narration_script: string
+  scene_timing: AiVoiceoverSceneTiming[]
+  voice_direction: string
+  pronunciation_notes: string[]
+  pacing_notes: string[]
+  platform_notes: string[]
+  estimated_duration_seconds: number
+  suggested_audio_format: string
+  usage_notes: string[]
+  mock_audio: AiVoiceoverMockAudio
+  compliance_notes: string[]
+}
+
+export type GenerationResult =
+  | CampaignGenerationResult
+  | VideoEnhancerResult
+  | ProductToVideoResult
+  | AiVoiceoverResult
 
 export interface Generation<TResult = GenerationResult> {
   id: number
@@ -215,6 +303,7 @@ export interface GenerationResponse<TResult extends GenerationResult> {
 export type CampaignGenerationResponse = GenerationResponse<CampaignGenerationResult>
 export type VideoEnhancerGenerationResponse = GenerationResponse<VideoEnhancerResult>
 export type ProductToVideoGenerationResponse = GenerationResponse<ProductToVideoResult>
+export type AiVoiceoverGenerationResponse = GenerationResponse<AiVoiceoverResult>
 
 export interface PaginatedResponse<T> {
   data: T[]
@@ -240,4 +329,10 @@ export function isProductToVideoResult(
   result: GenerationResult | null,
 ): result is ProductToVideoResult {
   return result !== null && 'concept_title' in result
+}
+
+export function isAiVoiceoverResult(
+  result: GenerationResult | null,
+): result is AiVoiceoverResult {
+  return result !== null && 'voiceover_title' in result && 'mock_audio' in result
 }

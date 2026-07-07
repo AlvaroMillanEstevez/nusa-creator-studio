@@ -56,11 +56,13 @@ class AdminSummaryService
                 'affiliate_campaign' => (int) ($projectsByType['affiliate_campaign'] ?? 0),
                 'video_enhancer' => (int) ($projectsByType['video_enhancer'] ?? 0),
                 'product_to_video' => (int) ($projectsByType['product_to_video'] ?? 0),
+                'ai_voiceover' => (int) ($projectsByType['ai_voiceover'] ?? 0),
             ],
             'generations_by_job_type' => [
                 'generate_affiliate_campaign' => (int) ($generationsByJobType['generate_affiliate_campaign'] ?? 0),
                 'generate_video_enhancer' => (int) ($generationsByJobType['generate_video_enhancer'] ?? 0),
                 'generate_product_video_script' => (int) ($generationsByJobType['generate_product_video_script'] ?? 0),
+                'generate_ai_voiceover' => (int) ($generationsByJobType['generate_ai_voiceover'] ?? 0),
             ],
         ];
     }

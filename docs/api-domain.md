@@ -15,7 +15,7 @@ A user has many projects, media assets, generations, and credit transactions. A 
 
 The project links on media assets and generations, and the generation link on credit transactions, are optional and become null if the parent is deleted. User-owned records are deleted when their user is deleted.
 
-JSON columns are cast to PHP arrays by the Eloquent models. Generation cost uses decimal(12, 4) and is returned by Eloquent as a four-decimal string to avoid floating-point loss. Generation API responses expose input_payload and output_payload; temporary equest_payload and esult_payload aliases preserve compatibility with existing clients.
+JSON columns are cast to PHP arrays by the Eloquent models. Generation cost uses decimal(12, 4) and is returned by Eloquent as a four-decimal string to avoid floating-point loss. Generation API responses expose `input_payload` and `output_payload`; temporary `request_payload` and `result_payload` aliases preserve compatibility with existing clients.
 
 ## Internal platform credits
 
@@ -40,18 +40,19 @@ Project CRUD is available under `/api/v1`:
 - `PATCH /projects/{project}` updates an owned project.
 - `DELETE /projects/{project}` deletes an owned project and returns `204 No Content`.
 
-Accepted project types are `affiliate_campaign`, `video_enhancer`, and `product_to_video`. Accepted statuses are `draft`, `pending`, `processing`, `completed`, and `failed`; newly created projects default to `draft`.
+Accepted project types are `affiliate_campaign`, `video_enhancer`, `product_to_video`, and `ai_voiceover`. Accepted statuses are `draft`, `pending`, `processing`, `completed`, and `failed`; newly created projects default to `draft`.
 
 Project, generation, and media routes require Sanctum authentication. Lookups are owner-scoped and return `404` for resources owned by another user.
 ## Async generation jobs
 
 Generation lifecycle statuses are `queued`, `processing`, `completed`, and `failed`. Legacy `pending` records remain readable and are treated as queued work.
 
-The three existing mock workflows dispatch queue jobs:
+The existing mock workflows dispatch queue jobs:
 
 - `GenerateAffiliateCampaignJob`
 - `GenerateVideoEnhancerJob`
 - `GenerateProductVideoScriptJob`
+- `GenerateAiVoiceoverJob`
 
 A generation request creates a queued generation and charges its configured tool cost before dispatch. The job marks the generation processing, runs the existing deterministic mock provider, then stores the output and marks it completed. Jobs receive only the generation ID, and repeated processing does not charge credits again.
 
@@ -62,11 +63,15 @@ Authenticated generation endpoints are:
 - `POST /api/v1/projects/{project}/generate-campaign`
 - `POST /api/v1/projects/{project}/generate-video-enhancer`
 - `POST /api/v1/projects/{project}/generate-product-video-script`
+- `POST /api/v1/projects/{project}/generate-voiceover`
 - `GET /api/v1/generations/{generation}`
 - `GET /api/v1/projects/{project}/generations`
 
 The detail and history endpoints are owner-scoped and return `404` for another user's generation or project.
 
+## AI Voiceover mock workflow
+
+`ai_voiceover` projects store a voiceover brief in `input_payload`: title, optional source text/product context, target audience, language, voice style, tone, pace, duration, platform, and optional notes. The mock provider returns a narration plan only: script text, scene timing, voice direction, pronunciation/pacing/platform notes, usage/compliance notes, and a `mock_audio` placeholder. No real audio file or external TTS provider is used yet.
 Run a local worker with:
 
 ```bash

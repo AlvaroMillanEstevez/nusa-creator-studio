@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import AffiliateCampaignBrief from '@/components/AffiliateCampaignBrief.vue'
+import AiVoiceoverBrief from '@/components/AiVoiceoverBrief.vue'
 import AppNav from '@/components/AppNav.vue'
 import GenerationActionCard from '@/components/GenerationActionCard.vue'
 import GenerationHistory from '@/components/GenerationHistory.vue'
@@ -12,6 +13,7 @@ import ProjectAssets from '@/components/ProjectAssets.vue'
 import VideoEnhancerBrief from '@/components/VideoEnhancerBrief.vue'
 import { ApiError } from '@/services/api'
 import {
+  generateAiVoiceover,
   generateCampaignProject,
   generateProductVideoScript,
   generateVideoEnhancerProject,
@@ -46,6 +48,10 @@ let pollingGenerationId: number | null = null
 let pollCount = 0
 
 const emptyHistoryCopy = computed(() => {
+  if (project.value?.type === 'ai_voiceover') {
+    return 'No saved generations yet. Generate your first voiceover plan to create narration, timing, delivery notes and audio-ready guidance.'
+  }
+
   if (project.value?.type === 'product_to_video') {
     return 'No saved generations yet. Generate your first video script pack to create a storyboard, shot list and production notes.'
   }
@@ -240,7 +246,11 @@ async function generateContent(): Promise<void> {
     let generated: CreatorGeneration
     let creditsBalance: number
 
-    if (project.value.type === 'product_to_video') {
+    if (project.value.type === 'ai_voiceover') {
+      const response = await generateAiVoiceover(projectId)
+      generated = response.data
+      creditsBalance = response.meta.credits_balance
+    } else if (project.value.type === 'product_to_video') {
       const response = await generateProductVideoScript(projectId)
       generated = response.data
       creditsBalance = response.meta.credits_balance
@@ -358,7 +368,8 @@ onBeforeUnmount(stopPolling)
 
         <AffiliateCampaignBrief v-if="project.type === 'affiliate_campaign'" :project="project" />
         <VideoEnhancerBrief v-else-if="project.type === 'video_enhancer'" :project="project" />
-        <ProductToVideoBrief v-else :project="project" />
+        <ProductToVideoBrief v-else-if="project.type === 'product_to_video'" :project="project" />
+        <AiVoiceoverBrief v-else-if="project.type === 'ai_voiceover'" :project="project" />
 
         <ProjectAssets :project-id="project.id" />
 

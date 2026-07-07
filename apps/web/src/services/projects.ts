@@ -1,5 +1,8 @@
 import { apiGet, apiPost } from '@/services/api'
 import type {
+  AiVoiceoverFormPayload,
+  AiVoiceoverGenerationResponse,
+  AiVoiceoverProject,
   CampaignFormPayload,
   CampaignGenerationResponse,
   CampaignProject,
@@ -86,6 +89,27 @@ export async function createProductToVideoProject(
   return response.data
 }
 
+export async function createAiVoiceoverProject(
+  brief: AiVoiceoverFormPayload,
+): Promise<AiVoiceoverProject> {
+  const payload: CreateProjectPayload<AiVoiceoverFormPayload, CreatorProjectSettings> = {
+    title: brief.title,
+    type: 'ai_voiceover',
+    status: 'draft',
+    input_payload: brief,
+    settings: {
+      platform: brief.platform,
+      format: 'vertical_9_16',
+    },
+  }
+
+  const response = await apiPost<
+    ResourceResponse<AiVoiceoverProject>,
+    CreateProjectPayload<AiVoiceoverFormPayload, CreatorProjectSettings>
+  >('/projects', payload)
+
+  return response.data
+}
 export async function getCampaignProject(projectId: number | string): Promise<CampaignProject> {
   const response = await apiGet<ResourceResponse<CampaignProject>>('/projects/' + projectId)
 
@@ -130,6 +154,14 @@ export function generateProductVideoScript(
   )
 }
 
+export function generateAiVoiceover(
+  projectId: number | string,
+): Promise<AiVoiceoverGenerationResponse> {
+  return apiPost<AiVoiceoverGenerationResponse, Record<string, never>>(
+    '/projects/' + projectId + '/generate-voiceover',
+    {},
+  )
+}
 export function getProjectGenerations(
   projectId: number | string,
 ): Promise<ProjectGenerationHistoryResponse> {

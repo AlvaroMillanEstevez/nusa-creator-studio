@@ -10,11 +10,60 @@ class CreatorToolSeeder extends Seeder
     public function run(): void
     {
         foreach ($this->tools() as $tool) {
-            CreatorTool::query()->firstOrCreate(
-                ['key' => $tool['key']],
-                $tool,
-            );
+            $this->seedTool($tool);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $tool
+     */
+    private function seedTool(array $tool): void
+    {
+        /** @var CreatorTool $creatorTool */
+        $creatorTool = CreatorTool::query()->firstOrNew(['key' => $tool['key']]);
+
+        if (! $creatorTool->exists) {
+            $creatorTool->fill($tool)->save();
+
+            return;
+        }
+
+        if ($tool['key'] !== 'ai_voiceover') {
+            return;
+        }
+
+        $legacyShortDescription = 'Generate natural product-ad voiceovers in creator-friendly styles.';
+        $legacyLongDescription = 'Prepare clear voice tracks for product campaigns across supported languages and tones.';
+
+        if ($creatorTool->short_description === $legacyShortDescription) {
+            $creatorTool->short_description = $tool['short_description'];
+        }
+
+        if ($creatorTool->long_description === $legacyLongDescription) {
+            $creatorTool->long_description = $tool['long_description'];
+        }
+
+        if ($creatorTool->status === 'coming_soon') {
+            $creatorTool->status = $tool['status'];
+        }
+
+        if ($creatorTool->route === null) {
+            $creatorTool->route = $tool['route'];
+        }
+
+        if ($creatorTool->credit_cost_label === null || $creatorTool->credit_cost_label === 'Credit cost coming soon') {
+            $creatorTool->credit_cost_label = $tool['credit_cost_label'];
+        }
+
+        if ($creatorTool->badge_label === null || $creatorTool->badge_label === 'Coming soon') {
+            $creatorTool->badge_label = $tool['badge_label'];
+        }
+
+        if ($creatorTool->sort_order === 40 || $creatorTool->sort_order === 0) {
+            $creatorTool->sort_order = $tool['sort_order'];
+        }
+
+        $creatorTool->save();
     }
 
     /**
@@ -71,14 +120,14 @@ class CreatorToolSeeder extends Seeder
             [
                 'key' => 'ai_voiceover',
                 'title' => 'AI Voiceover',
-                'short_description' => 'Generate natural product-ad voiceovers in creator-friendly styles.',
-                'long_description' => 'Prepare clear voice tracks for product campaigns across supported languages and tones.',
+                'short_description' => 'Generate voiceover scripts, delivery direction and audio-ready narration notes.',
+                'long_description' => 'Turn a product brief or campaign script into a voiceover-ready narration plan for short-form video.',
                 'category' => 'audio',
-                'status' => 'coming_soon',
-                'route' => null,
+                'status' => 'available',
+                'route' => '/voiceover/new',
                 'credit_cost' => 1,
-                'credit_cost_label' => 'Credit cost coming soon',
-                'badge_label' => 'Coming soon',
+                'credit_cost_label' => '1 credit',
+                'badge_label' => 'New mock',
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 40,

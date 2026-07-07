@@ -17,6 +17,7 @@ class Project extends Model
         'affiliate_campaign',
         'video_enhancer',
         'product_to_video',
+        'ai_voiceover',
     ];
 
     public const STATUSES = [

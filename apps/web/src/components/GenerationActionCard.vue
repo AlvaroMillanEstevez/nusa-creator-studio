@@ -41,6 +41,16 @@ const creditCostLabel = computed(() => {
 })
 
 const copy = computed<GenerationActionCopy>(() => {
+  if (props.projectType === 'ai_voiceover') {
+    return {
+      title: 'Generate voiceover',
+      description:
+        'Create a deterministic narration script, scene timing, delivery direction and audio-ready notes. No real audio is generated yet.',
+      button: props.hasGeneration ? 'Generate another voiceover' : 'Generate voiceover',
+      loadingButton: 'Generating voiceover...',
+    }
+  }
+
   if (props.projectType === 'product_to_video') {
     return {
       title: 'Generate video script pack',

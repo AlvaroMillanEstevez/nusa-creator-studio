@@ -90,6 +90,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/voiceover/new',
+      name: 'voiceover-create',
+      component: () => import('../views/VoiceoverCreateView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/campaigns/new',
       name: 'campaign-create',
       component: () => import('../views/NewCampaignView.vue'),

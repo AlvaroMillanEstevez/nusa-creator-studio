@@ -40,6 +40,7 @@ class CreatorTool extends Model
         'affiliate_campaign' => '/campaigns/new',
         'video_enhancer' => '/video-enhancer/new',
         'product_to_video' => '/product-to-video/new',
+        'ai_voiceover' => '/voiceover/new',
     ];
 
     public function getRouteKeyName(): string

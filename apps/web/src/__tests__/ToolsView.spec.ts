@@ -43,14 +43,14 @@ const tools: CreatorTool[] = [
   {
     key: 'ai_voiceover',
     title: 'AI Voiceover',
-    short_description: 'Create natural voice tracks.',
-    long_description: null,
+    short_description: 'Generate voiceover scripts and narration notes.',
+    long_description: 'Turn a script or product brief into an audio-ready narration plan.',
     category: 'audio',
-    status: 'coming_soon',
-    route: null,
+    status: 'available',
+    route: '/voiceover/new',
     credit_cost: 1,
-    credit_cost_label: 'Credit cost coming soon',
-    badge_label: 'Coming soon',
+    credit_cost_label: '1 credit',
+    badge_label: 'New mock',
     is_recommended: false,
     sort_order: 20,
   },
@@ -67,6 +67,20 @@ const tools: CreatorTool[] = [
     badge_label: 'Maintenance',
     is_recommended: false,
     sort_order: 30,
+  },
+  {
+    key: 'fashion_try_on',
+    title: 'Fashion Try-On',
+    short_description: 'Create try-on concepts.',
+    long_description: null,
+    category: 'fashion',
+    status: 'coming_soon',
+    route: null,
+    credit_cost: 1,
+    credit_cost_label: 'Credit cost coming soon',
+    badge_label: 'Coming soon',
+    is_recommended: false,
+    sort_order: 35,
   },
   {
     key: 'hidden_tool',
@@ -101,6 +115,7 @@ async function mountToolsView(
       { path: '/register', component: placeholder },
       { path: '/campaigns/new', component: placeholder },
       { path: '/video-enhancer/new', component: placeholder },
+      { path: '/voiceover/new', component: placeholder },
     ],
   })
 
@@ -151,6 +166,23 @@ describe('ToolsView', () => {
     )
   })
 
+  it('links available AI Voiceover to the protected creation route for authenticated users', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+    const card = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
+
+    expect(card.element.tagName).toBe('A')
+    expect(card.attributes('href')).toBe('/voiceover/new')
+    expect(card.text()).toContain('AI Voiceover')
+    expect(card.text()).toContain('Open tool')
+  })
+
   it('sends guests through login with the intended tool route', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
@@ -161,9 +193,12 @@ describe('ToolsView', () => {
 
     const wrapper = await mountToolsView(fetchMock, null)
     const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
+    const voiceoverCard = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
 
     expect(card.attributes('href')).toBe('/login?redirect=/campaigns/new')
     expect(card.text()).toContain('Log in to use')
+    expect(voiceoverCard.attributes('href')).toBe('/login?redirect=/voiceover/new')
+    expect(voiceoverCard.text()).toContain('Log in to use')
   })
 
   it('keeps coming-soon and maintenance tools non-clickable and hides disabled tools', async () => {
@@ -175,7 +210,7 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
-    const comingSoon = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
+    const comingSoon = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
     const maintenance = wrapper.get('[data-testid="tool-card-video_enhancer"]')
 
     expect(comingSoon.element.tagName).toBe('ARTICLE')

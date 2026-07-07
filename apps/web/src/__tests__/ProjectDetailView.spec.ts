@@ -6,6 +6,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 
 import ProjectDetailView from '@/views/ProjectDetailView.vue'
 import type {
+  AiVoiceoverProject,
   CampaignProject,
   CreatorProject,
   ProductToVideoProject,
@@ -78,6 +79,31 @@ const productVideoProject: ProductToVideoProject = {
   updated_at: '2026-07-06T04:00:00.000000Z',
 }
 
+
+const voiceoverProject: AiVoiceoverProject = {
+  id: 91,
+  user_id: 1,
+  title: 'Spanish creator voiceover',
+  type: 'ai_voiceover',
+  status: 'draft',
+  input_payload: {
+    title: 'Spanish creator voiceover',
+    source_text: '¿Quieres crear contenido rápido?',
+    product_name: 'Cámara Pequeña Ñandú',
+    product_description: 'Diseñada para creadores que necesitan automatización',
+    target_audience: 'Pequeños creadores en España',
+    language: 'spanish',
+    voice_style: 'premium_brand',
+    tone: 'professional',
+    pace: 'fast',
+    duration_seconds: 45,
+    platform: 'tiktok',
+    notes: 'Keep pronunciation clear.',
+  },
+  settings: { platform: 'tiktok', format: 'vertical_9_16' },
+  created_at: '2026-07-06T06:00:00.000000Z',
+  updated_at: '2026-07-06T06:00:00.000000Z',
+}
 const emptyHistory: ProjectGenerationHistoryResponse = {
   data: [],
   links: { first: null, last: null, prev: null, next: null },
@@ -99,6 +125,7 @@ async function mountProjectDetail(
       { path: '/dashboard', component: { template: '<div />' } },
       { path: '/campaigns/new', component: { template: '<div />' } },
       { path: '/video-enhancer/new', component: { template: '<div />' } },
+      { path: '/voiceover/new', component: { template: '<div />' } },
       { path: '/projects/:id', component: ProjectDetailView },
     ],
   })
@@ -363,5 +390,165 @@ describe('ProjectDetailView', () => {
     expect(text).toContain('Shot list')
     expect(text).toContain('Asset checklist')
     expect(text).toContain('Compliance notes')
+  })
+  it('renders an AI Voiceover brief and restores its saved narration result', async () => {
+    const history: ProjectGenerationHistoryResponse = {
+      ...emptyHistory,
+      data: [
+        {
+          id: 21,
+          user_id: 1,
+          project_id: 91,
+          job_type: 'generate_ai_voiceover',
+          provider: 'mock',
+          status: 'completed',
+          cost_usd: '0.0000',
+          credits_charged: 1,
+          input_payload: null,
+          output_payload: null,
+          error_message: null,
+          request_payload: null,
+          result_payload: {
+            voiceover_title: 'Spanish creator voiceover: plan de voz en off',
+            narration_script:
+              'Antes de seguir, mira de cerca Cámara Pequeña Ñandú. ¿Encaja con tu rutina? ¡Sin presión!',
+            scene_timing: [
+              {
+                timestamp: '0-3s',
+                section: 'Gancho',
+                narration_focus: 'Abre con el producto.',
+                delivery_note: 'Entrada cálida y directa.',
+              },
+            ],
+            voice_direction: 'Usa una voz premium brand con tono professional.',
+            pronunciation_notes: ['Pronuncia Cámara Pequeña Ñandú con claridad.'],
+            pacing_notes: ['Apunta a unos 45 segundos.'],
+            platform_notes: ['Mezcla la narración debajo del vídeo vertical.'],
+            estimated_duration_seconds: 45,
+            suggested_audio_format: 'MP3 or WAV, 44.1 kHz.',
+            usage_notes: ['Este resultado mock es solo un plan de narración.'],
+            mock_audio: {
+              status: 'placeholder',
+              message: 'Real audio generation will be connected later.',
+              provider: 'mock',
+            },
+            compliance_notes: ['Evita afirmaciones exageradas.'],
+          },
+          started_at: '2026-07-06T07:00:00.000000Z',
+          finished_at: '2026-07-06T07:00:00.000000Z',
+          created_at: '2026-07-06T07:00:00.000000Z',
+        },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
+    }
+
+    const wrapper = await mountProjectDetail(voiceoverProject, history)
+    const text = wrapper.text()
+
+    expect(text).toContain('Voiceover brief')
+    expect(text).toContain('Spanish creator voiceover')
+    expect(text).toContain('¿Quieres crear contenido rápido?')
+    expect(text).toContain('Generate another voiceover')
+    expect(text).toContain('Narration script')
+    expect(text).toContain('Scene timing')
+    expect(text).toContain('Mock audio placeholder')
+    expect(text).toContain('Real audio generation will be connected later.')
+    expect(text).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)
+  })
+
+  it('calls the AI Voiceover generation endpoint from the project detail action', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: { template: '<div />' } },
+        { path: '/tools', component: { template: '<div />' } },
+        { path: '/dashboard', component: { template: '<div />' } },
+        { path: '/login', component: { template: '<div />' } },
+        { path: '/register', component: { template: '<div />' } },
+        { path: '/projects/:id', component: ProjectDetailView },
+      ],
+    })
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      const method = init?.method ?? 'GET'
+
+      if (url.endsWith('/projects/91/generate-voiceover') && method === 'POST') {
+        return Response.json({
+          data: {
+            id: 30,
+            user_id: 1,
+            project_id: 91,
+            job_type: 'generate_ai_voiceover',
+            provider: 'mock',
+            status: 'queued',
+            cost_usd: '0.0000',
+            credits_charged: 1,
+            input_payload: voiceoverProject.input_payload,
+            output_payload: null,
+            error_message: null,
+            started_at: null,
+            finished_at: null,
+            created_at: '2026-07-06T08:00:00.000000Z',
+          },
+          meta: { credits_balance: 19 },
+        })
+      }
+
+      if (url.endsWith('/projects/91/generations')) {
+        return Response.json(emptyHistory)
+      }
+
+      if (url.endsWith('/projects/91/media-assets')) {
+        return Response.json({ data: [] })
+      }
+
+      if (url.endsWith('/tools')) {
+        return Response.json({
+          data: [
+            {
+              key: 'ai_voiceover',
+              title: 'AI Voiceover',
+              short_description: 'Generate voiceovers.',
+              long_description: null,
+              category: 'audio',
+              status: 'available',
+              route: '/voiceover/new',
+              credit_cost: 1,
+              credit_cost_label: '1 credit',
+              badge_label: 'New mock',
+              is_recommended: false,
+              sort_order: 40,
+            },
+          ],
+        })
+      }
+
+      return Response.json({ data: voiceoverProject })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('scrollTo', vi.fn<() => void>())
+
+    await router.push('/projects/91')
+    await router.isReady()
+
+    const wrapper = mount(ProjectDetailView, {
+      global: { plugins: [createPinia(), router] },
+    })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((candidate) =>
+      candidate.text().includes('Generate voiceover'),
+    )
+
+    expect(button).toBeTruthy()
+    await button?.trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/projects/91/generate-voiceover'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(wrapper.text()).toContain('19 credits remaining')
   })
 })

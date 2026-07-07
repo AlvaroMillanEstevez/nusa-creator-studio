@@ -2,12 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { API_BASE_URL } from '@/services/api'
 import {
+  createAiVoiceoverProject,
   createCampaignProject,
+  generateAiVoiceover,
   generateCampaignProject,
   generateVideoEnhancerProject,
   getProjectGenerations,
 } from '@/services/projects'
 import type {
+  AiVoiceoverFormPayload,
+  AiVoiceoverGenerationResponse,
+  AiVoiceoverProject,
   CampaignFormPayload,
   CampaignGenerationResponse,
   CampaignProject,
@@ -245,6 +250,130 @@ describe('project service', () => {
     await expect(generateVideoEnhancerProject(77)).resolves.toEqual(response)
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/projects/77/generate-video-enhancer',
+      expect.objectContaining({
+        method: 'POST',
+        body: '{}',
+      }),
+    )
+  })
+  it('creates the AI Voiceover project with the backend project contract', async () => {
+    const brief: AiVoiceoverFormPayload = {
+      title: 'Portable key light voiceover',
+      source_text: 'Use a warm narration for a product demo.',
+      product_name: 'Portable key light',
+      product_description: 'A small light for creator desks.',
+      target_audience: 'Mobile-first creators',
+      language: 'english',
+      voice_style: 'natural_creator',
+      tone: 'natural',
+      pace: 'medium',
+      duration_seconds: 30,
+      platform: 'tiktok',
+      notes: null,
+    }
+
+    const project: AiVoiceoverProject = {
+      id: 88,
+      user_id: 1,
+      title: brief.title,
+      type: 'ai_voiceover',
+      status: 'draft',
+      input_payload: brief,
+      settings: {
+        platform: 'tiktok',
+        format: 'vertical_9_16',
+      },
+      created_at: '2026-07-07T00:00:00.000000Z',
+      updated_at: '2026-07-07T00:00:00.000000Z',
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: project }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createAiVoiceoverProject(brief)).resolves.toEqual(project)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          title: brief.title,
+          type: 'ai_voiceover',
+          status: 'draft',
+          input_payload: brief,
+          settings: {
+            platform: 'tiktok',
+            format: 'vertical_9_16',
+          },
+        }),
+      }),
+    )
+  })
+
+  it('posts to the mock AI Voiceover generation endpoint', async () => {
+    const response: AiVoiceoverGenerationResponse = {
+      data: {
+        id: 18,
+        user_id: 1,
+        project_id: 88,
+        job_type: 'generate_ai_voiceover',
+        provider: 'mock',
+        status: 'completed',
+        cost_usd: '0.0000',
+        credits_charged: 1,
+        input_payload: null,
+        output_payload: null,
+        error_message: null,
+        request_payload: null,
+        result_payload: {
+          voiceover_title: 'Portable key light voiceover',
+          narration_script: 'Before you scroll, meet the portable key light.',
+          scene_timing: [
+            {
+              timestamp: '0-3s',
+              section: 'Hook',
+              narration_focus: 'Open with the product.',
+              delivery_note: 'Warm opening.',
+            },
+          ],
+          voice_direction: 'Natural creator delivery.',
+          pronunciation_notes: ['Say the product name clearly.'],
+          pacing_notes: ['Keep it near 30 seconds.'],
+          platform_notes: ['Mix under vertical-video footage.'],
+          estimated_duration_seconds: 30,
+          suggested_audio_format: 'MP3 or WAV.',
+          usage_notes: ['No real audio generated yet.'],
+          mock_audio: {
+            status: 'placeholder',
+            message: 'Real audio generation will be connected later.',
+            provider: 'mock',
+          },
+          compliance_notes: ['Avoid exaggerated claims.'],
+        },
+        started_at: '2026-07-07T00:00:00.000000Z',
+        finished_at: '2026-07-07T00:00:00.000000Z',
+        created_at: '2026-07-07T00:00:00.000000Z',
+      },
+      meta: { credits_balance: 19 },
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(generateAiVoiceover(88)).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/88/generate-voiceover',
       expect.objectContaining({
         method: 'POST',
         body: '{}',

@@ -10,6 +10,7 @@ class ToolAvailabilityService
         'affiliate_campaign' => 'affiliate_campaign',
         'video_enhancer' => 'video_enhancer',
         'product_to_video' => 'product_to_video',
+        'ai_voiceover' => 'ai_voiceover',
     ];
 
     public function isAvailableForProjectType(string $projectType): bool

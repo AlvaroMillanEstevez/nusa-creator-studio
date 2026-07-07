@@ -18,6 +18,7 @@ export interface AdminSummary {
     generate_affiliate_campaign: number
     generate_video_enhancer: number
     generate_product_video_script: number
+    generate_ai_voiceover: number
   }
 }
 

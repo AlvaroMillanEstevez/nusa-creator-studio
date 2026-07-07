@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import AiVoiceoverGenerationResult from '@/components/AiVoiceoverGenerationResult.vue'
 import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
 import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
 import {
   generationOutput,
+  isAiVoiceoverResult,
   isCampaignGenerationResult,
   isProductToVideoResult,
   isVideoEnhancerResult,
@@ -38,11 +40,17 @@ const productToVideoResult = computed(() =>
     ? result.value
     : null,
 )
+const aiVoiceoverResult = computed(() =>
+  props.generation?.job_type === 'generate_ai_voiceover' && isAiVoiceoverResult(result.value)
+    ? result.value
+    : null,
+)
 const hasSupportedResult = computed(
   () =>
     campaignResult.value !== null ||
     videoEnhancerResult.value !== null ||
-    productToVideoResult.value !== null,
+    productToVideoResult.value !== null ||
+    aiVoiceoverResult.value !== null,
 )
 const isQueued = computed(
   () => props.generation?.status === 'queued' || props.generation?.status === 'pending',
@@ -132,5 +140,6 @@ const isQueued = computed(
       v-else-if="productToVideoResult"
       :result="productToVideoResult"
     />
+    <AiVoiceoverGenerationResult v-else-if="aiVoiceoverResult" :result="aiVoiceoverResult" />
   </div>
 </template>
