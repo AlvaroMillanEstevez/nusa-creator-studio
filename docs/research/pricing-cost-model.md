@@ -1,0 +1,101 @@
+# Pricing and Cost Model
+
+This document models how Nusa Creator Studio could price internal platform credits against future provider costs. It intentionally avoids exact provider prices until they are verified from official sources.
+
+## Pricing strategy goals
+
+- Keep pricing understandable for creators and small sellers.
+- Protect gross margin as real AI providers are added.
+- Let cheaper tools feel lightweight while expensive tools remain controlled.
+- Support Indonesia-first pricing while preserving SEA/global expansion options.
+- Avoid billing complexity until the product model is validated.
+
+## Current placeholder plans
+
+The app already has dynamic pricing/plans and internal platform credits. Current plan names, allowances, and prices should be copied from admin/pricing configuration only after verification.
+
+| Plan | Target user | Monthly credits | Price | Key limits | Source/date verified |
+| --- | --- | --- | --- | --- | --- |
+| TODO | Free/testing creator | TODO | TODO | TODO | TODO |
+| TODO | Solo creator | TODO | TODO | TODO | TODO |
+| TODO | Seller/team | TODO | TODO | TODO | TODO |
+| TODO | Agency/internal | TODO | TODO | TODO | TODO |
+
+## Cost drivers
+
+| Cost driver | Applies to | Unit to track | Notes |
+| --- | --- | --- | --- |
+| Text generation | Campaigns, captions, scripts | Tokens or request | Usually lower cost; still needs output validation. |
+| Voiceover/TTS | Voiceover, dubbing | Characters, seconds, or minutes | Good first real integration candidate. |
+| Image generation/editing | Product visuals, concepts | Image or resolution | Cost depends on model and output size. |
+| Fashion try-on | Try-on concepts | Output image/job | Requires input validation and failure handling. |
+| Motion video | Motion AI Video | Seconds, resolution, or job | Likely high cost and latency; needs strict controls. |
+| Storage/bandwidth | Media library, generated assets | GB stored/transferred | Monitor as users upload and generate media. |
+| Queue/compute | Async jobs | Job count and duration | Infrastructure cost, separate from provider fees. |
+
+## Credit model assumptions
+
+- Credits are internal platform credits, not payment cards.
+- User credit balances must never go negative.
+- A generation should check available credits before starting real provider work.
+- Credit charges should map to expected provider cost plus target margin and risk buffer.
+- Failed provider jobs need a clear refund/no-charge policy before launch.
+- Expensive tools may require higher minimum balance or confirmation.
+
+## Provider cost mapping
+
+| Tool | Mock status | Future provider category | Provider cost unit | Suggested credit unit | Verification needed |
+| --- | --- | --- | --- | --- | --- |
+| Affiliate Campaign Generator | Mock | Text/script/caption | TODO | TODO | Provider price, output size, retries. |
+| Video Enhancer / Caption Pack | Mock | Text/caption analysis, optional video tools | TODO | TODO | Scope of real enhancement. |
+| Product-to-Video Script Pack | Mock | Text/script/caption | TODO | TODO | Script length and localization cost. |
+| AI Voiceover | Mock | Voiceover/TTS | TODO | TODO | Characters/minutes, voice options, rights. |
+| Fashion Try-On | Mock | Try-on/image generation | TODO | TODO | Cost per job, failure rate, constraints. |
+| Motion AI Video | Mock | Motion/video generation | TODO | TODO | Cost per second/resolution and queue time. |
+
+## Gross margin target
+
+Set targets after provider research.
+
+| Tool category | Gross margin target | Risk buffer | Notes |
+| --- | --- | --- | --- |
+| Text tools | TODO% | TODO% | Usually easier to price with comfortable margins. |
+| Voiceover/TTS | TODO% | TODO% | Candidate for first real provider. |
+| Image/try-on | TODO% | TODO% | Account for failed generations and retries. |
+| Motion video | TODO% | TODO% | Needs strongest cost controls. |
+
+## Suggested formulas
+
+Use variables until exact costs are verified.
+
+```text
+provider_cost_per_generation = provider_unit_cost * expected_units_per_generation
+infrastructure_cost_per_generation = storage_cost + queue_cost + bandwidth_cost
+risk_buffer = provider_cost_per_generation * risk_buffer_rate
+minimum_revenue_per_generation = provider_cost_per_generation + infrastructure_cost_per_generation + risk_buffer
+credit_price_floor = minimum_revenue_per_generation / credits_charged
+margin = (revenue_per_generation - total_cost_per_generation) / revenue_per_generation
+```
+
+Credit charge suggestion:
+
+```text
+credits_charged = ceil((total_expected_cost / target_value_per_credit) * risk_multiplier)
+```
+
+## Example scenarios
+
+| Scenario | Tool | Expected provider units | Provider cost | Credits charged | Revenue estimate | Gross margin | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Low-cost text campaign | Affiliate Campaign Generator | TODO | TODO | TODO | TODO | TODO | Verify with real text provider. |
+| Standard voiceover | AI Voiceover | TODO | TODO | TODO | TODO | TODO | Good first paid-cost test. |
+| Fashion try-on output | Fashion Try-On | TODO | TODO | TODO | TODO | TODO | Include failure/refund assumptions. |
+| Short motion video | Motion AI Video | TODO | TODO | TODO | TODO | TODO | Include queue and retry assumptions. |
+
+## Open questions
+
+- What should one credit be worth in IDR and USD?
+- Should different markets have different credit pack prices?
+- Which tools should be available on free plans?
+- How many failed generations should be absorbed before stricter limits?
+- Should unused monthly credits roll over, expire, or remain only for prepaid packs?
