@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getDashboardSummary } from '@/services/dashboard'
 import type { DashboardSummary } from '@/types/dashboard'
@@ -13,12 +14,12 @@ const isLoading = ref(true)
 const loadError = ref('')
 
 const quickActions = [
-  { label: 'Browse creator tools', to: '/tools', primary: true },
-  { label: 'Start affiliate campaign', to: '/campaigns/new', primary: false },
-  { label: 'Start video enhancer', to: '/video-enhancer/new', primary: false },
-  { label: 'Start product-to-video script', to: '/product-to-video/new', primary: false },
-  { label: 'Start fashion try-on', to: '/fashion-try-on/new', primary: false },
-  { label: 'Start motion video', to: '/motion-video/new', primary: false },
+  { labelKey: 'dashboard.browseTools', to: '/tools', primary: true },
+  { labelKey: 'dashboard.startCampaign', to: '/campaigns/new', primary: false },
+  { labelKey: 'dashboard.startVideoEnhancer', to: '/video-enhancer/new', primary: false },
+  { labelKey: 'dashboard.startProductVideo', to: '/product-to-video/new', primary: false },
+  { labelKey: 'dashboard.startFashion', to: '/fashion-try-on/new', primary: false },
+  { labelKey: 'dashboard.startMotion', to: '/motion-video/new', primary: false },
 ] as const
 
 const statCards = computed(() => {
@@ -29,17 +30,17 @@ const statCards = computed(() => {
   }
 
   return [
-    { label: 'Total projects', value: stats.total_projects },
-    { label: 'Total generations', value: stats.total_generations },
-    { label: 'Completed generations', value: stats.completed_generations },
-    { label: 'Failed generations', value: stats.failed_generations },
-    { label: 'Draft projects', value: stats.draft_projects },
-    { label: 'Credits spent', value: stats.total_credits_spent },
-    { label: 'Affiliate campaigns', value: stats.affiliate_campaign_projects },
-    { label: 'Video enhancers', value: stats.video_enhancer_projects },
-    { label: 'Product-to-video', value: stats.product_to_video_projects },
-    { label: 'Fashion try-on', value: stats.fashion_try_on_projects },
-    { label: 'Motion AI video', value: stats.motion_ai_video_projects },
+    { label: t('dashboard.stats.totalProjects'), value: stats.total_projects },
+    { label: t('dashboard.stats.totalGenerations'), value: stats.total_generations },
+    { label: t('dashboard.stats.completedGenerations'), value: stats.completed_generations },
+    { label: t('dashboard.stats.failedGenerations'), value: stats.failed_generations },
+    { label: t('dashboard.stats.draftProjects'), value: stats.draft_projects },
+    { label: t('dashboard.stats.creditsSpent'), value: stats.total_credits_spent },
+    { label: t('dashboard.stats.affiliateCampaigns'), value: stats.affiliate_campaign_projects },
+    { label: t('dashboard.stats.videoEnhancers'), value: stats.video_enhancer_projects },
+    { label: t('dashboard.stats.productToVideo'), value: stats.product_to_video_projects },
+    { label: t('dashboard.stats.fashionTryOn'), value: stats.fashion_try_on_projects },
+    { label: t('dashboard.stats.motionAiVideo'), value: stats.motion_ai_video_projects },
   ]
 })
 
@@ -69,7 +70,7 @@ async function loadDashboard(): Promise<void> {
     loadError.value =
       error instanceof ApiError
         ? error.message
-        : 'We could not load your dashboard. Check the API connection and try again.'
+        : t('errors.dashboardLoad')
   } finally {
     isLoading.value = false
   }
@@ -84,13 +85,12 @@ onMounted(loadDashboard)
       <AppNav />
 
       <header class="pt-12">
-        <p class="text-sm font-medium text-emerald-400">Development dashboard</p>
+        <p class="text-sm font-medium text-emerald-400">{{ t('dashboard.kicker') }}</p>
         <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">
-          {{ dashboard ? 'Welcome back, ' + dashboard.user.name + '.' : 'Your creator workspace.' }}
+          {{ dashboard ? t('dashboard.welcomeBack', { name: dashboard.user.name }) : t('dashboard.fallbackTitle') }}
         </h1>
         <p class="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-          Track projects, generated content and internal platform credits from one focused
-          workspace.
+          {{ t('dashboard.body') }}
         </p>
       </header>
 
@@ -103,22 +103,22 @@ onMounted(loadDashboard)
             class="h-24 animate-pulse rounded-2xl bg-neutral-900"
           />
         </div>
-        <p class="text-sm text-neutral-500">Loading dashboard...</p>
+        <p class="text-sm text-neutral-500">{{ t('dashboard.loading') }}</p>
       </section>
 
       <section
         v-else-if="loadError"
         class="mt-9 rounded-3xl border border-rose-900/60 bg-rose-950/30 p-5"
       >
-        <p class="text-sm font-medium text-rose-300">Dashboard unavailable</p>
-        <h2 class="mt-2 text-xl font-semibold">Your workspace needs another try.</h2>
+        <p class="text-sm font-medium text-rose-300">{{ t('dashboard.unavailable') }}</p>
+        <h2 class="mt-2 text-xl font-semibold">{{ t('dashboard.retryTitle') }}</h2>
         <p role="alert" class="mt-3 text-sm leading-6 text-rose-100/70">{{ loadError }}</p>
         <button
           type="button"
           class="mt-5 min-h-12 rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300"
           @click="loadDashboard"
         >
-          Try again
+          {{ t('common.tryAgain') }}
         </button>
       </section>
 
@@ -129,12 +129,12 @@ onMounted(loadDashboard)
           <div class="flex items-start justify-between gap-5">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                Plan access
+                {{ t('dashboard.planAccess') }}
               </p>
               <template v-if="dashboard.access.is_unlimited">
-                <h2 class="mt-3 text-3xl font-bold tracking-tight">Unlimited internal access</h2>
+                <h2 class="mt-3 text-3xl font-bold tracking-tight">{{ t('dashboard.unlimitedTitle') }}</h2>
                 <p class="mt-3 max-w-lg text-sm leading-6 text-emerald-100/70">
-                  Generations do not consume credits for this account.
+                  {{ t('dashboard.unlimitedBody') }}
                 </p>
               </template>
               <template v-else>
@@ -144,16 +144,16 @@ onMounted(loadDashboard)
                 <p class="mt-2 text-5xl font-bold tracking-tight">
                   {{ dashboard.access.credits_balance }}
                 </p>
-                <p class="mt-2 text-sm text-neutral-400">available internal credits</p>
+                <p class="mt-2 text-sm text-neutral-400">{{ t('dashboard.availableCredits') }}</p>
                 <p class="mt-2 text-xs text-neutral-500">
-                  {{ dashboard.access.monthly_credit_allowance }} credits monthly allowance
+                  {{ t('dashboard.monthlyAllowance', { count: dashboard.access.monthly_credit_allowance }) }}
                 </p>
               </template>
             </div>
             <div
               class="rounded-2xl border border-emerald-800/70 bg-neutral-950/50 px-3 py-2 text-right"
             >
-              <p class="text-xs text-neutral-500">Used so far</p>
+              <p class="text-xs text-neutral-500">{{ t('dashboard.usedSoFar') }}</p>
               <p class="mt-1 font-semibold text-emerald-300">
                 {{ dashboard.stats.total_credits_spent }}
               </p>
@@ -170,13 +170,13 @@ onMounted(loadDashboard)
                 to="/pricing"
                 class="text-xs font-semibold text-neutral-400 transition hover:text-white"
               >
-                View plans
+                {{ t('dashboard.viewPlans') }}
               </RouterLink>
               <RouterLink
                 to="/account#plan"
                 class="text-xs font-semibold text-emerald-400 transition hover:text-emerald-300"
               >
-                Manage account / plan
+                {{ t('dashboard.manageAccountPlan') }}
               </RouterLink>
             </div>
           </div>
@@ -185,9 +185,9 @@ onMounted(loadDashboard)
         <section class="mt-8">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-              Overview
+              {{ t('dashboard.overview') }}
             </p>
-            <h2 class="mt-2 text-xl font-semibold">Workspace activity</h2>
+            <h2 class="mt-2 text-xl font-semibold">{{ t('dashboard.workspaceActivity') }}</h2>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <article
@@ -203,9 +203,9 @@ onMounted(loadDashboard)
 
         <section class="mt-8 rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5 sm:p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-            Quick actions
+            {{ t('dashboard.quickActions') }}
           </p>
-          <h2 class="mt-2 text-xl font-semibold">Create something new</h2>
+          <h2 class="mt-2 text-xl font-semibold">{{ t('dashboard.createSomething') }}</h2>
           <div class="mt-5 grid gap-3 sm:grid-cols-2">
             <RouterLink
               v-for="action in quickActions"
@@ -218,7 +218,7 @@ onMounted(loadDashboard)
                   : 'border border-neutral-700 bg-neutral-950/60 text-neutral-200 hover:border-neutral-600 hover:bg-neutral-800'
               "
             >
-              <span>{{ action.label }}</span>
+              <span>{{ t(action.labelKey) }}</span>
               <span aria-hidden="true">&rarr;</span>
             </RouterLink>
           </div>
@@ -228,12 +228,12 @@ onMounted(loadDashboard)
           <div class="flex items-end justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-                Projects
+                {{ t('dashboard.projects') }}
               </p>
-              <h2 class="mt-2 text-xl font-semibold">Recent projects</h2>
+              <h2 class="mt-2 text-xl font-semibold">{{ t('dashboard.recentProjects') }}</h2>
             </div>
             <span v-if="dashboard.recent_projects.length" class="text-xs text-neutral-500">
-              Latest {{ dashboard.recent_projects.length }}
+              {{ t('dashboard.latestCount', { count: dashboard.recent_projects.length }) }}
             </span>
           </div>
 
@@ -241,15 +241,15 @@ onMounted(loadDashboard)
             v-if="dashboard.recent_projects.length === 0"
             class="mt-4 rounded-3xl border border-dashed border-neutral-800 bg-neutral-900/40 p-6"
           >
-            <h3 class="font-semibold text-neutral-200">No projects yet.</h3>
+            <h3 class="font-semibold text-neutral-200">{{ t('dashboard.noProjects') }}</h3>
             <p class="mt-2 text-sm leading-6 text-neutral-500">
-              Choose a creator tool to start your first project.
+              {{ t('dashboard.noProjectsBody') }}
             </p>
             <RouterLink
               to="/tools"
               class="mt-5 inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-neutral-950"
             >
-              Browse creator tools
+              {{ t('dashboard.browseTools') }}
             </RouterLink>
           </div>
 
@@ -273,10 +273,10 @@ onMounted(loadDashboard)
                 </span>
               </div>
               <div class="mt-4 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
-                <span>{{ project.generations_count }} generations</span>
+                <span>{{ t('dashboard.generationCount', { count: project.generations_count }) }}</span>
                 <template v-if="project.latest_generation_status">
                   <span aria-hidden="true">&bull;</span>
-                  <span>Latest: {{ formatLabel(project.latest_generation_status) }}</span>
+                  <span>{{ t('dashboard.latestStatus', { status: formatLabel(project.latest_generation_status) }) }}</span>
                 </template>
               </div>
               <p class="mt-3 text-xs text-neutral-600">{{ formatDate(project.created_at) }}</p>
@@ -288,12 +288,12 @@ onMounted(loadDashboard)
           <div class="flex items-end justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-                Generations
+                {{ t('dashboard.generations') }}
               </p>
-              <h2 class="mt-2 text-xl font-semibold">Recent generations</h2>
+              <h2 class="mt-2 text-xl font-semibold">{{ t('dashboard.recentGenerations') }}</h2>
             </div>
             <span v-if="dashboard.recent_generations.length" class="text-xs text-neutral-500">
-              Latest {{ dashboard.recent_generations.length }}
+              {{ t('dashboard.latestCount', { count: dashboard.recent_generations.length }) }}
             </span>
           </div>
 
@@ -301,9 +301,9 @@ onMounted(loadDashboard)
             v-if="dashboard.recent_generations.length === 0"
             class="mt-4 rounded-3xl border border-dashed border-neutral-800 bg-neutral-900/40 p-6"
           >
-            <h3 class="font-semibold text-neutral-200">No generated results yet.</h3>
+            <h3 class="font-semibold text-neutral-200">{{ t('dashboard.noGenerations') }}</h3>
             <p class="mt-2 text-sm leading-6 text-neutral-500">
-              Generated campaign, caption-pack and video-script results will appear here.
+              {{ t('dashboard.noGenerationsBody') }}
             </p>
           </div>
 
@@ -320,7 +320,7 @@ onMounted(loadDashboard)
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <p class="truncate text-sm font-semibold text-neutral-100">
-                    {{ generation.project_title ?? 'Project unavailable' }}
+                    {{ generation.project_title ?? t('dashboard.projectUnavailable') }}
                   </p>
                   <p class="mt-1 text-xs text-neutral-500">
                     {{ formatLabel(generation.job_type) }}
@@ -334,9 +334,9 @@ onMounted(loadDashboard)
                 </span>
               </div>
               <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
-                <span>{{ generation.provider ?? 'Unknown provider' }}</span>
+                <span>{{ generation.provider ?? t('dashboard.unknownProvider') }}</span>
                 <span aria-hidden="true">&bull;</span>
-                <span>{{ generation.credits_charged }} credit charged</span>
+                <span>{{ t('dashboard.creditCharged', { count: generation.credits_charged }) }}</span>
                 <span aria-hidden="true">&bull;</span>
                 <span>{{ formatDate(generation.created_at) }}</span>
               </div>

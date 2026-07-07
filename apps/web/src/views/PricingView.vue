@@ -3,10 +3,12 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getSubscriptionPlans } from '@/services/plans'
 import { useAuthStore } from '@/stores/auth'
 import type { BillingInterval, SubscriptionPlan } from '@/types/plan'
+import { formatCurrency } from '@/utils/formatters'
 
 const auth = useAuthStore()
 const plans = ref<SubscriptionPlan[]>([])
@@ -22,25 +24,21 @@ const ctaRoute = computed(() => (auth.isAuthenticated ? '/account#plan' : '/regi
 
 function formatPrice(plan: SubscriptionPlan): string {
   if (plan.price_amount === null) {
-    return 'Custom'
+    return t('pricing.custom')
   }
 
   const amount = Number(plan.price_amount)
 
   if (amount === 0) {
-    return 'Free'
+    return t('pricing.free')
   }
 
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: plan.currency,
-    maximumFractionDigits: 0,
-  }).format(amount)
+  return formatCurrency(amount, plan.currency)
 }
 
 function intervalLabel(interval: BillingInterval): string {
   if (interval === 'one_time') {
-    return 'one time'
+    return t('pricing.oneTime')
   }
 
   return interval
@@ -56,7 +54,7 @@ async function loadPlans(): Promise<void> {
     error.value =
       requestError instanceof ApiError
         ? requestError.message
-        : 'We could not load creator plans. Please try again.'
+        : t('errors.plansLoad')
   } finally {
     isLoading.value = false
   }
@@ -73,11 +71,10 @@ onMounted(() => {
       <AppNav />
 
       <header class="mx-auto max-w-3xl pt-14 text-center">
-        <p class="text-sm font-medium text-emerald-400">Platform pricing</p>
-        <h1 class="mt-3 text-4xl font-bold leading-tight sm:text-5xl">Choose your creator plan</h1>
+        <p class="text-sm font-medium text-emerald-400">{{ t('pricing.kicker') }}</p>
+        <h1 class="mt-3 text-4xl font-bold leading-tight sm:text-5xl">{{ t('pricing.headline') }}</h1>
         <p class="mt-5 text-sm leading-7 text-neutral-400 sm:text-base">
-          Plans provide internal platform credits for campaign, caption and creator workflows.
-          Prices are placeholders while real provider costs are evaluated.
+          {{ t('pricing.body') }}
         </p>
       </header>
 
@@ -94,14 +91,14 @@ onMounted(() => {
         role="alert"
         class="mx-auto mt-12 max-w-xl rounded-3xl border border-rose-900/60 bg-rose-950/30 p-5 text-center"
       >
-        <h2 class="text-lg font-semibold text-rose-100">Pricing unavailable</h2>
+        <h2 class="text-lg font-semibold text-rose-100">{{ t('pricing.unavailable') }}</h2>
         <p class="mt-2 text-sm text-rose-200">{{ error }}</p>
         <button
           type="button"
           class="mt-5 min-h-11 rounded-xl bg-white px-5 text-sm font-semibold text-neutral-950"
           @click="loadPlans"
         >
-          Try again
+          {{ t('common.tryAgain') }}
         </button>
       </div>
 
@@ -122,11 +119,11 @@ onMounted(() => {
             data-testid="featured-plan-badge"
             class="absolute -top-3 left-5 rounded-full bg-emerald-400 px-3 py-1 text-xs font-bold text-emerald-950"
           >
-            Recommended
+            {{ t('pricing.recommended') }}
           </span>
 
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-            {{ plan.monthly_credits }} monthly credits
+            {{ t('pricing.monthlyCredits', { count: plan.monthly_credits }) }}
           </p>
           <h2 class="mt-3 text-2xl font-bold">{{ plan.name }}</h2>
           <p class="mt-3 min-h-12 text-sm leading-6 text-neutral-400">
@@ -136,7 +133,7 @@ onMounted(() => {
           <div class="mt-6">
             <p class="text-3xl font-bold">{{ formatPrice(plan) }}</p>
             <p v-if="plan.price_amount !== '0.00'" class="mt-1 text-xs text-neutral-500">
-              per {{ intervalLabel(plan.billing_interval) }}
+              {{ t('pricing.per', { interval: intervalLabel(plan.billing_interval) }) }}
             </p>
           </div>
 
@@ -156,7 +153,7 @@ onMounted(() => {
                 : 'bg-white text-neutral-950 hover:bg-neutral-200'
             "
           >
-            {{ plan.cta_label ?? 'View plan' }}
+            {{ plan.cta_label ?? t('pricing.viewPlan') }}
           </RouterLink>
         </article>
       </section>
@@ -164,8 +161,7 @@ onMounted(() => {
       <p
         class="mx-auto mt-10 max-w-2xl rounded-2xl border border-neutral-800 bg-neutral-900/50 p-4 text-center text-xs leading-5 text-neutral-500"
       >
-        Billing will be connected when paid subscriptions are enabled. No checkout or payment is
-        active yet.
+        {{ t('pricing.billingNotice') }}
       </p>
     </div>
   </main>

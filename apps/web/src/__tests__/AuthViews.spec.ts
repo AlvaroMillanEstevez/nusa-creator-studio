@@ -5,6 +5,8 @@ import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { nextTick } from 'vue'
 
+import { setLocale } from '@/i18n'
+import { API_BASE_URL } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import type { AuthUser } from '@/types/auth'
 import LoginView from '@/views/LoginView.vue'
@@ -22,6 +24,7 @@ const authenticatedUser: AuthUser = {
   access_label: 'Current plan credits',
   monthly_credit_allowance: 20,
   credits_balance: 20,
+  preferred_locale: 'en',
   created_at: null,
 }
 
@@ -79,6 +82,8 @@ function mockAuthSuccess() {
 
 describe('authentication views', () => {
   afterEach(() => {
+    setLocale('en', false)
+    localStorage.clear()
     vi.unstubAllGlobals()
   })
 
@@ -104,7 +109,7 @@ describe('authentication views', () => {
     expect(wrapper.get('input[name="password"]').attributes('type')).toBe('password')
     expect(wrapper.get('button[type="submit"]').text()).toBe('Log in')
     expect(
-      wrapper.findAll('a[href="/register"]').some((link) => link.text() === 'Create an account'),
+      wrapper.findAll('a[href="/register"]').some((link) => link.text() === 'Create account'),
     ).toBe(true)
   })
 
@@ -218,6 +223,33 @@ describe('authentication views', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/dashboard')
+  })
+
+  it('sends the selected locale during registration and uses a safe redirect', async () => {
+    setLocale('es', false)
+    const fetchMock = mockAuthSuccess()
+    const router = testRouter()
+    await router.push('/register?redirect=/campaigns/new')
+    await router.isReady()
+
+    const wrapper = mount(RegisterView, {
+      global: { plugins: [createPinia(), router] },
+    })
+
+    await wrapper.get('input[name="name"]').setValue('Nusa Creator')
+    await wrapper.get('input[name="email"]').setValue('creator@example.test')
+    await wrapper.get('input[name="password"]').setValue('strong-password')
+    await wrapper.get('input[name="password_confirmation"]').setValue('strong-password')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const registerCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).startsWith(API_BASE_URL + '/auth/register'),
+    )
+
+    expect(registerCall).toBeDefined()
+    expect(JSON.parse(String(registerCall?.[1]?.body))).toMatchObject({ preferred_locale: 'es' })
+    expect(router.currentRoute.value.fullPath).toBe('/campaigns/new')
   })
 
   it('shows a safe login error instead of a raw SQL exception', async () => {

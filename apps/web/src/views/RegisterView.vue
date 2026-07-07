@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import { currentLocale, t } from '@/i18n'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { RegisterPayload } from '@/types/auth'
+import { safeInternalRedirect } from '@/utils/redirects'
 
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 const validationError = ref('')
 
@@ -24,17 +27,17 @@ async function submit(): Promise<void> {
   auth.clearError()
 
   if (!form.name.trim() || !form.email.trim()) {
-    validationError.value = 'Enter your name and email.'
+    validationError.value = t('auth.enterNameEmail')
     return
   }
 
   if (form.password.length < 8) {
-    validationError.value = 'Use at least 8 characters for your password.'
+    validationError.value = t('auth.passwordMin')
     return
   }
 
   if (form.password !== form.password_confirmation) {
-    validationError.value = 'Your password confirmation does not match.'
+    validationError.value = t('auth.passwordMismatch')
     return
   }
 
@@ -44,9 +47,10 @@ async function submit(): Promise<void> {
       email: form.email.trim().toLowerCase(),
       password: form.password,
       password_confirmation: form.password_confirmation,
+      preferred_locale: currentLocale.value,
     })
 
-    await router.push({ name: 'dashboard' })
+    await router.push(safeInternalRedirect(route.query.redirect))
   } catch {
     // The store exposes a friendly server error.
   }
@@ -54,12 +58,12 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <AuthLayout alternate-label="Log in" alternate-to="/login">
+  <AuthLayout :alternate-label="t('nav.login')" alternate-to="/login">
     <section class="mt-12">
-      <p class="text-sm font-medium text-emerald-400">Start creating</p>
-      <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Create your studio account.</h1>
+      <p class="text-sm font-medium text-emerald-400">{{ t('auth.startCreating') }}</p>
+      <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">{{ t('auth.createStudioAccount') }}</h1>
       <p class="mt-4 text-sm leading-6 text-neutral-400">
-        Your account starts with 20 internal platform credits for the mock creator workflows.
+        {{ t('auth.registerIntro') }}
       </p>
     </section>
 
@@ -69,20 +73,20 @@ async function submit(): Promise<void> {
       @submit.prevent="submit"
     >
       <div>
-        <label for="register-name" class="text-sm font-semibold text-neutral-200">Name</label>
+        <label for="register-name" class="text-sm font-semibold text-neutral-200">{{ t('auth.name') }}</label>
         <input
           id="register-name"
           v-model="form.name"
           name="name"
           type="text"
           autocomplete="name"
-          placeholder="Your creator name"
+          :placeholder="t('auth.creatorName')"
           class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
         />
       </div>
 
       <div class="mt-6">
-        <label for="register-email" class="text-sm font-semibold text-neutral-200">Email</label>
+        <label for="register-email" class="text-sm font-semibold text-neutral-200">{{ t('auth.email') }}</label>
         <input
           id="register-email"
           v-model="form.email"
@@ -96,7 +100,7 @@ async function submit(): Promise<void> {
 
       <div class="mt-6">
         <label for="register-password" class="text-sm font-semibold text-neutral-200"
-          >Password</label
+          >{{ t('auth.password') }}</label
         >
         <input
           id="register-password"
@@ -106,12 +110,12 @@ async function submit(): Promise<void> {
           autocomplete="new-password"
           class="mt-2 w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
         />
-        <p class="mt-2 text-xs text-neutral-600">Use at least 8 characters.</p>
+        <p class="mt-2 text-xs text-neutral-600">{{ t('auth.useAtLeast8') }}</p>
       </div>
 
       <div class="mt-6">
         <label for="register-confirmation" class="text-sm font-semibold text-neutral-200">
-          Confirm password
+          {{ t('auth.confirmPassword') }}
         </label>
         <input
           id="register-confirmation"
@@ -141,13 +145,13 @@ async function submit(): Promise<void> {
           class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950"
           aria-hidden="true"
         />
-        {{ auth.isLoading ? 'Creating account...' : 'Create account' }}
+        {{ auth.isLoading ? t('auth.creatingAccount') : t('auth.createAccount') }}
       </button>
 
       <p class="mt-5 text-center text-sm text-neutral-500">
-        Already have an account?
+        {{ t('auth.alreadyHaveAccount') }}
         <RouterLink to="/login" class="font-semibold text-emerald-400 hover:text-emerald-300">
-          Log in
+          {{ t('auth.login') }}
         </RouterLink>
       </p>
     </form>

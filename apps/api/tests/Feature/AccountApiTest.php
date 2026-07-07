@@ -61,6 +61,44 @@ class AccountApiTest extends TestCase
         $this->assertSame('creator@example.test', $user->refresh()->email);
     }
 
+    public function test_authenticated_user_can_update_preferred_locale(): void
+    {
+        $user = User::factory()->create([
+            'preferred_locale' => 'en',
+            'email' => 'creator@example.test',
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson('/api/v1/auth/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'preferred_locale' => 'id',
+            ])
+            ->assertOk()
+            ->assertJsonPath('user.preferred_locale', 'id');
+
+        $this->assertSame('id', $user->refresh()->preferred_locale);
+    }
+
+    public function test_invalid_preferred_locale_is_rejected(): void
+    {
+        $user = User::factory()->create([
+            'preferred_locale' => 'en',
+            'email' => 'creator@example.test',
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson('/api/v1/auth/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'preferred_locale' => 'fr',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('preferred_locale');
+
+        $this->assertSame('en', $user->refresh()->preferred_locale);
+    }
+
     public function test_profile_update_cannot_change_access_or_credit_fields(): void
     {
         $user = User::factory()->freeUser()->create([
@@ -77,6 +115,7 @@ class AccountApiTest extends TestCase
                 'is_unlimited' => true,
                 'monthly_credit_allowance' => 9999,
                 'credits_balance' => 9999,
+                'preferred_locale' => 'es',
             ])
             ->assertOk();
 
@@ -88,13 +127,15 @@ class AccountApiTest extends TestCase
         $this->assertFalse($user->is_unlimited);
         $this->assertSame(20, $user->monthly_credit_allowance);
         $this->assertSame(12, $user->credits_balance);
+        $this->assertSame('es', $user->preferred_locale);
 
         $response
             ->assertJsonPath('user.role', 'free_user')
             ->assertJsonPath('user.plan_key', 'free')
             ->assertJsonPath('user.is_unlimited', false)
             ->assertJsonPath('user.monthly_credit_allowance', 20)
-            ->assertJsonPath('user.credits_balance', 12);
+            ->assertJsonPath('user.credits_balance', 12)
+            ->assertJsonPath('user.preferred_locale', 'es');
     }
 
     public function test_authenticated_user_can_update_password_with_current_password(): void

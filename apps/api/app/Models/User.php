@@ -18,6 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
     'name',
     'email',
     'password',
+    'preferred_locale',
     'credits_balance',
     'role',
     'plan_key',
@@ -34,11 +35,18 @@ class User extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'preferred_locale' => 'en',
         'credits_balance' => 20,
         'role' => 'free_user',
         'plan_key' => 'free',
         'is_unlimited' => false,
         'monthly_credit_allowance' => 20,
+    ];
+
+    public const SUPPORTED_LOCALES = [
+        'en',
+        'id',
+        'es',
     ];
 
     public const ROLES = [
@@ -59,6 +67,10 @@ class User extends Authenticatable
     protected static function booted(): void
     {
         static::saving(function (User $user): void {
+            if (! in_array($user->preferred_locale, self::SUPPORTED_LOCALES, true)) {
+                throw new DomainException('Invalid preferred locale.');
+            }
+
             if ($user->credits_balance !== null && $user->credits_balance < 0) {
                 throw new DomainException('Platform credit balance cannot be negative.');
             }
@@ -173,6 +185,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'preferred_locale' => 'string',
             'credits_balance' => 'integer',
             'is_unlimited' => 'boolean',
             'monthly_credit_allowance' => 'integer',

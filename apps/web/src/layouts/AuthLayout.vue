@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import { t } from '@/i18n'
+
 defineProps<{
   alternateLabel: string
   alternateTo: string
@@ -11,13 +14,14 @@ defineProps<{
   <main class="min-h-screen bg-neutral-950 text-white">
     <div class="mx-auto min-h-screen max-w-md px-5 pb-12 pt-6 sm:px-6">
       <header class="flex items-center justify-between gap-4">
-        <RouterLink to="/" class="text-sm font-bold text-white"> Nusa Creator Studio </RouterLink>
+        <RouterLink to="/" class="text-sm font-bold text-white"> {{ t('app.name') }} </RouterLink>
         <nav
-          aria-label="Authentication navigation"
+          :aria-label="t('nav.authNavigation')"
           class="flex shrink-0 items-center gap-3 text-xs"
         >
+          <LanguageSwitcher />
           <RouterLink to="/" class="text-neutral-400 transition hover:text-white">
-            Back to Home
+            {{ t('nav.backToHome') }}
           </RouterLink>
           <RouterLink
             :to="alternateTo"

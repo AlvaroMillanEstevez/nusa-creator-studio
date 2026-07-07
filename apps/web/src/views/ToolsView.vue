@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getCreatorTools } from '@/services/tools'
 import { useAuthStore } from '@/stores/auth'
@@ -39,7 +40,7 @@ async function loadTools(): Promise<void> {
     error.value =
       requestError instanceof ApiError
         ? requestError.message
-        : 'We could not load the creator tools. Please try again.'
+        : t('errors.toolsLoad')
   } finally {
     isLoading.value = false
   }
@@ -56,15 +57,14 @@ onMounted(() => {
       <AppNav />
 
       <header class="pt-12">
-        <p class="text-sm font-medium text-emerald-400">Creator Studio</p>
-        <h1 class="mt-3 text-4xl font-bold leading-tight">What do you want to create today?</h1>
+        <p class="text-sm font-medium text-emerald-400">{{ t('tools.kicker') }}</p>
+        <h1 class="mt-3 text-4xl font-bold leading-tight">{{ t('tools.headline') }}</h1>
         <p class="mt-4 text-sm leading-6 text-neutral-400">
-          Choose a focused workflow and turn your product idea into content built for vertical
-          video.
+          {{ t('tools.body') }}
         </p>
       </header>
 
-      <div v-if="isLoading" class="mt-10 space-y-4" aria-label="Loading creator tools">
+      <div v-if="isLoading" class="mt-10 space-y-4" :aria-label="t('tools.loading')">
         <div
           v-for="index in 3"
           :key="index"
@@ -77,14 +77,14 @@ onMounted(() => {
         role="alert"
         class="mt-10 rounded-3xl border border-rose-900/60 bg-rose-950/30 p-5"
       >
-        <h2 class="text-lg font-semibold text-rose-100">Tools unavailable</h2>
+        <h2 class="text-lg font-semibold text-rose-100">{{ t('tools.unavailable') }}</h2>
         <p class="mt-2 text-sm leading-6 text-rose-200">{{ error }}</p>
         <button
           type="button"
           class="mt-5 min-h-11 rounded-xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
           @click="loadTools"
         >
-          Try again
+          {{ t('common.tryAgain') }}
         </button>
       </div>
 
@@ -93,11 +93,11 @@ onMounted(() => {
           <div class="flex items-end justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                Ready to use
+                {{ t('tools.ready') }}
               </p>
-              <h2 class="mt-1 text-xl font-semibold">Available tools</h2>
+              <h2 class="mt-1 text-xl font-semibold">{{ t('tools.availableTools') }}</h2>
             </div>
-            <span class="text-xs text-neutral-500">{{ availableTools.length }} live</span>
+            <span class="text-xs text-neutral-500">{{ t('tools.live', { count: availableTools.length }) }}</span>
           </div>
 
           <div v-if="availableTools.length" class="mt-5 space-y-4">
@@ -118,7 +118,7 @@ onMounted(() => {
                   <span
                     class="shrink-0 rounded-full border border-emerald-800 bg-emerald-950 px-3 py-1 text-xs font-semibold text-emerald-300"
                   >
-                    {{ tool.badge_label ?? 'Available' }}
+                    {{ tool.badge_label ?? t('common.available') }}
                   </span>
                 </div>
 
@@ -136,7 +136,7 @@ onMounted(() => {
                     {{ tool.credit_cost_label ?? tool.credit_cost + ' credits' }}
                   </span>
                   <span class="text-sm font-semibold text-emerald-300">
-                    {{ auth.isAuthenticated ? 'Open tool' : 'Log in to use' }}
+                    {{ auth.isAuthenticated ? t('tools.openTool') : t('tools.loginToUse') }}
                     <span aria-hidden="true">&rarr;</span>
                   </span>
                 </div>
@@ -150,7 +150,7 @@ onMounted(() => {
               >
                 <h3 class="text-lg font-semibold">{{ tool.title }}</h3>
                 <p class="mt-3 text-sm leading-6 text-neutral-400">{{ tool.short_description }}</p>
-                <p class="mt-4 text-xs text-amber-300">A launch route has not been configured.</p>
+                <p class="mt-4 text-xs text-amber-300">{{ t('tools.launchRouteMissing') }}</p>
               </article>
             </template>
           </div>
@@ -158,15 +158,15 @@ onMounted(() => {
             v-else
             class="mt-5 rounded-3xl border border-dashed border-neutral-800 p-6 text-sm text-neutral-500"
           >
-            No tools are available right now.
+            {{ t('tools.noTools') }}
           </p>
         </section>
 
         <section v-if="maintenanceTools.length" class="mt-12">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-400">
-            In maintenance
+            {{ t('tools.inMaintenance') }}
           </p>
-          <h2 class="mt-1 text-xl font-semibold">Temporarily unavailable</h2>
+          <h2 class="mt-1 text-xl font-semibold">{{ t('tools.temporarilyUnavailable') }}</h2>
 
           <div class="mt-5 space-y-3">
             <article
@@ -184,12 +184,12 @@ onMounted(() => {
                   <h3 class="mt-2 text-lg font-semibold text-neutral-200">{{ tool.title }}</h3>
                 </div>
                 <span class="shrink-0 rounded-full bg-amber-950 px-3 py-1 text-xs text-amber-300">
-                  {{ tool.badge_label ?? 'Maintenance' }}
+                  {{ tool.badge_label ?? t('common.maintenance') }}
                 </span>
               </div>
               <p class="mt-3 text-sm leading-6 text-neutral-400">{{ tool.short_description }}</p>
               <p class="mt-4 text-sm leading-6 text-amber-200">
-                Temporarily unavailable while improvements are being made.
+                {{ t('tools.maintenanceBody') }}
               </p>
             </article>
           </div>
@@ -197,9 +197,9 @@ onMounted(() => {
 
         <section v-if="comingSoonTools.length" class="mt-12">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-            Expanding the studio
+            {{ t('tools.expanding') }}
           </p>
-          <h2 class="mt-1 text-xl font-semibold">Coming soon</h2>
+          <h2 class="mt-1 text-xl font-semibold">{{ t('tools.comingSoon') }}</h2>
 
           <div class="mt-5 space-y-3">
             <article
@@ -219,12 +219,12 @@ onMounted(() => {
                 <span
                   class="shrink-0 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400"
                 >
-                  {{ tool.badge_label ?? 'Coming soon' }}
+                  {{ tool.badge_label ?? t('tools.comingSoon') }}
                 </span>
               </div>
               <p class="mt-3 text-sm leading-6 text-neutral-400">{{ tool.short_description }}</p>
               <p class="mt-4 text-xs font-medium text-neutral-600">
-                {{ tool.credit_cost_label ?? 'Credit cost coming soon' }}
+                {{ tool.credit_cost_label ?? t('tools.creditCostComingSoon') }}
               </p>
             </article>
           </div>

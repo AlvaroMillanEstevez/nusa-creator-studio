@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
+import { currentLocale, setLocale } from '@/i18n'
 import { API_BASE_URL, API_ORIGIN } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import type { AuthUser } from '@/types/auth'
@@ -21,6 +22,7 @@ const freeUser: AuthUser = {
   access_label: 'Current plan credits',
   monthly_credit_allowance: 20,
   credits_balance: 13,
+  preferred_locale: 'en',
   current_plan: {
     key: 'free',
     name: 'Free',
@@ -66,6 +68,8 @@ async function mountAccount(user: AuthUser) {
 
 describe('AccountView', () => {
   afterEach(() => {
+    setLocale('en', false)
+    localStorage.clear()
     vi.unstubAllGlobals()
   })
 
@@ -153,6 +157,55 @@ describe('AccountView', () => {
     )
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/auth/password',
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+  })
+
+  it('updates the preferred locale from the account language switcher', async () => {
+    let profileMethod = ''
+    let profilePayload: unknown = null
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+      if (url === API_ORIGIN + '/sanctum/csrf-cookie') {
+        return new Response(null, { status: 204 })
+      }
+
+      if (url === API_BASE_URL + '/auth/profile') {
+        profileMethod = init?.method ?? ''
+        profilePayload = JSON.parse(String(init?.body))
+
+        return new Response(JSON.stringify({ user: { ...freeUser, preferred_locale: 'id' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request.' }), { status: 500 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { wrapper, auth } = await mountAccount(freeUser)
+    const languageSelects = wrapper.findAll('select')
+    const languageSelect = languageSelects[languageSelects.length - 1]
+
+    expect(languageSelect?.exists()).toBe(true)
+
+    await languageSelect!.setValue('id')
+    await flushPromises()
+
+    expect(currentLocale.value).toBe('id')
+    expect(localStorage.getItem('nusa_locale')).toBe('id')
+    expect(auth.user?.preferred_locale).toBe('id')
+    expect(profileMethod).toBe('PATCH')
+    expect(profilePayload).toMatchObject({
+      name: freeUser.name,
+      email: freeUser.email,
+      preferred_locale: 'id',
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/auth/profile',
       expect.objectContaining({ method: 'PATCH' }),
     )
   })

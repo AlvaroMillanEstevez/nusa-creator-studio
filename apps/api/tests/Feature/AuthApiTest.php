@@ -30,6 +30,7 @@ class AuthApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('user.name', 'Nusa Creator')
             ->assertJsonPath('user.email', 'creator@example.com')
+            ->assertJsonPath('user.preferred_locale', 'en')
             ->assertJsonPath('user.role', 'free_user')
             ->assertJsonPath('user.role_label', 'Free User')
             ->assertJsonPath('user.plan_key', 'free')
@@ -43,6 +44,7 @@ class AuthApiTest extends TestCase
                     'id',
                     'name',
                     'email',
+                    'preferred_locale',
                     'role',
                     'role_label',
                     'plan_key',
@@ -59,11 +61,59 @@ class AuthApiTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
         $this->assertTrue(Hash::check('strong-password', $user->password));
+        $this->assertSame('en', $user->preferred_locale);
         $this->assertSame('free_user', $user->role);
         $this->assertSame('free', $user->plan_key);
         $this->assertFalse($user->is_unlimited);
         $this->assertSame(20, $user->monthly_credit_allowance);
         $this->assertSame(20, $user->credits_balance);
+    }
+
+    public function test_user_can_register_with_supported_preferred_locale(): void
+    {
+        $this
+            ->withHeader('Origin', 'http://localhost:5173')
+            ->postJson('/api/v1/auth/register', [
+                'name' => 'Nusa Creator',
+                'email' => 'creator-id@example.com',
+                'password' => 'strong-password',
+                'password_confirmation' => 'strong-password',
+                'preferred_locale' => 'id',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('user.preferred_locale', 'id');
+
+        $this->assertSame(
+            'id',
+            User::query()->where('email', 'creator-id@example.com')->firstOrFail()->preferred_locale,
+        );
+    }
+
+    public function test_registration_rejects_invalid_preferred_locale_values(): void
+    {
+        $this
+            ->withHeader('Origin', 'http://localhost:5173')
+            ->postJson('/api/v1/auth/register', [
+                'name' => 'Nusa Creator',
+                'email' => 'creator-invalid@example.com',
+                'password' => 'strong-password',
+                'password_confirmation' => 'strong-password',
+                'preferred_locale' => null,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('preferred_locale');
+
+        $this
+            ->withHeader('Origin', 'http://localhost:5173')
+            ->postJson('/api/v1/auth/register', [
+                'name' => 'Nusa Creator',
+                'email' => 'creator-fr@example.com',
+                'password' => 'strong-password',
+                'password_confirmation' => 'strong-password',
+                'preferred_locale' => 'fr',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('preferred_locale');
     }
 
     public function test_user_can_login_with_email_and_password(): void
@@ -81,6 +131,7 @@ class AuthApiTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.preferred_locale', 'en')
             ->assertJsonPath('user.credits_balance', 20);
 
         $this->assertAuthenticatedAs($user);
@@ -116,6 +167,7 @@ class AuthApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.email', $user->email)
+            ->assertJsonPath('user.preferred_locale', 'en')
             ->assertJsonPath('user.role', 'free_user')
             ->assertJsonPath('user.role_label', 'Free User')
             ->assertJsonPath('user.plan_key', 'free')

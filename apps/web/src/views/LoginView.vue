@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import { t } from '@/i18n'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { LoginPayload } from '@/types/auth'
@@ -24,7 +25,7 @@ async function submit(): Promise<void> {
   auth.clearError()
 
   if (!form.email.trim() || !form.password) {
-    validationError.value = 'Enter your email and password.'
+    validationError.value = t('auth.enterEmailPassword')
     return
   }
 
@@ -42,12 +43,12 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <AuthLayout alternate-label="Register" alternate-to="/register">
+  <AuthLayout :alternate-label="t('nav.register')" alternate-to="/register">
     <section class="mt-12">
-      <p class="text-sm font-medium text-emerald-400">Creator account</p>
-      <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Welcome back.</h1>
+      <p class="text-sm font-medium text-emerald-400">{{ t('auth.creatorAccount') }}</p>
+      <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">{{ t('auth.welcomeBack') }}</h1>
       <p class="mt-4 text-sm leading-6 text-neutral-400">
-        Log in to access your projects, generations and platform credits.
+        {{ t('auth.loginIntro') }}
       </p>
     </section>
 
@@ -57,7 +58,7 @@ async function submit(): Promise<void> {
       @submit.prevent="submit"
     >
       <div>
-        <label for="login-email" class="text-sm font-semibold text-neutral-200">Email</label>
+        <label for="login-email" class="text-sm font-semibold text-neutral-200">{{ t('auth.email') }}</label>
         <input
           id="login-email"
           v-model="form.email"
@@ -70,7 +71,7 @@ async function submit(): Promise<void> {
       </div>
 
       <div class="mt-6">
-        <label for="login-password" class="text-sm font-semibold text-neutral-200">Password</label>
+        <label for="login-password" class="text-sm font-semibold text-neutral-200">{{ t('auth.password') }}</label>
         <input
           id="login-password"
           v-model="form.password"
@@ -99,13 +100,13 @@ async function submit(): Promise<void> {
           class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950"
           aria-hidden="true"
         />
-        {{ auth.isLoading ? 'Logging in...' : 'Log in' }}
+        {{ auth.isLoading ? t('auth.loggingIn') : t('auth.login') }}
       </button>
 
       <p class="mt-5 text-center text-sm text-neutral-500">
-        New to Nusa?
+        {{ t('auth.newToNusa') }}
         <RouterLink to="/register" class="font-semibold text-emerald-400 hover:text-emerald-300">
-          Create an account
+          {{ t('auth.createAccount') }}
         </RouterLink>
       </p>
     </form>

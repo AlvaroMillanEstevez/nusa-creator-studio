@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
+import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import {
   fetchCurrentUser,
@@ -46,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
 
       if (!(requestError instanceof ApiError && requestError.status === 401)) {
-        error.value = errorMessage(requestError, 'We could not check your session.')
+        error.value = errorMessage(requestError, t('errors.sessionCheck'))
       }
     } finally {
       initialized.value = true
@@ -74,7 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = await loginUser(payload)
       initialized.value = true
     } catch (requestError: unknown) {
-      error.value = errorMessage(requestError, 'We could not log you in. Please try again.')
+      error.value = errorMessage(requestError, t('errors.login'))
       throw requestError
     } finally {
       isLoading.value = false
@@ -91,7 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (requestError: unknown) {
       error.value = errorMessage(
         requestError,
-        'We could not create your account. Please try again.',
+        t('errors.register'),
       )
       throw requestError
     } finally {
@@ -109,7 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return updatedUser
     } catch (requestError: unknown) {
-      error.value = errorMessage(requestError, 'We could not update your profile.')
+      error.value = errorMessage(requestError, t('errors.profile'))
       throw requestError
     } finally {
       isLoading.value = false
@@ -123,7 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       return await updateUserPassword(payload)
     } catch (requestError: unknown) {
-      error.value = errorMessage(requestError, 'We could not update your password.')
+      error.value = errorMessage(requestError, t('errors.password'))
       throw requestError
     } finally {
       isLoading.value = false
@@ -137,7 +138,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await logoutUser()
     } catch (requestError: unknown) {
-      error.value = errorMessage(requestError, 'We could not complete logout cleanly.')
+      error.value = errorMessage(requestError, t('errors.logout'))
       throw requestError
     } finally {
       user.value = null

@@ -1,3 +1,4 @@
+import type { SupportedLocale } from '@/i18n'
 import type { CurrentSubscriptionPlan } from '@/types/plan'
 
 export type UserRole = 'admin' | 'internal_creator' | 'subscriber' | 'free_user'
@@ -8,6 +9,7 @@ export interface AuthUser {
   id: number
   name: string
   email: string
+  preferred_locale?: SupportedLocale
   role: UserRole
   role_label: string
   plan_key: PlanKey
@@ -30,11 +32,13 @@ export interface RegisterPayload {
   email: string
   password: string
   password_confirmation: string
+  preferred_locale?: SupportedLocale
 }
 
 export interface ProfileUpdatePayload {
   name: string
   email: string
+  preferred_locale?: SupportedLocale
 }
 
 export interface PasswordUpdatePayload {

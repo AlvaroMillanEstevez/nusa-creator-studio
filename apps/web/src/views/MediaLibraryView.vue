@@ -6,6 +6,7 @@ import AppNav from '@/components/AppNav.vue'
 import { ApiError } from '@/services/api'
 import { deleteMediaAsset, getMediaAssetStats, listMediaAssets } from '@/services/media'
 import type { MediaAsset, MediaAssetType, MediaAssetUsageRole } from '@/types/media'
+import { t } from '@/i18n'
 import { formatDate, formatLabel } from '@/utils/formatters'
 
 const assets = ref<MediaAsset[]>([])
@@ -22,32 +23,32 @@ const currentPage = ref(1)
 const lastPage = ref(1)
 const totalAssets = ref(0)
 
-const typeOptions: Array<{ value: MediaAssetType; label: string }> = [
-  { value: 'image', label: 'Images' },
-  { value: 'video', label: 'Videos' },
-  { value: 'audio', label: 'Audio' },
-  { value: 'document', label: 'Documents' },
-  { value: 'other', label: 'Other' },
+const typeOptions: Array<{ value: MediaAssetType; labelKey: string }> = [
+  { value: 'image', labelKey: 'media.images' },
+  { value: 'video', labelKey: 'media.videos' },
+  { value: 'audio', labelKey: 'media.audio' },
+  { value: 'document', labelKey: 'media.documents' },
+  { value: 'other', labelKey: 'common.other' },
 ]
 
-const usageRoleOptions: Array<{ value: MediaAssetUsageRole; label: string }> = [
-  { value: 'general', label: 'General' },
-  { value: 'product_image', label: 'Product image' },
-  { value: 'source_video', label: 'Source video' },
-  { value: 'audio_track', label: 'Audio track' },
-  { value: 'model_reference', label: 'Model reference' },
-  { value: 'garment_reference', label: 'Garment reference' },
-  { value: 'background_reference', label: 'Background reference' },
-  { value: 'brand_reference', label: 'Brand reference' },
+const usageRoleOptions: Array<{ value: MediaAssetUsageRole; labelKey: string }> = [
+  { value: 'general', labelKey: 'media.roles.general' },
+  { value: 'product_image', labelKey: 'media.roles.productImage' },
+  { value: 'source_video', labelKey: 'media.roles.sourceVideo' },
+  { value: 'audio_track', labelKey: 'media.roles.audioTrack' },
+  { value: 'model_reference', labelKey: 'media.roles.modelReference' },
+  { value: 'garment_reference', labelKey: 'media.roles.garmentReference' },
+  { value: 'background_reference', labelKey: 'media.roles.backgroundReference' },
+  { value: 'brand_reference', labelKey: 'media.roles.brandReference' },
 ]
 
 const summaryCards = computed(() => [
-  { label: 'Total assets', value: stats.value?.total_assets ?? 0 },
-  { label: 'Storage used', value: stats.value?.total_size_label ?? '0 B' },
-  { label: 'Images', value: stats.value?.images_count ?? 0 },
-  { label: 'Videos', value: stats.value?.videos_count ?? 0 },
-  { label: 'Audio', value: stats.value?.audio_count ?? 0 },
-  { label: 'Documents', value: stats.value?.documents_count ?? 0 },
+  { label: t('media.totalAssets'), value: stats.value?.total_assets ?? 0 },
+  { label: t('media.storageUsed'), value: stats.value?.total_size_label ?? '0 B' },
+  { label: t('media.images'), value: stats.value?.images_count ?? 0 },
+  { label: t('media.videos'), value: stats.value?.videos_count ?? 0 },
+  { label: t('media.audio'), value: stats.value?.audio_count ?? 0 },
+  { label: t('media.documents'), value: stats.value?.documents_count ?? 0 },
 ])
 
 const hasActiveFilters = computed(
@@ -88,7 +89,7 @@ async function loadLibrary(): Promise<void> {
   } catch (requestError: unknown) {
     error.value = friendlyError(
       requestError,
-      'We could not load your media library. Please try again.',
+      t('errors.mediaLoad'),
     )
   } finally {
     isLoading.value = false
@@ -105,7 +106,7 @@ async function applyFilters(): Promise<void> {
   } catch (requestError: unknown) {
     error.value = friendlyError(
       requestError,
-      'We could not filter your media assets. Please try again.',
+      t('errors.mediaFilter'),
     )
   } finally {
     isFiltering.value = false
@@ -130,16 +131,16 @@ async function goToPage(page: number): Promise<void> {
   try {
     await loadAssets(page)
   } catch (requestError: unknown) {
-    error.value = friendlyError(requestError, 'We could not load that page of media assets.')
+    error.value = friendlyError(requestError, t('errors.mediaPage'))
   } finally {
     isFiltering.value = false
   }
 }
 
 async function deleteAsset(asset: MediaAsset): Promise<void> {
-  const name = asset.original_name ?? 'this asset'
+  const name = asset.original_name ?? t('media.thisAsset')
 
-  if (!window.confirm(`Delete ${name}? This removes it from your media library.`)) {
+  if (!window.confirm(t('media.deleteConfirm', { name }))) {
     return
   }
 
@@ -152,11 +153,11 @@ async function deleteAsset(asset: MediaAsset): Promise<void> {
     assets.value = assets.value.filter((item) => item.id !== asset.id)
     totalAssets.value = Math.max(0, totalAssets.value - 1)
     await loadStats()
-    successMessage.value = 'Media asset deleted.'
+    successMessage.value = t('media.deleted')
   } catch (requestError: unknown) {
     error.value = friendlyError(
       requestError,
-      'We could not delete that media asset. Please try again.',
+      t('errors.mediaDelete'),
     )
   } finally {
     deletingId.value = null
@@ -165,11 +166,11 @@ async function deleteAsset(asset: MediaAsset): Promise<void> {
 
 function assetIcon(type: MediaAssetType): string {
   return {
-    image: 'Image',
-    video: 'Video',
-    audio: 'Audio',
-    document: 'Document',
-    other: 'Asset',
+    image: t('media.assetIcons.image'),
+    video: t('media.assetIcons.video'),
+    audio: t('media.assetIcons.audio'),
+    document: t('media.assetIcons.document'),
+    other: t('media.assetIcons.other'),
   }[type]
 }
 
@@ -182,10 +183,10 @@ onMounted(loadLibrary)
       <AppNav />
 
       <header class="pt-12">
-        <p class="text-sm font-medium text-emerald-400">Creator assets</p>
-        <h1 class="mt-3 text-4xl font-bold leading-tight">Media Library</h1>
+        <p class="text-sm font-medium text-emerald-400">{{ t('media.kicker') }}</p>
+        <h1 class="mt-3 text-4xl font-bold leading-tight">{{ t('media.title') }}</h1>
         <p class="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-          Manage uploaded project assets across your creator workflows.
+          {{ t('media.body') }}
         </p>
       </header>
 
@@ -198,22 +199,22 @@ onMounted(loadLibrary)
           />
         </div>
         <div class="h-48 animate-pulse rounded-3xl bg-neutral-900" />
-        <p class="text-sm text-neutral-500">Loading media library...</p>
+        <p class="text-sm text-neutral-500">{{ t('media.loading') }}</p>
       </section>
 
       <section
         v-else-if="error && assets.length === 0"
         class="mt-9 rounded-3xl border border-rose-900/60 bg-rose-950/30 p-5"
       >
-        <p class="text-sm font-medium text-rose-300">Media unavailable</p>
-        <h2 class="mt-2 text-xl font-semibold">Your library needs another try.</h2>
+        <p class="text-sm font-medium text-rose-300">{{ t('media.unavailable') }}</p>
+        <h2 class="mt-2 text-xl font-semibold">{{ t('media.retryTitle') }}</h2>
         <p role="alert" class="mt-3 text-sm leading-6 text-rose-100/70">{{ error }}</p>
         <button
           type="button"
           class="mt-5 min-h-12 rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300"
           @click="loadLibrary"
         >
-          Try again
+          {{ t('common.tryAgain') }}
         </button>
       </section>
 
@@ -233,59 +234,59 @@ onMounted(loadLibrary)
           <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-                Filters
+                {{ t('media.filters') }}
               </p>
-              <h2 class="mt-2 text-xl font-semibold">Find assets fast</h2>
+              <h2 class="mt-2 text-xl font-semibold">{{ t('media.findAssets') }}</h2>
             </div>
-            <p class="text-xs text-neutral-500">{{ totalAssets }} matching assets</p>
+            <p class="text-xs text-neutral-500">{{ t('media.matchingAssets', { count: totalAssets }) }}</p>
           </div>
 
           <form class="mt-5 grid gap-3 sm:grid-cols-3" @submit.prevent="applyFilters">
             <label class="sm:col-span-3 lg:col-span-1">
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                Search
+                {{ t('media.search') }}
               </span>
               <input
                 v-model="search"
                 name="search"
                 type="search"
-                placeholder="Search file names"
+                :placeholder="t('media.searchPlaceholder')"
                 class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 text-sm text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-500"
               />
             </label>
 
             <label>
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                Type
+                {{ t('media.type') }}
               </span>
               <select
                 v-model="selectedType"
                 name="type"
                 class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 text-sm text-white outline-none transition focus:border-emerald-500"
               >
-                <option value="">All types</option>
+                <option value="">{{ t('media.allTypes') }}</option>
                 <option v-for="option in typeOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
+                  {{ t(option.labelKey) }}
                 </option>
               </select>
             </label>
 
             <label>
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                Usage role
+                {{ t('media.usageRole') }}
               </span>
               <select
                 v-model="selectedUsageRole"
                 name="usage_role"
                 class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 text-sm text-white outline-none transition focus:border-emerald-500"
               >
-                <option value="">All roles</option>
+                <option value="">{{ t('media.allRoles') }}</option>
                 <option
                   v-for="option in usageRoleOptions"
                   :key="option.value"
                   :value="option.value"
                 >
-                  {{ option.label }}
+                  {{ t(option.labelKey) }}
                 </option>
               </select>
             </label>
@@ -296,7 +297,7 @@ onMounted(loadLibrary)
                 :disabled="isFiltering"
                 class="min-h-12 flex-1 rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:opacity-60"
               >
-                {{ isFiltering ? 'Filtering...' : 'Apply filters' }}
+                {{ isFiltering ? t('media.filtering') : t('common.applyFilters') }}
               </button>
               <button
                 type="button"
@@ -304,7 +305,7 @@ onMounted(loadLibrary)
                 class="min-h-12 rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
                 @click="clearFilters"
               >
-                Clear
+                {{ t('common.clear') }}
               </button>
             </div>
           </form>
@@ -330,34 +331,33 @@ onMounted(loadLibrary)
           <div class="flex items-end justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-                Uploaded media
+                {{ t('media.uploadedMedia') }}
               </p>
-              <h2 class="mt-2 text-xl font-semibold">Assets</h2>
+              <h2 class="mt-2 text-xl font-semibold">{{ t('media.assets') }}</h2>
             </div>
-            <p v-if="isFiltering" class="text-xs text-neutral-500">Refreshing...</p>
+            <p v-if="isFiltering" class="text-xs text-neutral-500">{{ t('media.refreshing') }}</p>
           </div>
 
           <div
             v-if="assets.length === 0"
             class="mt-5 rounded-3xl border border-dashed border-neutral-800 bg-neutral-900/40 p-6 text-center"
           >
-            <p class="text-lg font-semibold">No media assets yet.</p>
+            <p class="text-lg font-semibold">{{ t('media.emptyTitle') }}</p>
             <p class="mt-3 text-sm leading-6 text-neutral-400">
-              Upload assets from a project workflow, then manage them here across campaigns,
-              voiceovers, try-ons and video tools.
+              {{ t('media.emptyBody') }}
             </p>
             <div class="mt-6 grid gap-3 sm:grid-cols-2">
               <RouterLink
                 to="/tools"
                 class="flex min-h-12 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
               >
-                Browse tools
+                {{ t('media.browseTools') }}
               </RouterLink>
               <RouterLink
                 to="/dashboard"
                 class="flex min-h-12 items-center justify-center rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800"
               >
-                Back to dashboard
+                {{ t('media.backDashboard') }}
               </RouterLink>
             </div>
           </div>
@@ -377,7 +377,7 @@ onMounted(loadLibrary)
                 </div>
                 <div class="min-w-0 flex-1">
                   <h3 class="truncate text-base font-semibold text-neutral-100">
-                    {{ asset.original_name ?? 'Uploaded asset' }}
+                    {{ asset.original_name ?? t('media.uploadedAsset') }}
                   </h3>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <span
@@ -397,17 +397,17 @@ onMounted(loadLibrary)
 
               <dl class="mt-5 grid grid-cols-2 gap-3 border-t border-neutral-800 pt-4 text-sm">
                 <div>
-                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">Size</dt>
+                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.size') }}</dt>
                   <dd class="mt-1 text-neutral-300">
-                    {{ asset.size_label ?? 'Size unavailable' }}
+                    {{ asset.size_label ?? t('media.sizeUnavailable') }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">Uploaded</dt>
+                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.uploaded') }}</dt>
                   <dd class="mt-1 text-neutral-300">{{ formatDate(asset.created_at) }}</dd>
                 </div>
                 <div v-if="asset.project" class="col-span-2">
-                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">Project</dt>
+                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.project') }}</dt>
                   <dd class="mt-1 text-neutral-300">
                     {{ asset.project.title }} ? {{ formatLabel(asset.project.type) }}
                   </dd>
@@ -420,7 +420,7 @@ onMounted(loadLibrary)
                 class="mt-5 min-h-11 w-full rounded-2xl border border-rose-900/60 px-4 text-sm font-semibold text-rose-300 transition hover:bg-rose-950/40 disabled:cursor-wait disabled:opacity-60"
                 @click="deleteAsset(asset)"
               >
-                {{ deletingId === asset.id ? 'Deleting...' : 'Delete asset' }}
+                {{ deletingId === asset.id ? t('media.deleting') : t('media.deleteAsset') }}
               </button>
             </article>
           </div>
@@ -433,16 +433,16 @@ onMounted(loadLibrary)
             class="min-h-11 rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
             @click="goToPage(currentPage - 1)"
           >
-            Previous
+            {{ t('media.previous') }}
           </button>
-          <p class="text-xs text-neutral-500">Page {{ currentPage }} of {{ lastPage }}</p>
+          <p class="text-xs text-neutral-500">{{ t('media.pageOf', { current: currentPage, last: lastPage }) }}</p>
           <button
             type="button"
             :disabled="currentPage >= lastPage || isFiltering"
             class="min-h-11 rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
             @click="goToPage(currentPage + 1)"
           >
-            Next
+            {{ t('media.next') }}
           </button>
         </div>
       </template>

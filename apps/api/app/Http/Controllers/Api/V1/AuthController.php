@@ -22,6 +22,7 @@ class AuthController extends Controller
             'name',
             'email',
             'password',
+            'preferred_locale',
         ]));
 
         $user->refresh();

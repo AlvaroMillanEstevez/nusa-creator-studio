@@ -20,6 +20,7 @@ class AuthenticatedUserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'preferred_locale' => $this->preferred_locale,
             'role' => $this->role,
             'role_label' => $this->roleLabel(),
             'plan_key' => $this->plan_key,

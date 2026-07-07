@@ -1,3 +1,5 @@
+import { currentLocale, t } from '@/i18n'
+
 export function formatLabel(value: string | undefined): string {
   if (!value) {
     return '-'
@@ -8,17 +10,29 @@ export function formatLabel(value: string | undefined): string {
 
 export function formatDate(value: string | null): string {
   if (!value) {
-    return 'Date unavailable'
+    return t('common.dateUnavailable')
   }
 
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
-    return 'Date unavailable'
+    return t('common.dateUnavailable')
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(currentLocale.value, {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
+}
+
+export function formatNumber(value: number): string {
+  return new Intl.NumberFormat(currentLocale.value).format(value)
+}
+
+export function formatCurrency(value: number, currency: string): string {
+  return new Intl.NumberFormat(currentLocale.value === 'id' ? 'id-ID' : currentLocale.value, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value)
 }

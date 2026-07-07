@@ -3,9 +3,11 @@ import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { ApiError } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import type { PasswordUpdatePayload, ProfileUpdatePayload } from '@/types/auth'
+import { t } from '@/i18n'
 import { formatDate } from '@/utils/formatters'
 
 const auth = useAuthStore()
@@ -48,7 +50,7 @@ async function saveProfile(): Promise<void> {
   profileSuccess.value = ''
 
   if (!profile.name.trim() || !profile.email.trim()) {
-    profileError.value = 'Enter your name and email.'
+    profileError.value = t('auth.enterNameEmail')
     return
   }
 
@@ -59,9 +61,9 @@ async function saveProfile(): Promise<void> {
       name: profile.name.trim(),
       email: profile.email.trim().toLowerCase(),
     })
-    profileSuccess.value = 'Profile updated successfully.'
+    profileSuccess.value = t('account.profileUpdated')
   } catch (error: unknown) {
-    profileError.value = requestErrorMessage(error, 'We could not update your profile.')
+    profileError.value = requestErrorMessage(error, t('errors.profile'))
   } finally {
     isProfileSaving.value = false
   }
@@ -72,17 +74,17 @@ async function savePassword(): Promise<void> {
   passwordSuccess.value = ''
 
   if (!password.current_password || !password.password || !password.password_confirmation) {
-    passwordError.value = 'Complete all password fields.'
+    passwordError.value = t('account.completePassword')
     return
   }
 
   if (password.password.length < 8) {
-    passwordError.value = 'Your new password must be at least 8 characters.'
+    passwordError.value = t('account.newPasswordMin')
     return
   }
 
   if (password.password !== password.password_confirmation) {
-    passwordError.value = 'The new password confirmation does not match.'
+    passwordError.value = t('account.newPasswordMismatch')
     return
   }
 
@@ -94,7 +96,7 @@ async function savePassword(): Promise<void> {
     password.password = ''
     password.password_confirmation = ''
   } catch (error: unknown) {
-    passwordError.value = requestErrorMessage(error, 'We could not update your password.')
+    passwordError.value = requestErrorMessage(error, t('errors.password'))
   } finally {
     isPasswordSaving.value = false
   }
@@ -107,21 +109,21 @@ async function savePassword(): Promise<void> {
       <AppNav />
 
       <header class="pt-12">
-        <p class="text-sm font-medium text-emerald-400">Creator account</p>
-        <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Account and access</h1>
+        <p class="text-sm font-medium text-emerald-400">{{ t('account.kicker') }}</p>
+        <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">{{ t('account.title') }}</h1>
         <p class="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-          Keep your profile current, secure your account and review your platform access.
+          {{ t('account.body') }}
         </p>
       </header>
 
       <template v-if="user">
         <section class="mt-9 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Profile</p>
-          <h2 class="mt-2 text-xl font-semibold">Your details</h2>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{{ t('account.profile') }}</p>
+          <h2 class="mt-2 text-xl font-semibold">{{ t('account.details') }}</h2>
 
           <form class="mt-6 space-y-5" novalidate @submit.prevent="saveProfile">
             <div>
-              <label for="account-name" class="text-sm font-semibold text-neutral-200">Name</label>
+              <label for="account-name" class="text-sm font-semibold text-neutral-200">{{ t('auth.name') }}</label>
               <input
                 id="account-name"
                 v-model="profile.name"
@@ -134,7 +136,7 @@ async function savePassword(): Promise<void> {
 
             <div>
               <label for="account-email" class="text-sm font-semibold text-neutral-200"
-                >Email</label
+                >{{ t('auth.email') }}</label
               >
               <input
                 id="account-email"
@@ -166,22 +168,22 @@ async function savePassword(): Promise<void> {
               :disabled="isProfileSaving"
               class="flex min-h-12 w-full items-center justify-center rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 sm:w-auto"
             >
-              {{ isProfileSaving ? 'Saving profile...' : 'Save profile' }}
+              {{ isProfileSaving ? t('account.savingProfile') : t('account.saveProfile') }}
             </button>
           </form>
         </section>
 
         <section class="mt-6 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Security</p>
-          <h2 class="mt-2 text-xl font-semibold">Update password</h2>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{{ t('account.security') }}</p>
+          <h2 class="mt-2 text-xl font-semibold">{{ t('account.updatePassword') }}</h2>
           <p class="mt-3 text-sm leading-6 text-neutral-500">
-            Confirm your current password before choosing a new one.
+            {{ t('account.passwordBody') }}
           </p>
 
           <form class="mt-6 space-y-5" novalidate @submit.prevent="savePassword">
             <div>
               <label for="current-password" class="text-sm font-semibold text-neutral-200">
-                Current password
+                {{ t('account.currentPassword') }}
               </label>
               <input
                 id="current-password"
@@ -195,7 +197,7 @@ async function savePassword(): Promise<void> {
 
             <div>
               <label for="new-password" class="text-sm font-semibold text-neutral-200">
-                New password
+                {{ t('account.newPassword') }}
               </label>
               <input
                 id="new-password"
@@ -209,7 +211,7 @@ async function savePassword(): Promise<void> {
 
             <div>
               <label for="password-confirmation" class="text-sm font-semibold text-neutral-200">
-                Confirm new password
+                {{ t('account.confirmNewPassword') }}
               </label>
               <input
                 id="password-confirmation"
@@ -241,7 +243,7 @@ async function savePassword(): Promise<void> {
               :disabled="isPasswordSaving"
               class="flex min-h-12 w-full items-center justify-center rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 sm:w-auto"
             >
-              {{ isPasswordSaving ? 'Updating password...' : 'Update password' }}
+              {{ isPasswordSaving ? t('account.updatingPassword') : t('account.updatePassword') }}
             </button>
           </form>
         </section>
@@ -251,33 +253,33 @@ async function savePassword(): Promise<void> {
           class="mt-6 scroll-mt-6 rounded-3xl border border-emerald-900/60 bg-gradient-to-br from-emerald-950/50 to-neutral-900 p-5 sm:p-6"
         >
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-            Plan and access
+            {{ t('account.planAccess') }}
           </p>
 
           <div
             v-if="user.is_unlimited"
             class="mt-4 rounded-2xl border border-emerald-800/70 bg-neutral-950/50 p-4"
           >
-            <h2 class="text-2xl font-bold">Unlimited internal access</h2>
+            <h2 class="text-2xl font-bold">{{ t('dashboard.unlimitedTitle') }}</h2>
             <p class="mt-2 text-sm leading-6 text-emerald-100/70">
-              Generations do not consume credits for this account.
+              {{ t('dashboard.unlimitedBody') }}
             </p>
           </div>
 
           <div v-else class="mt-4">
             <h2 class="text-2xl font-bold">
-              {{ user.current_plan?.name ?? user.plan_label }} plan
+              {{ t('account.planName', { name: user.current_plan?.name ?? user.plan_label }) }}
             </h2>
             <div class="mt-5 grid grid-cols-2 gap-3">
               <div class="rounded-2xl border border-neutral-800 bg-neutral-950/50 p-4">
                 <p class="text-2xl font-bold">{{ user.credits_balance }}</p>
-                <p class="mt-1 text-xs text-neutral-500">Available credits</p>
+                <p class="mt-1 text-xs text-neutral-500">{{ t('account.availableCredits') }}</p>
               </div>
               <div class="rounded-2xl border border-neutral-800 bg-neutral-950/50 p-4">
                 <p class="text-2xl font-bold">
                   {{ user.current_plan?.monthly_credits ?? user.monthly_credit_allowance }}
                 </p>
-                <p class="mt-1 text-xs text-neutral-500">Monthly credits</p>
+                <p class="mt-1 text-xs text-neutral-500">{{ t('account.monthlyCredits') }}</p>
               </div>
             </div>
 
@@ -294,11 +296,11 @@ async function savePassword(): Promise<void> {
 
           <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
             <div class="rounded-2xl border border-neutral-800/80 bg-neutral-950/40 p-4">
-              <dt class="text-neutral-500">Role</dt>
+              <dt class="text-neutral-500">{{ t('account.role') }}</dt>
               <dd class="mt-1 font-semibold text-neutral-200">{{ user.role_label }}</dd>
             </div>
             <div class="rounded-2xl border border-neutral-800/80 bg-neutral-950/40 p-4">
-              <dt class="text-neutral-500">Plan</dt>
+              <dt class="text-neutral-500">{{ t('account.plan') }}</dt>
               <dd class="mt-1 font-semibold text-neutral-200">{{ user.plan_label }}</dd>
             </div>
           </dl>
@@ -309,30 +311,42 @@ async function savePassword(): Promise<void> {
             disabled
             class="mt-5 min-h-12 w-full cursor-not-allowed rounded-2xl border border-neutral-700 bg-neutral-800 px-5 font-semibold text-neutral-400 sm:w-auto"
           >
-            Manage subscription
+            {{ t('account.manageSubscription') }}
           </button>
           <p v-if="!user.is_unlimited" class="mt-3 text-xs leading-5 text-neutral-500">
-            Subscription management will be connected when billing is enabled.
+            {{ t('account.billingNotice') }}
           </p>
           <RouterLink
             to="/pricing"
             class="mt-4 inline-flex min-h-11 items-center rounded-xl border border-emerald-800 px-4 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-950"
           >
-            View creator plans
+            {{ t('account.viewPlans') }}
           </RouterLink>
+        </section>
+
+
+        <section class="mt-6 rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 sm:p-6">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+            {{ t('account.language') }}
+          </p>
+          <h2 class="mt-2 text-xl font-semibold">{{ t('account.preferredLanguage') }}</h2>
+          <p class="mt-3 text-sm leading-6 text-neutral-500">
+            {{ t('account.languageBody') }}
+          </p>
+          <LanguageSwitcher class="mt-5" :compact="false" />
         </section>
 
         <section class="mt-6 rounded-3xl border border-neutral-800 bg-neutral-900/40 p-5">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-            Account metadata
+            {{ t('account.metadata') }}
           </p>
           <dl class="mt-4 space-y-3 text-sm">
             <div class="flex items-center justify-between gap-4">
-              <dt class="text-neutral-500">Member since</dt>
+              <dt class="text-neutral-500">{{ t('account.memberSince') }}</dt>
               <dd class="text-right text-neutral-300">{{ formatDate(user.created_at) }}</dd>
             </div>
             <div class="flex items-center justify-between gap-4">
-              <dt class="text-neutral-500">User ID</dt>
+              <dt class="text-neutral-500">{{ t('account.userId') }}</dt>
               <dd class="font-mono text-xs text-neutral-500">#{{ user.id }}</dd>
             </div>
           </dl>
