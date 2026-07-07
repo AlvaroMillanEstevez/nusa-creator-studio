@@ -11,6 +11,9 @@ import type {
   CreatorProject,
   CreatorProjectSettings,
   CreatorGeneration,
+  FashionTryOnFormPayload,
+  FashionTryOnGenerationResponse,
+  FashionTryOnProject,
   ProjectGenerationHistoryResponse,
   ProductToVideoForm,
   ProductToVideoGenerationResponse,
@@ -110,6 +113,28 @@ export async function createAiVoiceoverProject(
 
   return response.data
 }
+
+export async function createFashionTryOnProject(
+  brief: FashionTryOnFormPayload,
+): Promise<FashionTryOnProject> {
+  const payload: CreateProjectPayload<FashionTryOnFormPayload, CreatorProjectSettings> = {
+    title: brief.title,
+    type: 'fashion_try_on',
+    status: 'draft',
+    input_payload: brief,
+    settings: {
+      platform: brief.platform,
+      format: 'vertical_9_16',
+    },
+  }
+
+  const response = await apiPost<
+    ResourceResponse<FashionTryOnProject>,
+    CreateProjectPayload<FashionTryOnFormPayload, CreatorProjectSettings>
+  >('/projects', payload)
+
+  return response.data
+}
 export async function getCampaignProject(projectId: number | string): Promise<CampaignProject> {
   const response = await apiGet<ResourceResponse<CampaignProject>>('/projects/' + projectId)
 
@@ -159,6 +184,15 @@ export function generateAiVoiceover(
 ): Promise<AiVoiceoverGenerationResponse> {
   return apiPost<AiVoiceoverGenerationResponse, Record<string, never>>(
     '/projects/' + projectId + '/generate-voiceover',
+    {},
+  )
+}
+
+export function generateFashionTryOn(
+  projectId: number | string,
+): Promise<FashionTryOnGenerationResponse> {
+  return apiPost<FashionTryOnGenerationResponse, Record<string, never>>(
+    '/projects/' + projectId + '/generate-fashion-try-on',
     {},
   )
 }

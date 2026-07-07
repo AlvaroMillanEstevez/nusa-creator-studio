@@ -28,6 +28,10 @@ class MediaAssetController extends Controller
             $query->where('type', $validated['type']);
         }
 
+        if (isset($validated['usage_role'])) {
+            $query->where('usage_role', $validated['usage_role']);
+        }
+
         return MediaAssetResource::collection(
             $query->latest('created_at')->latest('id')->paginate(20),
         );
@@ -45,6 +49,7 @@ class MediaAssetController extends Controller
             user: $request->user(),
             file: $request->file('file'),
             project: $project,
+            usageRole: $request->validated('usage_role'),
         );
 
         return (new MediaAssetResource($asset))

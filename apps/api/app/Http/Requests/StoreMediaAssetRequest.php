@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\MediaAsset;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -31,6 +32,7 @@ class StoreMediaAssetRequest extends FormRequest
                 ),
             ],
             'type' => ['nullable', 'string', 'max:32'],
+            'usage_role' => ['nullable', 'string', 'max:64', Rule::in(MediaAsset::USAGE_ROLES)],
         ];
     }
 }

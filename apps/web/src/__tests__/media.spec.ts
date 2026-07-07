@@ -14,6 +14,7 @@ const asset: MediaAsset = {
   user_id: 1,
   project_id: 42,
   type: 'image',
+  usage_role: 'model_reference',
   disk: 'local',
   storage_identifier: 'media-12',
   original_name: 'product.png',
@@ -44,7 +45,7 @@ describe('media service and validation', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const file = new File(['png-content'], 'product.png', { type: 'image/png' })
-    const uploaded = await uploadMediaAsset(file, 42)
+    const uploaded = await uploadMediaAsset(file, 42, 'model_reference')
 
     expect(uploaded.id).toBe(12)
 
@@ -58,6 +59,7 @@ describe('media service and validation', () => {
     expect(body).toBeInstanceOf(FormData)
     expect(body.get('file')).toBe(file)
     expect(body.get('project_id')).toBe('42')
+    expect(body.get('usage_role')).toBe('model_reference')
     expect(headers.has('Content-Type')).toBe(false)
   })
 

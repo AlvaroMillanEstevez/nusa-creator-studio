@@ -74,13 +74,27 @@ const tools: CreatorTool[] = [
     short_description: 'Create try-on concepts.',
     long_description: null,
     category: 'fashion',
+    status: 'available',
+    route: '/fashion-try-on/new',
+    credit_cost: 2,
+    credit_cost_label: '2 credits',
+    badge_label: 'New mock',
+    is_recommended: false,
+    sort_order: 35,
+  },
+  {
+    key: 'motion_ai_video',
+    title: 'Motion AI Video',
+    short_description: 'Create motion-led concepts.',
+    long_description: null,
+    category: 'ai_video',
     status: 'coming_soon',
     route: null,
     credit_cost: 1,
     credit_cost_label: 'Credit cost coming soon',
     badge_label: 'Coming soon',
     is_recommended: false,
-    sort_order: 35,
+    sort_order: 38,
   },
   {
     key: 'hidden_tool',
@@ -116,6 +130,7 @@ async function mountToolsView(
       { path: '/campaigns/new', component: placeholder },
       { path: '/video-enhancer/new', component: placeholder },
       { path: '/voiceover/new', component: placeholder },
+      { path: '/fashion-try-on/new', component: placeholder },
     ],
   })
 
@@ -182,6 +197,22 @@ describe('ToolsView', () => {
     expect(card.text()).toContain('AI Voiceover')
     expect(card.text()).toContain('Open tool')
   })
+  it('links available Fashion Try-On to the protected creation route for authenticated users', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+    const card = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
+
+    expect(card.element.tagName).toBe('A')
+    expect(card.attributes('href')).toBe('/fashion-try-on/new')
+    expect(card.text()).toContain('Fashion Try-On')
+    expect(card.text()).toContain('Open tool')
+  })
 
   it('sends guests through login with the intended tool route', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
@@ -194,11 +225,14 @@ describe('ToolsView', () => {
     const wrapper = await mountToolsView(fetchMock, null)
     const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
     const voiceoverCard = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
+    const fashionCard = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
 
     expect(card.attributes('href')).toBe('/login?redirect=/campaigns/new')
     expect(card.text()).toContain('Log in to use')
     expect(voiceoverCard.attributes('href')).toBe('/login?redirect=/voiceover/new')
     expect(voiceoverCard.text()).toContain('Log in to use')
+    expect(fashionCard.attributes('href')).toBe('/login?redirect=/fashion-try-on/new')
+    expect(fashionCard.text()).toContain('Log in to use')
   })
 
   it('keeps coming-soon and maintenance tools non-clickable and hides disabled tools', async () => {
@@ -210,7 +244,7 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
-    const comingSoon = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
+    const comingSoon = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
     const maintenance = wrapper.get('[data-testid="tool-card-video_enhancer"]')
 
     expect(comingSoon.element.tagName).toBe('ARTICLE')

@@ -19,6 +19,7 @@ class MediaStorageService
         User $user,
         UploadedFile $file,
         ?Project $project = null,
+        ?string $usageRole = null,
     ): MediaAsset {
         $inspection = $this->inspector->inspect($file);
         $disk = (string) config('media.disk', 'local');
@@ -51,6 +52,7 @@ class MediaStorageService
             return $user->mediaAssets()->create([
                 'project_id' => $project?->getKey(),
                 'type' => $inspection->type,
+                'usage_role' => $usageRole,
                 'disk' => $disk,
                 'path' => $path,
                 'original_name' => $inspection->sanitizedOriginalName,

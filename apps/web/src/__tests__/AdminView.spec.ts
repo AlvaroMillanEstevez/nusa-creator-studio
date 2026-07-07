@@ -26,12 +26,14 @@ const summary: AdminSummary = {
     video_enhancer: 6,
     product_to_video: 4,
     ai_voiceover: 0,
+    fashion_try_on: 0,
   },
   generations_by_job_type: {
     generate_affiliate_campaign: 14,
     generate_video_enhancer: 10,
     generate_product_video_script: 6,
     generate_ai_voiceover: 0,
+    generate_fashion_try_on: 0,
   },
 }
 

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\CreatorToolController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateAiVoiceoverController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
+use App\Http\Controllers\Api\V1\GenerateFashionTryOnController;
 use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
 use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
 use App\Http\Controllers\Api\V1\GenerationController;
@@ -100,6 +101,10 @@ Route::prefix('v1')->group(function () {
             'projects/{project}/generate-voiceover',
             GenerateAiVoiceoverController::class,
         )->name('projects.generate-voiceover');
+        Route::post(
+            'projects/{project}/generate-fashion-try-on',
+            GenerateFashionTryOnController::class,
+        )->name('projects.generate-fashion-try-on');
         Route::get('media-assets', [MediaAssetController::class, 'index'])
             ->name('media-assets.index');
         Route::post('media-assets', [MediaAssetController::class, 'store'])

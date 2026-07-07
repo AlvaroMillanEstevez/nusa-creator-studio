@@ -41,6 +41,7 @@ class CreatorTool extends Model
         'video_enhancer' => '/video-enhancer/new',
         'product_to_video' => '/product-to-video/new',
         'ai_voiceover' => '/voiceover/new',
+        'fashion_try_on' => '/fashion-try-on/new',
     ];
 
     public function getRouteKeyName(): string

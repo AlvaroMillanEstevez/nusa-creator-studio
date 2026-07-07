@@ -70,6 +70,47 @@ export const voiceoverPlatformOptions = [
   { value: 'generic_vertical_video', label: 'Generic vertical video' },
 ] as const
 
+export const fashionGarmentTypeOptions = [
+  { value: 'shirt', label: 'Shirt' },
+  { value: 't_shirt', label: 'T-shirt' },
+  { value: 'dress', label: 'Dress' },
+  { value: 'jacket', label: 'Jacket' },
+  { value: 'pants', label: 'Pants' },
+  { value: 'skirt', label: 'Skirt' },
+  { value: 'shoes', label: 'Shoes' },
+  { value: 'bag', label: 'Bag' },
+  { value: 'accessory', label: 'Accessory' },
+  { value: 'other', label: 'Other' },
+] as const
+
+export const fashionStyleGoalOptions = [
+  { value: 'product_showcase', label: 'Product showcase' },
+  { value: 'ecommerce_preview', label: 'Ecommerce preview' },
+  { value: 'social_media_ad', label: 'Social media ad' },
+  { value: 'creator_story', label: 'Creator story' },
+  { value: 'catalog_style', label: 'Catalog style' },
+  { value: 'before_after', label: 'Before / after' },
+] as const
+
+export const fashionOutputStyleOptions = [
+  { value: 'realistic', label: 'Realistic' },
+  { value: 'editorial', label: 'Editorial' },
+  { value: 'clean_ecommerce', label: 'Clean ecommerce' },
+  { value: 'lifestyle', label: 'Lifestyle' },
+  { value: 'premium_brand', label: 'Premium brand' },
+  { value: 'streetwear', label: 'Streetwear' },
+] as const
+
+export const fashionPlatformOptions = [
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'instagram_reels', label: 'Instagram Reels' },
+  { value: 'shopee', label: 'Shopee' },
+  { value: 'tokopedia', label: 'Tokopedia' },
+  { value: 'lazada', label: 'Lazada' },
+  { value: 'generic_social', label: 'Generic social' },
+  { value: 'ecommerce', label: 'Ecommerce' },
+] as const
+
 export type CampaignLanguage = (typeof campaignLanguageOptions)[number]['value']
 export type CampaignTone = (typeof campaignToneOptions)[number]['value']
 export type VideoEnhancerStyle = (typeof videoEnhancerStyleOptions)[number]['value']
@@ -81,8 +122,18 @@ export type VoiceoverTone = (typeof voiceoverToneOptions)[number]['value']
 export type VoiceoverPace = (typeof voiceoverPaceOptions)[number]['value']
 export type VoiceoverDuration = (typeof voiceoverDurationOptions)[number]
 export type VoiceoverPlatform = (typeof voiceoverPlatformOptions)[number]['value']
+export type FashionGarmentType = (typeof fashionGarmentTypeOptions)[number]['value']
+export type FashionStyleGoal = (typeof fashionStyleGoalOptions)[number]['value']
+export type FashionOutputStyle = (typeof fashionOutputStyleOptions)[number]['value']
+export type FashionPlatform = (typeof fashionPlatformOptions)[number]['value']
+export type CreatorPlatform = VoiceoverPlatform | FashionPlatform
 
-export type ProjectType = 'affiliate_campaign' | 'video_enhancer' | 'product_to_video' | 'ai_voiceover'
+export type ProjectType =
+  | 'affiliate_campaign'
+  | 'video_enhancer'
+  | 'product_to_video'
+  | 'ai_voiceover'
+  | 'fashion_try_on'
 export type ProjectStatus = 'draft' | 'pending' | 'processing' | 'completed' | 'failed'
 export type GenerationStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'pending'
 
@@ -130,8 +181,24 @@ export interface AiVoiceoverFormPayload {
   notes: string | null
 }
 
+export interface FashionTryOnFormPayload {
+  title: string
+  product_name: string | null
+  product_description: string | null
+  garment_type: FashionGarmentType
+  target_audience: string | null
+  style_goal: FashionStyleGoal
+  output_style: FashionOutputStyle
+  model_notes: string | null
+  garment_notes: string | null
+  background_preference: string | null
+  language: CampaignLanguage
+  platform: FashionPlatform
+  notes: string | null
+}
+
 export interface CreatorProjectSettings {
-  platform: VoiceoverPlatform
+  platform: CreatorPlatform
   format: 'vertical_9_16'
 }
 
@@ -169,11 +236,13 @@ export type CampaignProject = TypedProject<'affiliate_campaign', CampaignFormPay
 export type VideoEnhancerProject = TypedProject<'video_enhancer', VideoEnhancerForm>
 export type ProductToVideoProject = TypedProject<'product_to_video', ProductToVideoForm>
 export type AiVoiceoverProject = TypedProject<'ai_voiceover', AiVoiceoverFormPayload>
+export type FashionTryOnProject = TypedProject<'fashion_try_on', FashionTryOnFormPayload>
 export type CreatorProject =
   | CampaignProject
   | VideoEnhancerProject
   | ProductToVideoProject
   | AiVoiceoverProject
+  | FashionTryOnProject
 
 export interface CampaignScriptScene {
   timestamp: string
@@ -262,11 +331,36 @@ export interface AiVoiceoverResult {
   compliance_notes: string[]
 }
 
+export interface FashionTryOnGeneratedImage {
+  status: 'placeholder'
+  message: string
+  provider: 'mock'
+}
+
+export interface FashionTryOnResult {
+  try_on_title: string
+  concept_summary: string
+  model_reference_summary: string
+  garment_reference_summary: string
+  generated_image: FashionTryOnGeneratedImage
+  composition_plan: string[]
+  pose_and_framing_notes: string[]
+  garment_fit_notes: string[]
+  background_and_lighting_notes: string[]
+  platform_usage_notes: string[]
+  quality_checklist: string[]
+  api_ready_prompt: string
+  negative_prompt: string
+  recommended_assets: string[]
+  compliance_notes: string[]
+}
+
 export type GenerationResult =
   | CampaignGenerationResult
   | VideoEnhancerResult
   | ProductToVideoResult
   | AiVoiceoverResult
+  | FashionTryOnResult
 
 export interface Generation<TResult = GenerationResult> {
   id: number
@@ -304,6 +398,7 @@ export type CampaignGenerationResponse = GenerationResponse<CampaignGenerationRe
 export type VideoEnhancerGenerationResponse = GenerationResponse<VideoEnhancerResult>
 export type ProductToVideoGenerationResponse = GenerationResponse<ProductToVideoResult>
 export type AiVoiceoverGenerationResponse = GenerationResponse<AiVoiceoverResult>
+export type FashionTryOnGenerationResponse = GenerationResponse<FashionTryOnResult>
 
 export interface PaginatedResponse<T> {
   data: T[]
@@ -335,4 +430,10 @@ export function isAiVoiceoverResult(
   result: GenerationResult | null,
 ): result is AiVoiceoverResult {
   return result !== null && 'voiceover_title' in result && 'mock_audio' in result
+}
+
+export function isFashionTryOnResult(
+  result: GenerationResult | null,
+): result is FashionTryOnResult {
+  return result !== null && 'try_on_title' in result && 'generated_image' in result
 }

@@ -9,6 +9,7 @@ import type {
   AiVoiceoverProject,
   CampaignProject,
   CreatorProject,
+  FashionTryOnProject,
   ProductToVideoProject,
   ProjectGenerationHistoryResponse,
   VideoEnhancerProject,
@@ -104,6 +105,32 @@ const voiceoverProject: AiVoiceoverProject = {
   created_at: '2026-07-06T06:00:00.000000Z',
   updated_at: '2026-07-06T06:00:00.000000Z',
 }
+
+const fashionTryOnProject: FashionTryOnProject = {
+  id: 99,
+  user_id: 1,
+  title: 'Streetwear jacket try-on',
+  type: 'fashion_try_on',
+  status: 'draft',
+  input_payload: {
+    title: 'Streetwear jacket try-on',
+    product_name: 'Everyday creator jacket',
+    product_description: 'A lightweight jacket for content shoots.',
+    garment_type: 'jacket',
+    target_audience: 'Fashion affiliate creators',
+    style_goal: 'product_showcase',
+    output_style: 'realistic',
+    model_notes: 'Use a relaxed standing pose.',
+    garment_notes: 'Keep the zipper visible.',
+    background_preference: 'clean studio wall',
+    language: 'english',
+    platform: 'tiktok',
+    notes: 'Keep it safe and generic.',
+  },
+  settings: { platform: 'tiktok', format: 'vertical_9_16' },
+  created_at: '2026-07-07T00:00:00.000000Z',
+  updated_at: '2026-07-07T00:00:00.000000Z',
+}
 const emptyHistory: ProjectGenerationHistoryResponse = {
   data: [],
   links: { first: null, last: null, prev: null, next: null },
@@ -126,6 +153,7 @@ async function mountProjectDetail(
       { path: '/campaigns/new', component: { template: '<div />' } },
       { path: '/video-enhancer/new', component: { template: '<div />' } },
       { path: '/voiceover/new', component: { template: '<div />' } },
+      { path: '/fashion-try-on/new', component: { template: '<div />' } },
       { path: '/projects/:id', component: ProjectDetailView },
     ],
   })
@@ -456,6 +484,145 @@ describe('ProjectDetailView', () => {
     expect(text).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)
   })
 
+  it('renders a Fashion Try-On brief, missing asset warning and restored result', async () => {
+    const history: ProjectGenerationHistoryResponse = {
+      ...emptyHistory,
+      data: [
+        {
+          id: 41,
+          user_id: 1,
+          project_id: 99,
+          job_type: 'generate_fashion_try_on',
+          provider: 'mock',
+          status: 'completed',
+          cost_usd: '0.0000',
+          credits_charged: 2,
+          input_payload: null,
+          output_payload: null,
+          error_message: null,
+          request_payload: null,
+          result_payload: {
+            try_on_title: 'Streetwear jacket try-on',
+            concept_summary: 'Create a realistic try-on concept.',
+            model_reference_summary: 'Use model-reference.jpg as the model/person reference.',
+            garment_reference_summary: 'Use garment-reference.jpg as the garment/product reference.',
+            generated_image: {
+              status: 'placeholder',
+              message: 'Real try-on image generation will be connected later.',
+              provider: 'mock',
+            },
+            composition_plan: ['Vertical composition for TikTok.'],
+            pose_and_framing_notes: ['Relaxed pose.'],
+            garment_fit_notes: ['Keep fit believable.'],
+            background_and_lighting_notes: ['Soft light.'],
+            platform_usage_notes: ['Use as a planning placeholder.'],
+            quality_checklist: ['References are image assets.'],
+            api_ready_prompt: 'Vertical fashion try-on mockup.',
+            negative_prompt: 'distorted body, changed garment design',
+            recommended_assets: ['Full-body model image', 'Clear garment image'],
+            compliance_notes: ['No real image generated yet.'],
+          },
+          started_at: '2026-07-07T01:00:00.000000Z',
+          finished_at: '2026-07-07T01:00:00.000000Z',
+          created_at: '2026-07-07T01:00:00.000000Z',
+        },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
+    }
+
+    const wrapper = await mountProjectDetail(fashionTryOnProject, history)
+    const text = wrapper.text()
+
+    expect(text).toContain('Fashion try-on brief')
+    expect(text).toContain('Everyday creator jacket')
+    expect(text).toContain('Add a model reference image and garment reference image before generating.')
+    expect(text).toContain('Generate another try-on mock')
+    expect(text).toContain('Try-on concept')
+    expect(text).toContain('Generated image placeholder')
+    expect(text).toContain('Vertical fashion try-on mockup.')
+  })
+
+  it('calls the Fashion Try-On generation endpoint and shows missing-asset errors', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: { template: '<div />' } },
+        { path: '/tools', component: { template: '<div />' } },
+        { path: '/dashboard', component: { template: '<div />' } },
+        { path: '/login', component: { template: '<div />' } },
+        { path: '/register', component: { template: '<div />' } },
+        { path: '/projects/:id', component: ProjectDetailView },
+      ],
+    })
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      const method = init?.method ?? 'GET'
+
+      if (url.endsWith('/projects/99/generate-fashion-try-on') && method === 'POST') {
+        return Response.json(
+          {
+            message:
+              'Please upload a model reference image and a garment reference image before generating a try-on.',
+            code: 'missing_reference_assets',
+          },
+          { status: 422 },
+        )
+      }
+
+      if (url.endsWith('/projects/99/generations')) return Response.json(emptyHistory)
+      if (url.endsWith('/projects/99/media-assets')) return Response.json({ data: [] })
+      if (url.endsWith('/tools')) {
+        return Response.json({
+          data: [
+            {
+              key: 'fashion_try_on',
+              title: 'Fashion Try-On',
+              short_description: 'Create try-on concepts.',
+              long_description: null,
+              category: 'fashion',
+              status: 'available',
+              route: '/fashion-try-on/new',
+              credit_cost: 2,
+              credit_cost_label: '2 credits',
+              badge_label: 'New mock',
+              is_recommended: false,
+              sort_order: 50,
+            },
+          ],
+        })
+      }
+
+      return Response.json({ data: fashionTryOnProject })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('scrollTo', vi.fn<() => void>())
+
+    await router.push('/projects/99')
+    await router.isReady()
+
+    const wrapper = mount(ProjectDetailView, {
+      global: { plugins: [createPinia(), router] },
+    })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((candidate) =>
+      candidate.text().includes('Generate try-on mock'),
+    )
+
+    expect(button).toBeTruthy()
+    await button?.trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/projects/99/generate-fashion-try-on'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(wrapper.text()).toContain(
+      'Please upload a model reference image and a garment reference image before generating a try-on.',
+    )
+  })
   it('calls the AI Voiceover generation endpoint from the project detail action', async () => {
     const router = createRouter({
       history: createMemoryHistory(),

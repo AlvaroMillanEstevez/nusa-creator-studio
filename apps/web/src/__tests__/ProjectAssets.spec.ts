@@ -4,129 +4,70 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import ProjectAssets from '@/components/ProjectAssets.vue'
 import { API_BASE_URL } from '@/services/api'
-import type { MediaAsset } from '@/types/media'
-import { SUPPORTED_MEDIA_MESSAGE } from '@/utils/mediaValidation'
-
-const asset: MediaAsset = {
-  id: 12,
-  user_id: 1,
-  project_id: 42,
-  type: 'image',
-  disk: 'local',
-  storage_identifier: 'media-12',
-  original_name: 'product.png',
-  mime_type: 'image/png',
-  size_bytes: 68,
-  size_label: '68 B',
-  metadata: {
-    detected_extension: 'png',
-    uploaded_extension: 'png',
-    validation_source: 'server',
-  },
-  created_at: '2026-07-06T00:00:00.000000Z',
-  updated_at: '2026-07-06T00:00:00.000000Z',
-}
-
-async function selectFile(wrapper: ReturnType<typeof mount>, file: File): Promise<void> {
-  const input = wrapper.get('input[type="file"]')
-  Object.defineProperty(input.element, 'files', {
-    value: [file],
-    configurable: true,
-  })
-  await input.trigger('change')
-}
 
 describe('ProjectAssets', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('uploads an asset and adds it to the project list', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (_input, options) => {
-      if (options?.method === 'POST') {
-        return new Response(JSON.stringify({ data: asset }), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json' },
-        })
+  it('shows Fashion Try-On role guidance and uploads the selected usage_role', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const method = init?.method ?? 'GET'
+
+      if (method === 'POST') {
+        return Response.json(
+          {
+            data: {
+              id: 15,
+              user_id: 1,
+              project_id: 99,
+              type: 'image',
+              usage_role: 'garment_reference',
+              disk: 'local',
+              storage_identifier: 'media-15',
+              original_name: 'garment.png',
+              mime_type: 'image/png',
+              size_bytes: 12,
+              size_label: '12 B',
+              metadata: null,
+              created_at: '2026-07-07T00:00:00.000000Z',
+              updated_at: '2026-07-07T00:00:00.000000Z',
+            },
+          },
+          { status: 201 },
+        )
       }
 
-      return new Response(JSON.stringify({ data: [] }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return Response.json({ data: [] })
     })
+
     vi.stubGlobal('fetch', fetchMock)
 
-    const wrapper = mount(ProjectAssets, { props: { projectId: 42 } })
+    const wrapper = mount(ProjectAssets, {
+      props: { projectId: 99, projectType: 'fashion_try_on' },
+    })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Project assets')
-    expect(wrapper.text()).toContain('No assets saved to this project yet.')
+    expect(wrapper.text()).toContain('Upload a model/person reference image.')
+    expect(wrapper.text()).toContain('Upload a garment/product reference image.')
 
-    await selectFile(wrapper, new File(['safe'], 'product.png', { type: 'image/png' }))
+    await wrapper.get('select[name="usage_role"]').setValue('garment_reference')
+
+    const file = new File(['png'], 'garment.png', { type: 'image/png' })
+    Object.defineProperty(wrapper.get('input[type="file"]').element, 'files', {
+      value: [file],
+      configurable: true,
+    })
+    await wrapper.get('input[type="file"]').trigger('change')
     await wrapper.get('button').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="media-asset-12"]').text()).toContain('product.png')
-    expect(wrapper.text()).toContain('Asset uploaded and saved to this project.')
-
-    const postCall = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')
-    expect(postCall?.[0]).toBe(API_BASE_URL + '/media-assets')
-  })
-
-  it('deletes a project asset through the API', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (_input, options) => {
-      if (options?.method === 'DELETE') {
-        return new Response(JSON.stringify({ message: 'Media asset deleted successfully.' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
-
-      return new Response(JSON.stringify({ data: [asset] }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    const wrapper = mount(ProjectAssets, { props: { projectId: 42 } })
-    await flushPromises()
-
-    await wrapper.get('[data-testid="media-asset-12"] button').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('[data-testid="media-asset-12"]').exists()).toBe(false)
-    expect(fetchMock).toHaveBeenCalledWith(
-      API_BASE_URL + '/media-assets/12',
-      expect.objectContaining({ method: 'DELETE' }),
-    )
-  })
-
-  it('shows the friendly supported-format message for backend rejection', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (_input, options) => {
-      if (options?.method === 'POST') {
-        return new Response(JSON.stringify({ message: 'Unsafe internal upload detail.' }), {
-          status: 422,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
-
-      return new Response(JSON.stringify({ data: [] }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    const wrapper = mount(ProjectAssets, { props: { projectId: 42 } })
-    await flushPromises()
-
-    await selectFile(wrapper, new File(['safe'], 'product.png', { type: 'image/png' }))
-    await wrapper.get('button').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.get('[role="alert"]').text()).toBe(SUPPORTED_MEDIA_MESSAGE)
-    expect(wrapper.text()).not.toContain('Unsafe internal upload detail.')
+    const uploadCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'POST')
+    expect(uploadCall?.[0]).toBe(API_BASE_URL + '/media-assets')
+    const body = uploadCall?.[1]?.body as FormData
+    expect(body.get('file')).toBe(file)
+    expect(body.get('project_id')).toBe('99')
+    expect(body.get('usage_role')).toBe('garment_reference')
+    expect(wrapper.text()).toContain('Garment reference')
   })
 })

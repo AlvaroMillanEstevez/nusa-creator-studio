@@ -5,6 +5,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import AffiliateCampaignBrief from '@/components/AffiliateCampaignBrief.vue'
 import AiVoiceoverBrief from '@/components/AiVoiceoverBrief.vue'
 import AppNav from '@/components/AppNav.vue'
+import FashionTryOnBrief from '@/components/FashionTryOnBrief.vue'
 import GenerationActionCard from '@/components/GenerationActionCard.vue'
 import GenerationHistory from '@/components/GenerationHistory.vue'
 import GenerationResultRenderer from '@/components/GenerationResultRenderer.vue'
@@ -15,6 +16,7 @@ import { ApiError } from '@/services/api'
 import {
   generateAiVoiceover,
   generateCampaignProject,
+  generateFashionTryOn,
   generateProductVideoScript,
   generateVideoEnhancerProject,
   getCreatorProject,
@@ -22,6 +24,7 @@ import {
   getProjectGenerations,
 } from '@/services/projects'
 import { getCreatorTools } from '@/services/tools'
+import type { MediaAsset } from '@/types/media'
 import type { CreatorGeneration, CreatorProject, GenerationStatus } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
 
@@ -32,6 +35,7 @@ const route = useRoute()
 const project = ref<CreatorProject | null>(null)
 const generation = ref<CreatorGeneration | null>(null)
 const generationHistory = ref<CreatorGeneration[]>([])
+const projectAssets = ref<MediaAsset[]>([])
 const isLoading = ref(true)
 const isGenerating = ref(false)
 const isHistoryLoading = ref(false)
@@ -43,11 +47,28 @@ const remainingCredits = ref<number | null>(null)
 const toolCreditCost = ref<number | null>(null)
 const showQueueWorkerHint = ref(false)
 
+const hasRequiredFashionTryOnAssets = computed(() => {
+  if (project.value?.type !== 'fashion_try_on') return true
+
+  const hasModelReference = projectAssets.value.some(
+    (asset) => asset.type === 'image' && asset.usage_role === 'model_reference',
+  )
+  const hasGarmentReference = projectAssets.value.some(
+    (asset) => asset.type === 'image' && asset.usage_role === 'garment_reference',
+  )
+
+  return hasModelReference && hasGarmentReference
+})
+
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollingGenerationId: number | null = null
 let pollCount = 0
 
 const emptyHistoryCopy = computed(() => {
+  if (project.value?.type === 'fashion_try_on') {
+    return 'No saved generations yet. Generate your first try-on mock to create a concept plan, prompts, reference notes and a quality checklist.'
+  }
+
   if (project.value?.type === 'ai_voiceover') {
     return 'No saved generations yet. Generate your first voiceover plan to create narration, timing, delivery notes and audio-ready guidance.'
   }
@@ -153,6 +174,10 @@ function startPolling(target: CreatorGeneration): void {
   schedulePoll()
 }
 
+function updateProjectAssets(assets: MediaAsset[]): void {
+  projectAssets.value = assets
+}
+
 function selectGeneration(selected: CreatorGeneration): void {
   generation.value = selected
 
@@ -246,7 +271,11 @@ async function generateContent(): Promise<void> {
     let generated: CreatorGeneration
     let creditsBalance: number
 
-    if (project.value.type === 'ai_voiceover') {
+    if (project.value.type === 'fashion_try_on') {
+      const response = await generateFashionTryOn(projectId)
+      generated = response.data
+      creditsBalance = response.meta.credits_balance
+    } else if (project.value.type === 'ai_voiceover') {
       const response = await generateAiVoiceover(projectId)
       generated = response.data
       creditsBalance = response.meta.credits_balance
@@ -370,8 +399,20 @@ onBeforeUnmount(stopPolling)
         <VideoEnhancerBrief v-else-if="project.type === 'video_enhancer'" :project="project" />
         <ProductToVideoBrief v-else-if="project.type === 'product_to_video'" :project="project" />
         <AiVoiceoverBrief v-else-if="project.type === 'ai_voiceover'" :project="project" />
+        <FashionTryOnBrief v-else-if="project.type === 'fashion_try_on'" :project="project" />
 
-        <ProjectAssets :project-id="project.id" />
+        <ProjectAssets
+          :project-id="project.id"
+          :project-type="project.type"
+          @assets-changed="updateProjectAssets"
+        />
+
+        <div
+          v-if="project.type === 'fashion_try_on' && !hasRequiredFashionTryOnAssets"
+          class="mt-5 rounded-2xl border border-amber-900/60 bg-amber-950/30 p-4 text-sm leading-6 text-amber-100"
+        >
+          Add a model reference image and garment reference image before generating.
+        </div>
 
         <GenerationActionCard
           :project-type="project.type"

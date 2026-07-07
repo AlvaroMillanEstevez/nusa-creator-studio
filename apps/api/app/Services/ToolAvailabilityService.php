@@ -11,6 +11,7 @@ class ToolAvailabilityService
         'video_enhancer' => 'video_enhancer',
         'product_to_video' => 'product_to_video',
         'ai_voiceover' => 'ai_voiceover',
+        'fashion_try_on' => 'fashion_try_on',
     ];
 
     public function isAvailableForProjectType(string $projectType): bool

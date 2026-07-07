@@ -21,6 +21,7 @@ class MediaAssetResource extends JsonResource
             'user_id' => $this->user_id,
             'project_id' => $this->project_id,
             'type' => $this->type,
+            'usage_role' => $this->usage_role,
             'disk' => $this->disk,
             'storage_identifier' => 'media-'.$this->id,
             'original_name' => $this->original_name,

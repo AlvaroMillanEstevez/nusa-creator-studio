@@ -11,33 +11,16 @@ use Illuminate\Validation\Validator;
 class UpdateProjectRequest extends FormRequest
 {
     private const VOICEOVER_LANGUAGES = ['english', 'indonesian', 'spanish'];
-
-    private const VOICEOVER_STYLES = [
-        'natural_creator',
-        'energetic_seller',
-        'calm_explainer',
-        'premium_brand',
-        'friendly_storyteller',
-    ];
-
-    private const VOICEOVER_TONES = [
-        'natural',
-        'persuasive',
-        'playful',
-        'professional',
-        'emotional',
-    ];
-
+    private const VOICEOVER_STYLES = ['natural_creator', 'energetic_seller', 'calm_explainer', 'premium_brand', 'friendly_storyteller'];
+    private const VOICEOVER_TONES = ['natural', 'persuasive', 'playful', 'professional', 'emotional'];
     private const VOICEOVER_PACES = ['slow', 'medium', 'fast'];
-
     private const VOICEOVER_DURATIONS = [15, 30, 45, 60];
-
-    private const VOICEOVER_PLATFORMS = [
-        'tiktok',
-        'instagram_reels',
-        'youtube_shorts',
-        'generic_vertical_video',
-    ];
+    private const VOICEOVER_PLATFORMS = ['tiktok', 'instagram_reels', 'youtube_shorts', 'generic_vertical_video'];
+    private const FASHION_GARMENT_TYPES = ['shirt', 't_shirt', 'dress', 'jacket', 'pants', 'skirt', 'shoes', 'bag', 'accessory', 'other'];
+    private const FASHION_STYLE_GOALS = ['product_showcase', 'ecommerce_preview', 'social_media_ad', 'creator_story', 'catalog_style', 'before_after'];
+    private const FASHION_OUTPUT_STYLES = ['realistic', 'editorial', 'clean_ecommerce', 'lifestyle', 'premium_brand', 'streetwear'];
+    private const FASHION_LANGUAGES = ['english', 'indonesian', 'spanish'];
+    private const FASHION_PLATFORMS = ['tiktok', 'instagram_reels', 'shopee', 'tokopedia', 'lazada', 'generic_social', 'ecommerce'];
 
     public function authorize(): bool
     {
@@ -65,6 +48,7 @@ class UpdateProjectRequest extends FormRequest
     {
         return [
             fn (Validator $validator): null => $this->validateVoiceoverPayload($validator),
+            fn (Validator $validator): null => $this->validateFashionTryOnPayload($validator),
         ];
     }
 
@@ -110,6 +94,54 @@ class UpdateProjectRequest extends FormRequest
         }
 
         return null;
+    }
+
+    private function validateFashionTryOnPayload(Validator $validator): null
+    {
+        /** @var Project|null $project */
+        $project = $this->route('project');
+        $targetType = $this->input('type', $project?->type);
+
+        if ($targetType !== 'fashion_try_on' || ! $this->has('input_payload')) {
+            return null;
+        }
+
+        $payload = $this->input('input_payload');
+
+        if ($payload === null) {
+            return null;
+        }
+
+        if (! is_array($payload)) {
+            $validator->errors()->add('input_payload', 'The input payload must be an object.');
+
+            return null;
+        }
+
+        $this->validateFashionFields($validator, $payload);
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function validateFashionFields(Validator $validator, array $payload): void
+    {
+        $this->validateStringFields($validator, $payload, [
+            'title' => 255,
+            'product_name' => 255,
+            'product_description' => 4000,
+            'target_audience' => 1000,
+            'model_notes' => 2000,
+            'garment_notes' => 2000,
+            'background_preference' => 1000,
+            'notes' => 2000,
+        ]);
+
+        $this->validateAllowedValue($validator, $payload, 'garment_type', self::FASHION_GARMENT_TYPES);
+        $this->validateAllowedValue($validator, $payload, 'style_goal', self::FASHION_STYLE_GOALS);
+        $this->validateAllowedValue($validator, $payload, 'output_style', self::FASHION_OUTPUT_STYLES);
+        $this->validateAllowedValue($validator, $payload, 'language', self::FASHION_LANGUAGES);
+        $this->validateAllowedValue($validator, $payload, 'platform', self::FASHION_PLATFORMS);
     }
 
     /**

@@ -96,6 +96,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/fashion-try-on/new',
+      name: 'fashion-try-on-create',
+      component: () => import('../views/FashionTryOnCreateView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/campaigns/new',
       name: 'campaign-create',
       component: () => import('../views/NewCampaignView.vue'),

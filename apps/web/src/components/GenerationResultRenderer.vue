@@ -3,12 +3,14 @@ import { computed } from 'vue'
 
 import AiVoiceoverGenerationResult from '@/components/AiVoiceoverGenerationResult.vue'
 import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
+import FashionTryOnGenerationResult from '@/components/FashionTryOnGenerationResult.vue'
 import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
 import {
   generationOutput,
   isAiVoiceoverResult,
   isCampaignGenerationResult,
+  isFashionTryOnResult,
   isProductToVideoResult,
   isVideoEnhancerResult,
   type CreatorGeneration,
@@ -45,12 +47,18 @@ const aiVoiceoverResult = computed(() =>
     ? result.value
     : null,
 )
+const fashionTryOnResult = computed(() =>
+  props.generation?.job_type === 'generate_fashion_try_on' && isFashionTryOnResult(result.value)
+    ? result.value
+    : null,
+)
 const hasSupportedResult = computed(
   () =>
     campaignResult.value !== null ||
     videoEnhancerResult.value !== null ||
     productToVideoResult.value !== null ||
-    aiVoiceoverResult.value !== null,
+    aiVoiceoverResult.value !== null ||
+    fashionTryOnResult.value !== null,
 )
 const isQueued = computed(
   () => props.generation?.status === 'queued' || props.generation?.status === 'pending',
@@ -141,5 +149,6 @@ const isQueued = computed(
       :result="productToVideoResult"
     />
     <AiVoiceoverGenerationResult v-else-if="aiVoiceoverResult" :result="aiVoiceoverResult" />
+    <FashionTryOnGenerationResult v-else-if="fashionTryOnResult" :result="fashionTryOnResult" />
   </div>
 </template>

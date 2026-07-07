@@ -19,6 +19,7 @@ class GenerationSubmissionService
 
     /**
      * @param  Closure(int): mixed  $dispatch
+     * @param  array<string, mixed>|null  $inputPayload
      */
     public function submit(
         Project $project,
@@ -27,6 +28,7 @@ class GenerationSubmissionService
         int $creditCost,
         string $creditReason,
         Closure $dispatch,
+        ?array $inputPayload = null,
     ): Generation {
         $generation = DB::transaction(function () use (
             $project,
@@ -34,6 +36,7 @@ class GenerationSubmissionService
             $jobType,
             $creditCost,
             $creditReason,
+            $inputPayload,
         ): Generation {
             $generation = $project->generations()->create([
                 'user_id' => $user->getKey(),
@@ -42,7 +45,7 @@ class GenerationSubmissionService
                 'status' => Generation::STATUS_QUEUED,
                 'cost_usd' => 0,
                 'credits_charged' => 0,
-                'input_payload' => $project->input_payload ?? [],
+                'input_payload' => $inputPayload ?? $project->input_payload ?? [],
                 'output_payload' => null,
                 'error_message' => null,
                 'started_at' => null,

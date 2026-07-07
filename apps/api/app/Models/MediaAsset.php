@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'user_id',
     'project_id',
     'type',
+    'usage_role',
     'disk',
     'path',
     'original_name',
@@ -21,6 +22,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class MediaAsset extends Model
 {
+    public const USAGE_ROLES = [
+        'general',
+        'product_image',
+        'source_video',
+        'audio_track',
+        'model_reference',
+        'garment_reference',
+        'background_reference',
+        'brand_reference',
+    ];
+
     /** @use HasFactory<MediaAssetFactory> */
     use HasFactory;
 

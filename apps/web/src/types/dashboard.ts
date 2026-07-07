@@ -21,6 +21,7 @@ export interface DashboardStats {
   affiliate_campaign_projects: number
   video_enhancer_projects: number
   product_to_video_projects: number
+  fashion_try_on_projects: number
 }
 
 export interface DashboardRecentProject {

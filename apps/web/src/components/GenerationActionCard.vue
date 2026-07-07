@@ -41,6 +41,16 @@ const creditCostLabel = computed(() => {
 })
 
 const copy = computed<GenerationActionCopy>(() => {
+  if (props.projectType === 'fashion_try_on') {
+    return {
+      title: 'Generate try-on mock',
+      description:
+        'Create a deterministic try-on planning result using the selected model and garment reference images. No real image is generated yet.',
+      button: props.hasGeneration ? 'Generate another try-on mock' : 'Generate try-on mock',
+      loadingButton: 'Generating try-on mock...',
+    }
+  }
+
   if (props.projectType === 'ai_voiceover') {
     return {
       title: 'Generate voiceover',

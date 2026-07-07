@@ -4,8 +4,10 @@ import { API_BASE_URL } from '@/services/api'
 import {
   createAiVoiceoverProject,
   createCampaignProject,
+  createFashionTryOnProject,
   generateAiVoiceover,
   generateCampaignProject,
+  generateFashionTryOn,
   generateVideoEnhancerProject,
   getProjectGenerations,
 } from '@/services/projects'
@@ -16,6 +18,9 @@ import type {
   CampaignFormPayload,
   CampaignGenerationResponse,
   CampaignProject,
+  FashionTryOnFormPayload,
+  FashionTryOnGenerationResponse,
+  FashionTryOnProject,
   ProjectGenerationHistoryResponse,
   VideoEnhancerGenerationResponse,
 } from '@/types/project'
@@ -378,6 +383,118 @@ describe('project service', () => {
         method: 'POST',
         body: '{}',
       }),
+    )
+  })
+  it('creates the Fashion Try-On project with the backend project contract', async () => {
+    const brief: FashionTryOnFormPayload = {
+      title: 'Streetwear jacket try-on',
+      product_name: 'Everyday creator jacket',
+      product_description: 'A lightweight jacket for content shoots.',
+      garment_type: 'jacket',
+      target_audience: 'Fashion affiliate creators',
+      style_goal: 'product_showcase',
+      output_style: 'realistic',
+      model_notes: 'Use a relaxed standing pose.',
+      garment_notes: 'Keep the zipper visible.',
+      background_preference: 'clean studio wall',
+      language: 'english',
+      platform: 'tiktok',
+      notes: null,
+    }
+
+    const project: FashionTryOnProject = {
+      id: 99,
+      user_id: 1,
+      title: brief.title,
+      type: 'fashion_try_on',
+      status: 'draft',
+      input_payload: brief,
+      settings: { platform: 'tiktok', format: 'vertical_9_16' },
+      created_at: '2026-07-07T00:00:00.000000Z',
+      updated_at: '2026-07-07T00:00:00.000000Z',
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: project }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createFashionTryOnProject(brief)).resolves.toEqual(project)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          title: brief.title,
+          type: 'fashion_try_on',
+          status: 'draft',
+          input_payload: brief,
+          settings: { platform: 'tiktok', format: 'vertical_9_16' },
+        }),
+      }),
+    )
+  })
+
+  it('posts to the mock Fashion Try-On generation endpoint', async () => {
+    const response: FashionTryOnGenerationResponse = {
+      data: {
+        id: 31,
+        user_id: 1,
+        project_id: 99,
+        job_type: 'generate_fashion_try_on',
+        provider: 'mock',
+        status: 'completed',
+        cost_usd: '0.0000',
+        credits_charged: 2,
+        input_payload: null,
+        output_payload: null,
+        error_message: null,
+        request_payload: null,
+        result_payload: {
+          try_on_title: 'Streetwear jacket try-on',
+          concept_summary: 'Create a realistic try-on concept.',
+          model_reference_summary: 'Use model-reference.jpg.',
+          garment_reference_summary: 'Use garment-reference.jpg.',
+          generated_image: {
+            status: 'placeholder',
+            message: 'Real try-on image generation will be connected later.',
+            provider: 'mock',
+          },
+          composition_plan: ['Vertical composition.'],
+          pose_and_framing_notes: ['Relaxed pose.'],
+          garment_fit_notes: ['Keep fit believable.'],
+          background_and_lighting_notes: ['Soft light.'],
+          platform_usage_notes: ['Use for TikTok planning.'],
+          quality_checklist: ['References are images.'],
+          api_ready_prompt: 'Vertical fashion try-on mockup.',
+          negative_prompt: 'distorted body, changed garment design',
+          recommended_assets: ['Model image', 'Garment image'],
+          compliance_notes: ['No real image generated yet.'],
+        },
+        started_at: '2026-07-07T00:00:00.000000Z',
+        finished_at: '2026-07-07T00:00:00.000000Z',
+        created_at: '2026-07-07T00:00:00.000000Z',
+      },
+      meta: { credits_balance: 18 },
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(generateFashionTryOn(99)).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/99/generate-fashion-try-on',
+      expect.objectContaining({ method: 'POST', body: '{}' }),
     )
   })
 })

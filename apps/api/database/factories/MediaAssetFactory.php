@@ -20,6 +20,7 @@ class MediaAssetFactory extends Factory
             'user_id' => User::factory(),
             'project_id' => null,
             'type' => 'image',
+            'usage_role' => null,
             'disk' => 's3',
             'path' => 'media/'.$filename,
             'original_name' => $filename,

@@ -39,6 +39,7 @@ const populatedDashboard: DashboardSummary = {
     affiliate_campaign_projects: 1,
     video_enhancer_projects: 1,
     product_to_video_projects: 1,
+    fashion_try_on_projects: 0,
   },
   recent_projects: [
     {
@@ -193,6 +194,7 @@ describe('DashboardView', () => {
         affiliate_campaign_projects: 0,
         video_enhancer_projects: 0,
         product_to_video_projects: 0,
+        fashion_try_on_projects: 0,
       },
       recent_projects: [],
       recent_generations: [],

@@ -6,11 +6,13 @@ import type {
   MediaAssetListResponse,
   MediaAssetResponse,
   MediaAssetType,
+  MediaAssetUsageRole,
 } from '@/types/media'
 
 export async function uploadMediaAsset(
   file: File,
   projectId?: number | string,
+  usageRole?: MediaAssetUsageRole,
   type?: MediaAssetType,
 ): Promise<MediaAsset> {
   const payload = new FormData()
@@ -18,6 +20,10 @@ export async function uploadMediaAsset(
 
   if (projectId !== undefined) {
     payload.append('project_id', String(projectId))
+  }
+
+  if (usageRole !== undefined) {
+    payload.append('usage_role', usageRole)
   }
 
   if (type !== undefined) {
@@ -40,6 +46,10 @@ export function listMediaAssets(
 
   if (filters.type) {
     search.set('type', filters.type)
+  }
+
+  if (filters.usage_role) {
+    search.set('usage_role', filters.usage_role)
   }
 
   const query = search.toString()

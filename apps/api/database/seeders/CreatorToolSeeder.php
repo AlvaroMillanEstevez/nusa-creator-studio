@@ -28,18 +28,17 @@ class CreatorToolSeeder extends Seeder
             return;
         }
 
-        if ($tool['key'] !== 'ai_voiceover') {
+        if (! in_array($tool['key'], ['ai_voiceover', 'fashion_try_on'], true)) {
             return;
         }
 
-        $legacyShortDescription = 'Generate natural product-ad voiceovers in creator-friendly styles.';
-        $legacyLongDescription = 'Prepare clear voice tracks for product campaigns across supported languages and tones.';
+        $legacy = $this->legacyValues($tool['key']);
 
-        if ($creatorTool->short_description === $legacyShortDescription) {
+        if (in_array($creatorTool->short_description, $legacy['short_description'], true)) {
             $creatorTool->short_description = $tool['short_description'];
         }
 
-        if ($creatorTool->long_description === $legacyLongDescription) {
+        if (in_array($creatorTool->long_description, $legacy['long_description'], true)) {
             $creatorTool->long_description = $tool['long_description'];
         }
 
@@ -52,6 +51,7 @@ class CreatorToolSeeder extends Seeder
         }
 
         if ($creatorTool->credit_cost_label === null || $creatorTool->credit_cost_label === 'Credit cost coming soon') {
+            $creatorTool->credit_cost = $tool['credit_cost'];
             $creatorTool->credit_cost_label = $tool['credit_cost_label'];
         }
 
@@ -59,11 +59,29 @@ class CreatorToolSeeder extends Seeder
             $creatorTool->badge_label = $tool['badge_label'];
         }
 
-        if ($creatorTool->sort_order === 40 || $creatorTool->sort_order === 0) {
+        if ((int) $creatorTool->sort_order === 0) {
             $creatorTool->sort_order = $tool['sort_order'];
         }
 
         $creatorTool->save();
+    }
+
+    /**
+     * @return array{short_description: array<int, string>, long_description: array<int, string>}
+     */
+    private function legacyValues(string $key): array
+    {
+        return match ($key) {
+            'ai_voiceover' => [
+                'short_description' => ['Generate natural product-ad voiceovers in creator-friendly styles.'],
+                'long_description' => ['Prepare clear voice tracks for product campaigns across supported languages and tones.'],
+            ],
+            'fashion_try_on' => [
+                'short_description' => ['Create creator-led try-on concepts for fashion products.'],
+                'long_description' => ['Plan fashion-focused visual concepts that present products in realistic creator scenarios.'],
+            ],
+            default => ['short_description' => [], 'long_description' => []],
+        };
     }
 
     /**
@@ -135,14 +153,14 @@ class CreatorToolSeeder extends Seeder
             [
                 'key' => 'fashion_try_on',
                 'title' => 'Fashion Try-On',
-                'short_description' => 'Create creator-led try-on concepts for fashion products.',
-                'long_description' => 'Plan fashion-focused visual concepts that present products in realistic creator scenarios.',
+                'short_description' => 'Prepare product-model try-on concepts using uploaded model and garment references.',
+                'long_description' => 'Combine a model/person reference and a garment/product reference into a structured try-on generation plan.',
                 'category' => 'fashion',
-                'status' => 'coming_soon',
-                'route' => null,
-                'credit_cost' => 1,
-                'credit_cost_label' => 'Credit cost coming soon',
-                'badge_label' => 'Coming soon',
+                'status' => 'available',
+                'route' => '/fashion-try-on/new',
+                'credit_cost' => 2,
+                'credit_cost_label' => '2 credits',
+                'badge_label' => 'New mock',
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 50,
