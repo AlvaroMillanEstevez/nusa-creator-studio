@@ -11,6 +11,7 @@ import GenerationHistory from '@/components/GenerationHistory.vue'
 import GenerationResultRenderer from '@/components/GenerationResultRenderer.vue'
 import MotionVideoBrief from '@/components/MotionVideoBrief.vue'
 import ProductToVideoBrief from '@/components/ProductToVideoBrief.vue'
+import ProjectActionHub from '@/components/ProjectActionHub.vue'
 import ProjectAssets from '@/components/ProjectAssets.vue'
 import VideoEnhancerBrief from '@/components/VideoEnhancerBrief.vue'
 import { ApiError } from '@/services/api'
@@ -27,7 +28,7 @@ import {
 } from '@/services/projects'
 import { getCreatorTools } from '@/services/tools'
 import type { MediaAsset } from '@/types/media'
-import type { CreatorGeneration, CreatorProject, GenerationStatus } from '@/types/project'
+import type { AiVoiceoverGenerationResponse, CreatorGeneration, CreatorProject, GenerationStatus } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
 
 const POLL_INTERVAL_MS = 2_000
@@ -90,6 +91,16 @@ let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollingGenerationId: number | null = null
 let pollCount = 0
 
+const actionRefreshKey = computed(() => {
+  const generationState = generationHistory.value
+    .map((item) => `${item.id}:${item.status}`)
+    .join('|')
+  const assetState = projectAssets.value
+    .map((asset) => `${asset.id}:${asset.usage_role ?? ''}`)
+    .join('|')
+
+  return `${project.value?.id ?? 'none'}:${generation.value?.id ?? 'none'}:${generation.value?.status ?? 'none'}:${generationState}:${assetState}`
+})
 const emptyHistoryCopy = computed(() => {
   if (project.value?.type === 'motion_ai_video') {
     return 'No saved generations yet. Generate your first motion video mock to create a scene plan, motion prompt, editing notes and provider-ready payload preview.'
@@ -286,6 +297,19 @@ async function loadProject(): Promise<void> {
   }
 }
 
+function handleActionGenerated(response: AiVoiceoverGenerationResponse): void {
+  stopPolling()
+  generationError.value = ''
+  historyError.value = ''
+  remainingCredits.value = response.meta.credits_balance
+  upsertGeneration(response.data, true)
+
+  if (isTerminalStatus(response.data.status)) {
+    isGenerating.value = false
+  } else {
+    startPolling(response.data)
+  }
+}
 async function generateContent(): Promise<void> {
   const projectId = currentProjectId()
 
@@ -480,6 +504,14 @@ onBeforeUnmount(stopPolling)
           :generation="generation"
           :show-queue-worker-hint="showQueueWorkerHint"
           :media-assets="projectAssets"
+        />
+
+        <ProjectActionHub
+          :project-id="project.id"
+          :selected-generation="generation"
+          :refresh-key="actionRefreshKey"
+          :is-generating="isGenerating"
+          @generated="handleActionGenerated"
         />
       </template>
     </div>

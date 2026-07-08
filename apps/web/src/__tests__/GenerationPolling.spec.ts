@@ -102,6 +102,10 @@ async function mountPollingView(detailResponses: CreatorGeneration[]) {
       return Response.json({ data: [] })
     }
 
+    if (url.endsWith('/projects/42/actions')) {
+      return Response.json({ data: [] })
+    }
+
     if (url.endsWith('/tools')) {
       return Response.json({
         data: [

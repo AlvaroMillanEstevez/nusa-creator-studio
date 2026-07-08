@@ -130,9 +130,9 @@ async function copyVoiceoverScript(): Promise<void> {
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-            {{ t('campaignResult.voiceoverReady') }}
+            {{ t('campaignResult.generatedContent') }}
           </p>
-          <h2 class="mt-2 text-xl font-bold">{{ t('campaignResult.copyForVoiceover') }}</h2>
+          <h2 class="mt-2 text-xl font-bold">{{ t('campaignResult.voiceoverReady') }}</h2>
         </div>
         <button
           type="button"

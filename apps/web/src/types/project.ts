@@ -191,6 +191,42 @@ export type ProjectType =
 export type ProjectStatus = 'draft' | 'pending' | 'processing' | 'completed' | 'failed'
 export type GenerationStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'pending'
 
+export type ProjectActionStatus =
+  | 'available'
+  | 'needs_source'
+  | 'needs_assets'
+  | 'coming_soon'
+  | 'unavailable'
+
+export type ProjectActionKey =
+  | 'generate_campaign'
+  | 'generate_voiceover_from_campaign'
+  | 'start_video_ad'
+  | 'start_fashion_try_on'
+  | 'start_motion_video'
+  | 'avatar_presenter'
+
+export type ProjectActionRequiredSource = 'generation' | 'source_text' | 'media_asset' | null
+
+export interface ProjectAction {
+  key: ProjectActionKey
+  title: string
+  description: string
+  service_tier: 'basic' | 'advanced' | 'premium' | string | null
+  output_type: string | null
+  status: ProjectActionStatus
+  required_source: ProjectActionRequiredSource
+  source_generation_id: number | null
+  reason: string | null
+  action_endpoint: string | null
+  tool_key: string | null
+  tool_status: string | null
+  credit_cost: number | null
+}
+
+export interface ProjectActionsResponse {
+  data: ProjectAction[]
+}
 export interface CampaignFormPayload {
   product_name: string
   product_description: string

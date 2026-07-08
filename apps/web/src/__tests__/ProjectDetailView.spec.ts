@@ -12,6 +12,7 @@ import type {
   FashionTryOnProject,
   MotionVideoProject,
   ProductToVideoProject,
+  ProjectActionsResponse,
   ProjectGenerationHistoryResponse,
   VideoEnhancerProject,
 } from '@/types/project'
@@ -166,6 +167,101 @@ const emptyHistory: ProjectGenerationHistoryResponse = {
   meta: { current_page: 1, last_page: 1, per_page: 10, total: 0 },
 }
 
+const defaultActions: ProjectActionsResponse = {
+  data: [
+    {
+      key: 'generate_campaign',
+      title: 'Generate campaign',
+      description: 'Create campaign content.',
+      service_tier: 'basic',
+      output_type: 'script_pack',
+      status: 'available',
+      required_source: null,
+      source_generation_id: null,
+      reason: 'Project has enough product brief context.',
+      action_endpoint: '/api/v1/projects/42/generate-campaign',
+      tool_key: 'affiliate_campaign',
+      tool_status: 'available',
+      credit_cost: 1,
+    },
+    {
+      key: 'generate_voiceover_from_campaign',
+      title: 'Create voiceover from this script',
+      description: 'Generate an AI voiceover from this script.',
+      service_tier: 'advanced',
+      output_type: 'audio',
+      status: 'available',
+      required_source: 'generation',
+      source_generation_id: 9,
+      reason: 'A completed script is available for voiceover generation.',
+      action_endpoint: '/api/v1/projects/42/generate-voiceover',
+      tool_key: 'ai_voiceover',
+      tool_status: 'available',
+      credit_cost: 1,
+    },
+    {
+      key: 'start_video_ad',
+      title: 'Create video ad',
+      description: 'Use campaign context later.',
+      service_tier: 'premium',
+      output_type: 'video',
+      status: 'coming_soon',
+      required_source: 'generation',
+      source_generation_id: null,
+      reason: 'Video ad assembly is planned for later.',
+      action_endpoint: null,
+      tool_key: null,
+      tool_status: null,
+      credit_cost: null,
+    },
+    {
+      key: 'start_fashion_try_on',
+      title: 'Start Fashion Try-On',
+      description: 'Use project assets for try-on.',
+      service_tier: 'premium',
+      output_type: 'image',
+      status: 'needs_assets',
+      required_source: 'media_asset',
+      source_generation_id: null,
+      reason: 'Add model and garment reference images first.',
+      action_endpoint: '/api/v1/projects/42/generate-fashion-try-on',
+      tool_key: 'fashion_try_on',
+      tool_status: 'available',
+      credit_cost: 2,
+    },
+    {
+      key: 'start_motion_video',
+      title: 'Generate Motion AI Video',
+      description: 'Use project visuals for motion video.',
+      service_tier: 'premium',
+      output_type: 'video',
+      status: 'needs_assets',
+      required_source: 'media_asset',
+      source_generation_id: null,
+      reason: 'Add a visual reference first.',
+      action_endpoint: '/api/v1/projects/42/generate-motion-video',
+      tool_key: 'motion_ai_video',
+      tool_status: 'available',
+      credit_cost: 3,
+    },
+    {
+      key: 'avatar_presenter',
+      title: 'Avatar Presenter',
+      description: 'Avatar presenter generation is not implemented yet.',
+      service_tier: 'premium',
+      output_type: 'avatar',
+      status: 'coming_soon',
+      required_source: 'generation',
+      source_generation_id: null,
+      reason: 'Avatar presenter generation is not implemented yet.',
+      action_endpoint: null,
+      tool_key: null,
+      tool_status: null,
+      credit_cost: null,
+    },
+  ],
+}
+
 async function mountProjectDetail(
   currentProject: CreatorProject,
   history: ProjectGenerationHistoryResponse,
@@ -193,7 +289,13 @@ async function mountProjectDetail(
     vi.fn<typeof fetch>().mockImplementation(async (input) => {
       const url =
         typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-      const body = url.endsWith('/generations') ? history : { data: currentProject }
+      const body = url.endsWith('/actions')
+        ? defaultActions
+        : url.endsWith('/generations')
+          ? history
+          : url.endsWith('/media-assets')
+            ? { data: [] }
+            : { data: currentProject }
 
       return new Response(JSON.stringify(body), {
         status: 200,
@@ -322,6 +424,9 @@ describe('ProjectDetailView', () => {
     expect(renderedText).toContain('¿Quieres crear contenido rápido?')
     expect(renderedText).toContain('Campaña para pequeños creadores en España')
     expect(renderedText).toContain('Diseñado para creadores que necesitan automatización')
+    expect(renderedText).toContain('Continue with selected result')
+    expect(renderedText).toContain('Create voiceover from this script')
+    expect(wrapper.find('[data-testid="project-action-hub"]').exists()).toBe(true)
     expect(renderedText).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)
   })
 
@@ -737,6 +842,7 @@ describe('ProjectDetailView', () => {
         )
       }
 
+      if (url.endsWith('/projects/123/actions')) return Response.json(defaultActions)
       if (url.endsWith('/projects/123/generations')) return Response.json(emptyHistory)
       if (url.endsWith('/projects/123/media-assets')) return Response.json({ data: [] })
       if (url.endsWith('/tools')) {
@@ -818,6 +924,7 @@ describe('ProjectDetailView', () => {
         )
       }
 
+      if (url.endsWith('/projects/99/actions')) return Response.json(defaultActions)
       if (url.endsWith('/projects/99/generations')) return Response.json(emptyHistory)
       if (url.endsWith('/projects/99/media-assets')) return Response.json({ data: [] })
       if (url.endsWith('/tools')) {
@@ -908,6 +1015,10 @@ describe('ProjectDetailView', () => {
           },
           meta: { credits_balance: 19 },
         })
+      }
+
+      if (url.endsWith('/projects/91/actions')) {
+        return Response.json(defaultActions)
       }
 
       if (url.endsWith('/projects/91/generations')) {

@@ -18,6 +18,7 @@ import type {
   MotionVideoFormPayload,
   MotionVideoGenerationResponse,
   MotionVideoProject,
+  ProjectActionsResponse,
   ProjectGenerationHistoryResponse,
   ProductToVideoForm,
   ProductToVideoGenerationResponse,
@@ -236,4 +237,8 @@ export function getProjectGenerations(
   projectId: number | string,
 ): Promise<ProjectGenerationHistoryResponse> {
   return apiGet<ProjectGenerationHistoryResponse>('/projects/' + projectId + '/generations')
+}
+
+export function getProjectActions(projectId: number | string): Promise<ProjectActionsResponse> {
+  return apiGet<ProjectActionsResponse>('/projects/' + projectId + '/actions')
 }

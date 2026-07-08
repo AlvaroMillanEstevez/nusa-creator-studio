@@ -49,6 +49,25 @@ Real campaign output should remain stable and frontend-friendly:
 | `usage_notes[]` | Practical production tips | Yes |
 | `provider_metadata` | Provider, model, token usage, estimated cost | Internal metadata only |
 
+## Prompt/content separation rule
+
+Campaign generated content must not include Nusa service upsells or workflow instructions such as “copy this into voiceover next.”
+
+Provider prompts should keep campaign copy usable by the creator outside Nusa. Next-step suggestions belong in product UI sections such as Project Action Hub, not inside generated hooks, scripts, captions, CTA options or notes.
+
+Allowed in generated content:
+
+- Practical filming tips.
+- Compliance reminders.
+- Voiceover-ready script text.
+- Safe production notes.
+
+Not allowed in generated content:
+
+- Nusa upsells.
+- Manual copy/paste instructions between tools.
+- Fake tool availability claims.
+- Instructions that make the generated copy depend on Nusa UI.
 ## Prompt safety requirements
 
 Provider prompts must instruct the model to avoid:

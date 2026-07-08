@@ -95,18 +95,88 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $this->assertDatabaseCount('generations', 0);
     }
 
-    public function test_wrong_project_type_is_rejected(): void
+    public function test_non_voiceover_project_requires_source_context(): void
     {
+        Queue::fake();
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create(['type' => 'affiliate_campaign']);
+        $project = $this->campaignProject($user);
 
         $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-voiceover")
             ->assertUnprocessable()
-            ->assertJsonPath('code', 'invalid_project_type')
-            ->assertJsonPath('message', 'Only AI voiceover projects can generate voiceovers.');
+            ->assertJsonValidationErrors('source_text');
 
+        Queue::assertNothingPushed();
         $this->assertDatabaseCount('generations', 0);
+    }
+
+    public function test_campaign_project_can_generate_voiceover_from_completed_campaign_generation(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->campaignProject($user);
+        $sourceGeneration = Generation::factory()
+            ->for($user)
+            ->for($project)
+            ->create([
+                'job_type' => 'generate_affiliate_campaign',
+                'status' => Generation::STATUS_COMPLETED,
+                'output_payload' => [
+                    'voiceover_ready_script' => 'Start with the creator light benefit, then show the practical setup.',
+                ],
+            ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
+                'source_generation_id' => $sourceGeneration->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.project_id', $project->id)
+            ->assertJsonPath('data.job_type', 'generate_ai_voiceover')
+            ->assertJsonPath('data.provider', 'mock')
+            ->assertJsonPath('data.credits_charged', 1)
+            ->assertJsonPath('meta.credits_balance', 4)
+            ->json('data.id');
+
+        Queue::assertPushed(
+            GenerateAiVoiceoverJob::class,
+            fn (GenerateAiVoiceoverJob $job): bool => $job->generationId === $generationId,
+        );
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $this->assertSame($sourceGeneration->id, $generation->input_payload['source_generation_id']);
+        $this->assertSame(
+            'Start with the creator light benefit, then show the practical setup.',
+            $generation->input_payload['source_text'],
+        );
+    }
+
+    public function test_source_generation_id_from_another_project_is_rejected(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->campaignProject($user);
+        $otherProject = $this->campaignProject($user);
+        $sourceGeneration = Generation::factory()
+            ->for($user)
+            ->for($otherProject)
+            ->create([
+                'job_type' => 'generate_affiliate_campaign',
+                'status' => Generation::STATUS_COMPLETED,
+                'output_payload' => [
+                    'voiceover_ready_script' => 'This belongs to another project workspace.',
+                ],
+            ]);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
+                'source_generation_id' => $sourceGeneration->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('source_generation_id');
+
+        Queue::assertNothingPushed();
+        $this->assertDatabaseCount('generations', 1);
     }
 
     public function test_unavailable_ai_voiceover_tool_blocks_generation(): void
@@ -433,19 +503,22 @@ class AiVoiceoverGenerationApiTest extends TestCase
     {
         Queue::fake();
         $user = User::factory()->create(['credits_balance' => 5]);
-        $sourceGeneration = Generation::factory()->for($user)->create([
-            'job_type' => 'generate_affiliate_campaign',
-            'status' => Generation::STATUS_COMPLETED,
-            'output_payload' => [
-                'script' => [
-                    'scenes' => [
-                        ['voiceover' => 'Open with a clear creator hook.'],
-                        ['voiceover' => 'Explain the product without exaggeration.'],
+        $project = $this->voiceoverProject($user, 'english', ['source_text' => null]);
+        $sourceGeneration = Generation::factory()
+            ->for($user)
+            ->for($project)
+            ->create([
+                'job_type' => 'generate_affiliate_campaign',
+                'status' => Generation::STATUS_COMPLETED,
+                'output_payload' => [
+                    'script' => [
+                        'scenes' => [
+                            ['voiceover' => 'Open with a clear creator hook.'],
+                            ['voiceover' => 'Explain the product without exaggeration.'],
+                        ],
                     ],
                 ],
-            ],
-        ]);
-        $project = $this->voiceoverProject($user, 'english', ['source_text' => null]);
+            ]);
 
         $generationId = $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
@@ -513,6 +586,7 @@ class AiVoiceoverGenerationApiTest extends TestCase
 
         $asset = MediaAsset::query()->firstOrFail();
         $this->assertSame($asset->id, $generation->output_payload['audio_asset_id']);
+        $this->assertSame($project->id, $asset->project_id);
         $this->assertSame('audio', $asset->type);
         $this->assertSame('audio_track', $asset->usage_role);
         $this->assertSame('elevenlabs', $asset->metadata['provider']);
@@ -520,6 +594,60 @@ class AiVoiceoverGenerationApiTest extends TestCase
         Storage::disk('media-test')->assertExists($asset->path);
         $this->assertStringNotContainsString($asset->path, json_encode($generation->output_payload, JSON_THROW_ON_ERROR));
         $this->assertStringNotContainsString('local-test-key', json_encode($generation->output_payload, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_real_elevenlabs_voiceover_from_campaign_stores_audio_asset_on_same_project(): void
+    {
+        Queue::fake();
+        Storage::fake('media-test');
+        config()->set('media.disk', 'media-test');
+        config()->set('voiceover.provider', 'elevenlabs');
+        config()->set('voiceover.real_enabled', true);
+        config()->set('voiceover.real_internal_only', true);
+        config()->set('voiceover.elevenlabs.api_key', 'local-test-key');
+        config()->set('voiceover.elevenlabs.default_voice_id', 'voice_test');
+        config()->set('voiceover.elevenlabs.default_model_id', 'eleven_flash_v2_5');
+
+        Http::fake([
+            'https://api.elevenlabs.io/*' => Http::response('FAKE_MP3_BYTES', 200, [
+                'Content-Type' => 'audio/mpeg',
+                'request-id' => 'req_campaign_123',
+            ]),
+        ]);
+
+        $user = User::factory()->internalCreator()->create(['credits_balance' => 5]);
+        $project = $this->campaignProject($user);
+        $sourceGeneration = Generation::factory()
+            ->for($user)
+            ->for($project)
+            ->create([
+                'job_type' => 'generate_affiliate_campaign',
+                'status' => Generation::STATUS_COMPLETED,
+                'output_payload' => [
+                    'voiceover_ready_script' => str_repeat('Explain the product clearly. ', 12),
+                ],
+            ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
+                'source_generation_id' => $sourceGeneration->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.provider', 'elevenlabs')
+            ->json('data.id');
+
+        $job = new GenerateAiVoiceoverJob($generationId);
+        $job->handle(app(AiVoiceoverGenerationProcessor::class));
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $asset = MediaAsset::query()->firstOrFail();
+
+        $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame($project->id, $generation->project_id);
+        $this->assertSame($project->id, $asset->project_id);
+        $this->assertSame('audio', $asset->type);
+        $this->assertSame($sourceGeneration->id, $asset->metadata['source_generation_id']);
+        Storage::disk('media-test')->assertExists($asset->path);
     }
 
     public function test_missing_elevenlabs_api_key_fails_safely_and_refunds(): void
@@ -622,6 +750,26 @@ class AiVoiceoverGenerationApiTest extends TestCase
             'type' => 'ai_voiceover',
             'status' => 'draft',
             'input_payload' => $this->voiceoverPayload($language, $overrides),
+            'settings' => [
+                'platform' => 'tiktok',
+                'format' => 'vertical_9_16',
+            ],
+        ]);
+    }
+
+    private function campaignProject(User $user): Project
+    {
+        return Project::factory()->for($user)->create([
+            'title' => 'Portable creator light campaign',
+            'type' => 'affiliate_campaign',
+            'status' => 'draft',
+            'input_payload' => [
+                'product_name' => 'Portable creator light',
+                'product_description' => 'A compact light for creator desk setups.',
+                'target_audience' => 'Mobile-first creators',
+                'language' => 'english',
+                'tone' => 'natural',
+            ],
             'settings' => [
                 'platform' => 'tiktok',
                 'format' => 'vertical_9_16',

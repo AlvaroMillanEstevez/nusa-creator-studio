@@ -67,6 +67,24 @@ Main output:
 - Avatars.
 - Premium media assets.
 
+## Projects vs tools
+
+Nusa Creator Studio should use tools as workflows/actions, not isolated destinations that force creators to manually copy/paste outputs between pages.
+
+- A project can start from a tool route, such as Affiliate Campaign Generator, AI Voiceover, Fashion Try-On or Motion AI Video.
+- After creation, the project should act as the creative workspace for product context, generated outputs and reusable media assets.
+- Project types can still identify how the project started, but the long-term workspace model should let multiple tools run against the same project.
+- Basic tools create structured context that Advanced and Premium workflows can reuse.
+- Advanced and Premium workflows should inspect project context and assets before asking the user for more input.
+
+Example:
+
+```text
+Affiliate Campaign Generator (Basic)
+→ creates campaign hooks/script/caption context
+→ AI Voiceover (Advanced) can reuse the selected script
+→ Motion AI Video / Avatar Presenter (Premium, later) can reuse script, voiceover and media assets
+```
 ## Tool-by-tool mapping
 
 | Tool | Service tier | Output type | Current implementation stage | Notes |

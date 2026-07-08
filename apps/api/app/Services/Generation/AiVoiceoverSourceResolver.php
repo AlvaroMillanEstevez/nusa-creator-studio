@@ -28,7 +28,10 @@ class AiVoiceoverSourceResolver
         $sourceGenerationExcerpt = $this->nullableString($input['source_generation_excerpt'] ?? null);
 
         if ($sourceGenerationId !== null) {
-            $sourceGeneration = $user->generations()->whereKey($sourceGenerationId)->first();
+            $sourceGeneration = $user->generations()
+                ->whereKey($sourceGenerationId)
+                ->where('project_id', $project->getKey())
+                ->first();
 
             if (! $sourceGeneration instanceof Generation) {
                 throw ValidationException::withMessages([
@@ -38,10 +41,14 @@ class AiVoiceoverSourceResolver
 
             $extractedText = $this->extractText($sourceGeneration->output_payload ?? []);
 
-            if ($extractedText !== null) {
-                $explicitSourceText = $extractedText;
-                $sourceGenerationExcerpt = Str::limit($extractedText, 240, '');
+            if ($extractedText === null) {
+                throw ValidationException::withMessages([
+                    'source_generation_id' => 'The selected source generation does not contain usable voiceover text.',
+                ]);
             }
+
+            $explicitSourceText = $extractedText;
+            $sourceGenerationExcerpt = Str::limit($extractedText, 240, '');
         }
 
         $input['source_text'] = $explicitSourceText ?? $this->fallbackText($input);
@@ -71,10 +78,17 @@ class AiVoiceoverSourceResolver
         return $trimmed === '' ? null : $trimmed;
     }
 
+    public function extractTextFromGeneration(Generation $generation): ?string
+    {
+        return $this->extractText($generation->output_payload ?? []);
+    }
+
     /** @param array<string, mixed> $payload */
     private function extractText(array $payload): ?string
     {
-        $direct = $this->nullableString($payload['narration_script'] ?? null)
+        $direct = $this->nullableString($payload['voiceover_ready_script'] ?? null)
+            ?? $this->nullableString(Arr::get($payload, 'main_script.voiceover_script'))
+            ?? $this->nullableString($payload['narration_script'] ?? null)
             ?? $this->nullableString($payload['caption'] ?? null)
             ?? $this->nullableString($payload['posting_text'] ?? null)
             ?? $this->nullableString($payload['improved_caption'] ?? null);

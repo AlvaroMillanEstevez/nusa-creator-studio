@@ -11,6 +11,7 @@ import {
   generateFashionTryOn,
   generateMotionVideo,
   generateVideoEnhancerProject,
+  getProjectActions,
   getProjectGenerations,
 } from '@/services/projects'
 import type {
@@ -26,6 +27,7 @@ import type {
   MotionVideoFormPayload,
   MotionVideoGenerationResponse,
   MotionVideoProject,
+  ProjectActionsResponse,
   ProjectGenerationHistoryResponse,
   VideoEnhancerGenerationResponse,
 } from '@/types/project'
@@ -210,6 +212,44 @@ describe('project service', () => {
       }),
     )
   })
+  it('loads contextual project actions', async () => {
+    const response: ProjectActionsResponse = {
+      data: [
+        {
+          key: 'generate_voiceover_from_campaign',
+          title: 'Create voiceover from this script',
+          description: 'Generate a voiceover from the selected script.',
+          service_tier: 'advanced',
+          output_type: 'audio',
+          status: 'available',
+          required_source: 'generation',
+          source_generation_id: 8,
+          reason: 'A completed script is available.',
+          action_endpoint: '/api/v1/projects/42/generate-voiceover',
+          tool_key: 'ai_voiceover',
+          tool_status: 'available',
+          credit_cost: 1,
+        },
+      ],
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getProjectActions(42)).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/42/actions',
+      expect.objectContaining({
+        headers: expect.any(Headers),
+      }),
+    )
+  })
   it('posts to the mock video enhancer generation endpoint', async () => {
     const response: VideoEnhancerGenerationResponse = {
       data: {
@@ -387,6 +427,58 @@ describe('project service', () => {
       expect.objectContaining({
         method: 'POST',
         body: '{}',
+      }),
+    )
+  })
+  it('posts AI Voiceover source context for project workspace chaining', async () => {
+    const response: AiVoiceoverGenerationResponse = {
+      data: {
+        id: 19,
+        user_id: 1,
+        project_id: 42,
+        job_type: 'generate_ai_voiceover',
+        provider: 'mock',
+        status: 'queued',
+        cost_usd: '0.0000',
+        credits_charged: 1,
+        input_payload: {
+          source_generation_id: 7,
+          source_text: 'Voiceover-ready campaign script.',
+        },
+        output_payload: null,
+        error_message: null,
+        request_payload: null,
+        result_payload: null,
+        started_at: null,
+        finished_at: null,
+        created_at: '2026-07-07T00:00:00.000000Z',
+      },
+      meta: { credits_balance: 18 },
+    }
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      generateAiVoiceover(42, {
+        source_generation_id: 7,
+        source_text: 'Voiceover-ready campaign script.',
+      }),
+    ).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/42/generate-voiceover',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          source_generation_id: 7,
+          source_text: 'Voiceover-ready campaign script.',
+        }),
       }),
     )
   })

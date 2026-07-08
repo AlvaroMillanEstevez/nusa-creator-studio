@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
 use App\Http\Controllers\Api\V1\GenerationController;
 use App\Http\Controllers\Api\V1\MediaAssetController;
 use App\Http\Controllers\Api\V1\MediaAssetDeliveryController;
+use App\Http\Controllers\Api\V1\ProjectActionController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
 use App\Http\Controllers\Api\V1\ProjectMediaAssetController;
@@ -90,6 +91,10 @@ Route::prefix('v1')->group(function () {
             'projects/{project}/generations',
             ProjectGenerationController::class,
         )->name('projects.generations.index');
+        Route::get(
+            'projects/{project}/actions',
+            ProjectActionController::class,
+        )->name('projects.actions.index');
         Route::post(
             'projects/{project}/generate-campaign',
             GenerateCampaignController::class,

@@ -28,13 +28,6 @@ class GenerateAiVoiceoverController extends Controller
 
         $this->ensureOwnedBy($user, $project);
 
-        if ($project->type !== 'ai_voiceover') {
-            return response()->json([
-                'message' => 'Only AI voiceover projects can generate voiceovers.',
-                'code' => 'invalid_project_type',
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
         if (! $this->tools->isAvailable('ai_voiceover')) {
             return response()->json([
                 'message' => 'This tool is temporarily unavailable.',
