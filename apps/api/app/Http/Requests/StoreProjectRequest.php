@@ -200,7 +200,6 @@ class StoreProjectRequest extends FormRequest
         $this->validateAllowedValue($validator, $payload, 'platform', self::FASHION_PLATFORMS);
     }
 
-
     private function validateMotionVideoPayload(Validator $validator): null
     {
         if ($this->input('type') !== 'motion_ai_video') {
@@ -251,6 +250,7 @@ class StoreProjectRequest extends FormRequest
             $validator->errors()->add('input_payload.duration_seconds', 'The selected duration is invalid.');
         }
     }
+
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<string, int>  $fields
@@ -264,6 +264,7 @@ class StoreProjectRequest extends FormRequest
 
             if (! is_string($payload[$field])) {
                 $validator->errors()->add("input_payload.{$field}", 'This field must be text.');
+
                 continue;
             }
 

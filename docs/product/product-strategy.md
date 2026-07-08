@@ -34,6 +34,12 @@ Possible future proof types:
 - Real testimonials.
 - Real case studies.
 
+## Service tier structure
+
+Nusa Creator Studio now organizes creator workflows into Basic, Advanced and Premium service tiers. Basic covers low-cost content intelligence such as scripts, hooks, captions, insights and localization. Advanced covers assisted media workflows such as voiceover, video analysis, subtitles, edit plans and product-to-video planning. Premium covers expensive generative media such as fashion try-on, motion video, image-to-video and future avatar workflows.
+
+The detailed mapping lives in `docs/product/service-scope.md`.
+
 ## Suggested future provider integration order
 
 1. AI Voiceover real provider

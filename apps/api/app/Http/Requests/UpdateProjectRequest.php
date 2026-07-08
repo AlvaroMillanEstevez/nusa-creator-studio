@@ -11,22 +11,39 @@ use Illuminate\Validation\Validator;
 class UpdateProjectRequest extends FormRequest
 {
     private const VOICEOVER_LANGUAGES = ['english', 'indonesian', 'spanish'];
+
     private const VOICEOVER_STYLES = ['natural_creator', 'energetic_seller', 'calm_explainer', 'premium_brand', 'friendly_storyteller'];
+
     private const VOICEOVER_TONES = ['natural', 'persuasive', 'playful', 'professional', 'emotional'];
+
     private const VOICEOVER_PACES = ['slow', 'medium', 'fast'];
+
     private const VOICEOVER_DURATIONS = [15, 30, 45, 60];
+
     private const VOICEOVER_PLATFORMS = ['tiktok', 'instagram_reels', 'youtube_shorts', 'generic_vertical_video'];
+
     private const FASHION_GARMENT_TYPES = ['shirt', 't_shirt', 'dress', 'jacket', 'pants', 'skirt', 'shoes', 'bag', 'accessory', 'other'];
+
     private const FASHION_STYLE_GOALS = ['product_showcase', 'ecommerce_preview', 'social_media_ad', 'creator_story', 'catalog_style', 'before_after'];
+
     private const FASHION_OUTPUT_STYLES = ['realistic', 'editorial', 'clean_ecommerce', 'lifestyle', 'premium_brand', 'streetwear'];
+
     private const FASHION_LANGUAGES = ['english', 'indonesian', 'spanish'];
+
     private const FASHION_PLATFORMS = ['tiktok', 'instagram_reels', 'shopee', 'tokopedia', 'lazada', 'generic_social', 'ecommerce'];
+
     private const MOTION_VIDEO_GOALS = ['product_showcase', 'affiliate_ad', 'hook_video', 'product_demo', 'lifestyle_scene', 'before_after', 'brand_story'];
+
     private const MOTION_STYLES = ['smooth_camera', 'dynamic_zoom', 'handheld_creator', 'cinematic_pan', 'product_spin', 'fast_cuts', 'slow_reveal'];
+
     private const MOTION_VISUAL_STYLES = ['realistic', 'premium_brand', 'ecommerce_clean', 'lifestyle', 'streetwear', 'cinematic', 'ugc_creator'];
+
     private const MOTION_DURATIONS = [5, 10, 15, 30];
+
     private const MOTION_ASPECT_RATIOS = ['vertical_9_16', 'square_1_1', 'horizontal_16_9'];
+
     private const MOTION_PLATFORMS = ['tiktok', 'instagram_reels', 'youtube_shorts', 'shopee', 'tokopedia', 'lazada', 'generic_social'];
+
     private const MOTION_LANGUAGES = ['english', 'indonesian', 'spanish'];
 
     public function authorize(): bool
@@ -152,7 +169,6 @@ class UpdateProjectRequest extends FormRequest
         $this->validateAllowedValue($validator, $payload, 'platform', self::FASHION_PLATFORMS);
     }
 
-
     private function validateMotionVideoPayload(Validator $validator): null
     {
         /** @var Project|null $project */
@@ -205,6 +221,7 @@ class UpdateProjectRequest extends FormRequest
             $validator->errors()->add('input_payload.duration_seconds', 'The selected duration is invalid.');
         }
     }
+
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<string, int>  $fields
@@ -218,6 +235,7 @@ class UpdateProjectRequest extends FormRequest
 
             if (! is_string($payload[$field])) {
                 $validator->errors()->add("input_payload.{$field}", 'This field must be text.');
+
                 continue;
             }
 

@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Model;
     'short_description',
     'long_description',
     'category',
+    'service_tier',
+    'output_type',
+    'implementation_stage',
     'status',
     'route',
     'credit_cost',
@@ -36,6 +39,30 @@ class CreatorTool extends Model
         'disabled',
     ];
 
+    public const SERVICE_TIERS = [
+        'basic',
+        'advanced',
+        'premium',
+    ];
+
+    public const OUTPUT_TYPES = [
+        'text_insight',
+        'script_pack',
+        'assisted_media',
+        'audio',
+        'image',
+        'video',
+        'avatar',
+        'mixed_media',
+    ];
+
+    public const IMPLEMENTATION_STAGES = [
+        'mock',
+        'beta',
+        'real_provider',
+        'future',
+    ];
+
     public const IMPLEMENTED_ROUTES = [
         'affiliate_campaign' => '/campaigns/new',
         'video_enhancer' => '/video-enhancer/new',
@@ -55,6 +82,18 @@ class CreatorTool extends Model
         static::saving(function (CreatorTool $tool): void {
             if (! in_array($tool->status, self::STATUSES, true)) {
                 throw new DomainException('Invalid creator tool status.');
+            }
+
+            if (! in_array($tool->service_tier, self::SERVICE_TIERS, true)) {
+                throw new DomainException('Invalid creator tool service tier.');
+            }
+
+            if ($tool->output_type !== null && ! in_array($tool->output_type, self::OUTPUT_TYPES, true)) {
+                throw new DomainException('Invalid creator tool output type.');
+            }
+
+            if (! in_array($tool->implementation_stage, self::IMPLEMENTATION_STAGES, true)) {
+                throw new DomainException('Invalid creator tool implementation stage.');
             }
 
             if ($tool->credit_cost < 0 || $tool->sort_order < 0) {

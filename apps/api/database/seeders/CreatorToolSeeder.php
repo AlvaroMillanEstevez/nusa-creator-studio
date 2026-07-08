@@ -28,10 +28,63 @@ class CreatorToolSeeder extends Seeder
             return;
         }
 
-        if (! in_array($tool['key'], ['ai_voiceover', 'fashion_try_on', 'motion_ai_video'], true)) {
+        $this->applyTaxonomyDefaults($creatorTool, $tool);
+        $this->applyMetadataDefaults($creatorTool, $tool);
+
+        if (in_array($tool['key'], ['ai_voiceover', 'fashion_try_on', 'motion_ai_video'], true)) {
+            $this->refreshLegacyLaunchCopy($creatorTool, $tool);
+        }
+
+        $creatorTool->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $tool
+     */
+    private function applyTaxonomyDefaults(CreatorTool $creatorTool, array $tool): void
+    {
+        if (($creatorTool->service_tier === null || $creatorTool->service_tier === 'basic') && $tool['service_tier'] !== 'basic') {
+            $creatorTool->service_tier = $tool['service_tier'];
+        }
+
+        if ($creatorTool->output_type === null) {
+            $creatorTool->output_type = $tool['output_type'];
+        }
+
+        if (($creatorTool->implementation_stage === null || $creatorTool->implementation_stage === 'mock') && $tool['implementation_stage'] !== 'mock') {
+            $creatorTool->implementation_stage = $tool['implementation_stage'];
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $tool
+     */
+    private function applyMetadataDefaults(CreatorTool $creatorTool, array $tool): void
+    {
+        if (! isset($tool['metadata'])) {
             return;
         }
 
+        $metadata = $creatorTool->metadata ?? [];
+
+        if (! is_array($metadata)) {
+            $metadata = [];
+        }
+
+        foreach ($tool['metadata'] as $key => $value) {
+            if (! array_key_exists($key, $metadata)) {
+                $metadata[$key] = $value;
+            }
+        }
+
+        $creatorTool->metadata = $metadata;
+    }
+
+    /**
+     * @param  array<string, mixed>  $tool
+     */
+    private function refreshLegacyLaunchCopy(CreatorTool $creatorTool, array $tool): void
+    {
         $legacy = $this->legacyValues($tool['key']);
 
         if (in_array($creatorTool->short_description, $legacy['short_description'], true)) {
@@ -62,8 +115,6 @@ class CreatorToolSeeder extends Seeder
         if ((int) $creatorTool->sort_order === 0) {
             $creatorTool->sort_order = $tool['sort_order'];
         }
-
-        $creatorTool->save();
     }
 
     /**
@@ -100,6 +151,9 @@ class CreatorToolSeeder extends Seeder
                 'short_description' => 'Generate hooks, a TikTok script, caption, hashtags, CTA and filming notes.',
                 'long_description' => 'Turn a product brief into a structured affiliate campaign ready to film and refine.',
                 'category' => 'campaign_creation',
+                'service_tier' => 'basic',
+                'output_type' => 'script_pack',
+                'implementation_stage' => 'mock',
                 'status' => 'available',
                 'route' => '/campaigns/new',
                 'credit_cost' => 1,
@@ -108,6 +162,9 @@ class CreatorToolSeeder extends Seeder
                 'is_recommended' => true,
                 'is_visible' => true,
                 'sort_order' => 10,
+                'metadata' => [
+                    'service_note' => 'Low-cost content intelligence for scripts, hooks, captions and campaign ideas.',
+                ],
             ],
             [
                 'key' => 'video_enhancer',
@@ -115,6 +172,9 @@ class CreatorToolSeeder extends Seeder
                 'short_description' => 'Create subtitles, edit ideas, captions, CTA and posting copy from a recorded-video brief.',
                 'long_description' => 'Polish an existing product video with a practical edit plan and complete posting copy pack.',
                 'category' => 'video_production',
+                'service_tier' => 'advanced',
+                'output_type' => 'assisted_media',
+                'implementation_stage' => 'mock',
                 'status' => 'available',
                 'route' => '/video-enhancer/new',
                 'credit_cost' => 1,
@@ -123,6 +183,9 @@ class CreatorToolSeeder extends Seeder
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 20,
+                'metadata' => [
+                    'service_note' => 'Currently a mock edit plan; future real v1 should analyze uploaded video, transcripts or frames.',
+                ],
             ],
             [
                 'key' => 'product_to_video',
@@ -130,6 +193,9 @@ class CreatorToolSeeder extends Seeder
                 'short_description' => 'Create a storyboard, scene plan, voiceover direction and on-screen text from product details.',
                 'long_description' => 'Build a production-ready vertical video plan before recording product footage.',
                 'category' => 'video_production',
+                'service_tier' => 'advanced',
+                'output_type' => 'assisted_media',
+                'implementation_stage' => 'mock',
                 'status' => 'available',
                 'route' => '/product-to-video/new',
                 'credit_cost' => 1,
@@ -138,6 +204,9 @@ class CreatorToolSeeder extends Seeder
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 30,
+                'metadata' => [
+                    'service_note' => 'Current script and storyboard workflow; future real v1 can move from product image or URL to storyboard and prompt, then future v2 to image-to-video.',
+                ],
             ],
             [
                 'key' => 'ai_voiceover',
@@ -145,6 +214,9 @@ class CreatorToolSeeder extends Seeder
                 'short_description' => 'Generate voiceover scripts, delivery direction and audio-ready narration notes.',
                 'long_description' => 'Turn a product brief or campaign script into a voiceover-ready narration plan for short-form video.',
                 'category' => 'audio',
+                'service_tier' => 'advanced',
+                'output_type' => 'audio',
+                'implementation_stage' => 'mock',
                 'status' => 'available',
                 'route' => '/voiceover/new',
                 'credit_cost' => 1,
@@ -153,6 +225,9 @@ class CreatorToolSeeder extends Seeder
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 40,
+                'metadata' => [
+                    'service_note' => 'Future real provider should generate audio assets.',
+                ],
             ],
             [
                 'key' => 'fashion_try_on',
@@ -160,6 +235,9 @@ class CreatorToolSeeder extends Seeder
                 'short_description' => 'Prepare product-model try-on concepts using uploaded model and garment references.',
                 'long_description' => 'Combine a model/person reference and a garment/product reference into a structured try-on generation plan.',
                 'category' => 'fashion',
+                'service_tier' => 'premium',
+                'output_type' => 'image',
+                'implementation_stage' => 'mock',
                 'status' => 'available',
                 'route' => '/fashion-try-on/new',
                 'credit_cost' => 2,
@@ -168,6 +246,9 @@ class CreatorToolSeeder extends Seeder
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 50,
+                'metadata' => [
+                    'service_note' => 'Future real provider should generate try-on images.',
+                ],
             ],
             [
                 'key' => 'motion_ai_video',
@@ -175,6 +256,9 @@ class CreatorToolSeeder extends Seeder
                 'short_description' => 'Prepare short-form motion video concepts from product, image, video or brand references.',
                 'long_description' => 'Turn project assets into a structured AI video generation plan for vertical creator content.',
                 'category' => 'ai_video',
+                'service_tier' => 'premium',
+                'output_type' => 'video',
+                'implementation_stage' => 'mock',
                 'status' => 'available',
                 'route' => '/motion-video/new',
                 'credit_cost' => 3,
@@ -183,6 +267,72 @@ class CreatorToolSeeder extends Seeder
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 60,
+                'metadata' => [
+                    'service_note' => 'Future real provider should generate video assets.',
+                ],
+            ],
+            [
+                'key' => 'ai_avatar_presenter',
+                'title' => 'AI Avatar Presenter',
+                'short_description' => 'Create product presenter videos using an AI avatar and voice.',
+                'long_description' => 'Future premium workflow for avatar-led product ads and social commerce videos.',
+                'category' => 'avatar',
+                'service_tier' => 'premium',
+                'output_type' => 'avatar',
+                'implementation_stage' => 'future',
+                'status' => 'coming_soon',
+                'route' => null,
+                'credit_cost' => 0,
+                'credit_cost_label' => 'Credit cost coming soon',
+                'badge_label' => 'Future',
+                'is_recommended' => false,
+                'is_visible' => true,
+                'sort_order' => 70,
+                'metadata' => [
+                    'service_note' => 'Future premium workflow for avatar-led product ads and social commerce videos.',
+                ],
+            ],
+            [
+                'key' => 'custom_ai_avatar',
+                'title' => 'Custom AI Avatar',
+                'short_description' => 'Create a reusable avatar from a person image, photo set, or description.',
+                'long_description' => 'Future premium workflow for creating custom avatar identities for product videos.',
+                'category' => 'avatar',
+                'service_tier' => 'premium',
+                'output_type' => 'avatar',
+                'implementation_stage' => 'future',
+                'status' => 'coming_soon',
+                'route' => null,
+                'credit_cost' => 0,
+                'credit_cost_label' => 'Credit cost coming soon',
+                'badge_label' => 'Future',
+                'is_recommended' => false,
+                'is_visible' => true,
+                'sort_order' => 80,
+                'metadata' => [
+                    'service_note' => 'Future premium workflow for creating custom avatar identities for product videos.',
+                ],
+            ],
+            [
+                'key' => 'avatar_voice_ads',
+                'title' => 'Avatar Voice Ads',
+                'short_description' => 'Combine AI avatar presenters, voiceover and product scripts into social ads.',
+                'long_description' => 'Future premium workflow for generated avatar-led product ad creatives.',
+                'category' => 'avatar',
+                'service_tier' => 'premium',
+                'output_type' => 'mixed_media',
+                'implementation_stage' => 'future',
+                'status' => 'coming_soon',
+                'route' => null,
+                'credit_cost' => 0,
+                'credit_cost_label' => 'Credit cost coming soon',
+                'badge_label' => 'Future',
+                'is_recommended' => false,
+                'is_visible' => true,
+                'sort_order' => 90,
+                'metadata' => [
+                    'service_note' => 'Future premium workflow for generated avatar-led product ad creatives.',
+                ],
             ],
         ];
     }

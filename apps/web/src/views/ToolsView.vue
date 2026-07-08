@@ -7,8 +7,15 @@ import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getCreatorTools } from '@/services/tools'
 import { useAuthStore } from '@/stores/auth'
-import type { CreatorTool } from '@/types/tool'
+import type {
+  CreatorTool,
+  ToolImplementationStage,
+  ToolOutputType,
+  ToolServiceTier,
+} from '@/types/tool'
 import { formatLabel } from '@/utils/formatters'
+
+const serviceTierOrder: ToolServiceTier[] = ['basic', 'advanced', 'premium']
 
 const tools = ref<CreatorTool[]>([])
 const isLoading = ref(true)
@@ -16,18 +23,55 @@ const error = ref('')
 const auth = useAuthStore()
 
 const visibleTools = computed(() => tools.value.filter((tool) => tool.status !== 'disabled'))
-const availableTools = computed(() =>
-  visibleTools.value.filter((tool) => tool.status === 'available'),
-)
-const maintenanceTools = computed(() =>
-  visibleTools.value.filter((tool) => tool.status === 'maintenance'),
-)
-const comingSoonTools = computed(() =>
-  visibleTools.value.filter((tool) => tool.status === 'coming_soon'),
+const groupedToolSections = computed(() =>
+  serviceTierOrder.map((tier) => ({
+    tier,
+    title: t('tools.serviceTiers.' + tier + '.title'),
+    description: t('tools.serviceTiers.' + tier + '.description'),
+    tools: visibleTools.value
+      .filter((tool) => tool.service_tier === tier)
+      .sort((left, right) => left.sort_order - right.sort_order || left.title.localeCompare(right.title)),
+  })),
 )
 
 function toolDestination(route: string): RouteLocationRaw {
   return auth.isAuthenticated ? route : { path: '/login', query: { redirect: route } }
+}
+
+function outputTypeLabel(outputType: ToolOutputType | null): string | null {
+  return outputType ? t('tools.outputTypes.' + outputType) : null
+}
+
+function implementationStageLabel(stage: ToolImplementationStage): string {
+  return t('tools.implementationStages.' + stage)
+}
+
+function stageClasses(stage: ToolImplementationStage): string {
+  if (stage === 'real_provider') {
+    return 'border-emerald-800 bg-emerald-950 text-emerald-300'
+  }
+
+  if (stage === 'beta') {
+    return 'border-cyan-800 bg-cyan-950 text-cyan-300'
+  }
+
+  if (stage === 'future') {
+    return 'border-violet-900 bg-violet-950 text-violet-300'
+  }
+
+  return 'border-neutral-700 bg-neutral-900 text-neutral-300'
+}
+
+function statusClasses(status: CreatorTool['status']): string {
+  if (status === 'available') {
+    return 'border-emerald-800 bg-emerald-950 text-emerald-300'
+  }
+
+  if (status === 'maintenance') {
+    return 'border-amber-800 bg-amber-950 text-amber-300'
+  }
+
+  return 'border-neutral-700 bg-neutral-800 text-neutral-300'
 }
 
 async function loadTools(): Promise<void> {
@@ -89,21 +133,26 @@ onMounted(() => {
       </div>
 
       <template v-else>
-        <section class="mt-10">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                {{ t('tools.ready') }}
-              </p>
-              <h2 class="mt-1 text-xl font-semibold">{{ t('tools.availableTools') }}</h2>
-            </div>
-            <span class="text-xs text-neutral-500">{{ t('tools.live', { count: availableTools.length }) }}</span>
+        <section
+          v-for="section in groupedToolSections"
+          :key="section.tier"
+          :data-testid="'tool-tier-section-' + section.tier"
+          class="mt-10"
+        >
+          <div class="max-w-3xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              {{ t('tools.serviceTier') }}
+            </p>
+            <h2 class="mt-1 text-2xl font-semibold">{{ section.title }}</h2>
+            <p class="mt-3 text-sm leading-6 text-neutral-400">
+              {{ section.description }}
+            </p>
           </div>
 
-          <div v-if="availableTools.length" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <template v-for="tool in availableTools" :key="tool.key">
+          <div v-if="section.tools.length" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <template v-for="tool in section.tools" :key="tool.key">
               <RouterLink
-                v-if="tool.route"
+                v-if="tool.status === 'available' && tool.route"
                 :to="toolDestination(tool.route)"
                 :data-testid="'tool-card-' + tool.key"
                 class="nusa-card-interactive nusa-focus-ring group block rounded-[2rem] p-5 transition"
@@ -119,6 +168,24 @@ onMounted(() => {
                     class="nusa-badge shrink-0 rounded-full px-3 py-1 text-xs font-bold"
                   >
                     {{ tool.badge_label ?? t('common.available') }}
+                  </span>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
+                    {{ section.title }}
+                  </span>
+                  <span
+                    v-if="outputTypeLabel(tool.output_type)"
+                    class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300"
+                  >
+                    {{ outputTypeLabel(tool.output_type) }}
+                  </span>
+                  <span
+                    class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                    :class="stageClasses(tool.implementation_stage)"
+                  >
+                    {{ implementationStageLabel(tool.implementation_stage) }}
                   </span>
                 </div>
 
@@ -146,11 +213,51 @@ onMounted(() => {
                 v-else
                 :data-testid="'tool-card-' + tool.key"
                 aria-disabled="true"
-                class="nusa-card-soft rounded-[2rem] p-5 opacity-75"
+                class="nusa-card-soft rounded-[2rem] p-5 opacity-80"
               >
-                <h3 class="text-lg font-semibold">{{ tool.title }}</h3>
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                      {{ formatLabel(tool.category) }}
+                    </p>
+                    <h3 class="mt-2 text-lg font-semibold text-neutral-200">{{ tool.title }}</h3>
+                  </div>
+                  <span
+                    class="shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold"
+                    :class="statusClasses(tool.status)"
+                  >
+                    {{ tool.badge_label ?? formatLabel(tool.status) }}
+                  </span>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
+                    {{ section.title }}
+                  </span>
+                  <span
+                    v-if="outputTypeLabel(tool.output_type)"
+                    class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300"
+                  >
+                    {{ outputTypeLabel(tool.output_type) }}
+                  </span>
+                  <span
+                    class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                    :class="stageClasses(tool.implementation_stage)"
+                  >
+                    {{ implementationStageLabel(tool.implementation_stage) }}
+                  </span>
+                </div>
+
                 <p class="mt-3 text-sm leading-6 text-neutral-400">{{ tool.short_description }}</p>
-                <p class="mt-4 text-xs text-amber-300">{{ t('tools.launchRouteMissing') }}</p>
+                <p v-if="tool.status === 'maintenance'" class="mt-4 text-sm leading-6 text-amber-200">
+                  {{ t('tools.maintenanceBody') }}
+                </p>
+                <p v-else-if="tool.status === 'available'" class="mt-4 text-xs text-amber-300">
+                  {{ t('tools.launchRouteMissing') }}
+                </p>
+                <p v-else class="mt-4 text-xs font-medium text-neutral-600">
+                  {{ tool.credit_cost_label ?? t('tools.creditCostComingSoon') }}
+                </p>
               </article>
             </template>
           </div>
@@ -158,76 +265,8 @@ onMounted(() => {
             v-else
             class="mt-5 rounded-3xl border border-dashed border-neutral-800 p-6 text-sm text-neutral-500"
           >
-            {{ t('tools.noTools') }}
+            {{ t('tools.noToolsInTier') }}
           </p>
-        </section>
-
-        <section v-if="maintenanceTools.length" class="mt-12">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-400">
-            {{ t('tools.inMaintenance') }}
-          </p>
-          <h2 class="mt-1 text-xl font-semibold">{{ t('tools.temporarilyUnavailable') }}</h2>
-
-          <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <article
-              v-for="tool in maintenanceTools"
-              :key="tool.key"
-              :data-testid="'tool-card-' + tool.key"
-              aria-disabled="true"
-              class="nusa-card-soft rounded-[2rem] p-5"
-            >
-              <div class="flex items-start justify-between gap-4">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                    {{ formatLabel(tool.category) }}
-                  </p>
-                  <h3 class="mt-2 text-lg font-semibold text-neutral-200">{{ tool.title }}</h3>
-                </div>
-                <span class="shrink-0 rounded-full bg-amber-950 px-3 py-1 text-xs text-amber-300">
-                  {{ tool.badge_label ?? t('common.maintenance') }}
-                </span>
-              </div>
-              <p class="mt-3 text-sm leading-6 text-neutral-400">{{ tool.short_description }}</p>
-              <p class="mt-4 text-sm leading-6 text-amber-200">
-                {{ t('tools.maintenanceBody') }}
-              </p>
-            </article>
-          </div>
-        </section>
-
-        <section v-if="comingSoonTools.length" class="mt-12">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-            {{ t('tools.expanding') }}
-          </p>
-          <h2 class="mt-1 text-xl font-semibold">{{ t('tools.comingSoon') }}</h2>
-
-          <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <article
-              v-for="tool in comingSoonTools"
-              :key="tool.key"
-              :data-testid="'tool-card-' + tool.key"
-              aria-disabled="true"
-              class="nusa-card-soft rounded-[2rem] p-5 opacity-75"
-            >
-              <div class="flex items-start justify-between gap-4">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                    {{ formatLabel(tool.category) }}
-                  </p>
-                  <h3 class="mt-2 text-lg font-semibold text-neutral-200">{{ tool.title }}</h3>
-                </div>
-                <span
-                  class="shrink-0 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400"
-                >
-                  {{ tool.badge_label ?? t('tools.comingSoon') }}
-                </span>
-              </div>
-              <p class="mt-3 text-sm leading-6 text-neutral-400">{{ tool.short_description }}</p>
-              <p class="mt-4 text-xs font-medium text-neutral-600">
-                {{ tool.credit_cost_label ?? t('tools.creditCostComingSoon') }}
-              </p>
-            </article>
-          </div>
         </section>
       </template>
     </div>

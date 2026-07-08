@@ -48,7 +48,7 @@ class FashionTryOnGenerationService
             ->first();
 
         if (! $asset instanceof MediaAsset) {
-            throw new MissingFashionTryOnAssetsException();
+            throw new MissingFashionTryOnAssetsException;
         }
 
         return $asset;

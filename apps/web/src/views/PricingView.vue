@@ -12,6 +12,7 @@ import { formatCurrency } from '@/utils/formatters'
 
 const auth = useAuthStore()
 const plans = ref<SubscriptionPlan[]>([])
+const pricingServiceTiers = ['basic', 'advanced', 'premium'] as const
 const isLoading = ref(true)
 const error = ref('')
 
@@ -77,6 +78,18 @@ onMounted(() => {
           {{ t('pricing.body') }}
         </p>
       </header>
+
+      <section class="nusa-card-soft mx-auto mt-10 grid max-w-5xl gap-3 rounded-[2rem] p-4 text-left md:grid-cols-3">
+        <article v-for="tier in pricingServiceTiers" :key="tier" class="rounded-3xl bg-neutral-950/50 p-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+            {{ t('pricing.serviceTiers.' + tier + '.label') }}
+          </p>
+          <h2 class="mt-2 text-lg font-semibold">{{ t('pricing.serviceTiers.' + tier + '.title') }}</h2>
+          <p class="mt-2 text-sm leading-6 text-neutral-400">
+            {{ t('pricing.serviceTiers.' + tier + '.body') }}
+          </p>
+        </article>
+      </section>
 
       <div v-if="isLoading" class="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div

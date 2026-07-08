@@ -8,6 +8,9 @@ import { getAdminTools, updateAdminTool } from '@/services/admin'
 import type {
   AdminCreatorTool,
   AdminCreatorToolUpdate,
+  ToolImplementationStage,
+  ToolOutputType,
+  ToolServiceTier,
   ToolStatus,
 } from '@/types/tool'
 import { formatLabel } from '@/utils/formatters'
@@ -20,12 +23,27 @@ const error = ref('')
 const success = ref('')
 
 const statuses: ToolStatus[] = ['available', 'coming_soon', 'maintenance', 'disabled']
+const serviceTiers: ToolServiceTier[] = ['basic', 'advanced', 'premium']
+const outputTypes: ToolOutputType[] = [
+  'text_insight',
+  'script_pack',
+  'assisted_media',
+  'audio',
+  'image',
+  'video',
+  'avatar',
+  'mixed_media',
+]
+const implementationStages: ToolImplementationStage[] = ['mock', 'beta', 'real_provider', 'future']
 
 const form = reactive<AdminCreatorToolUpdate>({
   title: '',
   short_description: '',
   long_description: null,
   category: '',
+  service_tier: 'basic',
+  output_type: null,
+  implementation_stage: 'future',
   status: 'coming_soon',
   route: null,
   credit_cost: 1,
@@ -49,6 +67,9 @@ function selectTool(tool: AdminCreatorTool): void {
     short_description: tool.short_description,
     long_description: tool.long_description,
     category: tool.category,
+    service_tier: tool.service_tier,
+    output_type: tool.output_type,
+    implementation_stage: tool.implementation_stage,
     status: tool.status,
     route: tool.route,
     credit_cost: tool.credit_cost,
@@ -217,6 +238,18 @@ onMounted(() => {
                   <dd class="mt-1 text-neutral-300">{{ tool.credit_cost }}</dd>
                 </div>
                 <div>
+                  <dt class="text-neutral-600">Service tier</dt>
+                  <dd class="mt-1 text-neutral-300">{{ formatLabel(tool.service_tier) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-neutral-600">Output</dt>
+                  <dd class="mt-1 text-neutral-300">{{ tool.output_type ? formatLabel(tool.output_type) : 'Not set' }}</dd>
+                </div>
+                <div>
+                  <dt class="text-neutral-600">Stage</dt>
+                  <dd class="mt-1 text-neutral-300">{{ formatLabel(tool.implementation_stage) }}</dd>
+                </div>
+                <div>
                   <dt class="text-neutral-600">Sort order</dt>
                   <dd class="mt-1 text-neutral-300">{{ tool.sort_order }}</dd>
                 </div>
@@ -298,6 +331,48 @@ onMounted(() => {
                   >
                     <option v-for="status in statuses" :key="status" :value="status">
                       {{ formatLabel(status) }}
+                    </option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="grid gap-4 sm:grid-cols-3">
+                <label class="block text-sm text-neutral-300">
+                  Service tier
+                  <select
+                    v-model="form.service_tier"
+                    name="service_tier"
+                    class="mt-2 min-h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 text-white outline-none focus:border-emerald-500"
+                  >
+                    <option v-for="tier in serviceTiers" :key="tier" :value="tier">
+                      {{ formatLabel(tier) }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="block text-sm text-neutral-300">
+                  Output type
+                  <select
+                    v-model="form.output_type"
+                    name="output_type"
+                    class="mt-2 min-h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 text-white outline-none focus:border-emerald-500"
+                  >
+                    <option :value="null">Not set</option>
+                    <option v-for="outputType in outputTypes" :key="outputType" :value="outputType">
+                      {{ formatLabel(outputType) }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="block text-sm text-neutral-300">
+                  Implementation stage
+                  <select
+                    v-model="form.implementation_stage"
+                    name="implementation_stage"
+                    class="mt-2 min-h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 text-white outline-none focus:border-emerald-500"
+                  >
+                    <option v-for="stage in implementationStages" :key="stage" :value="stage">
+                      {{ formatLabel(stage) }}
                     </option>
                   </select>
                 </label>

@@ -28,7 +28,7 @@ class MotionAiVideoGenerationService
         $visualReferences = $this->visualReferenceAssets($project);
 
         if ($visualReferences->isEmpty()) {
-            throw new MissingMotionAiVideoAssetsException();
+            throw new MissingMotionAiVideoAssetsException;
         }
 
         return $this->submissions->submit(

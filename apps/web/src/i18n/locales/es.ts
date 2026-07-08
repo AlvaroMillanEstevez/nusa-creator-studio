@@ -104,6 +104,23 @@ export default {
     recommended: 'Recomendado',
     free: 'Gratis',
     viewPlan: 'Ver plan',
+    serviceTiers: {
+      basic: {
+        label: 'Basic',
+        title: 'Flujos r?pidos de planificaci?n',
+        body: 'Los flujos Basic est?n dise?ados para planificar contenido r?pido y generar a bajo costo.',
+      },
+      advanced: {
+        label: 'Advanced',
+        title: 'Flujos de media asistida',
+        body: 'Los flujos Advanced usan inputs de media y pueden consumir m?s cr?ditos.',
+      },
+      premium: {
+        label: 'Premium',
+        title: 'Flujos de media generativa',
+        body: 'Los flujos Premium usan media generativa costosa y requerir?n m?s cr?ditos o planes premium.',
+      },
+    },
   },
   dashboard: {
     ...en.dashboard,
@@ -113,6 +130,7 @@ export default {
     loading: 'Cargando dashboard...',
     quickActions: 'Acciones rápidas',
     browseTools: 'Explorar herramientas',
+    serviceTierCredits: 'Los cr?ditos pueden usarse en herramientas Basic, Advanced y Premium. Los flujos costosos pueden requerir m?s cr?ditos.',
   },
   account: {
     ...en.account,
@@ -150,6 +168,7 @@ export default {
     assets: 'Activos',
     emptyBody: 'Sube activos desde un flujo de proyecto y luego gestiónalos aquí para campañas, voiceovers, try-ons y video tools.',
     browseTools: 'Explorar herramientas',
+    serviceTierCredits: 'Los cr?ditos pueden usarse en herramientas Basic, Advanced y Premium. Los flujos costosos pueden requerir m?s cr?ditos.',
     backDashboard: 'Volver al dashboard',
     roles: {
       ...en.media.roles,

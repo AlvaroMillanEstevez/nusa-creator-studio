@@ -32,6 +32,9 @@ const tools: CreatorTool[] = [
     short_description: 'Generate a complete campaign pack.',
     long_description: 'Turn a brief into structured TikTok campaign content.',
     category: 'campaign_creation',
+    service_tier: 'basic',
+    output_type: 'script_pack',
+    implementation_stage: 'mock',
     status: 'available',
     route: '/campaigns/new',
     credit_cost: 1,
@@ -46,6 +49,9 @@ const tools: CreatorTool[] = [
     short_description: 'Generate voiceover scripts and narration notes.',
     long_description: 'Turn a script or product brief into an audio-ready narration plan.',
     category: 'audio',
+    service_tier: 'advanced',
+    output_type: 'audio',
+    implementation_stage: 'mock',
     status: 'available',
     route: '/voiceover/new',
     credit_cost: 1,
@@ -60,6 +66,9 @@ const tools: CreatorTool[] = [
     short_description: 'Polish an existing video.',
     long_description: null,
     category: 'video_production',
+    service_tier: 'advanced',
+    output_type: 'assisted_media',
+    implementation_stage: 'mock',
     status: 'maintenance',
     route: '/video-enhancer/new',
     credit_cost: 1,
@@ -74,6 +83,9 @@ const tools: CreatorTool[] = [
     short_description: 'Create try-on concepts.',
     long_description: null,
     category: 'fashion',
+    service_tier: 'premium',
+    output_type: 'image',
+    implementation_stage: 'mock',
     status: 'available',
     route: '/fashion-try-on/new',
     credit_cost: 2,
@@ -88,6 +100,9 @@ const tools: CreatorTool[] = [
     short_description: 'Create motion-led concepts.',
     long_description: 'Turn visual references into a structured motion video plan.',
     category: 'ai_video',
+    service_tier: 'premium',
+    output_type: 'video',
+    implementation_stage: 'mock',
     status: 'available',
     route: '/motion-video/new',
     credit_cost: 3,
@@ -102,6 +117,9 @@ const tools: CreatorTool[] = [
     short_description: 'Coming later.',
     long_description: null,
     category: 'future',
+    service_tier: 'premium',
+    output_type: 'avatar',
+    implementation_stage: 'future',
     status: 'coming_soon',
     route: null,
     credit_cost: 0,
@@ -111,11 +129,31 @@ const tools: CreatorTool[] = [
     sort_order: 39,
   },
   {
+    key: 'ai_avatar_presenter',
+    title: 'AI Avatar Presenter',
+    short_description: 'Create product presenter videos using an AI avatar and voice.',
+    long_description: 'Future premium workflow for avatar-led product ads.',
+    category: 'avatar',
+    service_tier: 'premium',
+    output_type: 'avatar',
+    implementation_stage: 'future',
+    status: 'coming_soon',
+    route: null,
+    credit_cost: 0,
+    credit_cost_label: 'Credit cost coming soon',
+    badge_label: 'Future',
+    is_recommended: false,
+    sort_order: 39,
+  },
+  {
     key: 'hidden_tool',
     title: 'Disabled internal tool',
     short_description: 'Should never be displayed.',
     long_description: null,
     category: 'internal',
+    service_tier: 'basic',
+    output_type: 'text_insight',
+    implementation_stage: 'future',
     status: 'disabled',
     route: '/hidden',
     credit_cost: 0,
@@ -189,11 +227,37 @@ describe('ToolsView', () => {
     expect(card.element.tagName).toBe('A')
     expect(card.attributes('href')).toBe('/campaigns/new')
     expect(card.text()).toContain('Affiliate Campaign Generator')
+    expect(card.text()).toContain('Basic')
+    expect(card.text()).toContain('Script pack')
+    expect(card.text()).toContain('Mock')
     expect(card.text()).toContain('Open tool')
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/tools',
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
+  })
+
+  it('groups tools by Basic, Advanced and Premium service tiers', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+    const basicSection = wrapper.get('[data-testid="tool-tier-section-basic"]')
+    const advancedSection = wrapper.get('[data-testid="tool-tier-section-advanced"]')
+    const premiumSection = wrapper.get('[data-testid="tool-tier-section-premium"]')
+
+    expect(basicSection.text()).toContain('Basic')
+    expect(basicSection.text()).toContain('Affiliate Campaign Generator')
+    expect(advancedSection.text()).toContain('Advanced')
+    expect(advancedSection.text()).toContain('AI Voiceover')
+    expect(premiumSection.text()).toContain('Premium')
+    expect(premiumSection.text()).toContain('Fashion Try-On')
+    expect(premiumSection.text()).toContain('AI Avatar Presenter')
+    expect(premiumSection.text()).toContain('Future')
   })
 
   it('links available AI Voiceover to the protected creation route for authenticated users', async () => {

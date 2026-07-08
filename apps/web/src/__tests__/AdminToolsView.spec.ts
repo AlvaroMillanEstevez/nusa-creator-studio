@@ -15,6 +15,9 @@ const tool: AdminCreatorTool = {
   short_description: 'Generate a complete campaign pack.',
   long_description: 'Turn a product brief into campaign content.',
   category: 'campaign_creation',
+  service_tier: 'basic',
+  output_type: 'script_pack',
+  implementation_stage: 'mock',
   status: 'available',
   route: '/campaigns/new',
   credit_cost: 1,
@@ -76,6 +79,9 @@ describe('AdminToolsView', () => {
     expect(card.text()).toContain('Available')
     expect(card.text()).toContain('/campaigns/new')
     expect(card.text()).toContain('Visible')
+    expect(card.text()).toContain('Basic')
+    expect(card.text()).toContain('Script Pack')
+    expect(card.text()).toContain('Mock')
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/admin/tools',
       expect.objectContaining({ headers: expect.any(Headers) }),
@@ -112,6 +118,9 @@ describe('AdminToolsView', () => {
 
     await wrapper.get('[data-testid="admin-tool-affiliate_campaign"] button').trigger('click')
     await wrapper.get('select[name="status"]').setValue('maintenance')
+    await wrapper.get('select[name="service_tier"]').setValue('advanced')
+    await wrapper.get('select[name="output_type"]').setValue('assisted_media')
+    await wrapper.get('select[name="implementation_stage"]').setValue('beta')
     await wrapper.get('input[name="credit_cost"]').setValue(3)
     await wrapper.get('input[name="sort_order"]').setValue(2)
     await wrapper.get('input[name="badge_label"]').setValue('Improving')
@@ -135,6 +144,9 @@ describe('AdminToolsView', () => {
       expect.objectContaining({
         title: 'Affiliate Campaign Generator',
         status: 'maintenance',
+        service_tier: 'advanced',
+        output_type: 'assisted_media',
+        implementation_stage: 'beta',
         credit_cost: 3,
         sort_order: 2,
         badge_label: 'Improving',

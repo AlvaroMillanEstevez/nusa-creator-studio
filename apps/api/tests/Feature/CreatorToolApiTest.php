@@ -19,7 +19,66 @@ class CreatorToolApiTest extends TestCase
         $this->seed(CreatorToolSeeder::class);
         $this->seed(CreatorToolSeeder::class);
 
-        $this->assertDatabaseCount('creator_tools', 6);
+        $this->assertDatabaseCount('creator_tools', 9);
+    }
+
+    public function test_seeded_existing_tools_have_service_tier_output_type_and_stage(): void
+    {
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'affiliate_campaign',
+            'service_tier' => 'basic',
+            'output_type' => 'script_pack',
+            'implementation_stage' => 'mock',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'video_enhancer',
+            'service_tier' => 'advanced',
+            'output_type' => 'assisted_media',
+            'implementation_stage' => 'mock',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'product_to_video',
+            'service_tier' => 'advanced',
+            'output_type' => 'assisted_media',
+            'implementation_stage' => 'mock',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'ai_voiceover',
+            'service_tier' => 'advanced',
+            'output_type' => 'audio',
+            'implementation_stage' => 'mock',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'fashion_try_on',
+            'service_tier' => 'premium',
+            'output_type' => 'image',
+            'implementation_stage' => 'mock',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'motion_ai_video',
+            'service_tier' => 'premium',
+            'output_type' => 'video',
+            'implementation_stage' => 'mock',
+        ]);
+    }
+
+    public function test_future_avatar_tools_are_seeded_as_premium_future_tools(): void
+    {
+        foreach (['ai_avatar_presenter', 'custom_ai_avatar', 'avatar_voice_ads'] as $key) {
+            $this->assertDatabaseHas('creator_tools', [
+                'key' => $key,
+                'category' => 'avatar',
+                'status' => 'coming_soon',
+                'service_tier' => 'premium',
+                'implementation_stage' => 'future',
+                'is_visible' => true,
+            ]);
+        }
+
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'avatar_voice_ads',
+            'output_type' => 'mixed_media',
+        ]);
     }
 
     public function test_public_tools_are_visible_ordered_and_exclude_disabled_tools(): void
@@ -40,6 +99,9 @@ class CreatorToolApiTest extends TestCase
             ->assertJsonPath('data.0.key', 'video_enhancer')
             ->assertJsonPath('data.1.key', 'ai_voiceover')
             ->assertJsonPath('data.1.status', 'maintenance')
+            ->assertJsonPath('data.1.service_tier', 'advanced')
+            ->assertJsonPath('data.1.output_type', 'audio')
+            ->assertJsonPath('data.1.implementation_stage', 'mock')
             ->assertJsonPath('data.2.key', 'affiliate_campaign')
             ->assertJsonMissingPath('data.0.id')
             ->assertJsonMissingPath('data.0.metadata');
@@ -63,7 +125,7 @@ class CreatorToolApiTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonCount(6, 'data');
+            ->assertJsonCount(9, 'data');
 
         $tool = collect($response->json('data'))->firstWhere('key', 'ai_voiceover');
 
@@ -79,6 +141,9 @@ class CreatorToolApiTest extends TestCase
             ->patchJson('/api/v1/admin/tools/affiliate_campaign', [
                 'key' => 'changed_key',
                 'status' => 'maintenance',
+                'service_tier' => 'premium',
+                'output_type' => 'mixed_media',
+                'implementation_stage' => 'beta',
                 'credit_cost' => 3,
                 'sort_order' => 2,
                 'is_recommended' => false,
@@ -87,16 +152,36 @@ class CreatorToolApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.key', 'affiliate_campaign')
             ->assertJsonPath('data.status', 'maintenance')
+            ->assertJsonPath('data.service_tier', 'premium')
+            ->assertJsonPath('data.output_type', 'mixed_media')
+            ->assertJsonPath('data.implementation_stage', 'beta')
             ->assertJsonPath('data.credit_cost', 3)
             ->assertJsonPath('data.sort_order', 2);
 
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'affiliate_campaign',
             'status' => 'maintenance',
+            'service_tier' => 'premium',
+            'output_type' => 'mixed_media',
+            'implementation_stage' => 'beta',
             'credit_cost' => 3,
             'sort_order' => 2,
         ]);
         $this->assertDatabaseMissing('creator_tools', ['key' => 'changed_key']);
+    }
+
+    public function test_invalid_service_tier_output_type_and_implementation_stage_are_rejected(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->patchJson('/api/v1/admin/tools/affiliate_campaign', [
+                'service_tier' => 'enterprise',
+                'output_type' => 'spreadsheet',
+                'implementation_stage' => 'secret_provider',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['service_tier', 'output_type', 'implementation_stage']);
     }
 
     public function test_implemented_tool_route_must_match_its_known_frontend_route_or_be_null(): void

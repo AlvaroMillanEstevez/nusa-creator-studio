@@ -95,6 +95,43 @@ export default {
     openTool: 'Buka tool',
     loginToUse: 'Masuk untuk memakai',
     comingSoon: 'Segera hadir',
+    serviceCatalog: 'Katalog layanan',
+    serviceLevels: 'Workflow Basic, Advanced, dan Premium',
+    serviceTier: 'Level layanan',
+    noToolsInTier: 'Belum ada tool untuk level layanan ini.',
+    serviceTiers: {
+      basic: {
+        title: 'Basic',
+        description:
+          'Content intelligence berbiaya rendah untuk skrip, hook, caption, ide campaign, dan insight produk.',
+      },
+      advanced: {
+        title: 'Advanced',
+        description:
+          'Workflow media berbantuan untuk voiceover, analisis video, edit plan, subtitle, dan product-to-video.',
+      },
+      premium: {
+        title: 'Premium',
+        description:
+          'Workflow generative media yang lebih mahal untuk fashion try-on, motion video, avatar, dan aset premium.',
+      },
+    },
+    implementationStages: {
+      mock: 'Mock',
+      beta: 'Beta',
+      real_provider: 'Provider nyata',
+      future: 'Future',
+    },
+    outputTypes: {
+      text_insight: 'Teks / insight',
+      script_pack: 'Paket skrip',
+      assisted_media: 'Media berbantuan',
+      audio: 'Audio',
+      image: 'Gambar',
+      video: 'Video',
+      avatar: 'Avatar',
+      mixed_media: 'Mixed media',
+    },
   },
   pricing: {
     ...en.pricing,
@@ -103,6 +140,23 @@ export default {
     recommended: 'Direkomendasikan',
     free: 'Gratis',
     viewPlan: 'Lihat paket',
+    serviceTiers: {
+      basic: {
+        label: 'Basic',
+        title: 'Workflow planning cepat',
+        body: 'Workflow Basic dibuat untuk perencanaan konten cepat dan generasi berbiaya rendah.',
+      },
+      advanced: {
+        label: 'Advanced',
+        title: 'Workflow media berbantuan',
+        body: 'Workflow Advanced memakai input media dan dapat memakai lebih banyak kredit.',
+      },
+      premium: {
+        label: 'Premium',
+        title: 'Workflow generative media',
+        body: 'Workflow Premium memakai generative media mahal dan akan membutuhkan kredit lebih tinggi atau paket premium.',
+      },
+    },
   },
   dashboard: {
     ...en.dashboard,
@@ -112,6 +166,7 @@ export default {
     loading: 'Memuat dashboard...',
     quickActions: 'Aksi cepat',
     browseTools: 'Jelajahi tools kreator',
+    serviceTierCredits: 'Kredit dapat digunakan di tool Basic, Advanced, dan Premium. Workflow mahal dapat membutuhkan lebih banyak kredit.',
   },
   account: {
     ...en.account,

@@ -104,6 +104,42 @@ export default {
     kicker: 'Creator Studio',
     headline: 'What do you want to create today?',
     body: 'Choose a focused workflow and turn your product idea into content built for vertical video.',
+    serviceCatalog: 'Service catalog',
+    serviceLevels: 'Basic, Advanced and Premium workflows',
+    serviceTier: 'Service tier',
+    serviceTiers: {
+      basic: {
+        title: 'Basic',
+        description:
+          'Low-cost content intelligence for scripts, hooks, captions, campaign ideas and product insights.',
+      },
+      advanced: {
+        title: 'Advanced',
+        description:
+          'Assisted media workflows for voiceover, video analysis, edit plans, subtitles and product-to-video planning.',
+      },
+      premium: {
+        title: 'Premium',
+        description:
+          'Expensive generative media workflows for fashion try-on, motion video, avatars and premium generated assets.',
+      },
+    },
+    implementationStages: {
+      mock: 'Mock',
+      beta: 'Beta',
+      real_provider: 'Real provider',
+      future: 'Future',
+    },
+    outputTypes: {
+      text_insight: 'Text / insight',
+      script_pack: 'Script pack',
+      assisted_media: 'Assisted media',
+      audio: 'Audio',
+      image: 'Image',
+      video: 'Video',
+      avatar: 'Avatar',
+      mixed_media: 'Mixed media',
+    },
     loading: 'Loading creator tools',
     unavailable: 'Tools unavailable',
     ready: 'Ready to use',
@@ -113,6 +149,7 @@ export default {
     loginToUse: 'Log in to use',
     launchRouteMissing: 'A launch route has not been configured.',
     noTools: 'No tools are available right now.',
+    noToolsInTier: 'No tools are configured for this service tier yet.',
     inMaintenance: 'In maintenance',
     temporarilyUnavailable: 'Temporarily unavailable',
     maintenanceBody: 'Temporarily unavailable while improvements are being made.',
@@ -124,6 +161,23 @@ export default {
     kicker: 'Platform pricing',
     headline: 'Choose your creator plan',
     body: 'Plans provide internal platform credits for campaign, caption and creator workflows. Prices are placeholders while real provider costs are evaluated.',
+    serviceTiers: {
+      basic: {
+        label: 'Basic',
+        title: 'Fast planning workflows',
+        body: 'Basic workflows are designed for fast content planning and low-cost generation.',
+      },
+      advanced: {
+        label: 'Advanced',
+        title: 'Assisted media workflows',
+        body: 'Advanced workflows use media inputs and may consume more credits.',
+      },
+      premium: {
+        label: 'Premium',
+        title: 'Generative media workflows',
+        body: 'Premium workflows use expensive generative media and will require higher credits or premium plans.',
+      },
+    },
     unavailable: 'Pricing unavailable',
     recommended: 'Recommended',
     monthlyCredits: '{count} monthly credits',
@@ -147,6 +201,7 @@ export default {
     unlimitedBody: 'Generations do not consume credits for this account.',
     availableCredits: 'available internal credits',
     monthlyAllowance: '{count} credits monthly allowance',
+    serviceTierCredits: 'Credits can be used across Basic, Advanced and Premium tools. Expensive workflows may require more credits.',
     usedSoFar: 'Used so far',
     viewPlans: 'View plans',
     manageAccountPlan: 'Manage account / plan',

@@ -149,6 +149,9 @@ onMounted(loadDashboard)
                   {{ t('dashboard.monthlyAllowance', { count: dashboard.access.monthly_credit_allowance }) }}
                 </p>
               </template>
+              <p class="mt-4 max-w-lg text-xs leading-5 text-emerald-100/60">
+                {{ t('dashboard.serviceTierCredits') }}
+              </p>
             </div>
             <div
               class="rounded-2xl border border-emerald-800/70 bg-neutral-950/50 px-3 py-2 text-right"

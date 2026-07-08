@@ -14,6 +14,9 @@ This backlog collects ideas for Nusa Creator Studio without committing them to i
 - Public demo examples
 - Beta showcase page
 - Before/after workflow examples
+- AI avatar presenter
+- Custom avatar
+- Avatar voice ads
 
 ## SEA/social commerce specific ideas
 
@@ -85,3 +88,6 @@ This backlog collects ideas for Nusa Creator Studio without committing them to i
 | Before/after workflow examples | Near-term / education | TODO | TODO | TODO | TODO | Usability testing | TODO | Explain input-to-output value. |
 | Transparent case study builder | Team/agency / trust | TODO | TODO | TODO | TODO | Customer interview prototype | TODO | Only use measured, verifiable results. |
 | Consent-based customer showcase | Team/agency / trust | TODO | TODO | TODO | TODO | Consent workflow test | TODO | Requires explicit customer permission. |
+| AI avatar presenter | Premium / avatar | TODO | TODO | TODO | TODO | Provider research and prototype | TODO | Future avatar-led product presenter workflow. |
+| Custom avatar | Premium / avatar | TODO | TODO | TODO | TODO | Consent and identity-safety research | TODO | Requires careful user consent and labeling. |
+| Avatar voice ads | Premium / mixed media | TODO | TODO | TODO | TODO | Workflow prototype after voiceover | TODO | Combines avatar presenter, voiceover and scripts. |

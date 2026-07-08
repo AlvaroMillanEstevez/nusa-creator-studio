@@ -126,6 +126,9 @@ describe('PricingView', () => {
     expect(wrapper.text()).not.toContain('Internal Unlimited')
     expect(wrapper.get('[data-testid="pricing-plan-creator"]').text()).toContain('Recommended')
     expect(wrapper.get('[data-testid="featured-plan-badge"]').text()).toBe('Recommended')
+    expect(wrapper.text()).toContain('Basic workflows are designed for fast content planning')
+    expect(wrapper.text()).toContain('Advanced workflows use media inputs')
+    expect(wrapper.text()).toContain('Premium workflows use expensive generative media')
     expect(wrapper.text()).toContain(
       'Billing will be connected when paid subscriptions are enabled.',
     )

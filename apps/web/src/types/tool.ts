@@ -1,4 +1,15 @@
 export type ToolStatus = 'available' | 'coming_soon' | 'maintenance' | 'disabled'
+export type ToolServiceTier = 'basic' | 'advanced' | 'premium'
+export type ToolOutputType =
+  | 'text_insight'
+  | 'script_pack'
+  | 'assisted_media'
+  | 'audio'
+  | 'image'
+  | 'video'
+  | 'avatar'
+  | 'mixed_media'
+export type ToolImplementationStage = 'mock' | 'beta' | 'real_provider' | 'future'
 
 export interface CreatorTool {
   key: string
@@ -6,6 +17,9 @@ export interface CreatorTool {
   short_description: string
   long_description: string | null
   category: string
+  service_tier: ToolServiceTier
+  output_type: ToolOutputType | null
+  implementation_stage: ToolImplementationStage
   status: ToolStatus
   route: string | null
   credit_cost: number
@@ -40,6 +54,9 @@ export interface AdminCreatorToolUpdate {
   short_description: string
   long_description: string | null
   category: string
+  service_tier: ToolServiceTier
+  output_type: ToolOutputType | null
+  implementation_stage: ToolImplementationStage
   status: ToolStatus
   route: string | null
   credit_cost: number

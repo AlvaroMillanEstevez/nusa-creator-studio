@@ -42,6 +42,18 @@ The app already has dynamic pricing/plans and internal platform credits. Current
 - Failed provider jobs need a clear refund/no-charge policy before launch.
 - Expensive tools may require higher minimum balance or confirmation.
 
+## Service tier cost differences
+
+Credits must account for Basic, Advanced and Premium service tier cost differences.
+
+| Service tier | Expected cost profile | Credit strategy | Notes |
+| --- | --- | --- | --- |
+| Basic | Lower provider and infrastructure cost | Keep accessible with low credit costs | Scripts, captions, hooks, insights and localization should activate creators quickly. |
+| Advanced | Moderate provider and processing cost | Charge more when media inputs, voiceover or processing are involved | Voiceover, subtitles, transcripts and edit plans may use longer jobs or media storage. |
+| Premium | High provider cost and higher failure/retry risk | Require higher credits, premium plans, or stricter usage limits | Fashion try-on, motion video, image-to-video and avatars need strong margin and spend controls. |
+
+Pricing should not treat every generation as equivalent once real providers are introduced. A single Premium output may cost far more than multiple Basic script or caption outputs.
+
 ## Provider cost mapping
 
 | Tool | Mock status | Future provider category | Provider cost unit | Suggested credit unit | Verification needed |
