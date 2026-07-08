@@ -3,16 +3,39 @@
 namespace Tests\Feature;
 
 use App\Enums\CreditTransactionType;
+use App\Jobs\GenerateAffiliateCampaignJob;
 use App\Models\CreditTransaction;
 use App\Models\Generation;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Generation\CampaignGenerationProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
+use Throwable;
 
 class CampaignGenerationApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('campaign.provider', 'mock');
+        config()->set('campaign.real_enabled', false);
+        config()->set('campaign.real_internal_only', true);
+        config()->set('campaign.max_input_characters', 4000);
+        config()->set('campaign.max_output_tokens', 2500);
+        config()->set('campaign.openai.api_key', null);
+        config()->set('campaign.openai.campaign_model', 'gpt-5.4-nano');
+        config()->set('campaign.openai.campaign_fallback_model', 'gpt-5.4-mini');
+        config()->set('campaign.openai.base_url', 'https://api.openai.com/v1');
+        config()->set('campaign.openai.input_cost_per_1m_tokens', null);
+        config()->set('campaign.openai.output_cost_per_1m_tokens', null);
+    }
 
     public function test_successful_mock_generation_creates_a_completed_generation_and_result(): void
     {
@@ -33,10 +56,20 @@ class CampaignGenerationApiTest extends TestCase
             ->assertJsonStructure([
                 'data' => [
                     'result_payload' => [
-                        'hooks',
+                        'campaign_title',
+                        'product_angle',
+                        'target_audience_summary',
+                        'hooks' => [['label', 'text', 'intent']],
+                        'main_script' => ['duration_seconds', 'voiceover_script', 'on_screen_text', 'scenes'],
+                        'voiceover_ready_script',
+                        'captions',
+                        'hashtags',
+                        'cta_options',
+                        'compliance_notes',
+                        'usage_notes',
+                        'provider_metadata',
                         'script' => ['title', 'duration_seconds', 'scenes'],
                         'caption',
-                        'hashtags',
                         'cta',
                         'notes',
                     ],
@@ -62,6 +95,7 @@ class CampaignGenerationApiTest extends TestCase
         $this->assertNotNull($generation->finished_at);
         $this->assertIsString($generation->result_payload['caption']);
         $this->assertIsString($generation->result_payload['cta']);
+        $this->assertIsString($generation->result_payload['voiceover_ready_script']);
     }
 
     public function test_successful_generation_charges_one_credit_and_records_positive_usage(): void
@@ -69,7 +103,8 @@ class CampaignGenerationApiTest extends TestCase
         $user = User::factory()->create(['credits_balance' => 3]);
         $project = $this->affiliateProject($user);
 
-        $response = $this->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+        $response = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
             ->assertCreated()
             ->assertJsonPath('meta.credits_balance', 2);
 
@@ -88,7 +123,8 @@ class CampaignGenerationApiTest extends TestCase
         $user = User::factory()->create(['credits_balance' => 0]);
         $project = $this->affiliateProject($user);
 
-        $this->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
             ->assertPaymentRequired()
             ->assertJsonPath('code', 'insufficient_credits')
             ->assertJsonPath('available_credits', 0)
@@ -134,10 +170,11 @@ class CampaignGenerationApiTest extends TestCase
         ] as $language => $expectedHook) {
             $project = $this->affiliateProject($user, $language);
 
-            $response = $this->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            $response = $this->actingAs($user)
+                ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
                 ->assertCreated();
 
-            $hook = $response->json('data.result_payload.hooks.0');
+            $hook = $response->json('data.result_payload.hooks.0.text');
 
             $this->assertIsString($hook);
             $this->assertStringContainsString($expectedHook, $hook);
@@ -178,11 +215,11 @@ class CampaignGenerationApiTest extends TestCase
         $response
             ->assertCreated()
             ->assertJsonPath(
-                'data.result_payload.hooks.0',
+                'data.result_payload.hooks.0.text',
                 "¿Quieres crear contenido rápido? Mira de cerca {$product}.",
             )
             ->assertJsonPath(
-                'data.result_payload.hooks.3',
+                'data.result_payload.hooks.3.text',
                 '¡Una idea sencilla para mostrar un producto que encaja en tu rutina diaria!',
             )
             ->assertJsonPath(
@@ -208,6 +245,207 @@ class CampaignGenerationApiTest extends TestCase
         }
     }
 
+    public function test_configured_openai_provider_is_selected_for_admin_users(): void
+    {
+        Queue::fake();
+        $this->enableOpenAiProvider(apiKey: 'sk-test-campaign');
+        $user = User::factory()->admin()->create(['credits_balance' => 5]);
+        $project = $this->affiliateProject($user);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->assertJsonPath('data.provider', 'openai')
+            ->assertJsonPath('data.status', Generation::STATUS_QUEUED)
+            ->json('data.id');
+
+        Queue::assertPushed(
+            GenerateAffiliateCampaignJob::class,
+            fn (GenerateAffiliateCampaignJob $job): bool => $job->generationId === $generationId,
+        );
+        $this->assertSame(4, $user->refresh()->credits_balance);
+    }
+
+    public function test_normal_users_fallback_to_mock_when_real_campaign_provider_is_internal_only(): void
+    {
+        Queue::fake();
+        $this->enableOpenAiProvider(apiKey: 'sk-test-campaign');
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->affiliateProject($user);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->assertJsonPath('data.provider', 'mock')
+            ->assertJsonPath('data.status', Generation::STATUS_QUEUED);
+
+        $this->assertSame(4, $user->refresh()->credits_balance);
+    }
+
+    public function test_campaign_input_character_limit_blocks_generation_before_charging(): void
+    {
+        Queue::fake();
+        config()->set('campaign.max_input_characters', 50);
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->affiliateProject($user);
+        $project->forceFill([
+            'input_payload' => [
+                ...$project->input_payload,
+                'product_description' => str_repeat('Long product description. ', 20),
+            ],
+        ])->save();
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('input_payload');
+
+        Queue::assertNothingPushed();
+        $this->assertSame(5, $user->refresh()->credits_balance);
+        $this->assertDatabaseCount('generations', 0);
+        $this->assertDatabaseCount('credit_transactions', 0);
+    }
+
+    public function test_missing_openai_key_fails_safely_and_refunds_without_leaking_secrets(): void
+    {
+        Queue::fake();
+        Http::fake();
+        Log::spy();
+        $this->enableOpenAiProvider(apiKey: null);
+        $user = User::factory()->admin()->create(['credits_balance' => 2]);
+        $project = $this->affiliateProject($user);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->assertJsonPath('data.provider', 'openai')
+            ->json('data.id');
+
+        $exception = $this->runCampaignJobAndFailOnException($generationId);
+
+        $this->assertNotNull($exception);
+        Http::assertNothingSent();
+        Log::shouldNotHaveReceived('error');
+        Log::shouldNotHaveReceived('warning');
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $this->assertSame(Generation::STATUS_FAILED, $generation->status);
+        $this->assertSame('Generation failed due to an internal processing error.', $generation->error_message);
+        $this->assertSame(2, $user->refresh()->credits_balance);
+        $this->assertSame(1, CreditTransaction::query()
+            ->where('generation_id', $generationId)
+            ->where('type', CreditTransactionType::Refund->value)
+            ->count());
+
+        $responseJson = json_encode(
+            $this->actingAs($user)->getJson("/api/v1/generations/{$generationId}")->json(),
+            JSON_THROW_ON_ERROR,
+        );
+        $this->assertStringNotContainsString('sk-test', $responseJson);
+    }
+
+    public function test_valid_openai_response_saves_structured_campaign_output(): void
+    {
+        Queue::fake();
+        $this->enableOpenAiProvider(apiKey: 'sk-test-campaign');
+        config()->set('campaign.openai.input_cost_per_1m_tokens', '0.10');
+        config()->set('campaign.openai.output_cost_per_1m_tokens', '0.20');
+        Http::fake([
+            'https://api.openai.com/v1/responses' => Http::response([
+                'id' => 'resp_campaign_test',
+                'output_text' => json_encode($this->openAiStructuredOutput(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+                'usage' => [
+                    'input_tokens' => 1000,
+                    'output_tokens' => 500,
+                    'total_tokens' => 1500,
+                ],
+            ]),
+        ]);
+        $user = User::factory()->admin()->create(['credits_balance' => 5]);
+        $project = $this->affiliateProject($user, 'spanish');
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->runCampaignJobAndFailOnException($generationId);
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame('openai', $generation->provider);
+        $this->assertSame('Guion honesto para Mini Cámara', $generation->output_payload['campaign_title']);
+        $this->assertSame('Antes de comprar, revisa cómo esta cámara puede ayudarte en tu rutina.', $generation->output_payload['voiceover_ready_script']);
+        $this->assertSame('openai', $generation->output_payload['provider_metadata']['provider']);
+        $this->assertSame('gpt-5.4-nano', $generation->output_payload['provider_metadata']['model']);
+        $this->assertSame(1000, $generation->output_payload['provider_metadata']['token_usage']['input_tokens']);
+        $this->assertSame(0.0002, $generation->output_payload['provider_metadata']['estimated_cost_usd']);
+        $this->assertSame('resp_campaign_test', $generation->output_payload['provider_metadata']['response_id']);
+        $this->assertStringNotContainsString('sk-test-campaign', json_encode($generation->output_payload, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_invalid_openai_response_fails_generation_and_refunds_credit(): void
+    {
+        Queue::fake();
+        $this->enableOpenAiProvider(apiKey: 'sk-test-campaign');
+        Http::fake([
+            'https://api.openai.com/v1/responses' => Http::response([
+                'id' => 'resp_bad_json',
+                'output_text' => '{not valid json',
+            ]),
+        ]);
+        $user = User::factory()->admin()->create(['credits_balance' => 2]);
+        $project = $this->affiliateProject($user);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->json('data.id');
+
+        $exception = $this->runCampaignJobAndFailOnException($generationId);
+
+        $this->assertNotNull($exception);
+        $generation = Generation::query()->findOrFail($generationId);
+        $this->assertSame(Generation::STATUS_FAILED, $generation->status);
+        $this->assertSame('Generation failed due to an internal processing error.', $generation->error_message);
+        $this->assertSame(2, $user->refresh()->credits_balance);
+        $this->assertSame(1, CreditTransaction::query()
+            ->where('generation_id', $generationId)
+            ->where('type', CreditTransactionType::Refund->value)
+            ->count());
+    }
+
+    public function test_openai_prompt_contains_honest_marketing_safety_instructions(): void
+    {
+        Queue::fake();
+        $this->enableOpenAiProvider(apiKey: 'sk-test-campaign');
+        Http::fake([
+            'https://api.openai.com/v1/responses' => Http::response([
+                'id' => 'resp_campaign_test',
+                'output_text' => json_encode($this->openAiStructuredOutput(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+            ]),
+        ]);
+        $user = User::factory()->admin()->create(['credits_balance' => 5]);
+        $project = $this->affiliateProject($user);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->runCampaignJobAndFailOnException($generationId);
+
+        Http::assertSent(function ($request): bool {
+            $body = $request->body();
+
+            return str_contains($body, 'Do not invent fake metrics')
+                && str_contains($body, 'fake testimonials')
+                && str_contains($body, 'guaranteed viral results')
+                && str_contains($body, 'unsupported claims')
+                && ! str_contains($body, 'sk-test-campaign');
+        });
+    }
+
     public function test_user_cannot_generate_another_users_campaign(): void
     {
         $owner = User::factory()->create();
@@ -225,8 +463,6 @@ class CampaignGenerationApiTest extends TestCase
 
     private function affiliateProject(User $user, string $language = 'english'): Project
     {
-        $this->actingAs($user);
-
         return Project::factory()
             ->for($user)
             ->create([
@@ -245,5 +481,78 @@ class CampaignGenerationApiTest extends TestCase
                     'format' => 'vertical_9_16',
                 ],
             ]);
+    }
+
+    private function enableOpenAiProvider(?string $apiKey): void
+    {
+        config()->set('campaign.provider', 'openai');
+        config()->set('campaign.real_enabled', true);
+        config()->set('campaign.real_internal_only', true);
+        config()->set('campaign.openai.api_key', $apiKey);
+    }
+
+    private function runCampaignJobAndFailOnException(int $generationId): ?Throwable
+    {
+        $job = new GenerateAffiliateCampaignJob($generationId);
+
+        try {
+            $job->handle(app(CampaignGenerationProcessor::class));
+
+            return null;
+        } catch (Throwable $exception) {
+            $job->failed($exception);
+
+            return $exception;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function openAiStructuredOutput(): array
+    {
+        return [
+            'campaign_title' => 'Guion honesto para Mini Cámara',
+            'product_angle' => 'Mostrar cómo ayuda a crear contenido con más claridad, sin prometer resultados.',
+            'target_audience_summary' => 'Creadores pequeños que quieren grabar contenido de producto de forma práctica.',
+            'hooks' => [
+                ['label' => 'Hook 1', 'text' => '¿Quieres mejorar tu video de producto sin complicarte?', 'intent' => 'Problema cotidiano'],
+                ['label' => 'Hook 2', 'text' => 'Antes de comprar una cámara, revisa estos detalles.', 'intent' => 'Comparación honesta'],
+                ['label' => 'Hook 3', 'text' => 'Así mostraría esta mini cámara en TikTok.', 'intent' => 'Demostración'],
+                ['label' => 'Hook 4', 'text' => 'Tres tomas simples para presentar el producto.', 'intent' => 'Educativo'],
+                ['label' => 'Hook 5', 'text' => 'Mira si esta cámara encaja con tu rutina.', 'intent' => 'Evaluación'],
+            ],
+            'main_script' => [
+                'duration_seconds' => 30,
+                'voiceover_script' => 'Antes de comprar, revisa cómo esta cámara puede ayudarte en tu rutina.',
+                'on_screen_text' => ['Revisa detalles', 'Mira el uso real', 'Compara antes de decidir'],
+                'scenes' => [
+                    [
+                        'time_range' => '0-4s',
+                        'visual_direction' => 'Primer plano limpio del producto.',
+                        'voiceover' => 'Antes de comprar, mira esta mini cámara.',
+                        'on_screen_text' => 'Mira primero',
+                    ],
+                    [
+                        'time_range' => '4-14s',
+                        'visual_direction' => 'Muestra el tamaño y el uso en escritorio.',
+                        'voiceover' => 'Está pensada para creadores que necesitan grabar rápido.',
+                        'on_screen_text' => 'Para creadores',
+                    ],
+                    [
+                        'time_range' => '14-24s',
+                        'visual_direction' => 'Enseña una prueba real sin exagerar.',
+                        'voiceover' => 'Compara los detalles y verifica si encaja con tu contenido.',
+                        'on_screen_text' => 'Verifica detalles',
+                    ],
+                ],
+            ],
+            'voiceover_ready_script' => 'Antes de comprar, revisa cómo esta cámara puede ayudarte en tu rutina.',
+            'captions' => ['Una forma simple de revisar esta mini cámara antes de decidir.'],
+            'hashtags' => ['#MiniCamara', '#Creadores', '#TikTokShop', '#Producto', '#Reseña'],
+            'cta_options' => ['Revisa los detalles del producto antes de decidir.'],
+            'compliance_notes' => ['Verifica las especificaciones antes de publicar.', 'Añade divulgación de afiliado si aplica.'],
+            'usage_notes' => ['Usa tomas reales del producto.', 'Evita prometer resultados específicos.'],
+        ];
     }
 }

@@ -58,14 +58,24 @@ Pricing should not treat every generation as equivalent once real providers are 
 
 | Tool | Mock status | Future provider category | Provider cost unit | Suggested credit unit | Verification needed |
 | --- | --- | --- | --- | --- | --- |
-| Affiliate Campaign Generator | Mock | Text/script/caption | TODO | TODO | Provider price, output size, retries. |
+| Affiliate Campaign Generator | Mock + optional OpenAI | Text/script/caption | Tokens | TODO | Verify current model pricing, output size, retries and structured-output overhead. |
 | Video Enhancer / Caption Pack | Mock | Text/caption analysis, optional video tools | TODO | TODO | Scope of real enhancement. |
 | Product-to-Video Script Pack | Mock | Text/script/caption | TODO | TODO | Script length and localization cost. |
 | AI Voiceover | Mock + optional ElevenLabs | Voiceover/TTS | Characters by provider model | TODO | Real v1 tracks estimated cost by character count/model as internal metadata only; pricing is not finalized. |
 | Fashion Try-On | Mock | Try-on/image generation | TODO | TODO | Cost per job, failure rate, constraints. |
 | Motion AI Video | Mock | Motion/video generation | TODO | TODO | Cost per second/resolution and queue time. |
 
+### Real campaign text cost tracking note
 
+Affiliate Campaign Generator can optionally record OpenAI token usage and estimated provider cost when the real provider is enabled for internal users.
+
+Current assumptions:
+
+- Token usage should be treated as internal cost telemetry only.
+- Input/output token rates must be verified from official provider pricing before public launch.
+- Structured output may increase output tokens, so schema size and retries should be measured.
+- User-facing credits should not change automatically from provider-cost metadata.
+- Failed provider jobs should remain failed/refunded rather than charging users for unusable output.
 ### Real voiceover cost tracking note
 
 AI Voiceover v1 records an estimated provider cost by character count and configured provider model. This is internal metadata for cost monitoring only.

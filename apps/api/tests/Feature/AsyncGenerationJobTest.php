@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Contracts\AffiliateCampaignProvider;
 use App\Enums\CreditTransactionType;
 use App\Jobs\GenerateAffiliateCampaignJob;
 use App\Jobs\GenerateProductVideoScriptJob;
@@ -11,7 +10,8 @@ use App\Models\CreditTransaction;
 use App\Models\Generation;
 use App\Models\Project;
 use App\Models\User;
-use App\Services\Generation\GenerationJobProcessor;
+use App\Services\Generation\CampaignGenerationProcessor;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use RuntimeException;
@@ -47,6 +47,34 @@ class AsyncGenerationJobTest extends TestCase
             ->where('generation_id', $generationId)
             ->where('type', CreditTransactionType::Usage->value)
             ->count());
+    }
+
+    public function test_affiliate_campaign_job_resolves_processor_and_completes_with_default_mock_provider(): void
+    {
+        Queue::fake();
+        config()->set('campaign.provider', 'mock');
+        config()->set('campaign.real_enabled', false);
+        config()->set('campaign.real_internal_only', true);
+
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->project($user, 'affiliate_campaign');
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->json('data.id');
+
+        $job = new GenerateAffiliateCampaignJob($generationId);
+
+        try {
+            app()->call([$job, 'handle']);
+        } catch (BindingResolutionException $exception) {
+            $this->fail('Affiliate campaign job could not resolve CampaignGenerationProcessor: '.$exception->getMessage());
+        }
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame('mock', $generation->provider);
+        $this->assertArrayHasKey('hooks', $generation->output_payload);
     }
 
     public function test_all_existing_generation_jobs_complete_and_store_output(): void
@@ -149,29 +177,24 @@ class AsyncGenerationJobTest extends TestCase
     public function test_failed_job_uses_safe_error_and_refunds_the_charge_once(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 2]);
+        config()->set('campaign.provider', 'openai');
+        config()->set('campaign.real_enabled', true);
+        config()->set('campaign.real_internal_only', true);
+        config()->set('campaign.openai.api_key', null);
+
+        $user = User::factory()->admin()->create(['credits_balance' => 2]);
         $project = $this->project($user, 'affiliate_campaign');
         $generationId = $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
             ->assertCreated()
+            ->assertJsonPath('data.provider', 'openai')
             ->json('data.id');
-
-        $this->app->bind(AffiliateCampaignProvider::class, fn () => new class implements AffiliateCampaignProvider
-        {
-            public function generate(array $input): array
-            {
-                throw new RuntimeException('SQLSTATE secret in /var/www/provider.php:42');
-            }
-        });
 
         $job = new GenerateAffiliateCampaignJob($generationId);
         $exception = null;
 
         try {
-            $job->handle(
-                app(AffiliateCampaignProvider::class),
-                app(GenerationJobProcessor::class),
-            );
+            $job->handle(app(CampaignGenerationProcessor::class));
         } catch (RuntimeException $caught) {
             $exception = $caught;
             $job->failed($caught);

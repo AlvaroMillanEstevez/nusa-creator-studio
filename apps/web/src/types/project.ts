@@ -325,19 +325,60 @@ export type CreatorProject =
   | MotionVideoProject
 
 export interface CampaignScriptScene {
-  timestamp: string
+  timestamp?: string
+  time_range?: string
   voiceover: string
   visual_direction: string
   on_screen_text: string
 }
 
+export interface CampaignHook {
+  label: string
+  text: string
+  intent?: string
+}
+
+export type CampaignHookResult = string | CampaignHook
+
+export interface CampaignMainScript {
+  title?: string
+  duration_seconds: number
+  voiceover_script?: string
+  on_screen_text?: string[]
+  scenes: CampaignScriptScene[]
+}
+
+export interface CampaignProviderMetadata {
+  provider?: string
+  model?: string | null
+  token_usage?: {
+    input_tokens?: number
+    output_tokens?: number
+    total_tokens?: number
+  } | null
+  estimated_cost_usd?: number | null
+  response_id?: string | null
+  mode?: string | null
+}
+
 export interface CampaignGenerationResult {
-  hooks: string[]
-  script: { title: string; duration_seconds: number; scenes: CampaignScriptScene[] }
-  caption: string
+  campaign_title?: string
+  product_angle?: string
+  target_audience_summary?: string
+  hooks: CampaignHookResult[]
+  main_script?: CampaignMainScript
+  voiceover_ready_script?: string
+  scene_breakdown?: CampaignScriptScene[]
+  captions?: string[]
   hashtags: string[]
-  cta: string
-  notes: string[]
+  cta_options?: string[]
+  compliance_notes?: string[]
+  usage_notes?: string[]
+  provider_metadata?: CampaignProviderMetadata
+  script?: CampaignMainScript
+  caption?: string
+  cta?: string
+  notes?: string[]
 }
 
 export interface VideoEnhancerSubtitleCue {

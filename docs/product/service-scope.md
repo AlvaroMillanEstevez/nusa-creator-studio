@@ -71,7 +71,7 @@ Main output:
 
 | Tool | Service tier | Output type | Current implementation stage | Notes |
 | --- | --- | --- | --- | --- |
-| Affiliate Campaign Generator | Basic | Script pack | Mock | Low-cost campaign intelligence for scripts, hooks, captions and filming notes. |
+| Affiliate Campaign Generator | Basic | Script pack | Mock + optional real provider | Low-cost campaign intelligence for scripts, hooks, captions, voiceover-ready copy and filming notes. OpenAI can be enabled for internal users only. |
 | Video Enhancer / Caption Pack | Advanced | Assisted media | Mock | Currently a mock edit plan; future real v1 should analyze uploaded video, transcripts or frames. |
 | Product-to-Video Script Pack | Advanced | Assisted media | Mock | Current script/storyboard; future real v1 can move from product image or URL to storyboard/prompt; future real v2 can move toward image-to-video. |
 | AI Voiceover | Advanced | Audio | Mock + optional real provider | v1 can generate ElevenLabs audio for internal/eligible users and save it as a private MediaAsset; mock remains the default fallback. |
@@ -82,6 +82,25 @@ Main output:
 | Avatar Voice Ads | Premium | Mixed media | Future | Future avatar-led product ads combining presenter, voiceover and scripts. |
 
 
+## Affiliate Campaign Generator v1 real provider scope
+
+Affiliate Campaign Generator is the first Basic workflow that can use a real text provider. Its scope is intentionally narrow:
+
+- Generate structured campaign copy from creator-provided product inputs.
+- Support English, Indonesian and Spanish output.
+- Include hooks, script scenes, captions, hashtags, CTA options, compliance notes and a `voiceover_ready_script` field.
+- Keep the mock provider as the default and fallback path.
+- Restrict real provider usage to admin/internal/unlimited accounts while `CAMPAIGN_REAL_INTERNAL_ONLY=true`.
+- Store token usage and estimated provider cost as internal metadata only when configured.
+- Fail safely and refund charged credits if provider configuration or response validation fails.
+
+Out of scope for this version:
+
+- Product URL scraping.
+- Product image analysis.
+- Marketplace listing analysis.
+- Real ad performance prediction.
+- Billing or provider-cost-based credit pricing.
 ## AI Voiceover v1 real provider scope
 
 AI Voiceover is the first real provider-backed Advanced workflow. Its v1 scope is intentionally narrow:
@@ -145,7 +164,7 @@ Do not let user balances go negative. Expensive tools should check credit balanc
 ## Recommended real implementation order
 
 1. AI Voiceover real provider.
-2. Text/script/caption provider for Basic workflows.
+2. Affiliate Campaign Generator real text provider for internal users.
 3. Fashion Try-On real provider.
 4. Motion AI Video real provider.
 5. Product image-to-video real provider.

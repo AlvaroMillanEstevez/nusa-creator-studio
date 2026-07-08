@@ -2,28 +2,22 @@
 
 namespace App\Services\Generation;
 
-use App\Contracts\AffiliateCampaignProvider;
+use App\Contracts\CampaignGenerationProvider;
+use App\Data\Campaign\CampaignGenerationRequestData;
+use App\Data\Campaign\CampaignGenerationResultData;
 use Illuminate\Support\Str;
 
-class MockAffiliateCampaignProvider implements AffiliateCampaignProvider
+class MockAffiliateCampaignProvider implements CampaignGenerationProvider
 {
-    /**
-     * @param  array<string, mixed>  $input
-     * @return array<string, mixed>
-     */
-    public function generate(array $input): array
+    public function generate(CampaignGenerationRequestData $data): CampaignGenerationResultData
     {
-        $product = $this->value($input, 'product_name', 'Featured product');
-        $description = $this->value(
-            $input,
-            'product_description',
-            'a practical product worth demonstrating clearly',
-        );
-        $audience = $this->value($input, 'target_audience', 'people comparing useful products');
-        $language = strtolower($this->value($input, 'language', 'english'));
-        $tone = strtolower($this->value($input, 'tone', 'natural'));
+        $product = Str::limit($data->productName, 240, '');
+        $description = Str::limit($data->productDescription, 240, '');
+        $audience = Str::limit($data->targetAudience, 240, '');
+        $language = strtolower($data->language);
+        $tone = strtolower($data->tone);
 
-        return match ($language) {
+        $legacy = match ($language) {
             'indonesian', 'id', 'bahasa indonesia' => $this->indonesian(
                 $product,
                 $description,
@@ -38,6 +32,8 @@ class MockAffiliateCampaignProvider implements AffiliateCampaignProvider
             ),
             default => $this->english($product, $description, $audience, $tone),
         };
+
+        return $this->resultFromLegacy($legacy);
     }
 
     /**
@@ -246,17 +242,65 @@ class MockAffiliateCampaignProvider implements AffiliateCampaignProvider
     }
 
     /**
-     * @param  array<string, mixed>  $input
+     * @param  array<string, mixed>  $legacy
      */
-    private function value(array $input, string $key, string $fallback): string
+    private function resultFromLegacy(array $legacy): CampaignGenerationResultData
     {
-        $value = $input[$key] ?? null;
+        /** @var array<string, mixed> $script */
+        $script = is_array($legacy['script'] ?? null) ? $legacy['script'] : [];
+        /** @var array<int, array<string, mixed>> $legacyScenes */
+        $legacyScenes = is_array($script['scenes'] ?? null) ? $script['scenes'] : [];
+        $scenes = array_values(array_map(fn (array $scene): array => [
+            'time_range' => (string) ($scene['timestamp'] ?? ''),
+            'visual_direction' => (string) ($scene['visual_direction'] ?? ''),
+            'voiceover' => (string) ($scene['voiceover'] ?? ''),
+            'on_screen_text' => (string) ($scene['on_screen_text'] ?? ''),
+        ], $legacyScenes));
+        $voiceoverLines = array_values(array_filter(array_map(
+            fn (array $scene): string => trim((string) ($scene['voiceover'] ?? '')),
+            $legacyScenes,
+        )));
+        $legacyHooks = array_values(is_array($legacy['hooks'] ?? null) ? $legacy['hooks'] : []);
+        $hooks = array_values(array_map(
+            fn (mixed $hook, int $index): array => [
+                'label' => 'Hook '.($index + 1),
+                'text' => (string) $hook,
+                'intent' => 'Open with a clear, honest reason to keep watching.',
+            ],
+            $legacyHooks,
+            array_keys($legacyHooks),
+        ));
 
-        if (! is_string($value) || trim($value) === '') {
-            return $fallback;
-        }
-
-        return Str::limit(trim($value), 240, '');
+        return new CampaignGenerationResultData(
+            provider: 'mock',
+            providerModel: null,
+            campaignTitle: (string) ($script['title'] ?? 'Mock affiliate campaign'),
+            productAngle: 'A practical, honest short-form product story.',
+            targetAudienceSummary: 'Use the creator-provided target audience and verify product fit before publishing.',
+            hooks: $hooks,
+            mainScript: [
+                'duration_seconds' => (int) ($script['duration_seconds'] ?? 30),
+                'voiceover_script' => implode("\n", $voiceoverLines),
+                'on_screen_text' => array_values(array_map(
+                    fn (array $scene): string => (string) ($scene['on_screen_text'] ?? ''),
+                    $legacyScenes,
+                )),
+                'scenes' => $scenes,
+            ],
+            voiceoverReadyScript: implode("\n", $voiceoverLines),
+            sceneBreakdown: $scenes,
+            captions: [(string) ($legacy['caption'] ?? '')],
+            hashtags: array_values(is_array($legacy['hashtags'] ?? null) ? $legacy['hashtags'] : []),
+            ctaOptions: [(string) ($legacy['cta'] ?? '')],
+            complianceNotes: [
+                'Verify product details and affiliate disclosure requirements before publishing.',
+                'Avoid claims that are not supported by real product evidence.',
+            ],
+            usageNotes: array_values(is_array($legacy['notes'] ?? null) ? $legacy['notes'] : []),
+            metadata: [
+                'mode' => 'deterministic_mock',
+            ],
+        );
     }
 
     private function toneLabel(string $tone, string $language): string
