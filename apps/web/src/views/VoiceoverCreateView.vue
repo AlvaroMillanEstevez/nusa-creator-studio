@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
@@ -35,7 +35,9 @@ type FormState = {
   notes: string
 }
 
-type FieldErrors = Partial<Record<'title' | 'brief', string>>
+type FieldErrors = Partial<Record<'title' | 'brief' | 'source_text', string>>
+
+const VOICEOVER_MAX_CHARACTERS = 1000
 
 const router = useRouter()
 const isSubmitting = ref(false)
@@ -57,6 +59,11 @@ const form = reactive<FormState>({
   notes: '',
 })
 
+const sourceTextCharacterCount = computed(() => form.source_text.length)
+const isSourceTextOverLimit = computed(
+  () => sourceTextCharacterCount.value > VOICEOVER_MAX_CHARACTERS,
+)
+
 function optionalText(value: string): string | null {
   const trimmed = value.trim()
 
@@ -70,6 +77,10 @@ function validateForm(): boolean {
     errors.title = 'Add a project title.'
   } else if (form.title.trim().length > 255) {
     errors.title = 'Keep the project title under 255 characters.'
+  }
+
+  if (form.source_text.length > VOICEOVER_MAX_CHARACTERS) {
+    errors.source_text = `Keep the source script under ${VOICEOVER_MAX_CHARACTERS} characters.`
   }
 
   if (
@@ -132,8 +143,8 @@ async function submitVoiceover(): Promise<void> {
           Shape a voiceover-ready narration plan.
         </h1>
         <p class="mt-4 text-sm leading-6 text-neutral-400">
-          Prepare a localized script, timing, delivery direction and audio notes. This mock tool does
-          not generate real audio yet.
+          Generate narration audio from a script. Later you will be able to use this voiceover in
+          videos, subtitles and avatar workflows.
         </p>
       </header>
 
@@ -166,9 +177,26 @@ async function submitVoiceover(): Promise<void> {
             v-model="form.source_text"
             name="source_text"
             rows="5"
+            :maxlength="VOICEOVER_MAX_CHARACTERS"
             placeholder="Paste a rough script, campaign hook, or talking points."
+            :aria-invalid="Boolean(fieldErrors.source_text) || isSourceTextOverLimit"
             class="nusa-textarea mt-2"
           />
+          <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <p class="text-neutral-500">
+              {{ sourceTextCharacterCount }} / {{ VOICEOVER_MAX_CHARACTERS }} characters
+            </p>
+            <p class="text-emerald-300">Default voice will be used for this first real voiceover version.</p>
+          </div>
+          <p v-if="fieldErrors.source_text" class="mt-2 text-sm text-rose-400">
+            {{ fieldErrors.source_text }}
+          </p>
+        </div>
+
+        <div class="rounded-2xl border border-sky-900/50 bg-sky-950/20 p-4 text-sm leading-6 text-sky-100/80">
+          Tip: paste a script generated from Campaign Generator or Product-to-Video into the source
+          text. This turns voiceover into a reusable production asset for future video, subtitle and
+          avatar workflows.
         </div>
 
         <div class="grid gap-5">

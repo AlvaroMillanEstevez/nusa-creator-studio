@@ -11,6 +11,7 @@ import type {
   CreatorProject,
   CreatorProjectSettings,
   CreatorGeneration,
+  GenerateAiVoiceoverPayload,
   FashionTryOnFormPayload,
   FashionTryOnGenerationResponse,
   FashionTryOnProject,
@@ -206,10 +207,11 @@ export function generateProductVideoScript(
 
 export function generateAiVoiceover(
   projectId: number | string,
+  payload: GenerateAiVoiceoverPayload = {},
 ): Promise<AiVoiceoverGenerationResponse> {
-  return apiPost<AiVoiceoverGenerationResponse, Record<string, never>>(
+  return apiPost<AiVoiceoverGenerationResponse, GenerateAiVoiceoverPayload>(
     '/projects/' + projectId + '/generate-voiceover',
-    {},
+    payload,
   )
 }
 

@@ -74,12 +74,38 @@ Main output:
 | Affiliate Campaign Generator | Basic | Script pack | Mock | Low-cost campaign intelligence for scripts, hooks, captions and filming notes. |
 | Video Enhancer / Caption Pack | Advanced | Assisted media | Mock | Currently a mock edit plan; future real v1 should analyze uploaded video, transcripts or frames. |
 | Product-to-Video Script Pack | Advanced | Assisted media | Mock | Current script/storyboard; future real v1 can move from product image or URL to storyboard/prompt; future real v2 can move toward image-to-video. |
-| AI Voiceover | Advanced | Audio | Mock | Future real provider should generate audio assets. |
+| AI Voiceover | Advanced | Audio | Mock + optional real provider | v1 can generate ElevenLabs audio for internal/eligible users and save it as a private MediaAsset; mock remains the default fallback. |
 | Fashion Try-On | Premium | Image | Mock | Future real provider should generate try-on images. |
 | Motion AI Video | Premium | Video | Mock | Future real provider should generate video assets. |
 | AI Avatar Presenter | Premium | Avatar | Future | Future avatar-led product presenter videos with voice. |
 | Custom AI Avatar | Premium | Avatar | Future | Future reusable avatar identity from person images, photo sets or descriptions. |
 | Avatar Voice Ads | Premium | Mixed media | Future | Future avatar-led product ads combining presenter, voiceover and scripts. |
+
+
+## AI Voiceover v1 real provider scope
+
+AI Voiceover is the first real provider-backed Advanced workflow. Its v1 scope is intentionally narrow:
+
+- Generate narration audio from a source script or safe product-based fallback text.
+- Use the backend-configured default ElevenLabs voice and model.
+- Save generated audio as a private `MediaAsset` with `type=audio` and `usage_role=audio_track`.
+- Keep the mock provider as the default and fallback path.
+- Restrict real provider usage to admin/internal/unlimited accounts while `VOICEOVER_REAL_INTERNAL_ONLY=true`.
+- Store provider cost estimates as internal metadata only.
+
+The workflow role is a reusable content chain asset:
+
+```text
+campaign/script ? voiceover ? subtitles/captions ? video overlay / avatar / motion video later
+```
+
+Out of scope for v1:
+
+- Video overlay.
+- Subtitle timing.
+- Avatar generation.
+- Public audio download/player routes.
+- Billing or provider-cost-based credit pricing.
 
 ## Future avatar workflows
 

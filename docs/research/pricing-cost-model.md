@@ -61,9 +61,22 @@ Pricing should not treat every generation as equivalent once real providers are 
 | Affiliate Campaign Generator | Mock | Text/script/caption | TODO | TODO | Provider price, output size, retries. |
 | Video Enhancer / Caption Pack | Mock | Text/caption analysis, optional video tools | TODO | TODO | Scope of real enhancement. |
 | Product-to-Video Script Pack | Mock | Text/script/caption | TODO | TODO | Script length and localization cost. |
-| AI Voiceover | Mock | Voiceover/TTS | TODO | TODO | Characters/minutes, voice options, rights. |
+| AI Voiceover | Mock + optional ElevenLabs | Voiceover/TTS | Characters by provider model | TODO | Real v1 tracks estimated cost by character count/model as internal metadata only; pricing is not finalized. |
 | Fashion Try-On | Mock | Try-on/image generation | TODO | TODO | Cost per job, failure rate, constraints. |
 | Motion AI Video | Mock | Motion/video generation | TODO | TODO | Cost per second/resolution and queue time. |
+
+
+### Real voiceover cost tracking note
+
+AI Voiceover v1 records an estimated provider cost by character count and configured provider model. This is internal metadata for cost monitoring only.
+
+Current assumptions:
+
+- Flash/Turbo-style model estimate is configurable per 1,000 characters.
+- Higher-quality multilingual model estimate is configurable per 1,000 characters.
+- Estimates must be verified against current provider pricing before public launch.
+- Do not automatically change user-facing pricing or credit charges from these estimates yet.
+- Keep failed-job refunds/no-charge behavior intact before expanding real provider access.
 
 ## Gross margin target
 

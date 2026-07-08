@@ -2,11 +2,10 @@
 
 namespace App\Contracts;
 
+use App\Data\Voiceover\AiVoiceoverRequestData;
+use App\Data\Voiceover\AiVoiceoverResultData;
+
 interface AiVoiceoverProvider
 {
-    /**
-     * @param  array<string, mixed>  $input
-     * @return array<string, mixed>
-     */
-    public function generate(array $input): array;
+    public function generate(AiVoiceoverRequestData $data): AiVoiceoverResultData;
 }

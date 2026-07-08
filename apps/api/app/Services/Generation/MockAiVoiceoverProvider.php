@@ -3,16 +3,15 @@
 namespace App\Services\Generation;
 
 use App\Contracts\AiVoiceoverProvider;
+use App\Data\Voiceover\AiVoiceoverRequestData;
+use App\Data\Voiceover\AiVoiceoverResultData;
 use Illuminate\Support\Str;
 
 class MockAiVoiceoverProvider implements AiVoiceoverProvider
 {
-    /**
-     * @param  array<string, mixed>  $input
-     * @return array<string, mixed>
-     */
-    public function generate(array $input): array
+    public function generate(AiVoiceoverRequestData $data): AiVoiceoverResultData
     {
+        $input = $data->input;
         $title = $this->value($input, 'title', 'Creator voiceover plan', 160);
         $sourceText = $this->value($input, 'source_text', '', 800);
         $product = $this->value($input, 'product_name', 'the featured product', 160);
@@ -32,7 +31,7 @@ class MockAiVoiceoverProvider implements AiVoiceoverProvider
         $notes = $this->value($input, 'notes', '', 500);
         $timestamps = $this->timestamps($duration);
 
-        return match ($language) {
+        $payload = match ($language) {
             'indonesian', 'id', 'bahasa indonesia' => $this->indonesian(
                 $title,
                 $sourceText,
@@ -76,6 +75,8 @@ class MockAiVoiceoverProvider implements AiVoiceoverProvider
                 $timestamps,
             ),
         };
+
+        return AiVoiceoverResultData::mock($payload, mb_strlen($data->text));
     }
 
     /**

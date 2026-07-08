@@ -58,6 +58,69 @@ describe('AI Voiceover generation result rendering', () => {
     expect(wrapper.text()).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)
   })
 
+
+  it('shows generated ElevenLabs audio metadata without exposing storage paths', () => {
+    const generation: CreatorGeneration = {
+      id: 3,
+      user_id: 1,
+      project_id: 91,
+      job_type: 'generate_ai_voiceover',
+      provider: 'elevenlabs',
+      status: 'completed',
+      cost_usd: '0.0000',
+      credits_charged: 1,
+      input_payload: null,
+      output_payload: {
+        voiceover_title: 'Real product narration',
+        narration_script: 'Generate narration audio from a script.',
+        source_generation_id: 7,
+        source_generation_excerpt: 'Generate narration audio from a script.',
+        audio_asset_id: 123,
+        scene_timing: [],
+        voice_direction: 'Generated with the configured ElevenLabs default voice.',
+        pronunciation_notes: [],
+        pacing_notes: [],
+        platform_notes: ['Audio is saved as a reusable project asset.'],
+        estimated_duration_seconds: 30,
+        suggested_audio_format: 'MP3 audio saved privately in project assets.',
+        audio: {
+          status: 'generated',
+          media_asset_id: 123,
+          media_asset_name: 'voiceover-3.mp3',
+          mime_type: 'audio/mpeg',
+          format: 'mp3',
+          provider: 'elevenlabs',
+          provider_model: 'eleven_flash_v2_5',
+          provider_voice_id: 'voice_test',
+          character_count: 42,
+          estimated_cost_usd: 0.0021,
+          duration_seconds: null,
+        },
+        usage_notes: ['Generated audio was saved to this project assets list and the Media Library.'],
+        compliance_notes: ['Review the narration for factual product claims before publishing.'],
+      },
+      error_message: null,
+      started_at: '2026-07-07T00:00:00.000000Z',
+      finished_at: '2026-07-07T00:00:02.000000Z',
+      created_at: '2026-07-07T00:00:00.000000Z',
+    }
+
+    const wrapper = mount(GenerationResultRenderer, {
+      props: { generation },
+    })
+
+    expect(wrapper.text()).toContain('Generated audio')
+    expect(wrapper.text()).toContain('Audio saved to project assets')
+    expect(wrapper.text()).toContain('#123')
+    expect(wrapper.text()).toContain('voiceover-3.mp3')
+    expect(wrapper.text()).toContain('elevenlabs')
+    expect(wrapper.text()).toContain('eleven_flash_v2_5')
+    expect(wrapper.text()).toContain('voice_test')
+    expect(wrapper.text()).toContain('Character count')
+    expect(wrapper.text()).toContain('Private storage paths are intentionally hidden')
+    expect(wrapper.text()).not.toContain('users/1/generated/voiceovers')
+  })
+
   it('shows the friendly failed state without exposing raw AI Voiceover errors', () => {
     const generation: CreatorGeneration = {
       id: 2,

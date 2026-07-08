@@ -29,6 +29,7 @@ class GenerationSubmissionService
         string $creditReason,
         Closure $dispatch,
         ?array $inputPayload = null,
+        string $provider = 'mock',
     ): Generation {
         $generation = DB::transaction(function () use (
             $project,
@@ -37,11 +38,12 @@ class GenerationSubmissionService
             $creditCost,
             $creditReason,
             $inputPayload,
+            $provider,
         ): Generation {
             $generation = $project->generations()->create([
                 'user_id' => $user->getKey(),
                 'job_type' => $jobType,
-                'provider' => 'mock',
+                'provider' => $provider,
                 'status' => Generation::STATUS_QUEUED,
                 'cost_usd' => 0,
                 'credits_charged' => 0,

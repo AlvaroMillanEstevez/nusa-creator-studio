@@ -53,6 +53,10 @@ describe('VoiceoverCreateView', () => {
     await wrapper.get('form').trigger('submit.prevent')
     await flushPromises()
 
+    expect(wrapper.text()).toContain('Generate narration audio from a script')
+    expect(wrapper.text()).toContain('0 / 1000 characters')
+    expect(wrapper.text()).toContain('Default voice will be used for this first real voiceover version.')
+    expect(wrapper.text()).toContain('future video, subtitle and')
     expect(wrapper.text()).toContain('Add a project title.')
     expect(wrapper.text()).toContain('Add source text or at least a product name and description.')
     expect(fetchMock).not.toHaveBeenCalled()

@@ -100,7 +100,7 @@ const emptyHistoryCopy = computed(() => {
   }
 
   if (project.value?.type === 'ai_voiceover') {
-    return 'No saved generations yet. Generate your first voiceover plan to create narration, timing, delivery notes and audio-ready guidance.'
+    return 'No saved generations yet. Generate your first voiceover to create narration audio or an audio-ready mock plan.'
   }
 
   if (project.value?.type === 'product_to_video') {

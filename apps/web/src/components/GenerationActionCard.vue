@@ -65,7 +65,7 @@ const copy = computed<GenerationActionCopy>(() => {
     return {
       title: 'Generate voiceover',
       description:
-        'Create a deterministic narration script, scene timing, delivery direction and audio-ready notes. No real audio is generated yet.',
+        'Generate narration audio from your source script when real voiceover is enabled, or keep using the mock narration plan. Tip: paste a Campaign Generator or Product-to-Video script into the source text when creating a voiceover project.',
       button: props.hasGeneration ? 'Generate another voiceover' : 'Generate voiceover',
       loadingButton: 'Generating voiceover...',
     }
@@ -108,7 +108,7 @@ const copy = computed<GenerationActionCopy>(() => {
     <div class="flex items-start justify-between gap-4">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-          Mock creator studio
+          Creator studio
         </p>
         <h2 class="mt-2 text-xl font-semibold">
           {{ hasGeneration ? 'Generate another version' : copy.title }}

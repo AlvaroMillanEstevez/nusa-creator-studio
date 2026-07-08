@@ -235,6 +235,12 @@ export interface AiVoiceoverFormPayload {
   notes: string | null
 }
 
+
+export interface GenerateAiVoiceoverPayload {
+  source_text?: string | null
+  source_generation_id?: number | null
+}
+
 export interface FashionTryOnFormPayload {
   title: string
   product_name: string | null
@@ -390,18 +396,36 @@ export interface AiVoiceoverMockAudio {
   provider: 'mock'
 }
 
+export interface AiVoiceoverGeneratedAudio {
+  status: 'generated'
+  media_asset_id: number
+  media_asset_name?: string | null
+  mime_type: string
+  format: string
+  provider: string
+  provider_model: string | null
+  provider_voice_id: string | null
+  character_count: number
+  estimated_cost_usd: number | null
+  duration_seconds: number | null
+}
+
 export interface AiVoiceoverResult {
   voiceover_title: string
   narration_script: string
+  source_generation_id?: number | null
+  source_generation_excerpt?: string | null
+  audio_asset_id?: number | null
   scene_timing: AiVoiceoverSceneTiming[]
   voice_direction: string
   pronunciation_notes: string[]
   pacing_notes: string[]
   platform_notes: string[]
-  estimated_duration_seconds: number
+  estimated_duration_seconds: number | null
   suggested_audio_format: string
   usage_notes: string[]
-  mock_audio: AiVoiceoverMockAudio
+  mock_audio?: AiVoiceoverMockAudio
+  audio?: AiVoiceoverGeneratedAudio
   compliance_notes: string[]
 }
 
@@ -561,7 +585,7 @@ export function isProductToVideoResult(
 export function isAiVoiceoverResult(
   result: GenerationResult | null,
 ): result is AiVoiceoverResult {
-  return result !== null && 'voiceover_title' in result && 'mock_audio' in result
+  return result !== null && 'voiceover_title' in result && ('mock_audio' in result || 'audio' in result)
 }
 
 export function isFashionTryOnResult(

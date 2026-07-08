@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exceptions\InsufficientCreditsException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GenerateAiVoiceoverRequest;
 use App\Http\Resources\GenerationResource;
 use App\Models\Project;
 use App\Models\User;
@@ -11,7 +12,6 @@ use App\Services\Generation\AiVoiceoverGenerationService;
 use App\Services\ToolAvailabilityService;
 use App\Support\CurrentUserResolver;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class GenerateAiVoiceoverController extends Controller
@@ -22,7 +22,7 @@ class GenerateAiVoiceoverController extends Controller
         private readonly ToolAvailabilityService $tools,
     ) {}
 
-    public function __invoke(Request $request, Project $project): JsonResponse
+    public function __invoke(GenerateAiVoiceoverRequest $request, Project $project): JsonResponse
     {
         $user = $this->currentUser->resolve($request);
 
@@ -30,7 +30,7 @@ class GenerateAiVoiceoverController extends Controller
 
         if ($project->type !== 'ai_voiceover') {
             return response()->json([
-                'message' => 'Only AI voiceover projects can generate voiceover plans.',
+                'message' => 'Only AI voiceover projects can generate voiceovers.',
                 'code' => 'invalid_project_type',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -43,10 +43,10 @@ class GenerateAiVoiceoverController extends Controller
         }
 
         try {
-            $generation = $this->voiceovers->generate($project, $user);
+            $generation = $this->voiceovers->generate($project, $user, $request->validated());
         } catch (InsufficientCreditsException $exception) {
             return response()->json([
-                'message' => 'You do not have enough platform credits to generate this voiceover plan.',
+                'message' => 'You do not have enough platform credits to generate this voiceover.',
                 'code' => 'insufficient_credits',
                 'available_credits' => $exception->availableCredits,
                 'required_credits' => $exception->requiredCredits,
