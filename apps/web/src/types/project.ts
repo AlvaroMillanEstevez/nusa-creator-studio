@@ -400,6 +400,8 @@ export interface AiVoiceoverGeneratedAudio {
   status: 'generated'
   media_asset_id: number
   media_asset_name?: string | null
+  stream_url?: string | null
+  download_url?: string | null
   mime_type: string
   format: string
   provider: string

@@ -119,6 +119,27 @@ export class ApiError extends Error {
   }
 }
 
+function resolveApiUrl(pathOrUrl: string): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    if (
+      (API_BASE_URL && pathOrUrl.startsWith(API_BASE_URL)) ||
+      (API_ORIGIN && pathOrUrl.startsWith(API_ORIGIN))
+    ) {
+      return pathOrUrl
+    }
+
+    throw new ApiError('This media URL is not allowed.', 400)
+  }
+
+  if (pathOrUrl.startsWith('/api/v1/')) {
+    return API_ORIGIN + pathOrUrl
+  }
+
+  const normalizedPath = pathOrUrl.startsWith('/') ? pathOrUrl : '/' + pathOrUrl
+
+  return API_BASE_URL + normalizedPath
+}
+
 async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers)
   headers.set('Accept', 'application/json')
@@ -136,8 +157,7 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
     headers.set('X-XSRF-TOKEN', token)
   }
 
-  const normalizedPath = path.startsWith('/') ? path : '/' + path
-  const response = await fetch(API_BASE_URL + normalizedPath, {
+  const response = await fetch(resolveApiUrl(path), {
     credentials: 'include',
     ...options,
     headers,
@@ -159,6 +179,32 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   }
 
   return response.json() as Promise<T>
+}
+
+export async function apiGetBlob(pathOrUrl: string): Promise<Blob> {
+  const response = await fetch(resolveApiUrl(pathOrUrl), {
+    credentials: 'include',
+    headers: {
+      Accept: '*/*',
+    },
+  })
+
+  if (!response.ok) {
+    let payload: unknown = null
+
+    try {
+      payload = await response.json()
+    } catch {
+      // Binary delivery may return an empty or non-JSON error response.
+    }
+
+    const payloadRecord = errorPayload(payload)
+    const code = typeof payloadRecord?.code === 'string' ? payloadRecord.code : undefined
+
+    throw new ApiError(sanitizeApiErrorMessage(response.status, payload), response.status, code)
+  }
+
+  return response.blob()
 }
 
 export async function ensureCsrfCookie(): Promise<void> {

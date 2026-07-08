@@ -1,7 +1,24 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
+import AudioAssetPlayer from '@/components/AudioAssetPlayer.vue'
+import type { MediaAsset } from '@/types/media'
 import type { AiVoiceoverResult } from '@/types/project'
 
-defineProps<{ result: AiVoiceoverResult }>()
+const props = defineProps<{
+  result: AiVoiceoverResult
+  mediaAssets?: MediaAsset[]
+}>()
+
+const result = computed(() => props.result)
+const audioAssetId = computed(() => result.value.audio?.media_asset_id ?? result.value.audio_asset_id ?? null)
+const audioAsset = computed(() =>
+  props.mediaAssets?.find((asset) => asset.id === audioAssetId.value) ?? null,
+)
+const audioStreamUrl = computed(() => result.value.audio?.stream_url ?? audioAsset.value?.stream_url ?? null)
+const audioDownloadUrl = computed(
+  () => result.value.audio?.download_url ?? audioAsset.value?.download_url ?? null,
+)
 </script>
 
 <template>
@@ -76,6 +93,17 @@ defineProps<{ result: AiVoiceoverResult }>()
       <p class="mt-3 text-sm leading-7 text-emerald-100/80">
         This real voiceover was saved as a private media asset and is available in Project assets and the Media Library.
       </p>
+      <AudioAssetPlayer
+        v-if="audioStreamUrl"
+        :media-asset="audioAsset"
+        :stream-url="audioStreamUrl"
+        :download-url="audioDownloadUrl"
+        :title="result.audio.media_asset_name ?? 'Generated audio'"
+        class="mt-5"
+      />
+      <p v-else class="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/50 p-3 text-sm leading-6 text-neutral-400">
+        Audio playback is available from Project assets or the Media Library once the private media URL is loaded.
+      </p>
       <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
         <div class="rounded-2xl border border-neutral-800 bg-neutral-950/50 p-3">
           <dt class="text-neutral-500">Media asset</dt>
@@ -111,7 +139,7 @@ defineProps<{ result: AiVoiceoverResult }>()
         </div>
       </dl>
       <p class="mt-4 text-xs leading-5 text-neutral-500">
-        Private storage paths are intentionally hidden. A safe authenticated player/download can be added later.
+        Private storage paths are intentionally hidden. Playback and download use authenticated API routes.
       </p>
     </section>
 

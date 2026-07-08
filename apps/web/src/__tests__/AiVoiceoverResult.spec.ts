@@ -1,11 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 
 import GenerationResultRenderer from '@/components/GenerationResultRenderer.vue'
+import { API_ORIGIN } from '@/services/api'
 import type { CreatorGeneration } from '@/types/project'
 
 describe('AI Voiceover generation result rendering', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
   it('shows a completed AI Voiceover result payload', () => {
     const generation: CreatorGeneration = {
       id: 1,
@@ -58,8 +64,23 @@ describe('AI Voiceover generation result rendering', () => {
     expect(wrapper.text()).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)
   })
 
+  it('shows generated ElevenLabs audio playback and metadata without exposing storage paths', async () => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn<() => string>(() => 'blob:voiceover-audio'),
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn<() => void>(),
+    })
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(new Blob(['mp3'], { type: 'audio/mpeg' }), {
+        status: 200,
+        headers: { 'Content-Type': 'audio/mpeg' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
 
-  it('shows generated ElevenLabs audio metadata without exposing storage paths', () => {
     const generation: CreatorGeneration = {
       id: 3,
       user_id: 1,
@@ -87,6 +108,8 @@ describe('AI Voiceover generation result rendering', () => {
           status: 'generated',
           media_asset_id: 123,
           media_asset_name: 'voiceover-3.mp3',
+          stream_url: '/api/v1/media-assets/123/stream',
+          download_url: '/api/v1/media-assets/123/download',
           mime_type: 'audio/mpeg',
           format: 'mp3',
           provider: 'elevenlabs',
@@ -108,7 +131,12 @@ describe('AI Voiceover generation result rendering', () => {
     const wrapper = mount(GenerationResultRenderer, {
       props: { generation },
     })
+    await flushPromises()
 
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_ORIGIN + '/api/v1/media-assets/123/stream',
+      expect.objectContaining({ credentials: 'include' }),
+    )
     expect(wrapper.text()).toContain('Generated audio')
     expect(wrapper.text()).toContain('Audio saved to project assets')
     expect(wrapper.text()).toContain('#123')
@@ -117,6 +145,8 @@ describe('AI Voiceover generation result rendering', () => {
     expect(wrapper.text()).toContain('eleven_flash_v2_5')
     expect(wrapper.text()).toContain('voice_test')
     expect(wrapper.text()).toContain('Character count')
+    expect(wrapper.text()).toContain('Download audio')
+    expect(wrapper.find('[data-testid="audio-controls"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Private storage paths are intentionally hidden')
     expect(wrapper.text()).not.toContain('users/1/generated/voiceovers')
   })

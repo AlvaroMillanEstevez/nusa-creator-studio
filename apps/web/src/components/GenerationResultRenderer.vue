@@ -7,6 +7,7 @@ import FashionTryOnGenerationResult from '@/components/FashionTryOnGenerationRes
 import MotionVideoGenerationResult from '@/components/MotionVideoGenerationResult.vue'
 import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
+import type { MediaAsset } from '@/types/media'
 import {
   generationOutput,
   isAiVoiceoverResult,
@@ -22,6 +23,7 @@ import { formatDate } from '@/utils/formatters'
 const props = defineProps<{
   generation: CreatorGeneration | null
   showQueueWorkerHint?: boolean
+  mediaAssets?: MediaAsset[]
 }>()
 
 const result = computed(() =>
@@ -156,7 +158,11 @@ const isQueued = computed(
       v-else-if="productToVideoResult"
       :result="productToVideoResult"
     />
-    <AiVoiceoverGenerationResult v-else-if="aiVoiceoverResult" :result="aiVoiceoverResult" />
+    <AiVoiceoverGenerationResult
+      v-else-if="aiVoiceoverResult"
+      :result="aiVoiceoverResult"
+      :media-assets="mediaAssets"
+    />
     <FashionTryOnGenerationResult v-else-if="fashionTryOnResult" :result="fashionTryOnResult" />
     <MotionVideoGenerationResult v-else-if="motionVideoResult" :result="motionVideoResult" />
   </div>

@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPostForm } from '@/services/api'
+import { apiDelete, apiGet, apiGetBlob, apiPostForm } from '@/services/api'
 import type {
   DeleteMediaAssetResponse,
   MediaAsset,
@@ -82,4 +82,8 @@ export function listProjectMediaAssets(
 
 export function deleteMediaAsset(id: number | string): Promise<DeleteMediaAssetResponse> {
   return apiDelete<DeleteMediaAssetResponse>('/media-assets/' + encodeURIComponent(String(id)))
+}
+
+export function fetchMediaBlob(streamOrDownloadUrl: string): Promise<Blob> {
+  return apiGetBlob(streamOrDownloadUrl)
 }

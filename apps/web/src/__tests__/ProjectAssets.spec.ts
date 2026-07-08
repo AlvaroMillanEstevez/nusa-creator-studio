@@ -133,4 +133,61 @@ describe('ProjectAssets', () => {
     expect(body.get('usage_role')).toBe('source_video')
     expect(wrapper.text()).toContain('Source video')
   })
+  it('renders an audio player for project audio assets without raw storage paths', async () => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn<() => string>(() => 'blob:project-audio'),
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn<() => void>(),
+    })
+
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/media-assets/44/stream')) {
+        return new Response(new Blob(['mp3'], { type: 'audio/mpeg' }), {
+          status: 200,
+          headers: { 'Content-Type': 'audio/mpeg' },
+        })
+      }
+
+      return Response.json({
+        data: [
+          {
+            id: 44,
+            user_id: 1,
+            project_id: 91,
+            type: 'audio',
+            usage_role: 'audio_track',
+            disk: 'local',
+            storage_identifier: 'media-44',
+            stream_url: '/api/v1/media-assets/44/stream',
+            download_url: '/api/v1/media-assets/44/download',
+            original_name: 'voiceover-44.mp3',
+            mime_type: 'audio/mpeg',
+            size_bytes: 1200,
+            size_label: '1.2 KB',
+            metadata: null,
+            created_at: '2026-07-07T00:00:00.000000Z',
+            updated_at: '2026-07-07T00:00:00.000000Z',
+          },
+        ],
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(ProjectAssets, {
+      props: { projectId: 91, projectType: 'ai_voiceover' },
+    })
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Play audio')
+    expect(wrapper.text()).toContain('voiceover-44.mp3')
+    expect(wrapper.find('[data-testid="audio-controls"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('users/1/generated/voiceovers')
+  })
 })

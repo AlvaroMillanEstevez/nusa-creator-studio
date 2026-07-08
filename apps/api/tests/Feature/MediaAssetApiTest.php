@@ -207,6 +207,117 @@ class MediaAssetApiTest extends TestCase
         $this->assertDatabaseHas('media_assets', ['id' => $asset->id]);
     }
 
+    public function test_owner_can_stream_own_audio_asset(): void
+    {
+        $user = User::factory()->create();
+        $contents = 'private mp3 bytes';
+        $asset = $this->createStoredAudioAsset($user, $contents, 'voiceover-demo.mp3');
+
+        $response = $this->actingAs($user)
+            ->get("/api/v1/media-assets/{$asset->id}/stream", ['Accept' => 'audio/mpeg']);
+
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Type', 'audio/mpeg')
+            ->assertHeader('Content-Disposition', 'inline; filename="voiceover-demo.mp3"');
+
+        $this->assertSame($contents, $response->streamedContent());
+        $this->assertStringNotContainsString($asset->path, $response->headers->get('Content-Disposition', ''));
+        $this->assertStringNotContainsString($asset->path, $response->streamedContent());
+    }
+
+    public function test_owner_can_download_own_audio_asset(): void
+    {
+        $user = User::factory()->create();
+        $contents = 'downloadable mp3 bytes';
+        $asset = $this->createStoredAudioAsset($user, $contents, 'voiceover-demo.mp3');
+
+        $response = $this->actingAs($user)
+            ->get("/api/v1/media-assets/{$asset->id}/download", ['Accept' => 'audio/mpeg']);
+
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Type', 'audio/mpeg')
+            ->assertHeader('Content-Disposition', 'attachment; filename="voiceover-demo.mp3"');
+
+        $this->assertSame($contents, $response->streamedContent());
+        $this->assertStringNotContainsString($asset->path, $response->headers->get('Content-Disposition', ''));
+    }
+
+    public function test_guest_cannot_stream_or_download_audio_assets(): void
+    {
+        $asset = $this->createStoredAudioAsset(User::factory()->create());
+
+        $this->getJson("/api/v1/media-assets/{$asset->id}/stream")->assertUnauthorized();
+        $this->getJson("/api/v1/media-assets/{$asset->id}/download")->assertUnauthorized();
+    }
+
+    public function test_another_user_cannot_stream_or_download_private_audio_assets(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $asset = $this->createStoredAudioAsset($owner);
+
+        $this->actingAs($other)
+            ->getJson("/api/v1/media-assets/{$asset->id}/stream")
+            ->assertNotFound();
+
+        $this->actingAs($other)
+            ->getJson("/api/v1/media-assets/{$asset->id}/download")
+            ->assertNotFound();
+    }
+
+    public function test_missing_private_audio_file_returns_safe_not_found(): void
+    {
+        $user = User::factory()->create();
+        $asset = MediaAsset::factory()->for($user)->create([
+            'type' => 'audio',
+            'disk' => 'media-test',
+            'path' => "users/{$user->id}/generated/voiceovers/missing.mp3",
+            'original_name' => 'missing.mp3',
+            'mime_type' => 'audio/mpeg',
+            'size_bytes' => 42,
+        ]);
+
+        $this->actingAs($user)
+            ->getJson("/api/v1/media-assets/{$asset->id}/stream")
+            ->assertNotFound();
+    }
+
+    public function test_non_audio_assets_cannot_be_streamed(): void
+    {
+        $user = User::factory()->create();
+        $asset = MediaAsset::factory()->for($user)->create([
+            'type' => 'image',
+            'disk' => 'media-test',
+            'path' => "users/{$user->id}/media/not-audio.png",
+            'original_name' => 'not-audio.png',
+            'mime_type' => 'image/png',
+        ]);
+        Storage::disk('media-test')->put($asset->path, 'png bytes');
+
+        $this->actingAs($user)
+            ->getJson("/api/v1/media-assets/{$asset->id}/stream")
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Only audio assets can be streamed.');
+    }
+
+    public function test_media_asset_resource_includes_safe_delivery_urls_for_audio_assets(): void
+    {
+        $user = User::factory()->create();
+        $asset = $this->createStoredAudioAsset($user);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/v1/media-assets')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $asset->id)
+            ->assertJsonPath('data.0.stream_url', "/api/v1/media-assets/{$asset->id}/stream")
+            ->assertJsonPath('data.0.download_url', "/api/v1/media-assets/{$asset->id}/download")
+            ->assertJsonMissingPath('data.0.path');
+
+        $this->assertStringNotContainsString($asset->path, $response->getContent());
+    }
+
     public function test_unauthenticated_users_cannot_access_media_endpoints(): void
     {
         $project = Project::factory()->create();
@@ -216,6 +327,8 @@ class MediaAssetApiTest extends TestCase
         $this->getJson('/api/v1/media-assets/stats')->assertUnauthorized();
         $this->postJson('/api/v1/media-assets')->assertUnauthorized();
         $this->getJson("/api/v1/projects/{$project->id}/media-assets")->assertUnauthorized();
+        $this->getJson("/api/v1/media-assets/{$asset->id}/stream")->assertUnauthorized();
+        $this->getJson("/api/v1/media-assets/{$asset->id}/download")->assertUnauthorized();
         $this->deleteJson("/api/v1/media-assets/{$asset->id}")->assertUnauthorized();
     }
 
@@ -396,6 +509,25 @@ class MediaAssetApiTest extends TestCase
             ], ['Accept' => 'application/json'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('file');
+    }
+
+    private function createStoredAudioAsset(
+        User $user,
+        string $contents = 'private audio bytes',
+        string $originalName = 'voiceover.mp3',
+    ): MediaAsset {
+        $asset = MediaAsset::factory()->for($user)->create([
+            'type' => 'audio',
+            'disk' => 'media-test',
+            'path' => "users/{$user->id}/generated/voiceovers/voiceover.mp3",
+            'original_name' => $originalName,
+            'mime_type' => 'audio/mpeg',
+            'size_bytes' => strlen($contents),
+        ]);
+
+        Storage::disk('media-test')->put($asset->path, $contents);
+
+        return $asset;
     }
 
     private function uploadedFile(string $name, string|false $contents): UploadedFile

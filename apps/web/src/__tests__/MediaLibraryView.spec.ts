@@ -205,6 +205,42 @@ describe('MediaLibraryView', () => {
     expect(card.get('button').classes()).toContain('w-full')
   })
 
+  it('renders audio playback and download actions for audio assets', async () => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn<() => string>(() => 'blob:library-audio'),
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn<() => void>(),
+    })
+
+    const fetchMock = createFetchMock({
+      assets: [
+        {
+          ...asset,
+          id: 55,
+          type: 'audio',
+          usage_role: 'audio_track',
+          storage_identifier: 'media-55',
+          stream_url: '/api/v1/media-assets/55/stream',
+          download_url: '/api/v1/media-assets/55/download',
+          original_name: 'voiceover-55.mp3',
+          mime_type: 'audio/mpeg',
+          size_label: '1.2 KB',
+        },
+      ],
+    })
+    const wrapper = await mountMediaLibrary(fetchMock)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Play audio')
+    expect(wrapper.text()).toContain('Download audio')
+    expect(wrapper.text()).toContain('Private media file')
+    expect(wrapper.find('[data-testid="audio-controls"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('users/1/generated/voiceovers')
+  })
+
   it('calls the API with search, type and usage role filters', async () => {
     const fetchMock = createFetchMock()
     const wrapper = await mountMediaLibrary(fetchMock)

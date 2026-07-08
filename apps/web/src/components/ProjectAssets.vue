@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
+import AudioAssetPlayer from '@/components/AudioAssetPlayer.vue'
 import { ApiError } from '@/services/api'
 import { deleteMediaAsset, listProjectMediaAssets, uploadMediaAsset } from '@/services/media'
 import type { MediaAsset, MediaAssetUsageRole } from '@/types/media'
@@ -250,6 +251,12 @@ onMounted(() => {
               {{ deletingId === asset.id ? 'Deleting...' : 'Delete' }}
             </button>
           </div>
+          <AudioAssetPlayer
+            v-if="asset.type === 'audio' && asset.stream_url"
+            :media-asset="asset"
+            :title="asset.original_name ?? 'Generated audio'"
+            class="mt-4"
+          />
         </article>
       </div>
     </div>

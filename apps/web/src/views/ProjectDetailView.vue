@@ -479,6 +479,7 @@ onBeforeUnmount(stopPolling)
         <GenerationResultRenderer
           :generation="generation"
           :show-queue-worker-hint="showQueueWorkerHint"
+          :media-assets="projectAssets"
         />
       </template>
     </div>

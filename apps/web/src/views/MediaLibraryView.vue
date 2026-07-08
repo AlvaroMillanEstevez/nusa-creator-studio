@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import AudioAssetPlayer from '@/components/AudioAssetPlayer.vue'
 import { ApiError } from '@/services/api'
 import { deleteMediaAsset, getMediaAssetStats, listMediaAssets } from '@/services/media'
 import type { MediaAsset, MediaAssetType, MediaAssetUsageRole } from '@/types/media'
@@ -413,6 +414,13 @@ onMounted(loadLibrary)
                   </dd>
                 </div>
               </dl>
+
+              <AudioAssetPlayer
+                v-if="asset.type === 'audio' && asset.stream_url"
+                :media-asset="asset"
+                :title="asset.original_name ?? t('media.generatedAudio')"
+                class="mt-5"
+              />
 
               <button
                 type="button"

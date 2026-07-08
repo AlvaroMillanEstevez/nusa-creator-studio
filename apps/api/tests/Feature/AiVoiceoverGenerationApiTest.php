@@ -502,6 +502,14 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $this->assertSame('voice_test', $generation->output_payload['audio']['provider_voice_id']);
         $this->assertSame(500, $generation->output_payload['audio']['character_count']);
         $this->assertEqualsWithDelta(0.025, $generation->output_payload['audio']['estimated_cost_usd'], 0.000001);
+        $this->assertSame(
+            "/api/v1/media-assets/{$generation->output_payload['audio_asset_id']}/stream",
+            $generation->output_payload['audio']['stream_url'],
+        );
+        $this->assertSame(
+            "/api/v1/media-assets/{$generation->output_payload['audio_asset_id']}/download",
+            $generation->output_payload['audio']['download_url'],
+        );
 
         $asset = MediaAsset::query()->firstOrFail();
         $this->assertSame($asset->id, $generation->output_payload['audio_asset_id']);

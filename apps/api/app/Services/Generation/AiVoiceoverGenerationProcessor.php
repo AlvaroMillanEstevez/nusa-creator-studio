@@ -125,6 +125,8 @@ class AiVoiceoverGenerationProcessor
                 'status' => 'generated',
                 'media_asset_id' => $asset->getKey(),
                 'media_asset_name' => $asset->original_name,
+                'stream_url' => route('media-assets.stream', ['mediaAsset' => $asset->getKey()], false),
+                'download_url' => route('media-assets.download', ['mediaAsset' => $asset->getKey()], false),
                 'mime_type' => $resultData->mimeType,
                 'format' => $resultData->extension,
                 'provider' => $resultData->provider,

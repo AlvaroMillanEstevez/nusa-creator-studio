@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
 use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
 use App\Http\Controllers\Api\V1\GenerationController;
 use App\Http\Controllers\Api\V1\MediaAssetController;
+use App\Http\Controllers\Api\V1\MediaAssetDeliveryController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
 use App\Http\Controllers\Api\V1\ProjectMediaAssetController;
@@ -119,6 +120,10 @@ Route::prefix('v1')->group(function () {
             ->name('media-assets.stats');
         Route::post('media-assets', [MediaAssetController::class, 'store'])
             ->name('media-assets.store');
+        Route::get('media-assets/{mediaAsset}/stream', [MediaAssetDeliveryController::class, 'stream'])
+            ->name('media-assets.stream');
+        Route::get('media-assets/{mediaAsset}/download', [MediaAssetDeliveryController::class, 'download'])
+            ->name('media-assets.download');
         Route::delete('media-assets/{mediaAsset}', [MediaAssetController::class, 'destroy'])
             ->name('media-assets.destroy');
         Route::apiResource('projects', ProjectController::class);

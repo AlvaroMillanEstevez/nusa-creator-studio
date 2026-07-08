@@ -24,6 +24,12 @@ class MediaAssetResource extends JsonResource
             'usage_role' => $this->usage_role,
             'disk' => $this->disk,
             'storage_identifier' => 'media-'.$this->id,
+            'stream_url' => $this->type === 'audio'
+                ? route('media-assets.stream', ['mediaAsset' => $this->id], false)
+                : null,
+            'download_url' => $this->type === 'audio'
+                ? route('media-assets.download', ['mediaAsset' => $this->id], false)
+                : null,
             'original_name' => $this->original_name,
             'mime_type' => $this->mime_type,
             'size_bytes' => $this->size_bytes,

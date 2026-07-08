@@ -23,6 +23,8 @@ export interface MediaAsset {
   usage_role: MediaAssetUsageRole | null
   disk: string
   storage_identifier: string
+  stream_url?: string | null
+  download_url?: string | null
   original_name: string | null
   mime_type: string | null
   size_bytes: number | null
