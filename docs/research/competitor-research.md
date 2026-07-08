@@ -75,19 +75,35 @@ Do not fill exact prices until externally verified.
 
 ## UX observations
 
-| Product | Onboarding friction | First useful output time | Mobile UX | Credit transparency | Editing flow | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| Creatify | TODO | TODO | TODO | TODO | TODO | TODO |
-| HeyGen | TODO | TODO | TODO | TODO | TODO | TODO |
-| Canva | TODO | TODO | TODO | TODO | TODO | TODO |
-| CapCut | TODO | TODO | TODO | TODO | TODO | TODO |
-| VEED | TODO | TODO | TODO | TODO | TODO | TODO |
-| InVideo | TODO | TODO | TODO | TODO | TODO | TODO |
-| Predis | TODO | TODO | TODO | TODO | TODO | TODO |
-| AdCreative | TODO | TODO | TODO | TODO | TODO | TODO |
-| Arcads | TODO | TODO | TODO | TODO | TODO | TODO |
-| Runway | TODO | TODO | TODO | TODO | TODO | TODO |
-| FASHN | TODO | TODO | TODO | TODO | TODO | TODO |
+| Product | Onboarding friction | First useful output time | Mobile UX | Credit transparency | Example gallery quality | Trust signals | Transparency of claims | Honesty of metrics | Editing flow | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Creatify | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| HeyGen | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| Canva | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| CapCut | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| VEED | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| InVideo | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| Predis | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| AdCreative | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| Arcads | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| Runway | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| FASHN | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+
+## Landing page inspiration notes
+
+Competitors such as Creatify may inspire the idea of showing product examples, output galleries, demo workflows, and carousel sections. This inspiration should stay at the level of communication structure and product storytelling, not copied claims.
+
+Nusa should not copy exaggerated claims or unverified metrics. Do not invent fake customer logos, generated revenue, ad spend, user counts, testimonials, or case studies.
+
+For now, Nusa should use:
+
+- Demo generation examples.
+- Beta examples.
+- Before/after workflow screenshots.
+- Product-to-output examples.
+- Clearly marked mock outputs.
+
+Future real metrics may be added only after they are true and verifiable.
 
 ## Opportunities for Nusa Creator Studio
 

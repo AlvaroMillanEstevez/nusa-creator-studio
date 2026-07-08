@@ -50,6 +50,16 @@ Candidate providers to research first:
 | Phase 3: Limited beta | Enable for selected users/plans | Usage caps, monitoring, support flow | Costs and quality match assumptions. |
 | Phase 4: Public rollout | Make provider-backed tool generally available | Documentation, pricing updates, support readiness | Stable margin, reliable UX, rollback tested. |
 
+## Output labeling before public launch
+
+Before public launch, define whether generated examples and saved outputs are labeled as:
+
+- `mock` - deterministic mock output created before real provider integration.
+- `beta` - beta/internal example output that may not represent final production quality.
+- `real provider-backed` - output created by a real external AI provider after that integration is enabled.
+
+Avoid confusing mock outputs with real AI provider outputs. Public examples, galleries, demo workflows, and support docs should make the output source clear.
+
 ## Risk controls
 
 - Keep provider calls behind feature flags.

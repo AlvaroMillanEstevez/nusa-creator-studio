@@ -10,6 +10,10 @@ This backlog collects ideas for Nusa Creator Studio without committing them to i
 - Brand kit
 - UGC template library
 - Performance tracker
+- Example gallery / output carousel
+- Public demo examples
+- Beta showcase page
+- Before/after workflow examples
 
 ## SEA/social commerce specific ideas
 
@@ -46,6 +50,8 @@ This backlog collects ideas for Nusa Creator Studio without committing them to i
 - Shared media library permissions
 - Agency reporting dashboard
 - Creator assignment workflows
+- Transparent case study builder
+- Consent-based customer showcase
 
 ## Future AI automation ideas
 
@@ -73,3 +79,9 @@ This backlog collects ideas for Nusa Creator Studio without committing them to i
 | WhatsApp seller content pack | SEA/social commerce | TODO | TODO | TODO | TODO | Seller interviews | TODO | Strong local commerce angle. |
 | Live selling script generator | SEA/social commerce | TODO | TODO | TODO | TODO | Creator/seller interviews | TODO | Fits social commerce workflows. |
 | Performance tracker | Near-term / analytics | TODO | TODO | TODO | TODO | Manual import prototype | TODO | Requires data source decision. |
+| Example gallery / output carousel | Near-term / marketing | TODO | TODO | TODO | TODO | Beta landing review | TODO | Show outputs honestly without fake traction. |
+| Public demo examples | Near-term / marketing | TODO | TODO | TODO | TODO | Demo page analytics | TODO | Clearly label demo/mock outputs. |
+| Beta showcase page | Near-term / marketing | TODO | TODO | TODO | TODO | Beta user feedback | TODO | Use beta outputs with clear labels. |
+| Before/after workflow examples | Near-term / education | TODO | TODO | TODO | TODO | Usability testing | TODO | Explain input-to-output value. |
+| Transparent case study builder | Team/agency / trust | TODO | TODO | TODO | TODO | Customer interview prototype | TODO | Only use measured, verifiable results. |
+| Consent-based customer showcase | Team/agency / trust | TODO | TODO | TODO | TODO | Consent workflow test | TODO | Requires explicit customer permission. |
