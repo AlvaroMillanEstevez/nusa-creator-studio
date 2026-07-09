@@ -222,6 +222,7 @@ class AiVoiceoverGenerationApiTest extends TestCase
                 'tone' => 'premium',
                 'pace' => 'fast',
                 'style' => 'confident_creator',
+                'notes' => 'Keep the delivery warm and clear.',
                 'voice_id' => 'voice_local_test',
                 'voice_settings' => [
                     'stability' => 0.45,
@@ -242,6 +243,7 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $this->assertSame('fast', $generation->input_payload['pace']);
         $this->assertSame('confident_creator', $generation->input_payload['style']);
         $this->assertSame('confident_creator', $generation->input_payload['voice_style']);
+        $this->assertSame('Keep the delivery warm and clear.', $generation->input_payload['notes']);
         $this->assertSame('voice_local_test', $generation->input_payload['voice_id']);
         $this->assertSame(0.45, $generation->input_payload['voice_settings']['stability']);
         $this->assertSame(0.8, $generation->input_payload['voice_settings']['similarity_boost']);

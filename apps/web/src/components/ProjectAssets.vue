@@ -164,7 +164,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section data-testid="project-assets" class="nusa-card-soft mt-5 rounded-[2rem] p-5">
+  <section id="project-assets" data-testid="project-assets" class="nusa-card-soft mt-5 rounded-[2rem] p-5">
     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Project assets</p>
     <h2 class="mt-2 text-xl font-semibold">Upload source files</h2>
     <template v-if="isFashionTryOnProject">

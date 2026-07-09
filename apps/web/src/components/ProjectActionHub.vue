@@ -1,19 +1,44 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { useTranslations } from '@/i18n'
 import { ApiError } from '@/services/api'
-import { generateAiVoiceover, getProjectActions } from '@/services/projects'
+import { generateAiVoiceover, generateCampaignProject, getProjectActions } from '@/services/projects'
+import { useAuthStore } from '@/stores/auth'
 import {
+  campaignLanguageOptions,
   generationOutput,
   isCampaignGenerationResult,
   isProductToVideoResult,
+  voiceoverPaceOptions,
+  voiceoverStyleOptions,
+  voiceoverToneOptions,
   type AiVoiceoverGenerationResponse,
+  type CampaignGenerationResponse,
   type CreatorGeneration,
+  type GenerateAiVoiceoverPayload,
   type ProjectAction,
   type ProjectActionKey,
-  type ProjectActionStatus,
+  type ProjectActionRecommendedSource,
 } from '@/types/project'
+
+const VOICEOVER_MAX_CHARACTERS = 1000
+
+type ProjectActionGenerationResponse = AiVoiceoverGenerationResponse | CampaignGenerationResponse
+
+type VoiceoverSourceMode = 'recommended' | 'manual'
+
+interface VoiceoverFormState {
+  sourceMode: VoiceoverSourceMode
+  selectedSourceId: number | null
+  manualSourceText: string
+  language: string
+  tone: string
+  pace: string
+  style: string
+  notes: string
+}
 
 const props = defineProps<{
   projectId: number
@@ -23,15 +48,28 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  generated: [response: AiVoiceoverGenerationResponse]
+  generated: [response: ProjectActionGenerationResponse]
 }>()
 
 const { t } = useTranslations()
+const router = useRouter()
+const auth = useAuthStore()
 const actions = ref<ProjectAction[]>([])
+const activeAction = ref<ProjectAction | null>(null)
 const isLoading = ref(false)
-const isCreatingVoiceover = ref(false)
+const isSubmitting = ref(false)
 const loadError = ref('')
 const actionError = ref('')
+const voiceoverForm = ref<VoiceoverFormState>({
+  sourceMode: 'recommended',
+  selectedSourceId: null,
+  manualSourceText: '',
+  language: 'english',
+  tone: 'natural',
+  pace: 'medium',
+  style: 'natural_creator',
+  notes: '',
+})
 
 const projectActionKeys: ProjectActionKey[] = [
   'generate_campaign',
@@ -52,6 +90,29 @@ const projectActions = computed(() =>
 const resultActions = computed(() =>
   actions.value.filter((action) => resultActionKeys.includes(action.key)),
 )
+const actionSections = computed(() => [
+  {
+    key: 'project',
+    title: t('projectActions.continueProject'),
+    description: t('projectActions.continueFromProjectContext'),
+    actions: projectActions.value,
+  },
+  {
+    key: 'result',
+    title: t('projectActions.continueResult'),
+    description: t('projectActions.cleanContentRule'),
+    actions: resultActions.value,
+  },
+].filter((section) => section.actions.length > 0))
+
+const hasInternalOrUnlimitedAccess = computed(() => {
+  const user = auth.user
+
+  return user?.is_unlimited === true ||
+    user?.role === 'admin' ||
+    user?.role === 'internal_creator' ||
+    user?.plan_key === 'internal_unlimited'
+})
 
 const selectedVoiceoverSource = computed(() => {
   const selected = props.selectedGeneration
@@ -73,8 +134,12 @@ const selectedVoiceoverSource = computed(() => {
     return cleanText(text) === null
       ? null
       : {
-          generationId: selected.id,
-          text: cleanText(text) ?? '',
+          generation_id: selected.id,
+          job_type: selected.job_type,
+          title: t('projectActions.useSelectedGeneration'),
+          created_at: selected.created_at,
+          excerpt: cleanText(text) ?? '',
+          fullText: cleanText(text) ?? '',
         }
   }
 
@@ -84,17 +149,74 @@ const selectedVoiceoverSource = computed(() => {
     return cleanText(text) === null
       ? null
       : {
-          generationId: selected.id,
-          text: cleanText(text) ?? '',
+          generation_id: selected.id,
+          job_type: selected.job_type,
+          title: t('projectActions.useSelectedGeneration'),
+          created_at: selected.created_at,
+          excerpt: cleanText(text) ?? '',
+          fullText: cleanText(text) ?? '',
         }
   }
 
   return null
 })
 
-const canCreateVoiceoverFromSelected = computed(
-  () => selectedVoiceoverSource.value !== null && !props.isGenerating && !isCreatingVoiceover.value,
-)
+const activeSourceOptions = computed(() => {
+  if (activeAction.value === null || !isVoiceoverAction(activeAction.value)) {
+    return []
+  }
+
+  return sourceOptionsFor(activeAction.value)
+})
+const selectedSourcePreview = computed(() => {
+  if (voiceoverForm.value.sourceMode === 'manual') {
+    return voiceoverForm.value.manualSourceText.trim()
+  }
+
+  const selectedId = voiceoverForm.value.selectedSourceId
+
+  if (selectedId === null) {
+    return ''
+  }
+
+  if (selectedVoiceoverSource.value?.generation_id === selectedId) {
+    return selectedVoiceoverSource.value.fullText
+  }
+
+  return activeSourceOptions.value.find((source) => source.generation_id === selectedId)?.excerpt ?? ''
+})
+
+const voiceoverCharacterCount = computed(() => selectedSourcePreview.value.length)
+const estimatedDurationSeconds = computed(() => {
+  const text = selectedSourcePreview.value.trim()
+
+  if (!text) {
+    return null
+  }
+
+  const words = text.split(/\s+/).filter(Boolean).length
+
+  return Math.max(5, Math.round(words / 2.4))
+})
+const voiceoverValidationError = computed(() => {
+  if (activeAction.value === null || !isVoiceoverAction(activeAction.value)) {
+    return ''
+  }
+
+  if (voiceoverForm.value.sourceMode === 'recommended' && voiceoverForm.value.selectedSourceId !== null) {
+    return ''
+  }
+
+  if (voiceoverForm.value.manualSourceText.trim() === '') {
+    return t('projectActions.sourceRequired')
+  }
+
+  if (voiceoverCharacterCount.value > VOICEOVER_MAX_CHARACTERS) {
+    return t('projectActions.sourceTooLong', { count: VOICEOVER_MAX_CHARACTERS })
+  }
+
+  return ''
+})
 
 function cleanText(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
@@ -107,31 +229,17 @@ function cleanText(value: string | null | undefined): string | null {
 }
 
 function translatedTitle(action: ProjectAction): string {
-  return t('projectActions.actions.' + action.key + '.title')
+  const key = 'projectActions.actions.' + action.key + '.title'
+  const translated = t(key)
+
+  return translated === key ? action.title : translated
 }
 
 function translatedDescription(action: ProjectAction): string {
-  return t('projectActions.actions.' + action.key + '.description')
-}
+  const key = 'projectActions.actions.' + action.key + '.description'
+  const translated = t(key)
 
-function statusLabel(status: ProjectActionStatus): string {
-  return t('projectActions.status.' + status)
-}
-
-function statusClasses(status: ProjectActionStatus): string {
-  if (status === 'available') {
-    return 'border-emerald-800 bg-emerald-950 text-emerald-300'
-  }
-
-  if (status === 'configure' || status === 'needs_assets' || status === 'needs_source') {
-    return 'border-amber-800 bg-amber-950 text-amber-300'
-  }
-
-  if (status === 'coming_soon') {
-    return 'border-violet-900 bg-violet-950 text-violet-300'
-  }
-
-  return 'border-neutral-700 bg-neutral-900 text-neutral-400'
+  return translated === key ? action.description : translated
 }
 
 function isVoiceoverAction(action: ProjectAction): boolean {
@@ -141,46 +249,322 @@ function isVoiceoverAction(action: ProjectAction): boolean {
   )
 }
 
-function actionHelp(action: ProjectAction): string {
-  if (action.locked_reason) {
-    return action.locked_reason
+function isCampaignAction(action: ProjectAction): boolean {
+  return action.key === 'generate_campaign'
+}
+
+function isTryOnAction(action: ProjectAction): boolean {
+  return action.key === 'start_fashion_try_on'
+}
+
+function isMotionAction(action: ProjectAction): boolean {
+  return action.key === 'start_motion_video'
+}
+
+function isComingSoon(action: ProjectAction): boolean {
+  return action.status === 'coming_soon' || action.action_mode === 'coming_soon'
+}
+
+function isUpgradeAction(action: ProjectAction): boolean {
+  return action.upgrade_required === true || action.action_mode === 'upgrade'
+}
+
+function isUnavailableAction(action: ProjectAction): boolean {
+  return action.status === 'unavailable' && !isUpgradeAction(action)
+}
+
+function serviceTierLabel(action: ProjectAction): string {
+  if (action.service_tier === 'basic') {
+    return t('projectActions.basicWorkflow')
   }
 
-  if (isVoiceoverAction(action) && selectedVoiceoverSource.value === null) {
-    return t('projectActions.selectScriptFirst')
+  if (action.service_tier === 'advanced') {
+    return t('projectActions.advancedWorkflow')
   }
 
-  return action.reason ?? translatedDescription(action)
+  if (action.service_tier === 'premium') {
+    return t('projectActions.premiumWorkflow')
+  }
+
+  return action.service_tier ?? t('tools.serviceTier')
+}
+
+function serviceTierClasses(action: ProjectAction): string {
+  if (action.service_tier === 'premium') {
+    return 'border-violet-800 bg-violet-950/70 text-violet-200'
+  }
+
+  if (action.service_tier === 'advanced') {
+    return 'border-cyan-800 bg-cyan-950/70 text-cyan-200'
+  }
+
+  return 'border-emerald-800 bg-emerald-950/70 text-emerald-200'
+}
+
+function creditCostBadge(action: ProjectAction): string {
+  if (hasInternalOrUnlimitedAccess.value && action.credit_cost !== null && action.user_has_access !== false) {
+    return t('projectActions.noCreditCharge')
+  }
+
+  if (action.credit_cost === null) {
+    return t('tools.creditCostComingSoon')
+  }
+
+  if (action.credit_cost === 0) {
+    return t('projectActions.noCreditCharge')
+  }
+
+  return action.credit_cost === 1
+    ? t('projectActions.oneCredit')
+    : t('projectActions.manyCredits', { credits: action.credit_cost })
+}
+
+function actionCostSentence(action: ProjectAction): string {
+  if (hasInternalOrUnlimitedAccess.value && action.credit_cost !== null && action.user_has_access !== false) {
+    return t('projectActions.noCreditCharge')
+  }
+
+  if (action.credit_cost === null) {
+    return t('tools.creditCostComingSoon')
+  }
+
+  if (action.credit_cost === 0) {
+    return t('projectActions.noCreditCharge')
+  }
+
+  return t('projectActions.actionCosts', { credits: action.credit_cost })
+}
+function accessBadgeLabel(action: ProjectAction): string {
+  if (isComingSoon(action)) {
+    return t('projectActions.status.coming_soon')
+  }
+
+  if (isUpgradeAction(action)) {
+    return t('projectActions.upgradeRequired')
+  }
+
+  if (action.user_has_access === true && hasInternalOrUnlimitedAccess.value) {
+    return auth.user?.is_unlimited === true
+      ? t('projectActions.unlimitedAccess')
+      : t('projectActions.internalAccess')
+  }
+
+  if (action.user_has_access === true) {
+    return t('projectActions.includedInPlan')
+  }
+
+  return t('projectActions.status.unavailable')
+}
+
+function accessBadgeClasses(action: ProjectAction): string {
+  if (isComingSoon(action)) {
+    return 'border-violet-800 bg-violet-950/70 text-violet-200'
+  }
+
+  if (isUpgradeAction(action)) {
+    return 'border-amber-800 bg-amber-950/70 text-amber-200'
+  }
+
+  if (action.user_has_access === true) {
+    return 'border-emerald-800 bg-emerald-950/70 text-emerald-200'
+  }
+
+  return 'border-neutral-700 bg-neutral-900 text-neutral-400'
+}
+
+function cardNote(action: ProjectAction): string | null {
+  if (isUpgradeAction(action)) {
+    return action.locked_reason ?? t('projectActions.upgradeRequired')
+  }
+
+  if (isComingSoon(action)) {
+    return t('projectActions.comingSoonBody')
+  }
+
+  if (isUnavailableAction(action)) {
+    return action.locked_reason ?? t('projectActions.unavailableBody')
+  }
+
+  if (action.status === 'configure') {
+    return t('projectActions.setupRequired')
+  }
+
+  return null
 }
 
 function actionButtonLabel(action: ProjectAction): string {
+  if (isUpgradeAction(action)) {
+    return t('projectActions.upgradeSubscription')
+  }
+
+  if (isComingSoon(action)) {
+    return t('projectActions.status.coming_soon')
+  }
+
+  if (isVoiceoverAction(action) && action.status === 'configure') {
+    return t('projectActions.configureVoiceover')
+  }
+
+  if (isCampaignAction(action) && action.primary_cta?.label?.includes('another')) {
+    return t('projectActions.generateAnotherCampaignVersion')
+  }
+
+  if (isVoiceoverAction(action) && action.primary_cta?.label?.includes('another')) {
+    return t('projectActions.createAnotherVoiceover')
+  }
+
+  if (isTryOnAction(action)) {
+    return t('projectActions.setupTryOn')
+  }
+
+  if (isMotionAction(action)) {
+    return t('projectActions.configureMotionVideo')
+  }
+
+  return action.primary_cta?.label ?? t('projectActions.configureAction')
+}
+
+function isActionButtonDisabled(action: ProjectAction): boolean {
+  return isSubmitting.value || props.isGenerating === true || isComingSoon(action) || isUnavailableAction(action)
+}
+
+function isActionSubmitting(action: ProjectAction): boolean {
+  return isSubmitting.value && activeAction.value?.key === action.key
+}
+
+function sourceOptionsFor(action: ProjectAction): Array<ProjectActionRecommendedSource & { fullText?: string }> {
+  const sources = [...(action.recommended_sources ?? [])]
+  const selected = selectedVoiceoverSource.value
+
+  if (selected && !sources.some((source) => source.generation_id === selected.generation_id)) {
+    sources.unshift(selected)
+  }
+
+  return sources
+}
+
+function openLauncher(action: ProjectAction): void {
+  activeAction.value = action
+  actionError.value = ''
+
   if (isVoiceoverAction(action)) {
-    return isCreatingVoiceover.value
-      ? t('projectActions.creatingVoiceover')
-      : t('projectActions.createVoiceoverFromScript')
-  }
+    const sources = sourceOptionsFor(action)
+    const preferred = selectedVoiceoverSource.value
+      ? sources.find((source) => source.generation_id === selectedVoiceoverSource.value?.generation_id)
+      : sources[0]
 
-  if (action.primary_cta?.label) {
-    return action.primary_cta.label
+    voiceoverForm.value = {
+      sourceMode: preferred ? 'recommended' : 'manual',
+      selectedSourceId: preferred?.generation_id ?? null,
+      manualSourceText: '',
+      language: 'english',
+      tone: 'natural',
+      pace: 'medium',
+      style: 'natural_creator',
+      notes: '',
+    }
   }
-
-  if (action.status === 'available') {
-    return t('projectActions.useProjectContext')
-  }
-
-  return statusLabel(action.status)
 }
 
-function isActionImplemented(action: ProjectAction): boolean {
-  return isVoiceoverAction(action)
+function closeLauncher(): void {
+  activeAction.value = null
+  actionError.value = ''
 }
 
-function isActionEnabled(action: ProjectAction): boolean {
-  if (!isActionImplemented(action)) {
-    return false
+function scrollToProjectAssets(): void {
+  const element = document.getElementById('project-assets')
+
+  if (typeof element?.scrollIntoView === 'function') {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+async function handleAction(action: ProjectAction): Promise<void> {
+  actionError.value = ''
+
+  if (isUpgradeAction(action)) {
+    await router.push(action.primary_cta?.route ?? '/pricing')
+    return
   }
 
-  return action.status === 'available' && canCreateVoiceoverFromSelected.value
+  if (isComingSoon(action) || isUnavailableAction(action)) {
+    return
+  }
+
+  if (isCampaignAction(action) && action.status === 'available' && action.action_mode !== 'configure') {
+    await submitCampaign(action)
+    return
+  }
+
+  openLauncher(action)
+}
+
+async function submitCampaign(action: ProjectAction): Promise<void> {
+  activeAction.value = action
+  isSubmitting.value = true
+  actionError.value = ''
+
+  try {
+    const response = await generateCampaignProject(props.projectId)
+    emit('generated', response)
+    await loadActions()
+    closeLauncher()
+  } catch (error: unknown) {
+    if (error instanceof ApiError && (error.code === 'insufficient_credits' || error.status === 402)) {
+      actionError.value = t('projectActions.insufficientCredits')
+    } else {
+      actionError.value = error instanceof ApiError ? error.message : t('projectActions.actionError')
+    }
+  } finally {
+    isSubmitting.value = false
+  }
+}
+async function submitVoiceover(): Promise<void> {
+  const action = activeAction.value
+
+  if (action === null || !isVoiceoverAction(action) || voiceoverValidationError.value) {
+    return
+  }
+
+  const payload: GenerateAiVoiceoverPayload = {
+    language: voiceoverForm.value.language,
+    tone: voiceoverForm.value.tone,
+    pace: voiceoverForm.value.pace,
+    style: voiceoverForm.value.style,
+  }
+  const notes = voiceoverForm.value.notes.trim()
+
+  if (notes) {
+    payload.notes = notes
+  }
+
+  if (voiceoverForm.value.sourceMode === 'recommended' && voiceoverForm.value.selectedSourceId !== null) {
+    payload.source_generation_id = voiceoverForm.value.selectedSourceId
+
+    if (selectedVoiceoverSource.value?.generation_id === voiceoverForm.value.selectedSourceId) {
+      payload.source_text = selectedVoiceoverSource.value.fullText
+    }
+  } else {
+    payload.source_text = voiceoverForm.value.manualSourceText.trim()
+  }
+
+  isSubmitting.value = true
+  actionError.value = ''
+
+  try {
+    const response = await generateAiVoiceover(props.projectId, payload)
+    emit('generated', response)
+    await loadActions()
+    closeLauncher()
+  } catch (error: unknown) {
+    if (error instanceof ApiError && (error.code === 'insufficient_credits' || error.status === 402)) {
+      actionError.value = t('projectActions.insufficientCredits')
+    } else {
+      actionError.value = error instanceof ApiError ? error.message : t('projectActions.actionError')
+    }
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 async function loadActions(): Promise<void> {
@@ -191,49 +575,9 @@ async function loadActions(): Promise<void> {
     const response = await getProjectActions(props.projectId)
     actions.value = Array.isArray(response.data) ? response.data : []
   } catch (error: unknown) {
-    loadError.value =
-      error instanceof ApiError
-        ? error.message
-        : t('projectActions.loadError')
+    loadError.value = error instanceof ApiError ? error.message : t('projectActions.loadError')
   } finally {
     isLoading.value = false
-  }
-}
-
-async function createVoiceoverFromSelected(): Promise<void> {
-  const source = selectedVoiceoverSource.value
-
-  if (source === null) {
-    return
-  }
-
-  isCreatingVoiceover.value = true
-  actionError.value = ''
-
-  try {
-    const response = await generateAiVoiceover(props.projectId, {
-      source_generation_id: source.generationId,
-      source_text: source.text,
-    })
-    emit('generated', response)
-    await loadActions()
-  } catch (error: unknown) {
-    if (error instanceof ApiError && (error.code === 'insufficient_credits' || error.status === 402)) {
-      actionError.value = t('projectActions.insufficientCredits')
-    } else {
-      actionError.value =
-        error instanceof ApiError
-          ? error.message
-          : t('projectActions.actionError')
-    }
-  } finally {
-    isCreatingVoiceover.value = false
-  }
-}
-
-function handleAction(action: ProjectAction): void {
-  if (isVoiceoverAction(action)) {
-    void createVoiceoverFromSelected()
   }
 }
 
@@ -258,8 +602,8 @@ watch(
       </p>
 
       <div v-if="isLoading" class="mt-5 space-y-3" aria-live="polite">
-        <div class="h-20 animate-pulse rounded-2xl bg-neutral-900" />
-        <div class="h-20 animate-pulse rounded-2xl bg-neutral-900" />
+        <div class="h-28 animate-pulse rounded-2xl bg-neutral-900" />
+        <div class="h-28 animate-pulse rounded-2xl bg-neutral-900" />
       </div>
 
       <div
@@ -277,63 +621,29 @@ watch(
         </button>
       </div>
 
-      <div v-else class="mt-6 space-y-6">
-        <div>
-          <h3 class="text-sm font-semibold text-neutral-100">
-            {{ t('projectActions.continueProject') }}
-          </h3>
-          <div class="mt-3 grid gap-3 lg:grid-cols-3">
-            <article
-              v-for="action in projectActions"
-              :key="action.key"
-              class="nusa-card-soft rounded-2xl p-4"
-              :data-testid="'project-action-' + action.key"
-            >
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                  <h4 class="break-words text-sm font-semibold text-white">
-                    {{ translatedTitle(action) }}
-                  </h4>
-                  <p class="mt-2 text-xs leading-5 text-neutral-500">
-                    {{ translatedDescription(action) }}
-                  </p>
-                </div>
-                <span
-                  class="shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-                  :class="statusClasses(action.status)"
-                >
-                  {{ statusLabel(action.status) }}
-                </span>
-              </div>
-              <p class="mt-3 text-xs leading-5 text-neutral-400">
-                {{ actionHelp(action) }}
-              </p>
-            </article>
-          </div>
-        </div>
-
-        <div>
+      <div v-else class="mt-6 space-y-7">
+        <section v-for="section in actionSections" :key="section.key">
           <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 class="text-sm font-semibold text-neutral-100">
-                {{ t('projectActions.continueResult') }}
+                {{ section.title }}
               </h3>
               <p class="mt-1 text-xs leading-5 text-neutral-500">
-                {{ t('projectActions.cleanContentRule') }}
+                {{ section.description }}
               </p>
             </div>
           </div>
 
           <div class="mt-3 grid gap-3 lg:grid-cols-3">
             <article
-              v-for="action in resultActions"
+              v-for="action in section.actions"
               :key="action.key"
-              class="rounded-2xl border p-4"
-              :class="isActionEnabled(action) ? 'border-emerald-800 bg-emerald-950/20' : 'border-neutral-800 bg-neutral-950/60'"
+              class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 transition"
+              :class="isUpgradeAction(action) ? 'border-amber-900/70' : action.user_has_access === true && !isComingSoon(action) ? 'border-emerald-900/60' : 'border-neutral-800'"
               :data-testid="'project-action-' + action.key"
             >
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0 flex-1">
+              <div class="flex flex-col gap-3">
+                <div class="min-w-0">
                   <h4 class="break-words text-sm font-semibold text-white">
                     {{ translatedTitle(action) }}
                   </h4>
@@ -341,39 +651,297 @@ watch(
                     {{ translatedDescription(action) }}
                   </p>
                 </div>
-                <span
-                  class="shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-                  :class="statusClasses(action.status)"
-                >
-                  {{ statusLabel(action.status) }}
-                </span>
+
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                    :class="serviceTierClasses(action)"
+                  >
+                    {{ serviceTierLabel(action) }}
+                  </span>
+                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
+                    {{ creditCostBadge(action) }}
+                  </span>
+                  <span
+                    class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                    :class="accessBadgeClasses(action)"
+                  >
+                    {{ accessBadgeLabel(action) }}
+                  </span>
+                </div>
               </div>
 
-              <p class="mt-3 text-xs leading-5 text-neutral-400">
-                {{ actionHelp(action) }}
+              <p v-if="cardNote(action)" class="mt-3 text-xs leading-5 text-neutral-400">
+                {{ cardNote(action) }}
               </p>
 
               <button
                 type="button"
-                class="mt-4 min-h-11 w-full rounded-2xl px-4 text-sm font-semibold transition"
-                :class="isActionEnabled(action) ? 'bg-white text-neutral-950 hover:bg-emerald-300' : 'cursor-not-allowed border border-neutral-800 text-neutral-500'"
-                :disabled="!isActionEnabled(action)"
+                class="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition"
+                :class="isActionButtonDisabled(action) ? 'cursor-not-allowed border border-neutral-800 text-neutral-500' : isUpgradeAction(action) ? 'border border-amber-700 bg-amber-950/40 text-amber-100 hover:bg-amber-900/50' : 'bg-white text-neutral-950 hover:bg-emerald-300'"
+                :disabled="isActionButtonDisabled(action)"
                 @click="handleAction(action)"
               >
-                {{ actionButtonLabel(action) }}
+                <span
+                  v-if="isActionSubmitting(action)"
+                  class="size-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950"
+                  aria-hidden="true"
+                />
+                {{ isActionSubmitting(action) ? t('projectActions.generating') : actionButtonLabel(action) }}
               </button>
             </article>
           </div>
+        </section>
+      </div>
+      <div
+        v-if="activeAction"
+        class="mt-6 rounded-[1.75rem] border border-emerald-900/60 bg-emerald-950/20 p-4"
+        data-testid="project-action-launcher"
+      >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+              {{ t('projectActions.actionLauncher') }}
+            </p>
+            <h3 class="mt-2 text-xl font-semibold text-white">
+              {{ translatedTitle(activeAction) }}
+            </h3>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <span
+                class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                :class="serviceTierClasses(activeAction)"
+              >
+                {{ serviceTierLabel(activeAction) }}
+              </span>
+              <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
+                {{ creditCostBadge(activeAction) }}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="min-h-10 rounded-xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-900"
+            @click="closeLauncher"
+          >
+            {{ t('projectActions.cancelSetup') }}
+          </button>
+        </div>
+
+        <p class="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/70 p-3 text-sm leading-6 text-neutral-300">
+          {{ actionCostSentence(activeAction) }}
+        </p>
+
+        <template v-if="isCampaignAction(activeAction)">
+          <div class="mt-4 space-y-3 text-sm leading-6 text-neutral-300">
+            <p>{{ t('projectActions.campaignLauncherBody') }}</p>
+            <ul v-if="activeAction.requirements?.length" class="space-y-2">
+              <li
+                v-for="requirement in activeAction.requirements"
+                :key="requirement.key"
+                class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3"
+              >
+                <span class="font-semibold text-neutral-100">{{ requirement.label }}:</span>
+                {{ requirement.satisfied ? t('common.completed') : requirement.help_text }}
+              </li>
+            </ul>
+          </div>
+        </template>
+
+        <template v-else-if="isVoiceoverAction(activeAction)">
+          <div class="mt-5 space-y-4">
+            <fieldset class="space-y-3">
+              <legend class="text-sm font-semibold text-neutral-100">
+                {{ t('projectActions.selectSourceScript') }}
+              </legend>
+
+              <label
+                v-if="activeSourceOptions.length"
+                class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300"
+              >
+                <input
+                  v-model="voiceoverForm.sourceMode"
+                  type="radio"
+                  value="recommended"
+                  class="mt-1 accent-emerald-400"
+                >
+                <span>
+                  <span class="block font-semibold text-neutral-100">{{ t('projectActions.useSelectedGeneration') }}</span>
+                  <span class="mt-1 block text-xs leading-5 text-neutral-500">{{ t('projectActions.selectedSourceHelp') }}</span>
+                </span>
+              </label>
+
+              <select
+                v-if="voiceoverForm.sourceMode === 'recommended' && activeSourceOptions.length"
+                v-model.number="voiceoverForm.selectedSourceId"
+                class="nusa-select"
+              >
+                <option
+                  v-for="source in activeSourceOptions"
+                  :key="source.generation_id"
+                  :value="source.generation_id"
+                >
+                  {{ source.title }} · #{{ source.generation_id }}
+                </option>
+              </select>
+
+              <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
+                <input
+                  v-model="voiceoverForm.sourceMode"
+                  type="radio"
+                  value="manual"
+                  class="mt-1 accent-emerald-400"
+                >
+                <span>
+                  <span class="block font-semibold text-neutral-100">{{ t('projectActions.manualSourceText') }}</span>
+                  <span class="mt-1 block text-xs leading-5 text-neutral-500">{{ t('projectActions.noSavedSource') }}</span>
+                </span>
+              </label>
+
+              <textarea
+                v-if="voiceoverForm.sourceMode === 'manual'"
+                v-model="voiceoverForm.manualSourceText"
+                class="nusa-textarea min-h-36"
+                :placeholder="t('projectActions.sourceTextPlaceholder')"
+              />
+            </fieldset>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="block">
+                <span class="nusa-label">{{ t('projectActions.language') }}</span>
+                <select v-model="voiceoverForm.language" class="nusa-select mt-2">
+                  <option v-for="option in campaignLanguageOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="nusa-label">{{ t('projectActions.voice') }}</span>
+                <select class="nusa-select mt-2" disabled>
+                  <option>{{ t('projectActions.defaultVoice') }}</option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="nusa-label">{{ t('projectActions.tone') }}</span>
+                <select v-model="voiceoverForm.tone" class="nusa-select mt-2">
+                  <option v-for="option in voiceoverToneOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="nusa-label">{{ t('projectActions.pace') }}</span>
+                <select v-model="voiceoverForm.pace" class="nusa-select mt-2">
+                  <option v-for="option in voiceoverPaceOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+              <label class="block sm:col-span-2">
+                <span class="nusa-label">{{ t('projectActions.style') }}</span>
+                <select v-model="voiceoverForm.style" class="nusa-select mt-2">
+                  <option v-for="option in voiceoverStyleOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="block sm:col-span-2">
+                <span class="nusa-label">{{ t('projectActions.optionalNotes') }}</span>
+                <textarea v-model="voiceoverForm.notes" class="nusa-textarea mt-2 min-h-24" />
+              </label>
+            </div>
+
+            <div class="grid gap-3 text-sm sm:grid-cols-2">
+              <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-neutral-300">
+                {{ t('projectActions.characterCount') }}: {{ voiceoverCharacterCount }} / {{ VOICEOVER_MAX_CHARACTERS }}
+              </p>
+              <p class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-neutral-300">
+                {{ t('projectActions.estimatedDuration') }}:
+                {{ estimatedDurationSeconds === null ? t('projectActions.durationAfterGeneration') : estimatedDurationSeconds + 's' }}
+              </p>
+            </div>
+
+            <p v-if="voiceoverValidationError" role="alert" class="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-3 text-sm leading-6 text-rose-100">
+              {{ voiceoverValidationError }}
+            </p>
+          </div>
+        </template>
+
+        <template v-else-if="isTryOnAction(activeAction) || isMotionAction(activeAction)">
+          <div class="mt-5 space-y-4">
+            <p class="text-sm leading-6 text-neutral-300">
+              {{ isTryOnAction(activeAction) ? t('projectActions.tryOnSetupBody') : t('projectActions.motionSetupBody') }}
+            </p>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <article
+                v-for="requirement in activeAction.requirements ?? []"
+                :key="requirement.key"
+                class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3"
+              >
+                <p class="text-sm font-semibold text-neutral-100">{{ requirement.label }}</p>
+                <p class="mt-1 text-xs leading-5 text-neutral-500">
+                  {{ requirement.satisfied ? t('projectActions.requirementReady') : requirement.help_text }}
+                </p>
+              </article>
+            </div>
+
+            <div v-if="activeAction.recommended_assets?.length" class="rounded-2xl border border-emerald-900/60 bg-emerald-950/20 p-3">
+              <p class="text-sm font-semibold text-emerald-100">{{ t('projectActions.recommendedAssets') }}</p>
+              <ul class="mt-2 space-y-1 text-xs leading-5 text-emerald-200/80">
+                <li v-for="asset in activeAction.recommended_assets" :key="asset.media_asset_id">
+                  {{ asset.original_name ?? 'Project asset #' + asset.media_asset_id }} · {{ asset.usage_role ?? asset.type }}
+                </li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              class="min-h-11 w-full rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:bg-neutral-900"
+              @click="scrollToProjectAssets"
+            >
+              {{ t('projectActions.openProjectAssets') }}
+            </button>
+          </div>
+        </template>
+
+        <p
+          v-if="actionError"
+          role="alert"
+          class="mt-5 rounded-2xl border border-rose-900/60 bg-rose-950/30 p-4 text-sm leading-6 text-rose-100"
+        >
+          {{ actionError }}
+        </p>
+
+        <div
+          v-if="isCampaignAction(activeAction) || isVoiceoverAction(activeAction)"
+          class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
+        >
+          <button
+            type="button"
+            class="min-h-11 rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-900"
+            @click="closeLauncher"
+          >
+            {{ t('projectActions.cancelSetup') }}
+          </button>
+          <button
+            type="button"
+            :disabled="isSubmitting || props.isGenerating || (isVoiceoverAction(activeAction) && !!voiceoverValidationError)"
+            class="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+            @click="isVoiceoverAction(activeAction) ? submitVoiceover() : submitCampaign(activeAction)"
+          >
+            <span
+              v-if="isSubmitting"
+              class="size-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950"
+              aria-hidden="true"
+            />
+            {{ isSubmitting ? t('projectActions.generating') : t('projectActions.startGeneration') }}
+          </button>
         </div>
       </div>
-
-      <p
-        v-if="actionError"
-        role="alert"
-        class="mt-5 rounded-2xl border border-rose-900/60 bg-rose-950/30 p-4 text-sm leading-6 text-rose-100"
-      >
-        {{ actionError }}
-      </p>
     </div>
   </section>
 </template>

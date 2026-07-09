@@ -25,6 +25,7 @@ class GenerateAiVoiceoverRequest extends FormRequest
             'tone' => ['sometimes', 'nullable', 'string', 'max:80'],
             'pace' => ['sometimes', 'nullable', 'string', 'max:40'],
             'style' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:500'],
             'voice_id' => ['sometimes', 'nullable', 'string', 'max:160'],
             'voice_settings' => ['sometimes', 'nullable', 'array'],
             'voice_settings.stability' => ['sometimes', 'nullable', 'numeric', 'between:0,1'],

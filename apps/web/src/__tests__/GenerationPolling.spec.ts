@@ -103,7 +103,39 @@ async function mountPollingView(detailResponses: CreatorGeneration[]) {
     }
 
     if (url.endsWith('/projects/42/actions')) {
-      return Response.json({ data: [] })
+      return Response.json({
+        data: [
+          {
+            key: 'generate_campaign',
+            title: 'Generate campaign',
+            description: 'Create another campaign version.',
+            service_tier: 'basic',
+            output_type: 'script_pack',
+            status: 'available',
+            credit_cost: 1,
+            user_has_access: true,
+            upgrade_required: false,
+            access_label: 'Included in every plan',
+            locked_reason: null,
+            action_mode: 'direct',
+            primary_cta: {
+              label: 'Generate campaign',
+              route: null,
+              action: 'generate_campaign',
+            },
+            requirements: [],
+            recommended_sources: [],
+            recommended_assets: [],
+            missing_requirements_count: 0,
+            required_source: null,
+            source_generation_id: null,
+            reason: null,
+            action_endpoint: '/api/v1/projects/42/generate-campaign',
+            tool_key: 'affiliate_campaign',
+            tool_status: 'available',
+          },
+        ],
+      })
     }
 
     if (url.endsWith('/tools')) {

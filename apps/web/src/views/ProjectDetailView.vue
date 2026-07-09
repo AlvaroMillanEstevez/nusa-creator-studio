@@ -28,7 +28,7 @@ import {
 } from '@/services/projects'
 import { getCreatorTools } from '@/services/tools'
 import type { MediaAsset } from '@/types/media'
-import type { AiVoiceoverGenerationResponse, CreatorGeneration, CreatorProject, GenerationStatus } from '@/types/project'
+import type { CreatorGeneration, CreatorProject, GenerationResponse, GenerationResult, GenerationStatus } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
 
 const POLL_INTERVAL_MS = 2_000
@@ -50,42 +50,7 @@ const remainingCredits = ref<number | null>(null)
 const toolCreditCost = ref<number | null>(null)
 const showQueueWorkerHint = ref(false)
 
-const hasRequiredFashionTryOnAssets = computed(() => {
-  if (project.value?.type !== 'fashion_try_on') return true
-
-  const hasModelReference = projectAssets.value.some(
-    (asset) => asset.type === 'image' && asset.usage_role === 'model_reference',
-  )
-  const hasGarmentReference = projectAssets.value.some(
-    (asset) => asset.type === 'image' && asset.usage_role === 'garment_reference',
-  )
-
-  return hasModelReference && hasGarmentReference
-})
-
-const hasRequiredMotionVideoAssets = computed(() => {
-  if (project.value?.type !== 'motion_ai_video') return true
-
-  const hasRoleTaggedVisualReference = projectAssets.value.some((asset) => {
-    if (asset.type === 'video') {
-      return asset.usage_role === 'source_video'
-    }
-
-    if (asset.type === 'image') {
-      return ['product_image', 'background_reference', 'brand_reference'].includes(
-        asset.usage_role ?? '',
-      )
-    }
-
-    return false
-  })
-
-  const hasFallbackVisualReference = projectAssets.value.some((asset) =>
-    ['image', 'video'].includes(asset.type),
-  )
-
-  return hasRoleTaggedVisualReference || hasFallbackVisualReference
-})
+const showPrimaryGenerationCard = computed(() => project.value?.type !== 'affiliate_campaign')
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollingGenerationId: number | null = null
@@ -297,7 +262,7 @@ async function loadProject(): Promise<void> {
   }
 }
 
-function handleActionGenerated(response: AiVoiceoverGenerationResponse): void {
+function handleActionGenerated(response: GenerationResponse<GenerationResult>): void {
   stopPolling()
   generationError.value = ''
   historyError.value = ''
@@ -466,21 +431,10 @@ onBeforeUnmount(stopPolling)
           @assets-changed="updateProjectAssets"
         />
 
-        <div
-          v-if="project.type === 'fashion_try_on' && !hasRequiredFashionTryOnAssets"
-          class="mt-5 rounded-2xl border border-amber-900/60 bg-amber-950/30 p-4 text-sm leading-6 text-amber-100"
-        >
-          Add a model reference image and garment reference image before generating.
-        </div>
 
-        <div
-          v-if="project.type === 'motion_ai_video' && !hasRequiredMotionVideoAssets"
-          class="mt-5 rounded-2xl border border-amber-900/60 bg-amber-950/30 p-4 text-sm leading-6 text-amber-100"
-        >
-          Add a product image, source video, background reference or brand reference before generating.
-        </div>
 
         <GenerationActionCard
+          v-if="showPrimaryGenerationCard"
           :project-type="project.type"
           :has-generation="generation !== null"
           :is-generating="isGenerating"

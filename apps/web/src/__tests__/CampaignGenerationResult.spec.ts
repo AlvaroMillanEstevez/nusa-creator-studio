@@ -92,9 +92,11 @@ describe('CampaignGenerationResult', () => {
 
     expect(wrapper.text()).toContain('Honest mini camera campaign')
     expect(wrapper.text()).toContain('¿Quieres crear contenido rápido?')
-    expect(wrapper.text()).toContain('Voiceover-ready script')
+    expect(wrapper.text()).toContain('Narration script')
     expect(wrapper.text()).toContain('Copy this clean voiceover script.')
+    expect(wrapper.text()).not.toContain('Voiceover-ready script')
     expect(wrapper.text()).not.toContain('Copy into voiceover next')
+    expect(wrapper.text()).not.toContain('Use this script as source when ready')
     expect(wrapper.text()).toContain('Diseñado para creadores que necesitan automatización.')
     expect(wrapper.text()).toContain('Do not imply guaranteed results.')
     expect(wrapper.text()).toContain('openai')

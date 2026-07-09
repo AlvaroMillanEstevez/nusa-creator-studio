@@ -619,7 +619,7 @@ describe('ProjectDetailView', () => {
     expect(text).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)
   })
 
-  it('renders a Fashion Try-On brief, missing asset warning and restored result', async () => {
+  it('renders a Fashion Try-On brief and restored result without page-level missing asset warnings', async () => {
     const history: ProjectGenerationHistoryResponse = {
       ...emptyHistory,
       data: [
@@ -670,7 +670,7 @@ describe('ProjectDetailView', () => {
 
     expect(text).toContain('Fashion try-on brief')
     expect(text).toContain('Everyday creator jacket')
-    expect(text).toContain('Add a model reference image and garment reference image before generating.')
+    expect(text).not.toContain('Add a model reference image and garment reference image before generating.')
     expect(text).toContain('Generate another try-on mock')
     expect(text).toContain('Try-on concept')
     expect(text).toContain('Generated image placeholder')
@@ -678,7 +678,7 @@ describe('ProjectDetailView', () => {
   })
 
 
-  it('renders a Motion AI Video brief, missing asset warning and restored result', async () => {
+  it('renders a Motion AI Video brief and restored result without page-level missing asset warnings', async () => {
     const history: ProjectGenerationHistoryResponse = {
       ...emptyHistory,
       data: [
@@ -770,7 +770,7 @@ describe('ProjectDetailView', () => {
 
     expect(text).toContain('Motion video brief')
     expect(text).toContain('Portable smoothie blender')
-    expect(text).toContain(
+    expect(text).not.toContain(
       'Add a product image, source video, background reference or brand reference before generating.',
     )
     expect(text).toContain('Generate another motion video mock')

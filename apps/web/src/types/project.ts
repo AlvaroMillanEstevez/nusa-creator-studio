@@ -331,6 +331,7 @@ export interface GenerateAiVoiceoverPayload {
   tone?: VoiceoverTone | string | null
   pace?: VoiceoverPace | string | null
   style?: VoiceoverStyle | string | null
+  notes?: string | null
   voice_id?: string | null
   voice_settings?: {
     stability?: number | null

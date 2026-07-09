@@ -1,108 +1,48 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
+import { createMemoryHistory, createRouter } from 'vue-router'
 
 import ProjectActionHub from '@/components/ProjectActionHub.vue'
 import { API_BASE_URL } from '@/services/api'
 import type {
   AiVoiceoverGenerationResponse,
+  CampaignGenerationResponse,
   CreatorGeneration,
+  ProjectAction,
   ProjectActionsResponse,
 } from '@/types/project'
 
-const actionsResponse: ProjectActionsResponse = {
-  data: [
-    {
-      key: 'generate_campaign',
-      title: 'Generate campaign',
-      description: 'Create campaign content.',
-      service_tier: 'basic',
-      output_type: 'script_pack',
-      status: 'available',
-      required_source: null,
-      source_generation_id: null,
-      reason: 'Project has enough product brief context.',
-      action_endpoint: '/api/v1/projects/42/generate-campaign',
-      tool_key: 'affiliate_campaign',
-      tool_status: 'available',
-      credit_cost: 1,
-    },
-    {
-      key: 'generate_voiceover_from_script',
-      title: 'Create voiceover from this script',
-      description: 'Generate an AI voiceover using a completed script.',
-      service_tier: 'advanced',
-      output_type: 'audio',
-      status: 'available',
-      required_source: 'source_generation',
-      source_generation_id: 9,
-      reason: 'A completed script is available for voiceover generation.',
-      action_endpoint: '/api/v1/projects/42/generate-voiceover',
-      tool_key: 'ai_voiceover',
-      tool_status: 'available',
-      credit_cost: 1,
-    },
-    {
-      key: 'create_video_ad',
-      title: 'Create video ad',
-      description: 'Use campaign context later.',
-      service_tier: 'premium',
-      output_type: 'video',
-      status: 'coming_soon',
-      required_source: 'source_generation',
-      source_generation_id: null,
-      reason: 'Video ad assembly is planned for later.',
-      action_endpoint: null,
-      tool_key: null,
-      tool_status: null,
-      credit_cost: null,
-    },
-    {
-      key: 'start_fashion_try_on',
-      title: 'Start Fashion Try-On',
-      description: 'Use project assets for try-on.',
-      service_tier: 'premium',
-      output_type: 'image',
-      status: 'configure',
-      required_source: 'media_asset',
-      source_generation_id: null,
-      reason: 'Add model and garment reference images first.',
-      action_endpoint: '/api/v1/projects/42/generate-fashion-try-on',
-      tool_key: 'fashion_try_on',
-      tool_status: 'available',
-      credit_cost: 2,
-    },
-    {
-      key: 'start_motion_video',
-      title: 'Generate Motion AI Video',
-      description: 'Use project visuals for motion video.',
-      service_tier: 'premium',
-      output_type: 'video',
-      status: 'configure',
-      required_source: 'media_asset',
-      source_generation_id: null,
-      reason: 'Add a visual reference first.',
-      action_endpoint: '/api/v1/projects/42/generate-motion-video',
-      tool_key: 'motion_ai_video',
-      tool_status: 'available',
-      credit_cost: 3,
-    },
-    {
-      key: 'avatar_presenter',
-      title: 'Avatar Presenter',
-      description: 'Turn a script into an avatar presenter later.',
-      service_tier: 'premium',
-      output_type: 'avatar',
-      status: 'coming_soon',
-      required_source: 'source_generation',
-      source_generation_id: null,
-      reason: 'Avatar presenter generation is not implemented yet.',
-      action_endpoint: null,
-      tool_key: null,
-      tool_status: null,
-      credit_cost: null,
-    },
-  ],
+function action(overrides: Partial<ProjectAction> & Pick<ProjectAction, 'key'>): ProjectAction {
+  const { key, ...rest } = overrides
+
+  return {
+    key,
+    title: 'Action title',
+    description: 'Action description.',
+    service_tier: 'basic',
+    output_type: 'script_pack',
+    status: 'available',
+    credit_cost: 1,
+    user_has_access: true,
+    upgrade_required: false,
+    access_label: 'Included in every plan',
+    locked_reason: null,
+    action_mode: 'direct',
+    primary_cta: { label: 'Open action', route: null, action: 'open_action' },
+    requirements: [],
+    recommended_sources: [],
+    recommended_assets: [],
+    missing_requirements_count: 0,
+    required_source: null,
+    source_generation_id: null,
+    reason: null,
+    action_endpoint: null,
+    tool_key: null,
+    tool_status: 'available',
+    ...rest,
+  }
 }
 
 const selectedCampaignGeneration: CreatorGeneration = {
@@ -132,9 +72,157 @@ const selectedCampaignGeneration: CreatorGeneration = {
   created_at: '2026-07-08T01:00:00.000000Z',
 }
 
+const selectedVoiceoverGeneration: CreatorGeneration = {
+  ...selectedCampaignGeneration,
+  id: 22,
+  job_type: 'generate_ai_voiceover',
+  result_payload: null,
+}
+
+const baseActions: ProjectActionsResponse = {
+  data: [
+    action({
+      key: 'generate_campaign',
+      title: 'Generate campaign',
+      description: 'Create campaign content.',
+      service_tier: 'basic',
+      output_type: 'script_pack',
+      primary_cta: { label: 'Generate another campaign version', route: null, action: 'generate_campaign' },
+      action_endpoint: '/api/v1/projects/42/generate-campaign',
+      tool_key: 'affiliate_campaign',
+    }),
+    action({
+      key: 'generate_voiceover_from_script',
+      title: 'Create voiceover',
+      description: 'Generate an AI voiceover using a completed script.',
+      service_tier: 'advanced',
+      output_type: 'audio',
+      primary_cta: { label: 'Create another voiceover', route: null, action: 'generate_voiceover' },
+      required_source: 'source_generation',
+      source_generation_id: 9,
+      action_endpoint: '/api/v1/projects/42/generate-voiceover',
+      tool_key: 'ai_voiceover',
+      recommended_sources: [
+        {
+          generation_id: 9,
+          job_type: 'generate_affiliate_campaign',
+          title: 'Campaign script source',
+          created_at: '2026-07-08T01:00:00.000000Z',
+          excerpt: 'Voiceover-ready script from the selected campaign.',
+        },
+      ],
+    }),
+    action({
+      key: 'start_fashion_try_on',
+      title: 'Start Fashion Try-On',
+      description: 'Use project assets for try-on.',
+      service_tier: 'premium',
+      output_type: 'image',
+      status: 'configure',
+      action_mode: 'configure',
+      credit_cost: 2,
+      primary_cta: { label: 'Setup Try-On', route: null, action: 'configure_fashion_try_on' },
+      required_source: 'media_asset',
+      action_endpoint: '/api/v1/projects/42/generate-fashion-try-on',
+      tool_key: 'fashion_try_on',
+      requirements: [
+        {
+          type: 'media_asset',
+          key: 'model_reference',
+          label: 'Model reference image',
+          satisfied: false,
+          help_text: 'Upload a clear model/person reference image in the launcher.',
+          suggested_usage_role: 'model_reference',
+        },
+        {
+          type: 'media_asset',
+          key: 'garment_reference',
+          label: 'Garment reference image',
+          satisfied: false,
+          help_text: 'Upload a clear garment/product reference image in the launcher.',
+          suggested_usage_role: 'garment_reference',
+        },
+      ],
+      missing_requirements_count: 2,
+    }),    action({
+      key: 'start_motion_video',
+      title: 'Generate Motion AI Video',
+      description: 'Use project visuals for motion video.',
+      service_tier: 'premium',
+      output_type: 'video',
+      status: 'configure',
+      action_mode: 'configure',
+      credit_cost: 3,
+      primary_cta: { label: 'Configure Motion Video', route: null, action: 'configure_motion_video' },
+      required_source: 'media_asset',
+      action_endpoint: '/api/v1/projects/42/generate-motion-video',
+      tool_key: 'motion_ai_video',
+      requirements: [
+        {
+          type: 'media_asset',
+          key: 'product_image',
+          label: 'Product image',
+          satisfied: false,
+          help_text: 'Upload or choose a product image for the motion video source.',
+          suggested_usage_role: 'product_image',
+        },
+      ],
+      missing_requirements_count: 1,
+    }),
+    action({
+      key: 'create_video_ad',
+      title: 'Create video ad',
+      description: 'Use campaign context later.',
+      service_tier: 'premium',
+      output_type: 'video',
+      status: 'coming_soon',
+      action_mode: 'coming_soon',
+      credit_cost: null,
+      primary_cta: { label: 'Coming soon', route: null, action: null },
+      required_source: 'source_generation',
+      tool_status: null,
+    }),
+    action({
+      key: 'avatar_presenter',
+      title: 'Avatar Presenter',
+      description: 'Turn a script into an avatar presenter later.',
+      service_tier: 'premium',
+      output_type: 'avatar',
+      status: 'coming_soon',
+      action_mode: 'coming_soon',
+      credit_cost: null,
+      primary_cta: { label: 'Coming soon', route: null, action: null },
+      required_source: 'source_generation',
+      tool_status: null,
+    }),
+  ],
+}
+
+const campaignResponse: CampaignGenerationResponse = {
+  data: {
+    id: 12,
+    user_id: 1,
+    project_id: 42,
+    job_type: 'generate_affiliate_campaign',
+    provider: 'mock',
+    status: 'queued',
+    cost_usd: '0.0000',
+    credits_charged: 1,
+    input_payload: null,
+    output_payload: null,
+    error_message: null,
+    request_payload: null,
+    result_payload: null,
+    started_at: null,
+    finished_at: null,
+    created_at: '2026-07-08T01:05:00.000000Z',
+  },
+  meta: { credits_balance: 19 },
+}
+
 const voiceoverResponse: AiVoiceoverGenerationResponse = {
   data: {
-    id: 22,
+    id: 30,
     user_id: 1,
     project_id: 42,
     job_type: 'generate_ai_voiceover',
@@ -157,64 +245,145 @@ const voiceoverResponse: AiVoiceoverGenerationResponse = {
   meta: { credits_balance: 18 },
 }
 
+async function mountHub(
+  actions: ProjectActionsResponse = baseActions,
+  selectedGeneration: CreatorGeneration | null = selectedCampaignGeneration,
+) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: { template: '<div />' } },
+      { path: '/pricing', component: { template: '<div />' } },
+    ],
+  })
+  const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+    const method = init?.method ?? 'GET'
+
+    if (url.endsWith('/projects/42/actions')) {
+      return Response.json(actions)
+    }
+
+    if (url.endsWith('/projects/42/generate-campaign') && method === 'POST') {
+      return Response.json(campaignResponse, { status: 201 })
+    }
+
+    if (url.endsWith('/projects/42/generate-voiceover') && method === 'POST') {
+      return Response.json(voiceoverResponse, { status: 201 })
+    }
+
+    return Response.json({}, { status: 404 })
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  vi.stubGlobal('scrollTo', vi.fn<() => void>())
+
+  await router.push('/')
+  await router.isReady()
+
+  const wrapper = mount(ProjectActionHub, {
+    props: {
+      projectId: 42,
+      selectedGeneration,
+    },
+    global: {
+      plugins: [createPinia(), router],
+    },
+  })
+  await flushPromises()
+
+  return { wrapper, fetchMock, router }
+}
 describe('ProjectActionHub', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('renders available, configurable and coming-soon actions', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn<typeof fetch>().mockResolvedValue(Response.json(actionsResponse)),
-    )
+  it('shows tier, credit and access badges without scary requirement text on cards', async () => {
+    const { wrapper } = await mountHub()
+    const text = wrapper.text()
 
-    const wrapper = mount(ProjectActionHub, {
-      props: {
-        projectId: 42,
-        selectedGeneration: selectedCampaignGeneration,
-      },
-    })
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('Continue with this project')
-    expect(wrapper.text()).toContain('Continue with selected result')
-    expect(wrapper.text()).toContain('Generate campaign')
-    expect(wrapper.text()).toContain('Create voiceover from this script')
-    expect(wrapper.text()).toContain('Configure')
-    expect(wrapper.text()).toContain('Coming soon')
+    expect(text).toContain('Basic workflow')
+    expect(text).toContain('Advanced workflow')
+    expect(text).toContain('Premium workflow')
+    expect(text).toContain('1 credit')
+    expect(text).toContain('2 credits')
+    expect(text).toContain('3 credits')
+    expect(text).toContain('Included in your plan')
+    expect(text).toContain('Setup Try-On')
+    expect(text).toContain('Configure Motion Video')
+    expect(text).not.toContain('Upload a clear model/person reference image in the launcher.')
+    expect(text).not.toContain('Upload a clear garment/product reference image in the launcher.')
+    expect(text).not.toContain('Upload or choose a product image for the motion video source.')
   })
 
-  it('posts source_generation_id and source_text when creating a voiceover from the selected result', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
-      const url =
-        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+  it('runs the direct campaign action and emits the new generation', async () => {
+    const { wrapper, fetchMock } = await mountHub()
 
-      if (url.endsWith('/projects/42/actions')) {
-        return Response.json(actionsResponse)
-      }
+    const campaignButton = wrapper
+      .get('[data-testid="project-action-generate_campaign"]')
+      .find('button')
 
-      if (url.endsWith('/projects/42/generate-voiceover') && init?.method === 'POST') {
-        return Response.json(voiceoverResponse, { status: 201 })
-      }
-
-      return Response.json({}, { status: 404 })
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    const wrapper = mount(ProjectActionHub, {
-      props: {
-        projectId: 42,
-        selectedGeneration: selectedCampaignGeneration,
-      },
-    })
+    expect(campaignButton.text()).toContain('Generate another campaign version')
+    await campaignButton.trigger('click')
     await flushPromises()
 
-    const button = wrapper.findAll('button').find((candidate) =>
-      candidate.text().includes('Create voiceover from this script'),
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/42/generate-campaign',
+      expect.objectContaining({ method: 'POST' }),
     )
+    expect(wrapper.emitted('generated')?.[0]).toEqual([campaignResponse])
+  })
 
-    expect(button).toBeTruthy()
-    await button?.trigger('click')
+  it('routes locked premium actions to pricing instead of starting generation', async () => {
+    const lockedActions: ProjectActionsResponse = {
+      data: baseActions.data.map((item) => item.key === 'start_fashion_try_on'
+        ? {
+            ...item,
+            status: 'unavailable',
+            user_has_access: false,
+            upgrade_required: true,
+            action_mode: 'upgrade',
+            locked_reason: 'Premium actions require Creator or Pro access.',
+            primary_cta: { label: 'Upgrade subscription', route: '/pricing', action: null },
+          }
+        : item),
+    }
+    const { wrapper, fetchMock, router } = await mountHub(lockedActions)
+
+    const upgradeButton = wrapper
+      .get('[data-testid="project-action-start_fashion_try_on"]')
+      .find('button')
+
+    expect(upgradeButton.text()).toContain('Upgrade subscription')
+    await upgradeButton.trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/pricing')
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/generate-fashion-try-on'),
+      expect.anything(),
+    )
+  })
+
+  it('opens the voiceover launcher and submits a selected source generation', async () => {
+    const { wrapper, fetchMock } = await mountHub()
+
+    const voiceoverButton = wrapper
+      .get('[data-testid="project-action-generate_voiceover_from_script"]')
+      .find('button')
+
+    expect(voiceoverButton.text()).toContain('Create another voiceover')
+    await voiceoverButton.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="project-action-launcher"]').text()).toContain('Select source script')
+    expect(wrapper.text()).toContain('Default voice')
+    expect(wrapper.text()).toContain('Tone')
+    expect(wrapper.text()).toContain('Pace')
+    expect(wrapper.text()).toContain('Style')
+
+    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Start generation'))
+    await submitButton?.trigger('click')
     await flushPromises()
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -222,11 +391,107 @@ describe('ProjectActionHub', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
+          language: 'english',
+          tone: 'natural',
+          pace: 'medium',
+          style: 'natural_creator',
           source_generation_id: 9,
           source_text: 'Voiceover-ready script from the selected campaign.',
         }),
       }),
     )
     expect(wrapper.emitted('generated')?.[0]).toEqual([voiceoverResponse])
+  })
+  it('keeps voiceover configurable when a voiceover generation is selected', async () => {
+    const { wrapper, fetchMock } = await mountHub(baseActions, selectedVoiceoverGeneration)
+
+    await wrapper
+      .get('[data-testid="project-action-generate_voiceover_from_script"]')
+      .find('button')
+      .trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="project-action-launcher"]').text()).toContain('Campaign script source')
+
+    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Start generation'))
+    await submitButton?.trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/42/generate-voiceover',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          language: 'english',
+          tone: 'natural',
+          pace: 'medium',
+          style: 'natural_creator',
+          source_generation_id: 9,
+        }),
+      }),
+    )
+  })
+
+  it('allows manual source text when no recommended voiceover source exists', async () => {
+    const noSourceActions: ProjectActionsResponse = {
+      data: baseActions.data.map((item) => item.key === 'generate_voiceover_from_script'
+        ? {
+            ...item,
+            status: 'configure',
+            action_mode: 'configure',
+            source_generation_id: null,
+            recommended_sources: [],
+            primary_cta: { label: 'Create voiceover', route: null, action: 'generate_voiceover' },
+          }
+        : item),
+    }
+    const { wrapper, fetchMock } = await mountHub(noSourceActions, null)
+
+    await wrapper
+      .get('[data-testid="project-action-generate_voiceover_from_script"]')
+      .find('button')
+      .trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="project-action-launcher"]').text()).toContain('Manual source text')
+    await wrapper.get('textarea').setValue('Manual narration source for this voiceover.')
+
+    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Start generation'))
+    await submitButton?.trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/42/generate-voiceover',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          language: 'english',
+          tone: 'natural',
+          pace: 'medium',
+          style: 'natural_creator',
+          source_text: 'Manual narration source for this voiceover.',
+        }),
+      }),
+    )
+  })
+
+  it('opens setup guidance for asset actions without running generation', async () => {
+    const { wrapper, fetchMock } = await mountHub()
+
+    await wrapper
+      .get('[data-testid="project-action-start_fashion_try_on"]')
+      .find('button')
+      .trigger('click')
+    await flushPromises()
+
+    const launcherText = wrapper.get('[data-testid="project-action-launcher"]').text()
+
+    expect(launcherText).toContain('Model reference image')
+    expect(launcherText).toContain('Garment reference image')
+    expect(launcherText).toContain('Open Project Assets')
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/generate-fashion-try-on'),
+      expect.anything(),
+    )
   })
 })

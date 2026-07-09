@@ -67,7 +67,7 @@ class AiVoiceoverSourceResolver
      */
     private function applyLauncherOptions(array $input, array $options): array
     {
-        foreach (['language', 'tone', 'pace', 'voice_id'] as $key) {
+        foreach (['language', 'tone', 'pace', 'voice_id', 'notes'] as $key) {
             $value = $this->nullableString($options[$key] ?? null);
 
             if ($value !== null) {
