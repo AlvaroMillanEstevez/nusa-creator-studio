@@ -90,6 +90,49 @@ Basic workflows often create context for later Advanced or Premium workflows.
 | Advanced | Reuse text/media context for assisted workflows such as voiceover, captions, video analysis and product-to-video planning. |
 | Premium | Reuse project context and media assets for expensive generative media such as try-on, motion video and avatar workflows. |
 
+## Project action card metadata
+
+Project action cards should be lightweight invitations, not validation error panels. The card-level API metadata should expose enough information for the UI to decide whether the action can be started, configured, upgraded or shown as coming soon.
+
+Core fields:
+
+| Field | Purpose |
+| --- | --- |
+| `service_tier` | Shows whether the action is Basic, Advanced or Premium. |
+| `credit_cost` | Shows the expected internal platform credits before the user starts generation. |
+| `user_has_access` | Indicates whether the current user can access the service tier. |
+| `upgrade_required` | Marks actions that should route users toward pricing or account plan management. |
+| `access_label` | Short positive explanation of why the user has access. |
+| `locked_reason` | Safe explanation for locked actions without leaking internal rules. |
+| `action_mode` | One of `direct`, `configure`, `upgrade` or `coming_soon`. |
+| `primary_cta` | Card CTA label plus route or frontend action key. |
+| `requirements` | Structured launcher-form requirements, not negative card copy. |
+| `recommended_sources` | Prior same-project generations that can be reused. |
+| `recommended_assets` | Project media assets that match useful roles. |
+| `missing_requirements_count` | Count for launcher readiness indicators. |
+
+Card copy should stay positive:
+
+- `direct`: “Generate campaign”, “Generate another campaign version”, “Create voiceover”.
+- `configure`: “Setup Try-On”, “Configure Motion Video”, “Create voiceover”.
+- `upgrade`: “Upgrade subscription”.
+- `coming_soon`: “Coming soon”.
+
+Avoid card text such as “missing model image” or “missing garment image”. Those details belong inside the launcher form where the user can choose, upload or replace inputs.
+
+## Launcher requirements
+
+Launcher forms should own detailed requirements and guidance. The action endpoint can return requirement objects such as:
+
+| Requirement type | Example keys | Notes |
+| --- | --- | --- |
+| `input` | `product_name`, `product_description` | Basic project brief requirements. |
+| `source_generation` | `campaign_or_script_generation` | Completed same-project generation source. |
+| `source_text` | `source_text` | Direct pasted or written script text. |
+| `media_asset` | `model_reference`, `garment_reference`, `product_image`, `source_video`, `background_reference`, `brand_reference` | Media inputs selected or uploaded in the launcher. |
+
+A launcher can use `recommended_sources` and `recommended_assets` to preselect the most likely inputs while still allowing the creator to choose another source. This keeps the workspace-first flow flexible without turning project cards into dense configuration forms.
+
 ## Future UX direction
 
 Future project pages can expose action language such as:
@@ -113,8 +156,8 @@ Implemented now:
 
 Shown but not deeply refactored yet:
 
-- Fashion Try-On can be marked as needing assets or available depending on project assets.
-- Motion AI Video can be marked as needing assets or available depending on project assets.
+- Fashion Try-On is a configurable Premium action. Its card stays positive while launcher requirements ask for model and garment reference images.
+- Motion AI Video is a configurable Premium action. Its card stays positive while launcher requirements ask for visual references such as product image, source video, background or brand assets.
 - Video ad assembly and Avatar Presenter remain coming-soon contextual actions.
 
 Out of scope for v1:

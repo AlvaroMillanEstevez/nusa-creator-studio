@@ -28,13 +28,13 @@ const actionsResponse: ProjectActionsResponse = {
       credit_cost: 1,
     },
     {
-      key: 'generate_voiceover_from_campaign',
+      key: 'generate_voiceover_from_script',
       title: 'Create voiceover from this script',
       description: 'Generate an AI voiceover using a completed script.',
       service_tier: 'advanced',
       output_type: 'audio',
       status: 'available',
-      required_source: 'generation',
+      required_source: 'source_generation',
       source_generation_id: 9,
       reason: 'A completed script is available for voiceover generation.',
       action_endpoint: '/api/v1/projects/42/generate-voiceover',
@@ -43,13 +43,13 @@ const actionsResponse: ProjectActionsResponse = {
       credit_cost: 1,
     },
     {
-      key: 'start_video_ad',
+      key: 'create_video_ad',
       title: 'Create video ad',
       description: 'Use campaign context later.',
       service_tier: 'premium',
       output_type: 'video',
       status: 'coming_soon',
-      required_source: 'generation',
+      required_source: 'source_generation',
       source_generation_id: null,
       reason: 'Video ad assembly is planned for later.',
       action_endpoint: null,
@@ -63,7 +63,7 @@ const actionsResponse: ProjectActionsResponse = {
       description: 'Use project assets for try-on.',
       service_tier: 'premium',
       output_type: 'image',
-      status: 'needs_assets',
+      status: 'configure',
       required_source: 'media_asset',
       source_generation_id: null,
       reason: 'Add model and garment reference images first.',
@@ -78,7 +78,7 @@ const actionsResponse: ProjectActionsResponse = {
       description: 'Use project visuals for motion video.',
       service_tier: 'premium',
       output_type: 'video',
-      status: 'needs_assets',
+      status: 'configure',
       required_source: 'media_asset',
       source_generation_id: null,
       reason: 'Add a visual reference first.',
@@ -94,7 +94,7 @@ const actionsResponse: ProjectActionsResponse = {
       service_tier: 'premium',
       output_type: 'avatar',
       status: 'coming_soon',
-      required_source: 'generation',
+      required_source: 'source_generation',
       source_generation_id: null,
       reason: 'Avatar presenter generation is not implemented yet.',
       action_endpoint: null,
@@ -162,7 +162,7 @@ describe('ProjectActionHub', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders available, needs-assets and coming-soon actions', async () => {
+  it('renders available, configurable and coming-soon actions', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn<typeof fetch>().mockResolvedValue(Response.json(actionsResponse)),
@@ -180,7 +180,7 @@ describe('ProjectActionHub', () => {
     expect(wrapper.text()).toContain('Continue with selected result')
     expect(wrapper.text()).toContain('Generate campaign')
     expect(wrapper.text()).toContain('Create voiceover from this script')
-    expect(wrapper.text()).toContain('Needs assets')
+    expect(wrapper.text()).toContain('Configure')
     expect(wrapper.text()).toContain('Coming soon')
   })
 

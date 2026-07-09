@@ -189,6 +189,7 @@ export default {
     insufficientCredits: 'Platform credit Anda tidak cukup untuk aksi ini. Saldo tidak berubah.',
     status: {
       available: 'Tersedia',
+      configure: 'Konfigurasi',
       needs_source: 'Butuh sumber',
       needs_assets: 'Butuh aset',
       coming_soon: 'Segera hadir',
@@ -199,9 +200,17 @@ export default {
         title: 'Buat campaign',
         description: 'Buat hook, skrip, caption, hashtag, dan catatan filming dari brief project ini.',
       },
+      generate_voiceover_from_script: {
+        title: 'Buat voiceover dari skrip ini',
+        description: 'Buat AI voiceover memakai campaign, product-to-video script, atau source text yang dipilih.',
+      },
       generate_voiceover_from_campaign: {
         title: 'Buat voiceover dari skrip ini',
         description: 'Buat AI voiceover memakai campaign atau product-to-video script yang dipilih.',
+      },
+      create_video_ad: {
+        title: 'Buat video ad',
+        description: 'Gunakan konteks campaign ini untuk workflow video ad berikutnya.',
       },
       start_video_ad: {
         title: 'Buat video ad',

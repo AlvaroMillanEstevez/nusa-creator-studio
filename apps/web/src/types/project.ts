@@ -193,6 +193,7 @@ export type GenerationStatus = 'queued' | 'processing' | 'completed' | 'failed' 
 
 export type ProjectActionStatus =
   | 'available'
+  | 'configure'
   | 'needs_source'
   | 'needs_assets'
   | 'coming_soon'
@@ -200,13 +201,54 @@ export type ProjectActionStatus =
 
 export type ProjectActionKey =
   | 'generate_campaign'
+  | 'generate_voiceover_from_script'
   | 'generate_voiceover_from_campaign'
+  | 'create_video_ad'
   | 'start_video_ad'
   | 'start_fashion_try_on'
   | 'start_motion_video'
   | 'avatar_presenter'
 
-export type ProjectActionRequiredSource = 'generation' | 'source_text' | 'media_asset' | null
+export type ProjectActionRequiredSource =
+  | 'generation'
+  | 'source_generation'
+  | 'source_text'
+  | 'media_asset'
+  | 'input'
+  | null
+export type ProjectActionMode = 'direct' | 'configure' | 'upgrade' | 'coming_soon'
+
+export interface ProjectActionCta {
+  label: string
+  route: string | null
+  action: string | null
+}
+
+export interface ProjectActionRequirement {
+  type: ProjectActionRequiredSource | string
+  key: string
+  label: string
+  satisfied: boolean
+  help_text: string
+  suggested_usage_role: string | null
+}
+
+export interface ProjectActionRecommendedSource {
+  generation_id: number
+  job_type: string
+  title: string
+  created_at: string | null
+  excerpt: string
+}
+
+export interface ProjectActionRecommendedAsset {
+  media_asset_id: number
+  type: string
+  usage_role: string | null
+  original_name: string | null
+  mime_type: string | null
+  created_at: string | null
+}
 
 export interface ProjectAction {
   key: ProjectActionKey
@@ -215,13 +257,23 @@ export interface ProjectAction {
   service_tier: 'basic' | 'advanced' | 'premium' | string | null
   output_type: string | null
   status: ProjectActionStatus
+  credit_cost: number | null
+  user_has_access?: boolean
+  upgrade_required?: boolean
+  access_label?: string | null
+  locked_reason?: string | null
+  action_mode?: ProjectActionMode
+  primary_cta?: ProjectActionCta
+  requirements?: ProjectActionRequirement[]
+  recommended_sources?: ProjectActionRecommendedSource[]
+  recommended_assets?: ProjectActionRecommendedAsset[]
+  missing_requirements_count?: number
   required_source: ProjectActionRequiredSource
   source_generation_id: number | null
   reason: string | null
   action_endpoint: string | null
   tool_key: string | null
   tool_status: string | null
-  credit_cost: number | null
 }
 
 export interface ProjectActionsResponse {
@@ -275,6 +327,17 @@ export interface AiVoiceoverFormPayload {
 export interface GenerateAiVoiceoverPayload {
   source_text?: string | null
   source_generation_id?: number | null
+  language?: CampaignLanguage | string | null
+  tone?: VoiceoverTone | string | null
+  pace?: VoiceoverPace | string | null
+  style?: VoiceoverStyle | string | null
+  voice_id?: string | null
+  voice_settings?: {
+    stability?: number | null
+    similarity_boost?: number | null
+    style?: number | null
+    use_speaker_boost?: boolean | null
+  } | null
 }
 
 export interface FashionTryOnFormPayload {

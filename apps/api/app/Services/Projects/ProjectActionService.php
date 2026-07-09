@@ -8,10 +8,14 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\AiVoiceoverSourceResolver;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
 
 class ProjectActionService
 {
-    public function __construct(private readonly AiVoiceoverSourceResolver $voiceoverSources) {}
+    public function __construct(
+        private readonly AiVoiceoverSourceResolver $voiceoverSources,
+        private readonly ProjectActionAccessService $access,
+    ) {}
 
     /**
      * @return array<int, array<string, mixed>>
@@ -30,12 +34,12 @@ class ProjectActionService
             ->keyBy('key');
 
         return [
-            $this->generateCampaignAction($project, $tools->get('affiliate_campaign')),
-            $this->voiceoverFromCampaignAction($project, $tools->get('ai_voiceover')),
-            $this->videoAdAction(),
-            $this->fashionTryOnAction($project, $tools->get('fashion_try_on')),
-            $this->motionVideoAction($project, $tools->get('motion_ai_video')),
-            $this->avatarPresenterAction(),
+            $this->generateCampaignAction($project, $user, $tools->get('affiliate_campaign')),
+            $this->voiceoverFromScriptAction($project, $user, $tools->get('ai_voiceover')),
+            $this->videoAdAction($user),
+            $this->fashionTryOnAction($project, $user, $tools->get('fashion_try_on')),
+            $this->motionVideoAction($project, $user, $tools->get('motion_ai_video')),
+            $this->avatarPresenterAction($user),
         ];
     }
 
@@ -44,163 +48,310 @@ class ProjectActionService
      */
     public function recommendedVoiceoverSource(Collection $generations): ?Generation
     {
-        return $generations
-            ->filter(fn (Generation $generation): bool => $generation->status === Generation::STATUS_COMPLETED
-                && in_array($generation->job_type, [
-                    'generate_affiliate_campaign',
-                    'generate_product_video_script',
-                ], true)
-                && $this->voiceoverSources->extractTextFromGeneration($generation) !== null)
-            ->sortByDesc(fn (Generation $generation): string => $generation->created_at?->toISOString() ?? '')
-            ->first();
+        return $this->voiceoverSourceGenerations($generations)->first();
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function generateCampaignAction(Project $project, ?CreatorTool $tool): array
+    private function generateCampaignAction(Project $project, User $user, ?CreatorTool $tool): array
     {
         $input = is_array($project->input_payload) ? $project->input_payload : [];
-        $hasBrief = $this->hasText($input['product_name'] ?? null)
-            && $this->hasText($input['product_description'] ?? null);
-
-        $status = $this->toolStatus($tool, $hasBrief ? 'available' : 'needs_source');
+        $requirements = [
+            $this->requirement(
+                type: 'input',
+                key: 'product_name',
+                label: 'Product name',
+                satisfied: $this->hasText($input['product_name'] ?? null),
+                helpText: 'Name the product or offer for this campaign.',
+            ),
+            $this->requirement(
+                type: 'input',
+                key: 'product_description',
+                label: 'Product description',
+                satisfied: $this->hasText($input['product_description'] ?? null),
+                helpText: 'Add a short, factual product description.',
+            ),
+        ];
+        $hasBrief = $this->missingRequirementCount($requirements) === 0;
+        $existingCampaigns = $this->generationCount($project, 'generate_affiliate_campaign');
 
         return $this->action(
+            user: $user,
             key: 'generate_campaign',
             title: 'Generate campaign',
             description: 'Create hooks, script, caption, hashtags and practical filming notes from this project brief.',
+            serviceTier: 'basic',
+            outputType: 'script_pack',
             tool: $tool,
-            status: $status,
-            requiredSource: $hasBrief ? null : 'source_text',
-            reason: $hasBrief ? 'Project has enough product brief context.' : 'Add product name and description first.',
+            status: $hasBrief ? 'available' : 'configure',
+            actionMode: $hasBrief ? 'direct' : 'configure',
+            primaryLabel: $existingCampaigns > 0 ? 'Generate another campaign version' : 'Generate campaign',
+            primaryAction: 'generate_campaign',
+            requirements: $requirements,
+            missingRequirementsCount: $this->missingRequirementCount($requirements),
+            reason: $hasBrief ? 'Project has enough product brief context.' : 'Complete the project brief before generating.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-campaign",
+            creditCost: $tool?->credit_cost,
         );
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function voiceoverFromCampaignAction(Project $project, ?CreatorTool $tool): array
+    private function voiceoverFromScriptAction(Project $project, User $user, ?CreatorTool $tool): array
     {
-        $source = $this->recommendedVoiceoverSource($project->generations);
-        $toolAvailableStatus = $this->toolStatus($tool, $source === null ? 'needs_source' : 'available');
+        $sources = $this->voiceoverSourceGenerations($project->generations);
+        $source = $sources->first();
+        $hasSource = $source instanceof Generation;
+        $existingVoiceovers = $this->generationCount($project, 'generate_ai_voiceover');
+
+        $requirements = [
+            $this->requirement(
+                type: 'source_generation',
+                key: 'campaign_or_script_generation',
+                label: 'Campaign or product-to-video script',
+                satisfied: $hasSource,
+                helpText: 'Choose a completed campaign or product-to-video script from this project.',
+            ),
+            $this->requirement(
+                type: 'source_text',
+                key: 'source_text',
+                label: 'Source script text',
+                satisfied: $hasSource,
+                helpText: 'Write or paste a source script if no saved generation fits.',
+            ),
+        ];
 
         return $this->action(
-            key: 'generate_voiceover_from_campaign',
-            title: 'Create voiceover from this script',
-            description: 'Generate a voiceover using a completed campaign or product-to-video script on this project.',
+            user: $user,
+            key: 'generate_voiceover_from_script',
+            title: 'Create voiceover',
+            description: 'Generate a voiceover from a completed campaign, product-to-video script or direct source text.',
+            serviceTier: 'advanced',
+            outputType: 'audio',
             tool: $tool,
-            status: $toolAvailableStatus,
-            requiredSource: 'generation',
-            sourceGenerationId: $source?->getKey(),
-            reason: $source === null
-                ? 'Generate or select a completed campaign script first.'
-                : 'A completed script is available for voiceover generation.',
+            status: $hasSource ? 'available' : 'configure',
+            actionMode: $hasSource ? 'direct' : 'configure',
+            primaryLabel: $existingVoiceovers > 0 ? 'Create another voiceover' : 'Create voiceover',
+            primaryAction: 'generate_voiceover',
+            requirements: $requirements,
+            recommendedSources: $this->recommendedSources($sources),
+            missingRequirementsCount: $hasSource ? 0 : 1,
+            reason: $hasSource
+                ? 'A completed script is available for voiceover generation.'
+                : 'Choose a source script or write one in the launcher.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-voiceover",
+            sourceGenerationId: $source?->getKey(),
+            creditCost: $tool?->credit_cost,
         );
     }
 
     /** @return array<string, mixed> */
-    private function videoAdAction(): array
+    private function videoAdAction(User $user): array
     {
         return $this->action(
-            key: 'start_video_ad',
+            user: $user,
+            key: 'create_video_ad',
             title: 'Create video ad',
             description: 'Use project context to assemble a video ad workflow later.',
-            tool: null,
-            status: 'coming_soon',
-            requiredSource: 'generation',
-            reason: 'Video ad assembly is planned for a later workflow.',
-            actionEndpoint: null,
             serviceTier: 'premium',
             outputType: 'video',
+            tool: null,
+            status: 'coming_soon',
+            actionMode: 'coming_soon',
+            primaryLabel: 'Coming soon',
+            requirements: [],
+            reason: 'Video ad assembly is planned for a later workflow.',
+            creditCost: null,
         );
     }
 
     /** @return array<string, mixed> */
-    private function fashionTryOnAction(Project $project, ?CreatorTool $tool): array
+    private function fashionTryOnAction(Project $project, User $user, ?CreatorTool $tool): array
     {
-        $hasModel = $project->mediaAssets->contains(fn ($asset): bool => $asset->type === 'image' && $asset->usage_role === 'model_reference');
-        $hasGarment = $project->mediaAssets->contains(fn ($asset): bool => $asset->type === 'image' && $asset->usage_role === 'garment_reference');
-        $hasAssets = $hasModel && $hasGarment;
+        $requirements = [
+            $this->requirement(
+                type: 'media_asset',
+                key: 'model_reference',
+                label: 'Model reference image',
+                satisfied: $this->hasAssetRole($project, 'model_reference', 'image'),
+                helpText: 'Upload a clear model/person reference image in the launcher.',
+                suggestedUsageRole: 'model_reference',
+            ),
+            $this->requirement(
+                type: 'media_asset',
+                key: 'garment_reference',
+                label: 'Garment reference image',
+                satisfied: $this->hasAssetRole($project, 'garment_reference', 'image'),
+                helpText: 'Upload a clear garment/product reference image in the launcher.',
+                suggestedUsageRole: 'garment_reference',
+            ),
+        ];
 
         return $this->action(
+            user: $user,
             key: 'start_fashion_try_on',
             title: 'Start Fashion Try-On',
             description: 'Use project context with model and garment references for a try-on workflow.',
+            serviceTier: 'premium',
+            outputType: 'image',
             tool: $tool,
-            status: $this->toolStatus($tool, $hasAssets ? 'available' : 'needs_assets'),
-            requiredSource: 'media_asset',
-            reason: $hasAssets
-                ? 'Model and garment reference assets are available.'
-                : 'Add model reference and garment reference images first.',
+            status: 'configure',
+            actionMode: 'configure',
+            primaryLabel: 'Setup Try-On',
+            primaryAction: 'configure_fashion_try_on',
+            requirements: $requirements,
+            recommendedAssets: $this->recommendedAssets($project, ['model_reference', 'garment_reference']),
+            missingRequirementsCount: $this->missingRequirementCount($requirements),
+            reason: 'Open setup to choose or upload model and garment reference images.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-fashion-try-on",
+            creditCost: $tool?->credit_cost,
         );
     }
 
     /** @return array<string, mixed> */
-    private function motionVideoAction(Project $project, ?CreatorTool $tool): array
+    private function motionVideoAction(Project $project, User $user, ?CreatorTool $tool): array
     {
-        $hasVisual = $project->mediaAssets->contains(function ($asset): bool {
-            if ($asset->type === 'video') {
-                return $asset->usage_role === 'source_video';
-            }
-
-            return $asset->type === 'image' && in_array($asset->usage_role, [
-                'product_image',
-                'background_reference',
-                'brand_reference',
-            ], true);
-        }) || $project->mediaAssets->contains(fn ($asset): bool => in_array($asset->type, ['image', 'video'], true));
+        $requirements = [
+            $this->requirement(
+                type: 'media_asset',
+                key: 'product_image',
+                label: 'Product image',
+                satisfied: $this->hasAssetRole($project, 'product_image', 'image'),
+                helpText: 'Upload or choose a product image for the motion video source.',
+                suggestedUsageRole: 'product_image',
+            ),
+            $this->requirement(
+                type: 'media_asset',
+                key: 'source_video',
+                label: 'Source video',
+                satisfied: $this->hasAssetRole($project, 'source_video', 'video'),
+                helpText: 'Optionally use an existing source video as motion context.',
+                suggestedUsageRole: 'source_video',
+            ),
+            $this->requirement(
+                type: 'media_asset',
+                key: 'background_reference',
+                label: 'Background reference',
+                satisfied: $this->hasAssetRole($project, 'background_reference', 'image'),
+                helpText: 'Optionally add a background reference image.',
+                suggestedUsageRole: 'background_reference',
+            ),
+            $this->requirement(
+                type: 'media_asset',
+                key: 'brand_reference',
+                label: 'Brand reference',
+                satisfied: $this->hasAssetRole($project, 'brand_reference', 'image'),
+                helpText: 'Optionally add a brand style reference image.',
+                suggestedUsageRole: 'brand_reference',
+            ),
+        ];
+        $hasVisual = collect($requirements)->contains(fn (array $requirement): bool => $requirement['satisfied'] === true)
+            || $project->mediaAssets->contains(fn ($asset): bool => in_array($asset->type, ['image', 'video'], true));
 
         return $this->action(
+            user: $user,
             key: 'start_motion_video',
             title: 'Generate Motion AI Video',
             description: 'Use product or visual references to generate a motion video plan.',
+            serviceTier: 'premium',
+            outputType: 'video',
             tool: $tool,
-            status: $this->toolStatus($tool, $hasVisual ? 'available' : 'needs_assets'),
-            requiredSource: 'media_asset',
-            reason: $hasVisual
-                ? 'A visual reference asset is available.'
-                : 'Add a product image, source video, background reference or brand reference first.',
+            status: 'configure',
+            actionMode: 'configure',
+            primaryLabel: 'Configure Motion Video',
+            primaryAction: 'configure_motion_video',
+            requirements: $requirements,
+            recommendedAssets: $this->recommendedAssets($project, [
+                'product_image',
+                'source_video',
+                'background_reference',
+                'brand_reference',
+            ]),
+            missingRequirementsCount: $hasVisual ? 0 : 1,
+            reason: 'Open setup to choose the visual references for motion video.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-motion-video",
+            creditCost: $tool?->credit_cost,
         );
     }
 
     /** @return array<string, mixed> */
-    private function avatarPresenterAction(): array
+    private function avatarPresenterAction(User $user): array
     {
         return $this->action(
+            user: $user,
             key: 'avatar_presenter',
             title: 'Avatar Presenter',
             description: 'Turn a script into an avatar-led presenter workflow later.',
-            tool: null,
-            status: 'coming_soon',
-            requiredSource: 'generation',
-            reason: 'Avatar presenter generation is not implemented yet.',
-            actionEndpoint: null,
             serviceTier: 'premium',
             outputType: 'avatar',
+            tool: null,
+            status: 'coming_soon',
+            actionMode: 'coming_soon',
+            primaryLabel: 'Coming soon',
+            requirements: [],
+            reason: 'Avatar presenter generation is not implemented yet.',
+            creditCost: null,
         );
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $requirements
+     * @param  array<int, array<string, mixed>>  $recommendedSources
+     * @param  array<int, array<string, mixed>>  $recommendedAssets
      * @return array<string, mixed>
      */
     private function action(
+        User $user,
         string $key,
         string $title,
         string $description,
+        string $serviceTier,
+        ?string $outputType,
         ?CreatorTool $tool,
         string $status,
-        ?string $requiredSource,
-        ?string $reason,
-        ?string $actionEndpoint,
+        string $actionMode,
+        string $primaryLabel,
+        array $requirements,
+        ?string $primaryAction = null,
+        ?string $primaryRoute = null,
+        array $recommendedSources = [],
+        array $recommendedAssets = [],
+        ?int $missingRequirementsCount = null,
+        ?string $reason = null,
+        ?string $actionEndpoint = null,
         ?int $sourceGenerationId = null,
-        ?string $serviceTier = null,
-        ?string $outputType = null,
+        ?int $creditCost = null,
     ): array {
+        $access = $this->access->metadataFor($user, $serviceTier);
+        $toolStatus = $this->toolStatus($tool);
+
+        if ($actionMode !== 'coming_soon' && $toolStatus !== 'available') {
+            $status = $toolStatus;
+            $actionMode = 'coming_soon';
+            $primaryLabel = $toolStatus === 'coming_soon' ? 'Coming soon' : 'Unavailable';
+            $primaryAction = null;
+            $primaryRoute = null;
+            $access['upgrade_required'] = false;
+            $access['locked_reason'] = $toolStatus === 'coming_soon'
+                ? 'This action is planned but not available yet.'
+                : 'This action is temporarily unavailable.';
+        } elseif ($actionMode !== 'coming_soon' && ! $access['user_has_access']) {
+            $status = 'unavailable';
+            $actionMode = 'upgrade';
+            $primaryLabel = 'Upgrade subscription';
+            $primaryRoute = '/pricing';
+            $primaryAction = null;
+        } elseif ($actionMode === 'coming_soon') {
+            $access['upgrade_required'] = false;
+            $access['locked_reason'] = null;
+            $primaryAction = null;
+            $primaryRoute = null;
+        }
+
+        $missingRequirementsCount ??= $this->missingRequirementCount($requirements);
+
         return [
             'key' => $key,
             'title' => $title,
@@ -208,17 +359,63 @@ class ProjectActionService
             'service_tier' => $tool?->service_tier ?? $serviceTier,
             'output_type' => $tool?->output_type ?? $outputType,
             'status' => $status,
-            'required_source' => $requiredSource,
+            'credit_cost' => $creditCost,
+            'user_has_access' => $access['user_has_access'],
+            'upgrade_required' => $access['upgrade_required'],
+            'access_label' => $access['access_label'],
+            'locked_reason' => $access['locked_reason'],
+            'action_mode' => $actionMode,
+            'primary_cta' => [
+                'label' => $primaryLabel,
+                'route' => $primaryRoute,
+                'action' => $primaryAction,
+            ],
+            'requirements' => $requirements,
+            'recommended_sources' => $recommendedSources,
+            'recommended_assets' => $recommendedAssets,
+            'missing_requirements_count' => $missingRequirementsCount,
+            // Compatibility fields for the current lightweight Action Hub.
+            'required_source' => $requirements[0]['type'] ?? null,
             'source_generation_id' => $sourceGenerationId,
             'reason' => $reason,
             'action_endpoint' => $actionEndpoint,
             'tool_key' => $tool?->key,
             'tool_status' => $tool?->status,
-            'credit_cost' => $tool?->credit_cost,
         ];
     }
 
-    private function toolStatus(?CreatorTool $tool, string $availableStatus): string
+    /**
+     * @return array<string, mixed>
+     */
+    private function requirement(
+        string $type,
+        string $key,
+        string $label,
+        bool $satisfied,
+        string $helpText,
+        ?string $suggestedUsageRole = null,
+    ): array {
+        return [
+            'type' => $type,
+            'key' => $key,
+            'label' => $label,
+            'satisfied' => $satisfied,
+            'help_text' => $helpText,
+            'suggested_usage_role' => $suggestedUsageRole,
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $requirements
+     */
+    private function missingRequirementCount(array $requirements): int
+    {
+        return collect($requirements)
+            ->filter(fn (array $requirement): bool => $requirement['satisfied'] === false)
+            ->count();
+    }
+
+    private function toolStatus(?CreatorTool $tool): string
     {
         if ($tool === null || ! $tool->is_visible || $tool->status === 'disabled') {
             return 'unavailable';
@@ -232,11 +429,96 @@ class ProjectActionService
             return 'unavailable';
         }
 
-        return $availableStatus;
+        return 'available';
     }
 
     private function hasText(mixed $value): bool
     {
         return is_string($value) && trim($value) !== '';
+    }
+
+    private function generationCount(Project $project, string $jobType): int
+    {
+        return $project->generations
+            ->filter(fn (Generation $generation): bool => $generation->job_type === $jobType)
+            ->count();
+    }
+
+    private function hasAssetRole(Project $project, string $usageRole, ?string $type = null): bool
+    {
+        return $project->mediaAssets->contains(fn ($asset): bool => $asset->usage_role === $usageRole
+            && ($type === null || $asset->type === $type));
+    }
+
+    /**
+     * @param  array<int, string>  $usageRoles
+     * @return array<int, array<string, mixed>>
+     */
+    private function recommendedAssets(Project $project, array $usageRoles): array
+    {
+        return $project->mediaAssets
+            ->filter(fn ($asset): bool => in_array($asset->usage_role, $usageRoles, true))
+            ->map(fn ($asset): array => [
+                'media_asset_id' => $asset->getKey(),
+                'type' => $asset->type,
+                'usage_role' => $asset->usage_role,
+                'original_name' => $asset->original_name,
+                'mime_type' => $asset->mime_type,
+                'created_at' => $asset->created_at?->toISOString(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, Generation>  $generations
+     * @return Collection<int, Generation>
+     */
+    private function voiceoverSourceGenerations(Collection $generations): Collection
+    {
+        return $generations
+            ->filter(fn (Generation $generation): bool => $generation->status === Generation::STATUS_COMPLETED
+                && in_array($generation->job_type, [
+                    'generate_affiliate_campaign',
+                    'generate_product_video_script',
+                ], true)
+                && $this->voiceoverSources->extractTextFromGeneration($generation) !== null)
+            ->sortByDesc(fn (Generation $generation): string => $generation->created_at?->toISOString() ?? '');
+    }
+
+    /**
+     * @param  Collection<int, Generation>  $sources
+     * @return array<int, array<string, mixed>>
+     */
+    private function recommendedSources(Collection $sources): array
+    {
+        return $sources
+            ->map(function (Generation $generation): array {
+                $text = $this->voiceoverSources->extractTextFromGeneration($generation) ?? '';
+                $payload = $generation->output_payload ?? [];
+
+                return [
+                    'generation_id' => $generation->getKey(),
+                    'job_type' => $generation->job_type,
+                    'title' => $this->sourceTitle($generation, $payload),
+                    'created_at' => $generation->created_at?->toISOString(),
+                    'excerpt' => Str::limit($text, 180, ''),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function sourceTitle(Generation $generation, array $payload): string
+    {
+        $title = data_get($payload, 'campaign_title')
+            ?? data_get($payload, 'main_script.title')
+            ?? data_get($payload, 'script.title')
+            ?? data_get($payload, 'concept_title');
+
+        return is_string($title) && trim($title) !== ''
+            ? trim($title)
+            : Str::headline($generation->job_type);
     }
 }

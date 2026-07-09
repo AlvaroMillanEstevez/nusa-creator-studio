@@ -401,6 +401,7 @@ export default {
     insufficientCredits: 'You do not have enough platform credits for this action. Your balance was not changed.',
     status: {
       available: 'Available',
+      configure: 'Configure',
       needs_source: 'Needs source',
       needs_assets: 'Needs assets',
       coming_soon: 'Coming soon',
@@ -411,9 +412,17 @@ export default {
         title: 'Generate campaign',
         description: 'Create hooks, script, caption, hashtags and practical filming notes from this project brief.',
       },
+      generate_voiceover_from_script: {
+        title: 'Create voiceover from this script',
+        description: 'Generate an AI voiceover using the selected campaign, product-to-video script or source text.',
+      },
       generate_voiceover_from_campaign: {
         title: 'Create voiceover from this script',
         description: 'Generate an AI voiceover using the selected campaign or product-to-video script.',
+      },
+      create_video_ad: {
+        title: 'Create video ad',
+        description: 'Use this campaign context for a future video ad assembly workflow.',
       },
       start_video_ad: {
         title: 'Create video ad',

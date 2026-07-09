@@ -23,6 +23,8 @@ class AiVoiceoverSourceResolver
             $input = [];
         }
 
+        $input = $this->applyLauncherOptions($input, $options);
+
         $sourceGenerationId = $this->nullableInt($options['source_generation_id'] ?? $input['source_generation_id'] ?? null);
         $explicitSourceText = $this->nullableString($options['source_text'] ?? $input['source_text'] ?? null);
         $sourceGenerationExcerpt = $this->nullableString($input['source_generation_excerpt'] ?? null);
@@ -56,6 +58,56 @@ class AiVoiceoverSourceResolver
         $input['source_generation_excerpt'] = $sourceGenerationExcerpt;
 
         return $input;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    private function applyLauncherOptions(array $input, array $options): array
+    {
+        foreach (['language', 'tone', 'pace', 'voice_id'] as $key) {
+            $value = $this->nullableString($options[$key] ?? null);
+
+            if ($value !== null) {
+                $input[$key] = $value;
+            }
+        }
+
+        $style = $this->nullableString($options['style'] ?? null);
+
+        if ($style !== null) {
+            $input['style'] = $style;
+            $input['voice_style'] = $style;
+        }
+
+        if (array_key_exists('voice_settings', $options) && is_array($options['voice_settings'])) {
+            $input['voice_settings'] = $this->voiceSettings($options['voice_settings']);
+        }
+
+        return $input;
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    private function voiceSettings(array $settings): array
+    {
+        $allowed = [];
+
+        foreach (['stability', 'similarity_boost', 'style'] as $key) {
+            if (isset($settings[$key]) && is_numeric($settings[$key])) {
+                $allowed[$key] = (float) $settings[$key];
+            }
+        }
+
+        if (array_key_exists('use_speaker_boost', $settings)) {
+            $allowed['use_speaker_boost'] = (bool) $settings['use_speaker_boost'];
+        }
+
+        return $allowed;
     }
 
     private function nullableInt(mixed $value): ?int

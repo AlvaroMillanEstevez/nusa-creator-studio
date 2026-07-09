@@ -151,6 +151,104 @@ class AiVoiceoverGenerationApiTest extends TestCase
         );
     }
 
+    public function test_campaign_source_can_generate_multiple_voiceovers_on_same_project(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->campaignProject($user);
+        $sourceGeneration = Generation::factory()
+            ->for($user)
+            ->for($project)
+            ->create([
+                'job_type' => 'generate_affiliate_campaign',
+                'status' => Generation::STATUS_COMPLETED,
+                'output_payload' => [
+                    'voiceover_ready_script' => 'Reuse this campaign script for multiple voiceover versions.',
+                ],
+            ]);
+
+        $firstGenerationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
+                'source_generation_id' => $sourceGeneration->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.credits_balance', 4)
+            ->json('data.id');
+
+        $secondGenerationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
+                'source_generation_id' => $sourceGeneration->id,
+                'tone' => 'premium',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.credits_balance', 3)
+            ->json('data.id');
+
+        $this->assertNotSame($firstGenerationId, $secondGenerationId);
+        $this->assertSame(2, Generation::query()
+            ->where('project_id', $project->id)
+            ->where('job_type', 'generate_ai_voiceover')
+            ->where('input_payload->source_generation_id', $sourceGeneration->id)
+            ->count());
+        $this->assertSame(2, CreditTransaction::query()
+            ->where('type', CreditTransactionType::Usage->value)
+            ->whereIn('generation_id', [$firstGenerationId, $secondGenerationId])
+            ->count());
+        $this->assertSame(3, $user->refresh()->credits_balance);
+        Queue::assertPushed(GenerateAiVoiceoverJob::class, 2);
+    }
+
+    public function test_voiceover_launcher_options_are_stored_with_same_project_source(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->campaignProject($user);
+        $sourceGeneration = Generation::factory()
+            ->for($user)
+            ->for($project)
+            ->create([
+                'job_type' => 'generate_affiliate_campaign',
+                'status' => Generation::STATUS_COMPLETED,
+                'output_payload' => [
+                    'voiceover_ready_script' => 'Use this selected campaign source for the configured voiceover.',
+                ],
+            ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
+                'source_generation_id' => $sourceGeneration->id,
+                'source_text' => 'This text should be replaced by the selected source generation.',
+                'language' => 'spanish',
+                'tone' => 'premium',
+                'pace' => 'fast',
+                'style' => 'confident_creator',
+                'voice_id' => 'voice_local_test',
+                'voice_settings' => [
+                    'stability' => 0.45,
+                    'similarity_boost' => 0.8,
+                    'style' => 0.25,
+                    'use_speaker_boost' => true,
+                ],
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        $generation = Generation::query()->findOrFail($generationId);
+
+        $this->assertSame($sourceGeneration->id, $generation->input_payload['source_generation_id']);
+        $this->assertSame('Use this selected campaign source for the configured voiceover.', $generation->input_payload['source_text']);
+        $this->assertSame('spanish', $generation->input_payload['language']);
+        $this->assertSame('premium', $generation->input_payload['tone']);
+        $this->assertSame('fast', $generation->input_payload['pace']);
+        $this->assertSame('confident_creator', $generation->input_payload['style']);
+        $this->assertSame('confident_creator', $generation->input_payload['voice_style']);
+        $this->assertSame('voice_local_test', $generation->input_payload['voice_id']);
+        $this->assertSame(0.45, $generation->input_payload['voice_settings']['stability']);
+        $this->assertSame(0.8, $generation->input_payload['voice_settings']['similarity_boost']);
+        $this->assertSame(0.25, $generation->input_payload['voice_settings']['style']);
+        $this->assertTrue($generation->input_payload['voice_settings']['use_speaker_boost']);
+    }
+
     public function test_source_generation_id_from_another_project_is_rejected(): void
     {
         Queue::fake();

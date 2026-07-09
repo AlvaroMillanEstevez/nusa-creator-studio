@@ -42,6 +42,20 @@ The app already has dynamic pricing/plans and internal platform credits. Current
 - Failed provider jobs need a clear refund/no-charge policy before launch.
 - Expensive tools may require higher minimum balance or confirmation.
 
+## Action card pricing and access visibility
+
+Project workspace action cards should surface the practical pricing/access decision before a generation starts:
+
+| Metadata | Why it matters |
+| --- | --- |
+| `service_tier` | Helps creators understand whether an action is Basic, Advanced or Premium. |
+| `credit_cost` | Shows the expected internal platform credit charge before the user clicks generate. |
+| `user_has_access` / `upgrade_required` | Separates plan access from available credits. |
+| `primary_cta` | Lets locked actions route to pricing/account instead of failing after setup. |
+| `requirements` | Keeps input readiness in launcher forms rather than cluttering pricing copy. |
+
+This does not implement billing or subscriptions. It only makes future cost controls more transparent: users should see the subscription tier and credit cost before provider work starts, and the backend should continue preventing negative balances.
+
 ## Service tier cost differences
 
 Credits must account for Basic, Advanced and Premium service tier cost differences.

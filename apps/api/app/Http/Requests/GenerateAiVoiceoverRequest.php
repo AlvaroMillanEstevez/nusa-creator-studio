@@ -21,6 +21,16 @@ class GenerateAiVoiceoverRequest extends FormRequest
         return [
             'source_text' => ['sometimes', 'nullable', 'string', 'max:'.$maxCharacters],
             'source_generation_id' => ['sometimes', 'nullable', 'integer'],
+            'language' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'tone' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'pace' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'style' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'voice_id' => ['sometimes', 'nullable', 'string', 'max:160'],
+            'voice_settings' => ['sometimes', 'nullable', 'array'],
+            'voice_settings.stability' => ['sometimes', 'nullable', 'numeric', 'between:0,1'],
+            'voice_settings.similarity_boost' => ['sometimes', 'nullable', 'numeric', 'between:0,1'],
+            'voice_settings.style' => ['sometimes', 'nullable', 'numeric', 'between:0,1'],
+            'voice_settings.use_speaker_boost' => ['sometimes', 'nullable', 'boolean'],
         ];
     }
 }

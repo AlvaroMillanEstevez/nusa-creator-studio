@@ -153,6 +153,7 @@ export default {
     insufficientCredits: 'No tienes suficientes créditos de plataforma para esta acción. Tu saldo no cambió.',
     status: {
       available: 'Disponible',
+      configure: 'Configurar',
       needs_source: 'Necesita fuente',
       needs_assets: 'Necesita assets',
       coming_soon: 'Próximamente',
@@ -163,9 +164,17 @@ export default {
         title: 'Generar campaña',
         description: 'Crea ganchos, guion, caption, hashtags y notas prácticas de grabación desde el brief del proyecto.',
       },
+      generate_voiceover_from_script: {
+        title: 'Crear voz en off desde este guion',
+        description: 'Genera una voz en off con IA usando la campaña, el guion product-to-video o texto fuente seleccionado.',
+      },
       generate_voiceover_from_campaign: {
         title: 'Crear voz en off desde este guion',
         description: 'Genera una voz en off con IA usando la campaña o el guion product-to-video seleccionado.',
+      },
+      create_video_ad: {
+        title: 'Crear video ad',
+        description: 'Usa el contexto de esta campaña para un futuro workflow de ensamblaje de video ad.',
       },
       start_video_ad: {
         title: 'Crear video ad',

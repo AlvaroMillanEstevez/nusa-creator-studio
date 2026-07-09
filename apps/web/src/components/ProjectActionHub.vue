@@ -39,7 +39,9 @@ const projectActionKeys: ProjectActionKey[] = [
   'start_motion_video',
 ]
 const resultActionKeys: ProjectActionKey[] = [
+  'generate_voiceover_from_script',
   'generate_voiceover_from_campaign',
+  'create_video_ad',
   'start_video_ad',
   'avatar_presenter',
 ]
@@ -121,7 +123,7 @@ function statusClasses(status: ProjectActionStatus): string {
     return 'border-emerald-800 bg-emerald-950 text-emerald-300'
   }
 
-  if (status === 'needs_assets' || status === 'needs_source') {
+  if (status === 'configure' || status === 'needs_assets' || status === 'needs_source') {
     return 'border-amber-800 bg-amber-950 text-amber-300'
   }
 
@@ -132,8 +134,19 @@ function statusClasses(status: ProjectActionStatus): string {
   return 'border-neutral-700 bg-neutral-900 text-neutral-400'
 }
 
+function isVoiceoverAction(action: ProjectAction): boolean {
+  return (
+    action.key === 'generate_voiceover_from_script' ||
+    action.key === 'generate_voiceover_from_campaign'
+  )
+}
+
 function actionHelp(action: ProjectAction): string {
-  if (action.key === 'generate_voiceover_from_campaign' && selectedVoiceoverSource.value === null) {
+  if (action.locked_reason) {
+    return action.locked_reason
+  }
+
+  if (isVoiceoverAction(action) && selectedVoiceoverSource.value === null) {
     return t('projectActions.selectScriptFirst')
   }
 
@@ -141,10 +154,14 @@ function actionHelp(action: ProjectAction): string {
 }
 
 function actionButtonLabel(action: ProjectAction): string {
-  if (action.key === 'generate_voiceover_from_campaign') {
+  if (isVoiceoverAction(action)) {
     return isCreatingVoiceover.value
       ? t('projectActions.creatingVoiceover')
       : t('projectActions.createVoiceoverFromScript')
+  }
+
+  if (action.primary_cta?.label) {
+    return action.primary_cta.label
   }
 
   if (action.status === 'available') {
@@ -155,7 +172,7 @@ function actionButtonLabel(action: ProjectAction): string {
 }
 
 function isActionImplemented(action: ProjectAction): boolean {
-  return action.key === 'generate_voiceover_from_campaign'
+  return isVoiceoverAction(action)
 }
 
 function isActionEnabled(action: ProjectAction): boolean {
@@ -215,7 +232,7 @@ async function createVoiceoverFromSelected(): Promise<void> {
 }
 
 function handleAction(action: ProjectAction): void {
-  if (action.key === 'generate_voiceover_from_campaign') {
+  if (isVoiceoverAction(action)) {
     void createVoiceoverFromSelected()
   }
 }

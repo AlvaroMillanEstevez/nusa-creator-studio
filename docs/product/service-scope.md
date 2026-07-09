@@ -85,6 +85,21 @@ Affiliate Campaign Generator (Basic)
 → AI Voiceover (Advanced) can reuse the selected script
 → Motion AI Video / Avatar Presenter (Premium, later) can reuse script, voiceover and media assets
 ```
+
+## Workspace action access model
+
+Project pages should present Basic, Advanced and Premium services as workspace actions with clear access and cost metadata.
+
+| Tier | Access behavior | Workspace action behavior |
+| --- | --- | --- |
+| Basic | Available to authenticated users by default. | Can run directly when the project has enough brief context, or open a simple configure flow. |
+| Advanced | Available to Starter, Creator, Pro and internal/unlimited users. | Can reuse prior project generations, direct source text, media context or launcher options. |
+| Premium | Available to Creator, Pro and internal/unlimited users. | Usually opens a configure flow for media requirements before expensive provider work starts. |
+
+Admin, internal creator, unlimited and `internal_unlimited` accounts can access implemented actions regardless of public plan gating. Free users should still see Advanced and Premium actions, but locked actions should use a positive “Upgrade subscription” CTA instead of hiding the workflow.
+
+Action cards should show service tier and credit cost before generation. Detailed missing inputs, such as model reference or garment reference images, belong in launcher forms so the card remains encouraging and compact on mobile.
+
 ## Tool-by-tool mapping
 
 | Tool | Service tier | Output type | Current implementation stage | Notes |
