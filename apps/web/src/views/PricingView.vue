@@ -78,21 +78,6 @@ onMounted(() => {
         </p>
       </header>
 
-      <section class="nusa-card-soft mx-auto mt-10 max-w-3xl rounded-[2rem] p-5 text-center">
-        <p class="text-sm leading-6 text-neutral-300">
-          {{ t('pricing.subscriptionAccessNote') }}
-        </p>
-        <p class="mt-2 text-xs leading-5 text-neutral-500">
-          {{ t('pricing.toolTiersExplained') }}
-        </p>
-        <RouterLink
-          to="/tools"
-          data-testid="pricing-tools-link"
-          class="mt-4 inline-flex min-h-10 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-xs font-semibold text-neutral-100 transition hover:border-emerald-500 hover:bg-emerald-950/30"
-        >
-          {{ t('pricing.viewToolTiers') }}
-        </RouterLink>
-      </section>
 
       <div v-if="isLoading" class="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div
@@ -172,6 +157,23 @@ onMounted(() => {
             {{ plan.cta_label ?? t('pricing.viewPlan') }}
           </RouterLink>
         </article>
+      </section>
+
+      <section
+        v-if="!isLoading && !error"
+        class="nusa-card-soft mx-auto mt-10 max-w-3xl rounded-[2rem] p-5 text-center"
+        data-testid="pricing-tool-tier-note"
+      >
+        <p class="text-sm leading-6 text-neutral-300">
+          {{ t('pricing.subscriptionAccessNote') }}
+        </p>
+        <RouterLink
+          to="/tools"
+          data-testid="pricing-tools-link"
+          class="mt-4 inline-flex min-h-10 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-xs font-semibold text-neutral-100 transition hover:border-emerald-500 hover:bg-emerald-950/30"
+        >
+          {{ t('pricing.viewToolTiers') }}
+        </RouterLink>
       </section>
 
       <p

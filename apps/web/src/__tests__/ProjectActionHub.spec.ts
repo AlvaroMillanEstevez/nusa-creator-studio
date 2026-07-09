@@ -7,7 +7,6 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import ProjectActionHub from '@/components/ProjectActionHub.vue'
 import { API_BASE_URL } from '@/services/api'
 import type {
-  AiVoiceoverGenerationResponse,
   CampaignGenerationResponse,
   CreatorGeneration,
   ProjectAction,
@@ -220,34 +219,11 @@ const campaignResponse: CampaignGenerationResponse = {
   meta: { credits_balance: 19 },
 }
 
-const voiceoverResponse: AiVoiceoverGenerationResponse = {
-  data: {
-    id: 30,
-    user_id: 1,
-    project_id: 42,
-    job_type: 'generate_ai_voiceover',
-    provider: 'mock',
-    status: 'queued',
-    cost_usd: '0.0000',
-    credits_charged: 1,
-    input_payload: {
-      source_generation_id: 9,
-      source_text: 'Voiceover-ready script from the selected campaign.',
-    },
-    output_payload: null,
-    error_message: null,
-    request_payload: null,
-    result_payload: null,
-    started_at: null,
-    finished_at: null,
-    created_at: '2026-07-08T01:10:00.000000Z',
-  },
-  meta: { credits_balance: 18 },
-}
 
 async function mountHub(
   actions: ProjectActionsResponse = baseActions,
   selectedGeneration: CreatorGeneration | null = selectedCampaignGeneration,
+  initialPath = '/',
 ) {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -255,6 +231,7 @@ async function mountHub(
       { path: '/', component: { template: '<div />' } },
       { path: '/pricing', component: { template: '<div />' } },
       { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
     ],
   })
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
@@ -269,16 +246,13 @@ async function mountHub(
       return Response.json(campaignResponse, { status: 201 })
     }
 
-    if (url.endsWith('/projects/42/generate-voiceover') && method === 'POST') {
-      return Response.json(voiceoverResponse, { status: 201 })
-    }
 
     return Response.json({}, { status: 404 })
   })
   vi.stubGlobal('fetch', fetchMock)
   vi.stubGlobal('scrollTo', vi.fn<() => void>())
 
-  await router.push('/')
+  await router.push(initialPath)
   await router.isReady()
 
   const wrapper = mount(ProjectActionHub, {
@@ -367,8 +341,12 @@ describe('ProjectActionHub', () => {
     )
   })
 
-  it('opens the voiceover launcher and submits a selected source generation', async () => {
-    const { wrapper, fetchMock } = await mountHub()
+  it('routes voiceover actions to the dedicated setup page with selected source context', async () => {
+    const { wrapper, fetchMock, router } = await mountHub(
+      baseActions,
+      selectedCampaignGeneration,
+      '/projects/42/generations/9',
+    )
 
     const voiceoverButton = wrapper
       .get('[data-testid="project-action-generate_voiceover_from_script"]')
@@ -378,72 +356,18 @@ describe('ProjectActionHub', () => {
     await voiceoverButton.trigger('click')
     await flushPromises()
 
-    const launcher = wrapper.get('[data-testid="project-action-launcher"]')
-
-    expect(launcher.attributes('role')).toBe('dialog')
-    expect(launcher.attributes('aria-modal')).toBe('true')
-    expect(launcher.classes()).toContain('fixed')
-    expect(launcher.text()).toContain('Create voiceover')
-    expect(launcher.text()).toContain('Select source')
-    expect(launcher.text()).toContain('Choose a saved generation or write custom text.')
-    expect(launcher.text()).not.toContain('Create voiceover from this script')
-    expect(launcher.findAll('button').some((button) => button.text() === 'Close')).toBe(true)
-    expect(wrapper.text()).toContain('Default voice')
-    expect(wrapper.text()).toContain('Tone')
-    expect(wrapper.text()).toContain('Pace')
-    expect(wrapper.text()).toContain('Style')
-
-    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Generate voiceover'))
-    await submitButton?.trigger('click')
-    await flushPromises()
-
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(router.currentRoute.value.name).toBe('project-voiceover-action')
+    expect(router.currentRoute.value.params.projectId).toBe('42')
+    expect(router.currentRoute.value.query.source_generation_id).toBe('9')
+    expect(router.currentRoute.value.query.return_to).toBe('/projects/42/generations/9')
+    expect(wrapper.find('[data-testid="project-action-launcher"]').exists()).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalledWith(
       API_BASE_URL + '/projects/42/generate-voiceover',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({
-          language: 'english',
-          tone: 'natural',
-          pace: 'medium',
-          style: 'natural_creator',
-          source_generation_id: 9,
-          source_text: 'Voiceover-ready script from the selected campaign.',
-        }),
-      }),
-    )
-    expect(wrapper.emitted('generated')?.[0]).toEqual([voiceoverResponse])
-  })
-  it('keeps voiceover configurable when a voiceover generation is selected', async () => {
-    const { wrapper, fetchMock } = await mountHub(baseActions, selectedVoiceoverGeneration)
-
-    await wrapper
-      .get('[data-testid="project-action-generate_voiceover_from_script"]')
-      .find('button')
-      .trigger('click')
-    await flushPromises()
-
-    expect(wrapper.get('[data-testid="project-action-launcher"]').text()).toContain('Campaign script source')
-
-    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Generate voiceover'))
-    await submitButton?.trigger('click')
-    await flushPromises()
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      API_BASE_URL + '/projects/42/generate-voiceover',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({
-          language: 'english',
-          tone: 'natural',
-          pace: 'medium',
-          style: 'natural_creator',
-          source_generation_id: 9,
-        }),
-      }),
+      expect.anything(),
     )
   })
 
-  it('allows manual source text when no recommended voiceover source exists', async () => {
+  it('routes voiceover setup without source query when no saved source exists', async () => {
     const noSourceActions: ProjectActionsResponse = {
       data: baseActions.data.map((item) => item.key === 'generate_voiceover_from_script'
         ? {
@@ -456,7 +380,7 @@ describe('ProjectActionHub', () => {
           }
         : item),
     }
-    const { wrapper, fetchMock } = await mountHub(noSourceActions, null)
+    const { wrapper, router } = await mountHub(noSourceActions, null)
 
     await wrapper
       .get('[data-testid="project-action-generate_voiceover_from_script"]')
@@ -464,26 +388,18 @@ describe('ProjectActionHub', () => {
       .trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="project-action-launcher"]').text()).toContain('Manual source text')
-    await wrapper.get('textarea').setValue('Manual narration source for this voiceover.')
+    expect(router.currentRoute.value.name).toBe('project-voiceover-action')
+    expect(router.currentRoute.value.query.source_generation_id).toBeUndefined()
+  })
 
-    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Generate voiceover'))
-    await submitButton?.trigger('click')
+  it('shows a latest voiceover link when a completed voiceover generation is available', async () => {
+    const { wrapper } = await mountHub(baseActions, selectedCampaignGeneration)
+
+    await wrapper.setProps({ latestVoiceoverGeneration: { ...selectedVoiceoverGeneration, status: 'completed' } })
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      API_BASE_URL + '/projects/42/generate-voiceover',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({
-          language: 'english',
-          tone: 'natural',
-          pace: 'medium',
-          style: 'natural_creator',
-          source_text: 'Manual narration source for this voiceover.',
-        }),
-      }),
-    )
+    expect(wrapper.get('[data-testid="view-latest-voiceover"]').attributes('href')).toBe('/projects/42/generations/22')
+    expect(wrapper.text()).toContain('View latest voiceover')
   })
 
   it('opens setup guidance for asset actions without running generation', async () => {

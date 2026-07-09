@@ -56,6 +56,11 @@ const voiceoverAction = computed(() =>
 const campaignGenerationCount = computed(() =>
   generation.value?.job_type === 'generate_affiliate_campaign' ? 1 : 0,
 )
+const latestVoiceoverGeneration = computed(() =>
+  generation.value?.job_type === 'generate_ai_voiceover' && generation.value.status === 'completed'
+    ? generation.value
+    : null,
+)
 const actionRefreshKey = computed(() =>
   `${project.value?.id ?? 'none'}:${generation.value?.id ?? 'none'}:${generation.value?.status ?? 'none'}:${actionRefreshNonce.value}`,
 )
@@ -215,6 +220,7 @@ onMounted(loadGenerationDetail)
           :project-id="project.id"
           :selected-generation="generation"
           :latest-campaign-generation="generation.job_type === 'generate_affiliate_campaign' ? generation : null"
+          :latest-voiceover-generation="latestVoiceoverGeneration"
           :campaign-generation-count="campaignGenerationCount"
           :refresh-key="actionRefreshKey"
           @generated="handleGenerated"

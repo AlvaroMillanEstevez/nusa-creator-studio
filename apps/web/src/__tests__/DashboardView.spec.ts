@@ -125,7 +125,10 @@ describe('DashboardView', () => {
       'Primary navigation',
     )
     expect(text).toContain('Your project workspaces')
+    expect(text.match(/Your project workspaces/g) ?? []).toHaveLength(1)
     expect(text).toContain('Manage projects, assets and AI generations from one place.')
+    expect(text).toContain('Recent projects')
+    expect(text).toContain('Open a workspace to continue with campaigns, voiceovers, try-on and motion actions.')
     expect(text).toContain('Portable key light launch')
     expect(text).toContain('Workspace')
     expect(text).toContain('2 generations')

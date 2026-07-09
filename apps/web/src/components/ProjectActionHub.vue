@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useTranslations } from '@/i18n'
 import { ApiError } from '@/services/api'
@@ -44,6 +44,7 @@ const props = defineProps<{
   projectId: number
   selectedGeneration: CreatorGeneration | null
   latestCampaignGeneration?: CreatorGeneration | null
+  latestVoiceoverGeneration?: CreatorGeneration | null
   campaignGenerationCount?: number
   refreshKey?: string | number
   isGenerating?: boolean
@@ -55,6 +56,7 @@ const emit = defineEmits<{
 
 const { t } = useTranslations()
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const actions = ref<ProjectAction[]>([])
 const activeAction = ref<ProjectAction | null>(null)
@@ -106,6 +108,30 @@ const campaignGenerationForView = computed(() => {
 })
 const campaignResultRoute = computed(() => {
   const generation = campaignGenerationForView.value
+
+  return generation === null
+    ? null
+    : `/projects/${String(props.projectId)}/generations/${String(generation.id)}`
+})
+const voiceoverGenerationForView = computed(() => {
+  if (
+    props.latestVoiceoverGeneration?.job_type === 'generate_ai_voiceover' &&
+    props.latestVoiceoverGeneration.status === 'completed'
+  ) {
+    return props.latestVoiceoverGeneration
+  }
+
+  if (
+    props.selectedGeneration?.job_type === 'generate_ai_voiceover' &&
+    props.selectedGeneration.status === 'completed'
+  ) {
+    return props.selectedGeneration
+  }
+
+  return null
+})
+const voiceoverResultRoute = computed(() => {
+  const generation = voiceoverGenerationForView.value
 
   return generation === null
     ? null
@@ -436,8 +462,12 @@ function actionButtonLabel(action: ProjectAction): string {
     return t('projectActions.status.coming_soon')
   }
 
-  if (isVoiceoverAction(action) && action.status === 'configure') {
-    return t('projectActions.configureVoiceover')
+  if (isVoiceoverAction(action) && action.primary_cta?.label?.includes('another')) {
+    return t('projectActions.createAnotherVoiceover')
+  }
+
+  if (isVoiceoverAction(action)) {
+    return t('projectActions.createVoiceover')
   }
 
   if (isCampaignAction(action) && campaignGenerationForView.value !== null) {
@@ -448,11 +478,8 @@ function actionButtonLabel(action: ProjectAction): string {
     return t('projectActions.generateAnotherCampaignVersion')
   }
 
-  if (isVoiceoverAction(action) && action.primary_cta?.label?.includes('another')) {
-    return t('projectActions.createAnotherVoiceover')
-  }
-
   if (isTryOnAction(action)) {
+
     return t('projectActions.setupTryOn')
   }
 
@@ -469,6 +496,25 @@ function isActionButtonDisabled(action: ProjectAction): boolean {
 
 function isActionSubmitting(action: ProjectAction): boolean {
   return isSubmitting.value && activeAction.value?.key === action.key
+}
+
+function voiceoverActionRoute(action: ProjectAction) {
+  const query: Record<string, string> = {}
+  const sourceId = selectedVoiceoverSource.value?.generation_id ?? action.source_generation_id
+
+  if (sourceId !== null && sourceId !== undefined) {
+    query.source_generation_id = String(sourceId)
+  }
+
+  if (route.name === 'generation-result') {
+    query.return_to = route.fullPath
+  }
+
+  return {
+    name: 'project-voiceover-action',
+    params: { projectId: String(props.projectId) },
+    query,
+  }
 }
 
 function sourceOptionsFor(action: ProjectAction): Array<ProjectActionRecommendedSource & { fullText?: string }> {
@@ -527,6 +573,11 @@ async function handleAction(action: ProjectAction): Promise<void> {
   }
 
   if (isComingSoon(action) || isUnavailableAction(action)) {
+    return
+  }
+
+  if (isVoiceoverAction(action)) {
+    await router.push(voiceoverActionRoute(action))
     return
   }
 
@@ -721,6 +772,15 @@ watch(
                 data-testid="view-generated-campaign"
               >
                 {{ (campaignGenerationCount ?? 0) > 1 ? t('projectActions.viewLatestCampaign') : t('projectActions.viewGeneratedCampaign') }}
+              </RouterLink>
+
+              <RouterLink
+                v-if="isVoiceoverAction(action) && voiceoverResultRoute"
+                :to="voiceoverResultRoute"
+                class="mt-4 flex min-h-11 w-full items-center justify-center rounded-2xl border border-sky-800 bg-sky-950/40 px-4 text-sm font-semibold text-sky-100 transition hover:border-sky-500 hover:bg-sky-900/50"
+                data-testid="view-latest-voiceover"
+              >
+                {{ t('projectActions.viewLatestVoiceover') }}
               </RouterLink>
 
               <button

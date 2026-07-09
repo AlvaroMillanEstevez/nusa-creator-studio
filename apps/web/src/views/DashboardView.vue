@@ -185,9 +185,9 @@ onMounted(loadDashboard)
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
                 {{ t('dashboard.projects') }}
               </p>
-              <h2 class="mt-2 text-2xl font-semibold">{{ toolIntent ? t('dashboard.chooseExistingProject') : t('dashboard.projectWorkspaces') }}</h2>
+              <h2 class="mt-2 text-2xl font-semibold">{{ toolIntent ? t('dashboard.chooseExistingProject') : t('dashboard.recentProjects') }}</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-500">
-                {{ toolIntent ? t('dashboard.chooseProjectWorkspaceToContinue', { workflow: toolIntent.label }) : t('dashboard.projectsBody') }}
+                {{ toolIntent ? t('dashboard.chooseProjectWorkspaceToContinue', { workflow: toolIntent.label }) : t('dashboard.openWorkspaceToContinue') }}
               </p>
             </div>
             <span v-if="dashboard.recent_projects.length" class="text-xs text-neutral-500">

@@ -68,6 +68,11 @@ const latestCampaignGeneration = computed(() =>
 const campaignGenerationCount = computed(() =>
   generationHistory.value.filter((item) => item.job_type === 'generate_affiliate_campaign').length,
 )
+const latestVoiceoverGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_ai_voiceover' && item.status === 'completed',
+  ) ?? null,
+)
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollingGenerationId: number | null = null
@@ -442,6 +447,7 @@ onBeforeUnmount(stopPolling)
             :project-id="project.id"
             :selected-generation="generation"
             :latest-campaign-generation="latestCampaignGeneration"
+            :latest-voiceover-generation="latestVoiceoverGeneration"
             :campaign-generation-count="campaignGenerationCount"
             :refresh-key="actionRefreshKey"
             :is-generating="isGenerating"
@@ -510,6 +516,7 @@ onBeforeUnmount(stopPolling)
             :project-id="project.id"
             :selected-generation="generation"
             :latest-campaign-generation="latestCampaignGeneration"
+            :latest-voiceover-generation="latestVoiceoverGeneration"
             :campaign-generation-count="campaignGenerationCount"
             :refresh-key="actionRefreshKey"
             :is-generating="isGenerating"

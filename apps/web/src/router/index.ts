@@ -154,6 +154,12 @@ const router = createRouter({
       meta: { requiresAuth: true, titleKey: 'metadata.titles.generationResult' },
     },
     {
+      path: '/projects/:projectId/actions/voiceover',
+      name: 'project-voiceover-action',
+      component: () => import('../views/VoiceoverActionView.vue'),
+      meta: { requiresAuth: true, titleKey: 'metadata.titles.voiceoverAction' },
+    },
+    {
       path: '/projects/:id',
       name: 'project-detail',
       component: () => import('../views/ProjectDetailView.vue'),
