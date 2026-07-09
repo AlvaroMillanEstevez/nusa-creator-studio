@@ -269,6 +269,14 @@ function translatedDescription(action: ProjectAction): string {
   return translated === key ? action.description : translated
 }
 
+function launcherTitle(action: ProjectAction): string {
+  if (isVoiceoverAction(action)) {
+    return t('projectActions.createVoiceover')
+  }
+
+  return translatedTitle(action)
+}
+
 function isVoiceoverAction(action: ProjectAction): boolean {
   return (
     action.key === 'generate_voiceover_from_script' ||
@@ -735,16 +743,25 @@ watch(
       </div>
       <div
         v-if="activeAction"
-        class="mt-6 rounded-[1.75rem] border border-emerald-900/60 bg-emerald-950/20 p-4"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-neutral-950/80 px-0 pt-8 backdrop-blur-sm sm:items-center sm:px-6 sm:py-8"
         data-testid="project-action-launcher"
+        role="dialog"
+        aria-modal="true"
       >
+        <button
+          type="button"
+          class="absolute inset-0 cursor-default"
+          :aria-label="t('projectActions.closeLauncher')"
+          @click="closeLauncher"
+        />
+        <div class="relative max-h-[92vh] w-full overflow-y-auto rounded-t-[2rem] border border-emerald-900/60 bg-neutral-950 p-4 shadow-2xl shadow-emerald-950/40 sm:max-w-3xl sm:rounded-[2rem] sm:p-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
               {{ t('projectActions.actionLauncher') }}
             </p>
             <h3 class="mt-2 text-xl font-semibold text-white">
-              {{ translatedTitle(activeAction) }}
+              {{ launcherTitle(activeAction) }}
             </h3>
             <div class="mt-3 flex flex-wrap gap-2">
               <span
@@ -763,7 +780,7 @@ watch(
             class="min-h-10 rounded-xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-900"
             @click="closeLauncher"
           >
-            {{ t('projectActions.cancelSetup') }}
+            {{ t('projectActions.close') }}
           </button>
         </div>
 
@@ -791,8 +808,11 @@ watch(
           <div class="mt-5 space-y-4">
             <fieldset class="space-y-3">
               <legend class="text-sm font-semibold text-neutral-100">
-                {{ t('projectActions.selectSourceScript') }}
+                {{ t('projectActions.selectSource') }}
               </legend>
+              <p class="text-xs leading-5 text-neutral-500">
+                {{ t('projectActions.chooseSavedGenerationOrCustomText') }}
+              </p>
 
               <label
                 v-if="activeSourceOptions.length"
@@ -978,8 +998,9 @@ watch(
               class="size-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950"
               aria-hidden="true"
             />
-            {{ isSubmitting ? t('projectActions.generating') : t('projectActions.startGeneration') }}
+            {{ isSubmitting ? t('projectActions.generating') : isVoiceoverAction(activeAction) ? t('projectActions.generateVoiceover') : t('projectActions.startGeneration') }}
           </button>
+        </div>
         </div>
       </div>
     </div>

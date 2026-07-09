@@ -378,13 +378,22 @@ describe('ProjectActionHub', () => {
     await voiceoverButton.trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="project-action-launcher"]').text()).toContain('Select source script')
+    const launcher = wrapper.get('[data-testid="project-action-launcher"]')
+
+    expect(launcher.attributes('role')).toBe('dialog')
+    expect(launcher.attributes('aria-modal')).toBe('true')
+    expect(launcher.classes()).toContain('fixed')
+    expect(launcher.text()).toContain('Create voiceover')
+    expect(launcher.text()).toContain('Select source')
+    expect(launcher.text()).toContain('Choose a saved generation or write custom text.')
+    expect(launcher.text()).not.toContain('Create voiceover from this script')
+    expect(launcher.findAll('button').some((button) => button.text() === 'Close')).toBe(true)
     expect(wrapper.text()).toContain('Default voice')
     expect(wrapper.text()).toContain('Tone')
     expect(wrapper.text()).toContain('Pace')
     expect(wrapper.text()).toContain('Style')
 
-    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Start generation'))
+    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Generate voiceover'))
     await submitButton?.trigger('click')
     await flushPromises()
 
@@ -415,7 +424,7 @@ describe('ProjectActionHub', () => {
 
     expect(wrapper.get('[data-testid="project-action-launcher"]').text()).toContain('Campaign script source')
 
-    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Start generation'))
+    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Generate voiceover'))
     await submitButton?.trigger('click')
     await flushPromises()
 
@@ -458,7 +467,7 @@ describe('ProjectActionHub', () => {
     expect(wrapper.get('[data-testid="project-action-launcher"]').text()).toContain('Manual source text')
     await wrapper.get('textarea').setValue('Manual narration source for this voiceover.')
 
-    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Start generation'))
+    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('Generate voiceover'))
     await submitButton?.trigger('click')
     await flushPromises()
 

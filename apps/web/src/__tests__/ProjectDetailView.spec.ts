@@ -186,7 +186,7 @@ const defaultActions: ProjectActionsResponse = {
     },
     {
       key: 'generate_voiceover_from_campaign',
-      title: 'Create voiceover from this script',
+      title: 'Create voiceover',
       description: 'Generate an AI voiceover from this script.',
       service_tier: 'advanced',
       output_type: 'audio',
@@ -425,7 +425,7 @@ describe('ProjectDetailView', () => {
     expect(renderedText).toContain('Campaña para pequeños creadores en España')
     expect(renderedText).toContain('Diseñado para creadores que necesitan automatización')
     expect(renderedText).toContain('Continue with selected result')
-    expect(renderedText).toContain('Create voiceover from this script')
+    expect(renderedText).toContain('Create voiceover')
     expect(wrapper.find('[data-testid="project-action-hub"]').exists()).toBe(true)
     expect(renderedText).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)
   })

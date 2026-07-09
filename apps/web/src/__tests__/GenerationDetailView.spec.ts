@@ -89,7 +89,7 @@ async function mountGenerationDetail() {
         data: [
           {
             key: 'generate_voiceover_from_campaign',
-            title: 'Create voiceover from this script',
+            title: 'Create voiceover',
             description: 'Generate a voiceover from this selected campaign.',
             service_tier: 'advanced',
             output_type: 'audio',
@@ -187,6 +187,6 @@ describe('GenerationDetailView', () => {
     expect(text).toContain('Back to workspace')
     expect(wrapper.find('a[href="/projects/77"]').text()).toContain('Back to workspace')
     expect(wrapper.find('[data-testid="project-action-hub"]').exists()).toBe(true)
-    expect(text).toContain('Create voiceover from this script')
+    expect(text).toContain('Create voiceover')
   })
 })

@@ -148,12 +148,20 @@ describe('DashboardView', () => {
     expect(wrapper.find('a[href="/product-to-video/new"]').exists()).toBe(false)
   })
 
-  it('shows a contextual workflow intent panel from the tools page', async () => {
+  it('shows the selected workflow as the top dashboard hero without duplicate create controls', async () => {
     const { wrapper } = await mountDashboard(populatedDashboard, '/dashboard?tool=ai_voiceover')
+    const text = wrapper.text()
 
-    expect(wrapper.text()).toContain('Start with AI Voiceover')
-    expect(wrapper.text()).toContain('Choose an existing project or create a new project workspace.')
-    expect(wrapper.findAll('a[href="/projects/new"]')).not.toHaveLength(0)
+    expect(text).toContain('Selected workflow')
+    expect(text).toContain('Start with AI Voiceover')
+    expect(text).toContain('Choose a project workspace to continue with AI Voiceover.')
+    expect(text).toContain('Choose existing project')
+    expect(text).toContain('Open workspace and run from Continue from here')
+    expect(text).toContain('View workspace activity')
+    expect(text).not.toContain('Manage projects, assets and AI generations from one place.')
+    expect(text).not.toContain('Your project workspaces')
+    expect(wrapper.findAll('a[href="/projects/new"]')).toHaveLength(1)
+    expect(wrapper.find('a[href="/dashboard?tool=ai_voiceover#analytics"]').exists()).toBe(true)
   })
 
   it('shows a create-first-project state when no workspaces exist', async () => {

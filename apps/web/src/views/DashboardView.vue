@@ -99,7 +99,7 @@ onMounted(loadDashboard)
     <div class="nusa-page-container mx-auto min-h-screen max-w-7xl px-5 pb-16 pt-5 sm:px-6">
       <AppNav />
 
-      <header class="pt-12">
+      <header v-if="!toolIntent" class="pt-12">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p class="text-sm font-medium text-emerald-400">{{ t('dashboard.kicker') }}</p>
@@ -149,25 +149,33 @@ onMounted(loadDashboard)
       </section>
 
       <template v-else-if="dashboard">
-        <section v-if="toolIntent" class="nusa-card-premium mt-9 rounded-[2rem] p-5 sm:p-6">
-          <div class="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <section v-if="toolIntent" class="nusa-card-premium mt-10 rounded-[2rem] p-5 sm:p-6">
+          <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                {{ t('dashboard.workflowIntent') }}
+                {{ t('dashboard.selectedWorkflow') }}
               </p>
-              <h2 class="mt-2 text-2xl font-bold">
-                {{ t('dashboard.startWithTool', { tool: toolIntent.label }) }}
-              </h2>
-              <p class="mt-3 max-w-2xl text-sm leading-6 text-neutral-400">
-                {{ t('dashboard.chooseExistingOrCreate') }}
+              <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">
+                {{ t('dashboard.startWithWorkflow', { workflow: toolIntent.label }) }}
+              </h1>
+              <p class="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
+                {{ t('dashboard.chooseProjectWorkspaceToContinue', { workflow: toolIntent.label }) }}
               </p>
             </div>
-            <RouterLink
-              to="/projects/new"
-              class="nusa-button-primary nusa-focus-ring inline-flex min-h-12 items-center justify-center rounded-2xl px-5 text-sm font-black text-neutral-950 transition hover:brightness-105"
-            >
-              {{ t('dashboard.createNewProject') }}
-            </RouterLink>
+            <div class="flex flex-col gap-3 sm:flex-row">
+              <RouterLink
+                to="/projects/new"
+                class="nusa-button-primary nusa-focus-ring inline-flex min-h-12 items-center justify-center rounded-2xl px-5 text-sm font-black text-neutral-950 transition hover:brightness-105"
+              >
+                {{ t('dashboard.createNewProject') }}
+              </RouterLink>
+              <RouterLink
+                :to="'/dashboard?tool=' + toolIntent.key + '#analytics'"
+                class="nusa-focus-ring inline-flex min-h-12 items-center justify-center rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800"
+              >
+                {{ t('dashboard.viewWorkspaceActivity') }}
+              </RouterLink>
+            </div>
           </div>
         </section>
 
@@ -177,9 +185,9 @@ onMounted(loadDashboard)
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
                 {{ t('dashboard.projects') }}
               </p>
-              <h2 class="mt-2 text-2xl font-semibold">{{ t('dashboard.projectWorkspaces') }}</h2>
+              <h2 class="mt-2 text-2xl font-semibold">{{ toolIntent ? t('dashboard.chooseExistingProject') : t('dashboard.projectWorkspaces') }}</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-500">
-                {{ t('dashboard.projectsBody') }}
+                {{ toolIntent ? t('dashboard.chooseProjectWorkspaceToContinue', { workflow: toolIntent.label }) : t('dashboard.projectsBody') }}
               </p>
             </div>
             <span v-if="dashboard.recent_projects.length" class="text-xs text-neutral-500">
@@ -230,7 +238,7 @@ onMounted(loadDashboard)
                 {{ t('dashboard.updatedOn', { date: formatDate(project.updated_at ?? project.created_at) }) }}
               </p>
               <span class="mt-auto pt-5 text-sm font-semibold text-emerald-300">
-                {{ t('dashboard.openWorkspace') }} <span aria-hidden="true">&rarr;</span>
+                {{ toolIntent ? t('dashboard.openWorkspaceAndRunFromContinue') : t('dashboard.openWorkspace') }} <span aria-hidden="true">&rarr;</span>
               </span>
             </RouterLink>
           </div>
