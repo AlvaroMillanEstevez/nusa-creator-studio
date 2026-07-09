@@ -80,6 +80,26 @@ Workflow guidance belongs in the application UI, for example:
 
 This keeps provider output portable and prevents generated content from becoming product upsell copy.
 
+
+## Workspace cleanliness and focused result views
+
+The main project workspace should stay clean and action-oriented:
+
+1. Project header and context.
+2. Continue/action hub.
+3. Generation history.
+4. Optional compact status or summary cards only when they help navigation.
+
+Full generation outputs should open in focused result views such as `/projects/{project}/generations/{generation}`. This keeps long campaign scripts, captions, hashtags and provider metadata from overwhelming the main workspace.
+
+Campaign result pages can include contextual actions. In particular, the campaign detail view may expose an editable **Narration voice** section that lets the creator adjust the voiceover text before launching AI Voiceover in the same project. The edited narration text should be sent as `source_text` while keeping `source_generation_id` linked for traceability.
+
+Project assets should ideally be attached through action setup flows with clear roles, such as `product_image`, `model_reference`, `garment_reference`, `source_video` or `audio_track`. The generic workspace should avoid showing a broad upload area before the creator knows what an asset means in the workflow.
+
+The Project Action Hub can appear in two contexts:
+
+- In the main workspace with no selected generation, where it starts or continues from project context.
+- In a focused generation result view with a selected generation, where actions can reuse that result as source context.
 ## Basic, Advanced and Premium relationship
 
 Basic workflows often create context for later Advanced or Premium workflows.

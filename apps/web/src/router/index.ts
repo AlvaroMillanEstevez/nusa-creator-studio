@@ -148,6 +148,12 @@ const router = createRouter({
       meta: { requiresAuth: true, titleKey: 'metadata.titles.projectCreate' },
     },
     {
+      path: '/projects/:projectId/generations/:generationId',
+      name: 'generation-result',
+      component: () => import('../views/GenerationDetailView.vue'),
+      meta: { requiresAuth: true, titleKey: 'metadata.titles.generationResult' },
+    },
+    {
       path: '/projects/:id',
       name: 'project-detail',
       component: () => import('../views/ProjectDetailView.vue'),

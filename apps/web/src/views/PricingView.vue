@@ -12,7 +12,6 @@ import { formatCurrency } from '@/utils/formatters'
 
 const auth = useAuthStore()
 const plans = ref<SubscriptionPlan[]>([])
-const pricingServiceTiers = ['basic', 'advanced', 'premium'] as const
 const isLoading = ref(true)
 const error = ref('')
 
@@ -79,16 +78,20 @@ onMounted(() => {
         </p>
       </header>
 
-      <section class="nusa-card-soft mx-auto mt-10 grid max-w-5xl gap-3 rounded-[2rem] p-4 text-left md:grid-cols-3">
-        <article v-for="tier in pricingServiceTiers" :key="tier" class="rounded-3xl bg-neutral-950/50 p-4">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-            {{ t('pricing.serviceTiers.' + tier + '.label') }}
-          </p>
-          <h2 class="mt-2 text-lg font-semibold">{{ t('pricing.serviceTiers.' + tier + '.title') }}</h2>
-          <p class="mt-2 text-sm leading-6 text-neutral-400">
-            {{ t('pricing.serviceTiers.' + tier + '.body') }}
-          </p>
-        </article>
+      <section class="nusa-card-soft mx-auto mt-10 max-w-3xl rounded-[2rem] p-5 text-center">
+        <p class="text-sm leading-6 text-neutral-300">
+          {{ t('pricing.subscriptionAccessNote') }}
+        </p>
+        <p class="mt-2 text-xs leading-5 text-neutral-500">
+          {{ t('pricing.toolTiersExplained') }}
+        </p>
+        <RouterLink
+          to="/tools"
+          data-testid="pricing-tools-link"
+          class="mt-4 inline-flex min-h-10 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-xs font-semibold text-neutral-100 transition hover:border-emerald-500 hover:bg-emerald-950/30"
+        >
+          {{ t('pricing.viewToolTiers') }}
+        </RouterLink>
       </section>
 
       <div v-if="isLoading" class="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">

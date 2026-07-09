@@ -67,6 +67,28 @@ Main output:
 - Avatars.
 - Premium media assets.
 
+
+## Subscription plans vs service tiers
+
+Basic, Advanced and Premium are service/tool tiers. They describe workflow complexity, likely provider cost and access rules. They are not subscription plans.
+
+Subscription plans should be presented separately. A subscription plan gives a user:
+
+- A monthly internal platform credit allowance.
+- Access to one or more service tiers.
+- Limits or benefits appropriate to the plan.
+
+Pricing pages should focus on actual subscription plans, credits and access. The Tools page should explain which workflows are Basic, Advanced or Premium.
+
+Suggested copy pattern:
+
+- “X monthly credits.”
+- “Access to Basic workflows.”
+- “Access to Advanced workflows.”
+- “Premium workflows included.”
+- “Upgrade when you need higher-volume or premium workflows.”
+
+Avoid presenting Basic, Advanced and Premium as standalone pricing cards unless they become real subscription products later.
 ## Projects vs tools
 
 Nusa Creator Studio should use tools as workflows/actions, not isolated destinations that force creators to manually copy/paste outputs between pages.

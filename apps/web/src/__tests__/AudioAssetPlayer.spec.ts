@@ -62,6 +62,31 @@ describe('AudioAssetPlayer', () => {
     expect(objectUrls.revokeObjectURL).toHaveBeenCalledWith('blob:nusa-audio')
   })
 
+
+  it('renders compact playback without exposing the secure stream URL', async () => {
+    stubObjectUrls()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(new Blob(['mp3-bytes'], { type: 'audio/mpeg' }), { status: 200 }),
+      ),
+    )
+
+    const wrapper = mount(AudioAssetPlayer, {
+      props: {
+        compact: true,
+        streamUrl: '/api/v1/media-assets/42/stream',
+        title: 'voiceover-42.mp3',
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="audio-asset-player"]').attributes('data-compact')).toBe('true')
+    expect(wrapper.text()).toContain('voiceover-42.mp3')
+    expect(wrapper.find('[data-testid="compact-audio-controls"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('/api/v1/media-assets/42/stream')
+  })
   it('shows an error state when the private audio request fails', async () => {
     stubObjectUrls()
     vi.stubGlobal(

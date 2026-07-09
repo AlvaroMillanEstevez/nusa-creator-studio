@@ -43,14 +43,17 @@ class AiVoiceoverSourceResolver
 
             $extractedText = $this->extractText($sourceGeneration->output_payload ?? []);
 
-            if ($extractedText === null) {
-                throw ValidationException::withMessages([
-                    'source_generation_id' => 'The selected source generation does not contain usable voiceover text.',
-                ]);
+            if ($explicitSourceText === null) {
+                if ($extractedText === null) {
+                    throw ValidationException::withMessages([
+                        'source_generation_id' => 'The selected source generation does not contain usable voiceover text.',
+                    ]);
+                }
+
+                $explicitSourceText = $extractedText;
             }
 
-            $explicitSourceText = $extractedText;
-            $sourceGenerationExcerpt = Str::limit($extractedText, 240, '');
+            $sourceGenerationExcerpt = Str::limit($explicitSourceText, 240, '');
         }
 
         $input['source_text'] = $explicitSourceText ?? $this->fallbackText($input);

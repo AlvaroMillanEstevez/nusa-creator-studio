@@ -198,7 +198,7 @@ class AiVoiceoverGenerationApiTest extends TestCase
         Queue::assertPushed(GenerateAiVoiceoverJob::class, 2);
     }
 
-    public function test_voiceover_launcher_options_are_stored_with_same_project_source(): void
+    public function test_voiceover_launcher_options_keep_edited_source_text_with_same_project_source(): void
     {
         Queue::fake();
         $user = User::factory()->create(['credits_balance' => 5]);
@@ -217,7 +217,7 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $generationId = $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
                 'source_generation_id' => $sourceGeneration->id,
-                'source_text' => 'This text should be replaced by the selected source generation.',
+                'source_text' => 'Use this edited narration from the campaign detail page.',
                 'language' => 'spanish',
                 'tone' => 'premium',
                 'pace' => 'fast',
@@ -237,7 +237,7 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $generation = Generation::query()->findOrFail($generationId);
 
         $this->assertSame($sourceGeneration->id, $generation->input_payload['source_generation_id']);
-        $this->assertSame('Use this selected campaign source for the configured voiceover.', $generation->input_payload['source_text']);
+        $this->assertSame('Use this edited narration from the campaign detail page.', $generation->input_payload['source_text']);
         $this->assertSame('spanish', $generation->input_payload['language']);
         $this->assertSame('premium', $generation->input_payload['tone']);
         $this->assertSame('fast', $generation->input_payload['pace']);

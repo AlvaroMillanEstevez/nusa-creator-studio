@@ -12,9 +12,37 @@ async function mountWorkspaceProject() {
 
     if (url.endsWith('/projects/77/generations')) {
       return Response.json({
-        data: [],
+        data: [
+          {
+            id: 501,
+            user_id: 1,
+            project_id: 77,
+            job_type: 'generate_affiliate_campaign',
+            provider: 'mock',
+            status: 'completed',
+            cost_usd: '0.0000',
+            credits_charged: 1,
+            input_payload: null,
+            output_payload: {
+              hooks: ['Inline hook should stay off workspace.'],
+              script: {
+                title: 'Campaign script',
+                duration_seconds: 30,
+                scenes: [],
+              },
+              caption: 'Caption should stay on result page.',
+              hashtags: ['#Nusa'],
+              cta: 'View details.',
+              notes: [],
+            },
+            error_message: null,
+            started_at: null,
+            finished_at: null,
+            created_at: '2026-07-09T01:30:00.000000Z',
+          },
+        ],
         links: { first: null, last: null, prev: null, next: null },
-        meta: { current_page: 1, last_page: 1, per_page: 10, total: 0 },
+        meta: { current_page: 1, last_page: 1, per_page: 10, total: 1 },
       })
     }
 
@@ -94,6 +122,7 @@ async function mountWorkspaceProject() {
       { path: '/dashboard', component: { template: '<div />' } },
       { path: '/media', component: { template: '<div />' } },
       { path: '/account', component: { template: '<div />' } },
+      { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
       { path: '/projects/:id', component: ProjectDetailView },
     ],
   })
@@ -106,7 +135,7 @@ async function mountWorkspaceProject() {
   })
   await flushPromises()
 
-  return { wrapper }
+  return { wrapper, fetchMock }
 }
 
 describe('ProjectDetailView workspace project', () => {
@@ -115,7 +144,7 @@ describe('ProjectDetailView workspace project', () => {
   })
 
   it('renders generic workspace context and project actions safely', async () => {
-    const { wrapper } = await mountWorkspaceProject()
+    const { wrapper, fetchMock } = await mountWorkspaceProject()
     const text = wrapper.text()
 
     expect(text).toContain('Creator desk launch')
@@ -123,7 +152,27 @@ describe('ProjectDetailView workspace project', () => {
     expect(text).toContain('Compact creator desk lighting kit')
     expect(text).toContain('A compact desk light for mobile-first creators.')
     expect(text).toContain('TikTok affiliate creators')
-    expect(text).toContain('Generate campaign')
+    expect(text).toContain('Generate another affiliate campaign')
+    expect(text).toContain('View generated campaign')
+    expect(text).toContain('Generation history')
     expect(text).not.toContain('Turn one product into your next campaign')
+    expect(text).not.toContain('Upload source files')
+    expect(text).not.toContain('Inline hook should stay off workspace.')
+    expect(text).not.toContain('Caption should stay on result page.')
+
+    expect(wrapper.find('[data-testid="generation-result-link"]').attributes('href')).toBe(
+      '/projects/77/generations/501',
+    )
+    expect(wrapper.find('[data-testid="view-generated-campaign"]').attributes('href')).toBe(
+      '/projects/77/generations/501',
+    )
+
+    const actionHub = wrapper.get('[data-testid="project-action-hub"]').element
+    const history = wrapper.get('[data-testid="generation-history"]').element
+    expect(actionHub.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/projects/77/media-assets'),
+      expect.anything(),
+    )
   })
 })

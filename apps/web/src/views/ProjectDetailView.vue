@@ -15,6 +15,7 @@ import ProductToVideoBrief from '@/components/ProductToVideoBrief.vue'
 import ProjectActionHub from '@/components/ProjectActionHub.vue'
 import ProjectAssets from '@/components/ProjectAssets.vue'
 import VideoEnhancerBrief from '@/components/VideoEnhancerBrief.vue'
+import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import {
   generateAiVoiceover,
@@ -29,7 +30,7 @@ import {
 } from '@/services/projects'
 import { getCreatorTools } from '@/services/tools'
 import type { MediaAsset } from '@/types/media'
-import type { CreatorGeneration, CreatorProject, GenerationResponse, GenerationResult, GenerationStatus } from '@/types/project'
+import type { CreatorGeneration, CreatorProject, GenerationResponse, GenerationResult, GenerationStatus, WorkspaceProject } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
 
 const POLL_INTERVAL_MS = 2_000
@@ -53,6 +54,19 @@ const showQueueWorkerHint = ref(false)
 
 const showPrimaryGenerationCard = computed(() =>
   project.value !== null && !['affiliate_campaign', 'workspace'].includes(project.value.type),
+)
+function isWorkspaceProject(value: CreatorProject | null): value is WorkspaceProject {
+  return value?.type === 'workspace'
+}
+
+const workspaceProject = computed(() => isWorkspaceProject(project.value) ? project.value : null)
+const latestCampaignGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_affiliate_campaign' && item.status === 'completed',
+  ) ?? null,
+)
+const campaignGenerationCount = computed(() =>
+  generationHistory.value.filter((item) => item.job_type === 'generate_affiliate_campaign').length,
 )
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
@@ -421,54 +435,87 @@ onBeforeUnmount(stopPolling)
           <p class="mt-3 text-sm text-neutral-500">Project #{{ project.id }}</p>
         </section>
 
-        <GenericProjectBrief v-if="project.type === 'workspace'" :project="project" />
-        <AffiliateCampaignBrief v-else-if="project.type === 'affiliate_campaign'" :project="project" />
-        <VideoEnhancerBrief v-else-if="project.type === 'video_enhancer'" :project="project" />
-        <ProductToVideoBrief v-else-if="project.type === 'product_to_video'" :project="project" />
-        <AiVoiceoverBrief v-else-if="project.type === 'ai_voiceover'" :project="project" />
-        <FashionTryOnBrief v-else-if="project.type === 'fashion_try_on'" :project="project" />
-        <MotionVideoBrief v-else-if="project.type === 'motion_ai_video'" :project="project" />
+        <template v-if="workspaceProject">
+          <GenericProjectBrief :project="workspaceProject" />
 
-        <ProjectAssets
-          :project-id="project.id"
-          :project-type="project.type"
-          @assets-changed="updateProjectAssets"
-        />
+          <ProjectActionHub
+            :project-id="project.id"
+            :selected-generation="generation"
+            :latest-campaign-generation="latestCampaignGeneration"
+            :campaign-generation-count="campaignGenerationCount"
+            :refresh-key="actionRefreshKey"
+            :is-generating="isGenerating"
+            @generated="handleActionGenerated"
+          />
 
-        <GenerationActionCard
-          v-if="showPrimaryGenerationCard"
-          :project-type="project.type"
-          :has-generation="generation !== null"
-          :is-generating="isGenerating"
-          :error="generationError"
-          :remaining-credits="remainingCredits"
-          :credit-cost="toolCreditCost"
-          @generate="generateContent"
-        />
+          <p class="nusa-card-soft mt-5 rounded-2xl p-4 text-xs leading-5 text-neutral-500">
+            {{ t('projectActions.projectAssetsManagedInActionSetupFlows') }}
+          </p>
 
-        <GenerationHistory
-          :generations="generationHistory"
-          :selected-generation="generation"
-          :is-loading="isHistoryLoading"
-          :error="historyError"
-          :empty-copy="emptyHistoryCopy"
-          @select="selectGeneration"
-          @retry="loadGenerationHistory(String(project.id))"
-        />
+          <GenerationHistory
+            :generations="generationHistory"
+            :selected-generation="generation"
+            :is-loading="isHistoryLoading"
+            :error="historyError"
+            :empty-copy="emptyHistoryCopy"
+            :project-id="project.id"
+            open-results
+            @select="selectGeneration"
+            @retry="loadGenerationHistory(String(project.id))"
+          />
+        </template>
 
-        <GenerationResultRenderer
-          :generation="generation"
-          :show-queue-worker-hint="showQueueWorkerHint"
-          :media-assets="projectAssets"
-        />
+        <template v-else>
+          <AffiliateCampaignBrief v-if="project.type === 'affiliate_campaign'" :project="project" />
+          <VideoEnhancerBrief v-else-if="project.type === 'video_enhancer'" :project="project" />
+          <ProductToVideoBrief v-else-if="project.type === 'product_to_video'" :project="project" />
+          <AiVoiceoverBrief v-else-if="project.type === 'ai_voiceover'" :project="project" />
+          <FashionTryOnBrief v-else-if="project.type === 'fashion_try_on'" :project="project" />
+          <MotionVideoBrief v-else-if="project.type === 'motion_ai_video'" :project="project" />
 
-        <ProjectActionHub
-          :project-id="project.id"
-          :selected-generation="generation"
-          :refresh-key="actionRefreshKey"
-          :is-generating="isGenerating"
-          @generated="handleActionGenerated"
-        />
+          <ProjectAssets
+            :project-id="project.id"
+            :project-type="project.type"
+            @assets-changed="updateProjectAssets"
+          />
+
+          <GenerationActionCard
+            v-if="showPrimaryGenerationCard"
+            :project-type="project.type"
+            :has-generation="generation !== null"
+            :is-generating="isGenerating"
+            :error="generationError"
+            :remaining-credits="remainingCredits"
+            :credit-cost="toolCreditCost"
+            @generate="generateContent"
+          />
+
+          <GenerationHistory
+            :generations="generationHistory"
+            :selected-generation="generation"
+            :is-loading="isHistoryLoading"
+            :error="historyError"
+            :empty-copy="emptyHistoryCopy"
+            @select="selectGeneration"
+            @retry="loadGenerationHistory(String(project.id))"
+          />
+
+          <GenerationResultRenderer
+            :generation="generation"
+            :show-queue-worker-hint="showQueueWorkerHint"
+            :media-assets="projectAssets"
+          />
+
+          <ProjectActionHub
+            :project-id="project.id"
+            :selected-generation="generation"
+            :latest-campaign-generation="latestCampaignGeneration"
+            :campaign-generation-count="campaignGenerationCount"
+            :refresh-key="actionRefreshKey"
+            :is-generating="isGenerating"
+            @generated="handleActionGenerated"
+          />
+        </template>
       </template>
     </div>
   </main>

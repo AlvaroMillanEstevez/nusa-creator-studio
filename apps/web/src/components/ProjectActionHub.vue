@@ -43,6 +43,8 @@ interface VoiceoverFormState {
 const props = defineProps<{
   projectId: number
   selectedGeneration: CreatorGeneration | null
+  latestCampaignGeneration?: CreatorGeneration | null
+  campaignGenerationCount?: number
   refreshKey?: string | number
   isGenerating?: boolean
 }>()
@@ -84,6 +86,31 @@ const resultActionKeys: ProjectActionKey[] = [
   'avatar_presenter',
 ]
 
+
+const campaignGenerationForView = computed(() => {
+  if (
+    props.latestCampaignGeneration?.job_type === 'generate_affiliate_campaign' &&
+    props.latestCampaignGeneration.status === 'completed'
+  ) {
+    return props.latestCampaignGeneration
+  }
+
+  if (
+    props.selectedGeneration?.job_type === 'generate_affiliate_campaign' &&
+    props.selectedGeneration.status === 'completed'
+  ) {
+    return props.selectedGeneration
+  }
+
+  return null
+})
+const campaignResultRoute = computed(() => {
+  const generation = campaignGenerationForView.value
+
+  return generation === null
+    ? null
+    : `/projects/${String(props.projectId)}/generations/${String(generation.id)}`
+})
 const projectActions = computed(() =>
   actions.value.filter((action) => projectActionKeys.includes(action.key)),
 )
@@ -405,6 +432,10 @@ function actionButtonLabel(action: ProjectAction): string {
     return t('projectActions.configureVoiceover')
   }
 
+  if (isCampaignAction(action) && campaignGenerationForView.value !== null) {
+    return t('projectActions.generateAnotherAffiliateCampaign')
+  }
+
   if (isCampaignAction(action) && action.primary_cta?.label?.includes('another')) {
     return t('projectActions.generateAnotherCampaignVersion')
   }
@@ -675,9 +706,18 @@ watch(
                 {{ cardNote(action) }}
               </p>
 
+              <RouterLink
+                v-if="isCampaignAction(action) && campaignResultRoute"
+                :to="campaignResultRoute"
+                class="mt-4 flex min-h-11 w-full items-center justify-center rounded-2xl border border-emerald-800 bg-emerald-950/40 px-4 text-sm font-semibold text-emerald-100 transition hover:border-emerald-500 hover:bg-emerald-900/50"
+                data-testid="view-generated-campaign"
+              >
+                {{ (campaignGenerationCount ?? 0) > 1 ? t('projectActions.viewLatestCampaign') : t('projectActions.viewGeneratedCampaign') }}
+              </RouterLink>
+
               <button
                 type="button"
-                class="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition"
+                class="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition"
                 :class="isActionButtonDisabled(action) ? 'cursor-not-allowed border border-neutral-800 text-neutral-500' : isUpgradeAction(action) ? 'border border-amber-700 bg-amber-950/40 text-amber-100 hover:bg-amber-900/50' : 'bg-white text-neutral-950 hover:bg-emerald-300'"
                 :disabled="isActionButtonDisabled(action)"
                 @click="handleAction(action)"

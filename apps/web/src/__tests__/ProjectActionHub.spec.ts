@@ -254,6 +254,7 @@ async function mountHub(
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/pricing', component: { template: '<div />' } },
+      { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
     ],
   })
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
@@ -323,7 +324,8 @@ describe('ProjectActionHub', () => {
       .get('[data-testid="project-action-generate_campaign"]')
       .find('button')
 
-    expect(campaignButton.text()).toContain('Generate another campaign version')
+    expect(campaignButton.text()).toContain('Generate another affiliate campaign')
+    expect(wrapper.get('[data-testid="view-generated-campaign"]').attributes('href')).toBe('/projects/42/generations/9')
     await campaignButton.trigger('click')
     await flushPromises()
 
