@@ -102,6 +102,44 @@ class ProjectApiTest extends TestCase
         }
     }
 
+    public function test_generic_workspace_project_can_be_created_and_listed(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $response = $this->postJson('/api/v1/projects', [
+            'title' => 'Creator desk launch workspace',
+            'type' => 'workspace',
+            'status' => 'draft',
+            'input_payload' => [
+                'product_name' => 'Creator desk light',
+                'content_idea' => 'Compact creator desk lighting kit',
+                'product_description' => 'A compact desk light for mobile-first creators.',
+                'target_audience' => 'TikTok affiliate creators',
+                'language' => 'english',
+                'tone' => 'natural',
+                'platform' => 'tiktok',
+                'notes' => 'Keep claims practical.',
+            ],
+            'settings' => [
+                'platform' => 'tiktok',
+                'format' => 'vertical_9_16',
+            ],
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.type', 'workspace')
+            ->assertJsonPath('data.input_payload.content_idea', 'Compact creator desk lighting kit');
+
+        $projectId = $response->json('data.id');
+
+        $this->getJson('/api/v1/projects')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $projectId)
+            ->assertJsonPath('data.0.type', 'workspace');
+    }
+
     public function test_project_payloads_are_validated(): void
     {
         $user = User::factory()->create();

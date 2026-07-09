@@ -222,6 +222,46 @@ class ProjectActionApiTest extends TestCase
         );
     }
 
+    public function test_workspace_project_returns_sensible_project_actions(): void
+    {
+        $user = User::factory()->subscriber()->create(['plan_key' => 'creator']);
+        $project = Project::factory()->for($user)->create([
+            'title' => 'Creator desk launch workspace',
+            'type' => 'workspace',
+            'status' => 'draft',
+            'input_payload' => [
+                'product_name' => 'Creator desk light',
+                'content_idea' => 'Compact creator desk lighting kit',
+                'product_description' => 'A compact desk light for mobile-first creators.',
+                'target_audience' => 'TikTok affiliate creators',
+                'language' => 'english',
+                'tone' => 'natural',
+                'platform' => 'tiktok',
+            ],
+            'settings' => [
+                'platform' => 'tiktok',
+                'format' => 'vertical_9_16',
+            ],
+        ]);
+
+        $actions = collect($this->actingAs($user)
+            ->getJson("/api/v1/projects/{$project->id}/actions")
+            ->assertOk()
+            ->json('data'));
+
+        $campaignAction = $this->action($actions, 'generate_campaign');
+        $voiceoverAction = $this->action($actions, 'generate_voiceover_from_script');
+        $fashionAction = $this->action($actions, 'start_fashion_try_on');
+        $motionAction = $this->action($actions, 'start_motion_video');
+
+        $this->assertSame('available', $campaignAction['status']);
+        $this->assertSame('Generate campaign', $campaignAction['primary_cta']['label']);
+        $this->assertSame(0, $campaignAction['missing_requirements_count']);
+        $this->assertSame('configure', $voiceoverAction['status']);
+        $this->assertSame('Setup Try-On', $fashionAction['primary_cta']['label']);
+        $this->assertSame('Configure Motion Video', $motionAction['primary_cta']['label']);
+    }
+
     public function test_project_actions_are_owner_only(): void
     {
         $owner = User::factory()->create();

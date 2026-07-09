@@ -21,8 +21,8 @@ class CampaignGenerationService
 
     public function generate(Project $project, User $user): Generation
     {
-        if ($project->type !== 'affiliate_campaign') {
-            throw new DomainException('Only affiliate campaign projects can use campaign generation.');
+        if (! in_array($project->type, ['affiliate_campaign', 'workspace'], true)) {
+            throw new DomainException('Only affiliate campaign or workspace projects can use campaign generation.');
         }
 
         $inputPayload = $project->input_payload ?? [];

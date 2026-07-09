@@ -37,6 +37,10 @@ class DashboardApiTest extends TestCase
             'type' => 'product_to_video',
             'status' => 'completed',
         ]);
+        Project::factory()->for($user)->create([
+            'type' => 'workspace',
+            'status' => 'draft',
+        ]);
         $otherProject = Project::factory()->for($otherUser)->create();
 
         $this->generation($user, $affiliateDraft, 'completed', now()->subMinutes(3));
@@ -74,12 +78,13 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('access.monthly_credit_allowance', 20)
             ->assertJsonPath('access.credits_balance', 13)
             ->assertJsonPath('access.can_generate_without_credits', false)
-            ->assertJsonPath('stats.total_projects', 4)
+            ->assertJsonPath('stats.total_projects', 5)
             ->assertJsonPath('stats.total_generations', 3)
             ->assertJsonPath('stats.completed_generations', 2)
             ->assertJsonPath('stats.failed_generations', 1)
-            ->assertJsonPath('stats.draft_projects', 2)
+            ->assertJsonPath('stats.draft_projects', 3)
             ->assertJsonPath('stats.total_credits_spent', 3)
+            ->assertJsonPath('stats.workspace_projects', 1)
             ->assertJsonPath('stats.affiliate_campaign_projects', 2)
             ->assertJsonPath('stats.video_enhancer_projects', 1)
             ->assertJsonPath('stats.product_to_video_projects', 1);

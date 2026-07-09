@@ -142,6 +142,12 @@ const router = createRouter({
       meta: { requiresAuth: true, titleKey: 'metadata.titles.campaign' },
     },
     {
+      path: '/projects/new',
+      name: 'project-create',
+      component: () => import('../views/NewProjectWorkspaceView.vue'),
+      meta: { requiresAuth: true, titleKey: 'metadata.titles.projectCreate' },
+    },
+    {
       path: '/projects/:id',
       name: 'project-detail',
       component: () => import('../views/ProjectDetailView.vue'),

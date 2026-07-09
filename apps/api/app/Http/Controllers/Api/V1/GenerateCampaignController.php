@@ -28,9 +28,9 @@ class GenerateCampaignController extends Controller
 
         $this->ensureOwnedBy($user, $project);
 
-        if ($project->type !== 'affiliate_campaign') {
+        if (! in_array($project->type, ['affiliate_campaign', 'workspace'], true)) {
             return response()->json([
-                'message' => 'Only affiliate campaign projects can use campaign generation.',
+                'message' => 'Only affiliate campaign or workspace projects can use campaign generation.',
                 'code' => 'invalid_project_type',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }

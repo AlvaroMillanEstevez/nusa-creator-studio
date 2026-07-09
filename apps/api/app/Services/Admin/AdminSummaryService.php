@@ -53,6 +53,7 @@ class AdminSummaryService
                 })
                 ->count(),
             'projects_by_type' => [
+                'workspace' => (int) ($projectsByType['workspace'] ?? 0),
                 'affiliate_campaign' => (int) ($projectsByType['affiliate_campaign'] ?? 0),
                 'video_enhancer' => (int) ($projectsByType['video_enhancer'] ?? 0),
                 'product_to_video' => (int) ($projectsByType['product_to_video'] ?? 0),

@@ -22,6 +22,7 @@ const summary: AdminSummary = {
   total_credits_spent: 24,
   total_unlimited_generations: 6,
   projects_by_type: {
+    workspace: 1,
     affiliate_campaign: 8,
     video_enhancer: 6,
     product_to_video: 4,

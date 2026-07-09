@@ -26,12 +26,36 @@ import type {
   VideoEnhancerForm,
   VideoEnhancerGenerationResponse,
   VideoEnhancerProject,
+  WorkspaceFormPayload,
+  WorkspaceProject,
 } from '@/types/project'
 
 interface ResourceResponse<T> {
   data: T
 }
 
+export async function createWorkspaceProject(
+  brief: WorkspaceFormPayload,
+  title: string,
+): Promise<WorkspaceProject> {
+  const payload: CreateProjectPayload<WorkspaceFormPayload, CreatorProjectSettings> = {
+    title,
+    type: 'workspace',
+    status: 'draft',
+    input_payload: brief,
+    settings: {
+      platform: brief.platform,
+      format: 'vertical_9_16',
+    },
+  }
+
+  const response = await apiPost<
+    ResourceResponse<WorkspaceProject>,
+    CreateProjectPayload<WorkspaceFormPayload, CreatorProjectSettings>
+  >('/projects', payload)
+
+  return response.data
+}
 export async function createCampaignProject(
   campaign: CampaignFormPayload,
 ): Promise<CampaignProject> {

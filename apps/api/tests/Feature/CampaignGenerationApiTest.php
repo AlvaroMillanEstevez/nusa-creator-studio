@@ -139,6 +139,33 @@ class CampaignGenerationApiTest extends TestCase
         $this->assertDatabaseCount('credit_transactions', 0);
     }
 
+    public function test_workspace_project_can_generate_campaign_content_from_project_context(): void
+    {
+        $user = User::factory()->create(['credits_balance' => 2]);
+        $project = Project::factory()->for($user)->create([
+            'title' => 'Creator desk launch workspace',
+            'type' => 'workspace',
+            'status' => 'draft',
+            'input_payload' => [
+                'product_name' => 'Creator desk light',
+                'content_idea' => 'Compact creator desk lighting kit',
+                'product_description' => 'A compact desk light for mobile-first creators.',
+                'target_audience' => 'TikTok affiliate creators',
+                'language' => 'english',
+                'tone' => 'natural',
+                'platform' => 'tiktok',
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->assertJsonPath('data.project_id', $project->id)
+            ->assertJsonPath('data.job_type', 'generate_affiliate_campaign')
+            ->assertJsonPath('data.provider', 'mock')
+            ->assertJsonPath('meta.credits_balance', 1);
+    }
+
     public function test_non_affiliate_projects_cannot_generate_campaign_content(): void
     {
         $user = User::factory()->create();
@@ -152,7 +179,7 @@ class CampaignGenerationApiTest extends TestCase
             ->assertJsonPath('code', 'invalid_project_type')
             ->assertJsonPath(
                 'message',
-                'Only affiliate campaign projects can use campaign generation.',
+                'Only affiliate campaign or workspace projects can use campaign generation.',
             );
 
         $this->assertDatabaseCount('generations', 0);

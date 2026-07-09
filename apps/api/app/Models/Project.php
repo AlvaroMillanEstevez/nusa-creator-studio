@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Project extends Model
 {
     public const TYPES = [
+        'workspace',
         'affiliate_campaign',
         'video_enhancer',
         'product_to_video',

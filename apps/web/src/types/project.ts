@@ -182,6 +182,7 @@ export type MotionPlatform = (typeof motionPlatformOptions)[number]['value']
 export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionPlatform
 
 export type ProjectType =
+  | 'workspace'
   | 'affiliate_campaign'
   | 'video_enhancer'
   | 'product_to_video'
@@ -278,6 +279,16 @@ export interface ProjectAction {
 
 export interface ProjectActionsResponse {
   data: ProjectAction[]
+}
+export interface WorkspaceFormPayload {
+  product_name: string
+  content_idea: string
+  product_description: string
+  target_audience: string
+  language: CampaignLanguage
+  tone: CampaignTone
+  platform: CreatorPlatform
+  notes: string | null
 }
 export interface CampaignFormPayload {
   product_name: string
@@ -410,6 +421,7 @@ type TypedProject<TType extends ProjectType, TInputPayload> = Omit<
   'type'
 > & { type: TType }
 
+export type WorkspaceProject = TypedProject<'workspace', WorkspaceFormPayload>
 export type CampaignProject = TypedProject<'affiliate_campaign', CampaignFormPayload>
 export type VideoEnhancerProject = TypedProject<'video_enhancer', VideoEnhancerForm>
 export type ProductToVideoProject = TypedProject<'product_to_video', ProductToVideoForm>
@@ -417,6 +429,7 @@ export type AiVoiceoverProject = TypedProject<'ai_voiceover', AiVoiceoverFormPay
 export type FashionTryOnProject = TypedProject<'fashion_try_on', FashionTryOnFormPayload>
 export type MotionVideoProject = TypedProject<'motion_ai_video', MotionVideoFormPayload>
 export type CreatorProject =
+  | WorkspaceProject
   | CampaignProject
   | VideoEnhancerProject
   | ProductToVideoProject

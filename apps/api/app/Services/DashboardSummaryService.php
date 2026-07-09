@@ -15,6 +15,7 @@ class DashboardSummaryService
         $projectStats = $user->projects()
             ->selectRaw('COUNT(*) AS total_projects')
             ->selectRaw("SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) AS draft_projects")
+            ->selectRaw("SUM(CASE WHEN type = 'workspace' THEN 1 ELSE 0 END) AS workspace_projects")
             ->selectRaw("SUM(CASE WHEN type = 'affiliate_campaign' THEN 1 ELSE 0 END) AS affiliate_campaign_projects")
             ->selectRaw("SUM(CASE WHEN type = 'video_enhancer' THEN 1 ELSE 0 END) AS video_enhancer_projects")
             ->selectRaw("SUM(CASE WHEN type = 'product_to_video' THEN 1 ELSE 0 END) AS product_to_video_projects")
@@ -106,6 +107,7 @@ class DashboardSummaryService
                 'completed_generations' => (int) $generationStats->completed_generations,
                 'failed_generations' => (int) $generationStats->failed_generations,
                 'draft_projects' => (int) $projectStats->draft_projects,
+                'workspace_projects' => (int) $projectStats->workspace_projects,
                 'total_credits_spent' => (int) $user->creditTransactions()
                     ->where('type', CreditTransactionType::Usage->value)
                     ->where('amount', '>', 0)

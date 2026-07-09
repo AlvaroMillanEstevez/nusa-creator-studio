@@ -9,6 +9,7 @@ import FashionTryOnBrief from '@/components/FashionTryOnBrief.vue'
 import GenerationActionCard from '@/components/GenerationActionCard.vue'
 import GenerationHistory from '@/components/GenerationHistory.vue'
 import GenerationResultRenderer from '@/components/GenerationResultRenderer.vue'
+import GenericProjectBrief from '@/components/GenericProjectBrief.vue'
 import MotionVideoBrief from '@/components/MotionVideoBrief.vue'
 import ProductToVideoBrief from '@/components/ProductToVideoBrief.vue'
 import ProjectActionHub from '@/components/ProjectActionHub.vue'
@@ -50,7 +51,9 @@ const remainingCredits = ref<number | null>(null)
 const toolCreditCost = ref<number | null>(null)
 const showQueueWorkerHint = ref(false)
 
-const showPrimaryGenerationCard = computed(() => project.value?.type !== 'affiliate_campaign')
+const showPrimaryGenerationCard = computed(() =>
+  project.value !== null && !['affiliate_campaign', 'workspace'].includes(project.value.type),
+)
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollingGenerationId: number | null = null
@@ -418,7 +421,8 @@ onBeforeUnmount(stopPolling)
           <p class="mt-3 text-sm text-neutral-500">Project #{{ project.id }}</p>
         </section>
 
-        <AffiliateCampaignBrief v-if="project.type === 'affiliate_campaign'" :project="project" />
+        <GenericProjectBrief v-if="project.type === 'workspace'" :project="project" />
+        <AffiliateCampaignBrief v-else-if="project.type === 'affiliate_campaign'" :project="project" />
         <VideoEnhancerBrief v-else-if="project.type === 'video_enhancer'" :project="project" />
         <ProductToVideoBrief v-else-if="project.type === 'product_to_video'" :project="project" />
         <AiVoiceoverBrief v-else-if="project.type === 'ai_voiceover'" :project="project" />
@@ -430,8 +434,6 @@ onBeforeUnmount(stopPolling)
           :project-type="project.type"
           @assets-changed="updateProjectAssets"
         />
-
-
 
         <GenerationActionCard
           v-if="showPrimaryGenerationCard"

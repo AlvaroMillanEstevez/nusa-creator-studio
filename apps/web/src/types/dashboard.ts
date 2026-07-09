@@ -17,6 +17,7 @@ export interface DashboardStats {
   completed_generations: number
   failed_generations: number
   draft_projects: number
+  workspace_projects: number
   total_credits_spent: number
   affiliate_campaign_projects: number
   video_enhancer_projects: number

@@ -34,8 +34,12 @@ const groupedToolSections = computed(() =>
   })),
 )
 
-function toolDestination(route: string): RouteLocationRaw {
-  return auth.isAuthenticated ? route : { path: '/login', query: { redirect: route } }
+function toolDestination(tool: CreatorTool): RouteLocationRaw {
+  const dashboardRoute = { path: '/dashboard', query: { tool: tool.key } }
+
+  return auth.isAuthenticated
+    ? dashboardRoute
+    : { path: '/login', query: { redirect: '/dashboard?tool=' + tool.key } }
 }
 
 function outputTypeLabel(outputType: ToolOutputType | null): string | null {
@@ -153,7 +157,7 @@ onMounted(() => {
             <template v-for="tool in section.tools" :key="tool.key">
               <RouterLink
                 v-if="tool.status === 'available' && tool.route"
-                :to="toolDestination(tool.route)"
+                :to="toolDestination(tool)"
                 :data-testid="'tool-card-' + tool.key"
                 class="nusa-card-interactive nusa-focus-ring group block rounded-[2rem] p-5 transition"
               >
@@ -203,7 +207,7 @@ onMounted(() => {
                     {{ tool.credit_cost_label ?? tool.credit_cost + ' credits' }}
                   </span>
                   <span class="text-sm font-semibold text-emerald-300">
-                    {{ auth.isAuthenticated ? t('tools.openTool') : t('tools.loginToUse') }}
+                    {{ auth.isAuthenticated ? t('tools.startWithWorkflow') : t('tools.loginToStart') }}
                     <span aria-hidden="true">&rarr;</span>
                   </span>
                 </div>

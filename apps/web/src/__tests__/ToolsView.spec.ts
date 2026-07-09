@@ -225,12 +225,12 @@ describe('ToolsView', () => {
 
     expect(wrapper.text()).toContain('What do you want to create today?')
     expect(card.element.tagName).toBe('A')
-    expect(card.attributes('href')).toBe('/campaigns/new')
+    expect(card.attributes('href')).toBe('/dashboard?tool=affiliate_campaign')
     expect(card.text()).toContain('Affiliate Campaign Generator')
     expect(card.text()).toContain('Basic')
     expect(card.text()).toContain('Script pack')
     expect(card.text()).toContain('Mock')
-    expect(card.text()).toContain('Open tool')
+    expect(card.text()).toContain('Start with this workflow')
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/tools',
       expect.objectContaining({ headers: expect.any(Headers) }),
@@ -260,7 +260,7 @@ describe('ToolsView', () => {
     expect(premiumSection.text()).toContain('Future')
   })
 
-  it('links available AI Voiceover to the protected creation route for authenticated users', async () => {
+  it('links available AI Voiceover to the dashboard workflow intent for authenticated users', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -272,11 +272,11 @@ describe('ToolsView', () => {
     const card = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
 
     expect(card.element.tagName).toBe('A')
-    expect(card.attributes('href')).toBe('/voiceover/new')
+    expect(card.attributes('href')).toBe('/dashboard?tool=ai_voiceover')
     expect(card.text()).toContain('AI Voiceover')
-    expect(card.text()).toContain('Open tool')
+    expect(card.text()).toContain('Start with this workflow')
   })
-  it('links available Fashion Try-On to the protected creation route for authenticated users', async () => {
+  it('links available Fashion Try-On to the dashboard workflow intent for authenticated users', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -288,9 +288,9 @@ describe('ToolsView', () => {
     const card = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
 
     expect(card.element.tagName).toBe('A')
-    expect(card.attributes('href')).toBe('/fashion-try-on/new')
+    expect(card.attributes('href')).toBe('/dashboard?tool=fashion_try_on')
     expect(card.text()).toContain('Fashion Try-On')
-    expect(card.text()).toContain('Open tool')
+    expect(card.text()).toContain('Start with this workflow')
   })
 
   it('links available Motion AI Video to the protected creation route for authenticated users', async () => {
@@ -305,9 +305,9 @@ describe('ToolsView', () => {
     const card = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
 
     expect(card.element.tagName).toBe('A')
-    expect(card.attributes('href')).toBe('/motion-video/new')
+    expect(card.attributes('href')).toBe('/dashboard?tool=motion_ai_video')
     expect(card.text()).toContain('Motion AI Video')
-    expect(card.text()).toContain('Open tool')
+    expect(card.text()).toContain('Start with this workflow')
   })
 
   it('sends guests through login with the intended tool route', async () => {
@@ -324,14 +324,14 @@ describe('ToolsView', () => {
     const fashionCard = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
     const motionCard = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
 
-    expect(card.attributes('href')).toBe('/login?redirect=/campaigns/new')
-    expect(card.text()).toContain('Log in to use')
-    expect(voiceoverCard.attributes('href')).toBe('/login?redirect=/voiceover/new')
-    expect(voiceoverCard.text()).toContain('Log in to use')
-    expect(fashionCard.attributes('href')).toBe('/login?redirect=/fashion-try-on/new')
-    expect(fashionCard.text()).toContain('Log in to use')
-    expect(motionCard.attributes('href')).toBe('/login?redirect=/motion-video/new')
-    expect(motionCard.text()).toContain('Log in to use')
+    expect(card.attributes('href')).toBe('/login?redirect=/dashboard?tool=affiliate_campaign')
+    expect(card.text()).toContain('Log in to start')
+    expect(voiceoverCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=ai_voiceover')
+    expect(voiceoverCard.text()).toContain('Log in to start')
+    expect(fashionCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=fashion_try_on')
+    expect(fashionCard.text()).toContain('Log in to start')
+    expect(motionCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=motion_ai_video')
+    expect(motionCard.text()).toContain('Log in to start')
   })
 
   it('keeps coming-soon and maintenance tools non-clickable and hides disabled tools', async () => {

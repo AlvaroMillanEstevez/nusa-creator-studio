@@ -7,6 +7,7 @@ use App\Models\CreatorTool;
 class ToolAvailabilityService
 {
     private const PROJECT_TYPE_TO_TOOL_KEY = [
+        'workspace' => null,
         'affiliate_campaign' => 'affiliate_campaign',
         'video_enhancer' => 'video_enhancer',
         'product_to_video' => 'product_to_video',
@@ -19,7 +20,8 @@ class ToolAvailabilityService
     {
         $key = self::PROJECT_TYPE_TO_TOOL_KEY[$projectType] ?? null;
 
-        return $key !== null && $this->isAvailable($key);
+        return array_key_exists($projectType, self::PROJECT_TYPE_TO_TOOL_KEY)
+            && ($key === null || $this->isAvailable($key));
     }
 
     public function isAvailable(string $key): bool
