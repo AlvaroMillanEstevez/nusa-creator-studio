@@ -158,6 +158,30 @@ export const motionPlatformOptions = [
   { value: 'generic_social', label: 'Generic social' },
 ] as const
 
+
+export const autoVideoEditingStyleOptions = [
+  { value: 'ugc_natural', label: 'UGC natural' },
+  { value: 'premium_clean', label: 'Premium clean' },
+  { value: 'fast_cuts', label: 'Fast cuts' },
+  { value: 'storytelling', label: 'Storytelling' },
+  { value: 'review', label: 'Review' },
+] as const
+
+export const autoVideoPacingOptions = [
+  { value: 'steady', label: 'Steady' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'fast', label: 'Fast' },
+] as const
+
+export const autoVideoCaptionStyleOptions = [
+  { value: 'clean_subtitles', label: 'Clean subtitles' },
+  { value: 'bold_keywords', label: 'Bold keywords' },
+  { value: 'minimal', label: 'Minimal' },
+  { value: 'karaoke', label: 'Karaoke' },
+] as const
+
+export const autoVideoDurationOptions = [15, 30, 45, 60] as const
+
 export type CampaignLanguage = (typeof campaignLanguageOptions)[number]['value']
 export type CampaignTone = (typeof campaignToneOptions)[number]['value']
 export type VideoEnhancerStyle = (typeof videoEnhancerStyleOptions)[number]['value']
@@ -179,6 +203,10 @@ export type MotionVisualStyle = (typeof motionVisualStyleOptions)[number]['value
 export type MotionDuration = (typeof motionDurationOptions)[number]
 export type MotionAspectRatio = (typeof motionAspectRatioOptions)[number]['value']
 export type MotionPlatform = (typeof motionPlatformOptions)[number]['value']
+export type AutoVideoEditingStyle = (typeof autoVideoEditingStyleOptions)[number]['value']
+export type AutoVideoPacing = (typeof autoVideoPacingOptions)[number]['value']
+export type AutoVideoCaptionStyle = (typeof autoVideoCaptionStyleOptions)[number]['value']
+export type AutoVideoDuration = (typeof autoVideoDurationOptions)[number]
 export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionPlatform
 
 export type ProjectType =
@@ -208,6 +236,8 @@ export type ProjectActionKey =
   | 'start_video_ad'
   | 'start_fashion_try_on'
   | 'start_motion_video'
+  | 'generate_video_to_campaign'
+  | 'generate_auto_video_edit'
   | 'avatar_presenter'
 
 export type ProjectActionRequiredSource =
@@ -350,6 +380,36 @@ export interface GenerateAiVoiceoverPayload {
     style?: number | null
     use_speaker_boost?: boolean | null
   } | null
+}
+
+
+export interface GenerateVideoToCampaignPayload {
+  source_video_asset_id?: number | null
+  product_name?: string | null
+  product_description?: string | null
+  target_audience?: string | null
+  campaign_context?: string | null
+  language?: CampaignLanguage | string | null
+  tone?: CampaignTone | string | null
+  platform?: string | null
+  notes?: string | null
+}
+
+export interface GenerateAutoVideoEditPayload {
+  source_video_asset_id?: number | null
+  source_video_to_campaign_generation_id?: number | null
+  voiceover_generation_id?: number | null
+  voiceover_audio_asset_id?: number | null
+  include_voiceover?: boolean
+  platform?: string | null
+  format?: string | null
+  editing_style?: AutoVideoEditingStyle | string | null
+  pacing?: AutoVideoPacing | string | null
+  caption_style?: AutoVideoCaptionStyle | string | null
+  target_duration_seconds?: AutoVideoDuration | number | null
+  cta?: string | null
+  music_direction?: string | null
+  notes?: string | null
 }
 
 export interface FashionTryOnFormPayload {
@@ -610,6 +670,142 @@ export interface FashionTryOnResult {
 }
 
 
+
+export interface VideoToCampaignMoment {
+  timestamp: string
+  moment: string
+  campaign_use: string
+}
+
+export interface VideoToCampaignObservation {
+  scene: string
+  observation: string
+  confidence: string
+}
+
+export interface VideoToCampaignCut {
+  timestamp: string
+  cut: string
+  reason: string
+}
+
+export interface VideoToCampaignEditPlanItem {
+  timestamp: string
+  action: string
+}
+
+export interface VideoToCampaignEditPlan {
+  title: string
+  format: string
+  platform: string
+  timeline: VideoToCampaignEditPlanItem[]
+  source_video_name: string
+}
+
+export interface VideoToCampaignResult {
+  video_summary: string
+  detected_product_moments: VideoToCampaignMoment[]
+  scene_observations: VideoToCampaignObservation[]
+  recommended_cuts: VideoToCampaignCut[]
+  campaign_angle: string
+  hooks: string[]
+  narration_voice_script: string
+  captions: string[]
+  hashtags: string[]
+  cta_options: string[]
+  edit_plan: VideoToCampaignEditPlan
+  compliance_notes: string[]
+  usage_notes: string[]
+  source_video_asset_id: number | null
+  provider_metadata?: CampaignProviderMetadata & Record<string, unknown>
+}
+
+export interface AutoVideoEditorReference {
+  type: string
+  generation_id?: number | null
+  media_asset_id?: number | null
+  note: string
+}
+
+export interface AutoVideoEditorDecision {
+  order: number
+  timestamp: string
+  decision: string
+  reason: string
+}
+
+export interface AutoVideoEditorTimelineItem {
+  timestamp: string
+  layer: string
+  instruction: string
+  text_overlay: string
+}
+
+export interface AutoVideoEditorClip {
+  clip: string
+  source: string
+  use: string
+}
+
+export interface AutoVideoEditorCaptionsPlan {
+  style: string
+  safe_zone: string
+  sample_captions: string[]
+}
+
+export interface AutoVideoEditorAudioMixPlan {
+  include_voiceover: boolean
+  voiceover_reference: AutoVideoEditorReference
+  music_direction: string
+  mix_notes: string[]
+}
+
+export interface AutoVideoEditorRenderSettings {
+  platform: string
+  format: string
+  target_duration_seconds: number
+  editing_style: string
+  pacing: string
+  caption_style: string
+}
+
+export interface AutoVideoEditorPlaceholder {
+  status: 'placeholder'
+  message: string
+  provider: 'mock'
+}
+
+export interface AutoVideoEditorCostBreakdown {
+  base_editor_cost: number
+  base_editor_note: string
+  video_analysis_cost: number
+  video_analysis_note: string
+  voiceover_cost: number
+  voiceover_note: string
+  render_cost_placeholder: number
+  render_note: string
+  total_credits: number
+}
+
+export interface AutoVideoEditorResult {
+  source_summary: string
+  selected_video_analysis_reference: AutoVideoEditorReference
+  selected_voiceover_reference: AutoVideoEditorReference
+  edit_decision_list: AutoVideoEditorDecision[]
+  timeline: AutoVideoEditorTimelineItem[]
+  clip_sequence: AutoVideoEditorClip[]
+  captions_plan: AutoVideoEditorCaptionsPlan
+  transition_plan: string[]
+  audio_mix_plan: AutoVideoEditorAudioMixPlan
+  voiceover_script: string | null
+  render_settings: AutoVideoEditorRenderSettings
+  final_video_placeholder: AutoVideoEditorPlaceholder
+  cost_breakdown: AutoVideoEditorCostBreakdown
+  compliance_notes: string[]
+  usage_notes: string[]
+  provider_metadata?: CampaignProviderMetadata & Record<string, unknown>
+}
+
 export interface MotionVideoReference {
   id: number
   usage_role: string | null
@@ -672,6 +868,8 @@ export type GenerationResult =
   | AiVoiceoverResult
   | FashionTryOnResult
   | MotionVideoResult
+  | VideoToCampaignResult
+  | AutoVideoEditorResult
 
 export interface Generation<TResult = GenerationResult> {
   id: number
@@ -711,6 +909,8 @@ export type ProductToVideoGenerationResponse = GenerationResponse<ProductToVideo
 export type AiVoiceoverGenerationResponse = GenerationResponse<AiVoiceoverResult>
 export type FashionTryOnGenerationResponse = GenerationResponse<FashionTryOnResult>
 export type MotionVideoGenerationResponse = GenerationResponse<MotionVideoResult>
+export type VideoToCampaignGenerationResponse = GenerationResponse<VideoToCampaignResult>
+export type AutoVideoEditorGenerationResponse = GenerationResponse<AutoVideoEditorResult>
 
 export interface PaginatedResponse<T> {
   data: T[]
@@ -754,4 +954,17 @@ export function isMotionVideoResult(
   result: GenerationResult | null,
 ): result is MotionVideoResult {
   return result !== null && 'video_title' in result && 'generated_video' in result
+}
+
+
+export function isVideoToCampaignResult(
+  result: GenerationResult | null,
+): result is VideoToCampaignResult {
+  return result !== null && 'video_summary' in result && 'narration_voice_script' in result
+}
+
+export function isAutoVideoEditorResult(
+  result: GenerationResult | null,
+): result is AutoVideoEditorResult {
+  return result !== null && 'final_video_placeholder' in result && 'edit_decision_list' in result
 }

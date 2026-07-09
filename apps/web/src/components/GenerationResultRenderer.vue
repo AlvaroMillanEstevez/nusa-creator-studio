@@ -2,21 +2,26 @@
 import { computed } from 'vue'
 
 import AiVoiceoverGenerationResult from '@/components/AiVoiceoverGenerationResult.vue'
+import AutoVideoEditorGenerationResult from '@/components/AutoVideoEditorGenerationResult.vue'
 import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
 import FashionTryOnGenerationResult from '@/components/FashionTryOnGenerationResult.vue'
 import MotionVideoGenerationResult from '@/components/MotionVideoGenerationResult.vue'
 import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
+import VideoToCampaignGenerationResult from '@/components/VideoToCampaignGenerationResult.vue'
 import type { MediaAsset } from '@/types/media'
 import {
   generationOutput,
   isAiVoiceoverResult,
+  isAutoVideoEditorResult,
   isCampaignGenerationResult,
   isFashionTryOnResult,
   isMotionVideoResult,
   isProductToVideoResult,
   isVideoEnhancerResult,
+  isVideoToCampaignResult,
   type CreatorGeneration,
+  type ProjectAction,
 } from '@/types/project'
 import { formatDate } from '@/utils/formatters'
 
@@ -24,6 +29,8 @@ const props = defineProps<{
   generation: CreatorGeneration | null
   showQueueWorkerHint?: boolean
   mediaAssets?: MediaAsset[]
+  projectId?: number | string | null
+  voiceoverAction?: ProjectAction | null
 }>()
 
 const result = computed(() =>
@@ -61,6 +68,16 @@ const motionVideoResult = computed(() =>
     ? result.value
     : null,
 )
+const videoToCampaignResult = computed(() =>
+  props.generation?.job_type === 'generate_video_to_campaign' && isVideoToCampaignResult(result.value)
+    ? result.value
+    : null,
+)
+const autoVideoEditorResult = computed(() =>
+  props.generation?.job_type === 'generate_auto_video_edit' && isAutoVideoEditorResult(result.value)
+    ? result.value
+    : null,
+)
 const hasSupportedResult = computed(
   () =>
     campaignResult.value !== null ||
@@ -68,7 +85,9 @@ const hasSupportedResult = computed(
     productToVideoResult.value !== null ||
     aiVoiceoverResult.value !== null ||
     fashionTryOnResult.value !== null ||
-    motionVideoResult.value !== null,
+    motionVideoResult.value !== null ||
+    videoToCampaignResult.value !== null ||
+    autoVideoEditorResult.value !== null,
 )
 const isQueued = computed(
   () => props.generation?.status === 'queued' || props.generation?.status === 'pending',
@@ -165,5 +184,16 @@ const isQueued = computed(
     />
     <FashionTryOnGenerationResult v-else-if="fashionTryOnResult" :result="fashionTryOnResult" />
     <MotionVideoGenerationResult v-else-if="motionVideoResult" :result="motionVideoResult" />
+    <VideoToCampaignGenerationResult
+      v-else-if="videoToCampaignResult"
+      :result="videoToCampaignResult"
+      :project-id="projectId ?? generation.project_id"
+      :generation-id="generation.id"
+      :voiceover-action="voiceoverAction"
+    />
+    <AutoVideoEditorGenerationResult
+      v-else-if="autoVideoEditorResult"
+      :result="autoVideoEditorResult"
+    />
   </div>
 </template>

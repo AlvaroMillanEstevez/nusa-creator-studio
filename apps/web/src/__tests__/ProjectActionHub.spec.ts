@@ -112,6 +112,55 @@ const baseActions: ProjectActionsResponse = {
       ],
     }),
     action({
+      key: 'generate_video_to_campaign',
+      title: 'Generate campaign from video',
+      description: 'Turn source footage into a campaign.',
+      service_tier: 'advanced',
+      output_type: 'assisted_media',
+      status: 'configure',
+      action_mode: 'configure',
+      credit_cost: 2,
+      primary_cta: { label: 'Generate video campaign', route: null, action: 'configure_video_to_campaign' },
+      required_source: 'media_asset',
+      action_endpoint: '/api/v1/projects/42/generate-video-campaign',
+      tool_key: 'video_to_campaign',
+      reason: 'A project video is available for campaign analysis.',
+      recommended_assets: [
+        {
+          media_asset_id: 88,
+          type: 'video',
+          usage_role: 'campaign_source_video',
+          original_name: 'raw-product-demo.mp4',
+          mime_type: 'video/mp4',
+          created_at: '2026-07-08T01:00:00.000000Z',
+        },
+      ],
+    }),
+    action({
+      key: 'generate_auto_video_edit',
+      title: 'Auto Video Editor',
+      description: 'Create an edit-ready vertical video plan.',
+      service_tier: 'premium',
+      output_type: 'video',
+      status: 'configure',
+      action_mode: 'configure',
+      credit_cost: 2,
+      primary_cta: { label: 'Configure edit plan', route: null, action: 'configure_auto_video_editor' },
+      required_source: 'source_generation',
+      action_endpoint: '/api/v1/projects/42/generate-auto-video-edit',
+      tool_key: 'auto_video_editor',
+      reason: 'Can reuse existing video campaign analysis.',
+      recommended_sources: [
+        {
+          generation_id: 31,
+          job_type: 'generate_video_to_campaign',
+          title: 'Reusable edit plan',
+          created_at: '2026-07-08T02:00:00.000000Z',
+          excerpt: 'Reusable narration.',
+        },
+      ],
+    }),
+    action({
       key: 'start_fashion_try_on',
       title: 'Start Fashion Try-On',
       description: 'Use project assets for try-on.',
@@ -232,6 +281,8 @@ async function mountHub(
       { path: '/pricing', component: { template: '<div />' } },
       { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
     ],
   })
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
@@ -400,6 +451,34 @@ describe('ProjectActionHub', () => {
 
     expect(wrapper.get('[data-testid="view-latest-voiceover"]').attributes('href')).toBe('/projects/42/generations/22')
     expect(wrapper.text()).toContain('View latest voiceover')
+  })
+
+
+
+  it('routes video workflow actions to dedicated setup pages', async () => {
+    const { wrapper, router } = await mountHub()
+
+    await wrapper
+      .get('[data-testid="project-action-generate_video_to_campaign"]')
+      .find('button')
+      .trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('project-video-to-campaign-action')
+    expect(router.currentRoute.value.params.projectId).toBe('42')
+
+    await router.push('/')
+    await flushPromises()
+
+    await wrapper
+      .get('[data-testid="project-action-generate_auto_video_edit"]')
+      .find('button')
+      .trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('project-auto-video-editor-action')
+    expect(router.currentRoute.value.params.projectId).toBe('42')
+    expect(wrapper.text()).toContain('Can reuse existing video campaign analysis.')
   })
 
   it('opens setup guidance for asset actions without running generation', async () => {

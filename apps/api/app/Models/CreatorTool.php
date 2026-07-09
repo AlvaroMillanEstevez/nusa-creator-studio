@@ -66,10 +66,12 @@ class CreatorTool extends Model
     public const IMPLEMENTED_ROUTES = [
         'affiliate_campaign' => '/campaigns/new',
         'video_enhancer' => '/video-enhancer/new',
+        'video_to_campaign' => '/dashboard?tool=video_to_campaign',
         'product_to_video' => '/product-to-video/new',
         'ai_voiceover' => '/voiceover/new',
         'fashion_try_on' => '/fashion-try-on/new',
         'motion_ai_video' => '/motion-video/new',
+        'auto_video_editor' => '/dashboard?tool=auto_video_editor',
     ];
 
     public function getRouteKeyName(): string

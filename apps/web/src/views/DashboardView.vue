@@ -17,10 +17,12 @@ const loadError = ref('')
 const toolIntentLabels: Record<string, string> = {
   affiliate_campaign: 'Affiliate Campaign Generator',
   video_enhancer: 'Video Enhancer / Caption Pack',
+  video_to_campaign: 'Video-to-Campaign',
   product_to_video: 'Product-to-Video Script Pack',
   ai_voiceover: 'AI Voiceover',
   fashion_try_on: 'Fashion Try-On',
   motion_ai_video: 'Motion AI Video',
+  auto_video_editor: 'Auto Video Editor',
 }
 
 const toolIntent = computed(() => {

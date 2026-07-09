@@ -27,6 +27,8 @@ class ProjectActionService
             ->whereIn('key', [
                 'affiliate_campaign',
                 'ai_voiceover',
+                'video_to_campaign',
+                'auto_video_editor',
                 'fashion_try_on',
                 'motion_ai_video',
             ])
@@ -36,6 +38,8 @@ class ProjectActionService
         return [
             $this->generateCampaignAction($project, $user, $tools->get('affiliate_campaign')),
             $this->voiceoverFromScriptAction($project, $user, $tools->get('ai_voiceover')),
+            $this->videoToCampaignAction($project, $user, $tools->get('video_to_campaign')),
+            $this->autoVideoEditorAction($project, $user, $tools->get('auto_video_editor')),
             $this->videoAdAction($user),
             $this->fashionTryOnAction($project, $user, $tools->get('fashion_try_on')),
             $this->motionVideoAction($project, $user, $tools->get('motion_ai_video')),
@@ -143,6 +147,137 @@ class ProjectActionService
                 : 'Choose a source script or write one in the launcher.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-voiceover",
             sourceGenerationId: $source?->getKey(),
+            creditCost: $tool?->credit_cost,
+        );
+    }
+
+    /** @return array<string, mixed> */
+    private function videoToCampaignAction(Project $project, User $user, ?CreatorTool $tool): array
+    {
+        $hasSourceVideo = $this->hasAnyAssetRole($project, [
+            'source_video',
+            'raw_product_video',
+            'campaign_source_video',
+            'video_reference',
+            'general',
+        ], 'video');
+        $existingVideoCampaigns = $this->generationCount($project, 'generate_video_to_campaign');
+
+        $requirements = [
+            $this->requirement(
+                type: 'media_asset',
+                key: 'source_video',
+                label: 'Source product video',
+                satisfied: $hasSourceVideo,
+                helpText: 'Choose or upload a raw product video for the campaign analysis.',
+                suggestedUsageRole: 'campaign_source_video',
+            ),
+        ];
+
+        return $this->action(
+            user: $user,
+            key: 'generate_video_to_campaign',
+            title: 'Generate campaign from video',
+            description: 'Turn source product footage into hooks, narration, captions, recommended cuts and an edit plan.',
+            serviceTier: 'advanced',
+            outputType: 'assisted_media',
+            tool: $tool,
+            status: 'configure',
+            actionMode: 'configure',
+            primaryLabel: $existingVideoCampaigns > 0 ? 'Generate another video campaign' : 'Generate video campaign',
+            primaryAction: 'configure_video_to_campaign',
+            requirements: $requirements,
+            recommendedAssets: $this->recommendedAssets($project, [
+                'campaign_source_video',
+                'raw_product_video',
+                'source_video',
+                'video_reference',
+                'general',
+            ]),
+            missingRequirementsCount: $hasSourceVideo ? 0 : 1,
+            reason: $hasSourceVideo
+                ? 'A project video is available for campaign analysis.'
+                : 'Upload or choose a product video in the setup flow.',
+            actionEndpoint: "/api/v1/projects/{$project->id}/generate-video-campaign",
+            creditCost: $tool?->credit_cost,
+        );
+    }
+
+    /** @return array<string, mixed> */
+    private function autoVideoEditorAction(Project $project, User $user, ?CreatorTool $tool): array
+    {
+        $videoCampaignSources = $this->completedGenerations($project, 'generate_video_to_campaign');
+        $hasReusableAnalysis = $videoCampaignSources->isNotEmpty();
+        $hasSourceVideo = $this->hasAnyAssetRole($project, [
+            'source_video',
+            'raw_product_video',
+            'campaign_source_video',
+            'video_reference',
+            'general',
+        ], 'video');
+        $voiceoverSources = $project->generations
+            ->filter(fn (Generation $generation): bool => $generation->status === Generation::STATUS_COMPLETED
+                && $generation->job_type === 'generate_ai_voiceover')
+            ->sortByDesc(fn (Generation $generation): string => $generation->created_at?->toISOString() ?? '');
+        $hasVoiceover = $voiceoverSources->isNotEmpty()
+            || $this->hasAnyAssetRole($project, ['voiceover_audio', 'audio_track'], 'audio');
+
+        $requirements = [
+            $this->requirement(
+                type: 'source_generation',
+                key: 'video_campaign_analysis',
+                label: 'Video campaign analysis',
+                satisfied: $hasReusableAnalysis,
+                helpText: 'Reuse a completed Video-to-Campaign result when available.',
+            ),
+            $this->requirement(
+                type: 'media_asset',
+                key: 'source_video',
+                label: 'Raw product video',
+                satisfied: $hasSourceVideo,
+                helpText: 'Choose or upload a raw product video if no saved analysis is available.',
+                suggestedUsageRole: 'source_video',
+            ),
+            $this->requirement(
+                type: 'media_asset',
+                key: 'voiceover',
+                label: 'Voiceover or audio track',
+                satisfied: $hasVoiceover,
+                helpText: 'Optional: reuse a voiceover generation or uploaded audio asset.',
+                suggestedUsageRole: 'voiceover_audio',
+            ),
+        ];
+
+        return $this->action(
+            user: $user,
+            key: 'generate_auto_video_edit',
+            title: 'Auto Video Editor',
+            description: 'Combine product footage, video campaign context and optional voiceover into an edit-ready vertical video plan.',
+            serviceTier: 'premium',
+            outputType: 'video',
+            tool: $tool,
+            status: 'configure',
+            actionMode: 'configure',
+            primaryLabel: 'Configure edit plan',
+            primaryAction: 'configure_auto_video_editor',
+            requirements: $requirements,
+            recommendedSources: array_merge(
+                $this->recommendedSources($videoCampaignSources),
+                $this->recommendedSources($voiceoverSources),
+            ),
+            recommendedAssets: $this->recommendedAssets($project, [
+                'campaign_source_video',
+                'raw_product_video',
+                'source_video',
+                'video_reference',
+                'voiceover_audio',
+                'audio_track',
+            ]),
+            missingRequirementsCount: ($hasReusableAnalysis || $hasSourceVideo) ? 0 : 1,
+            reason: $hasReusableAnalysis
+                ? 'Can reuse existing video campaign analysis.'
+                : ($hasSourceVideo ? 'Can include video campaign analysis from a raw source video.' : 'Choose a video analysis or raw product video in setup.'),
+            actionEndpoint: "/api/v1/projects/{$project->id}/generate-auto-video-edit",
             creditCost: $tool?->credit_cost,
         );
     }
@@ -450,6 +585,24 @@ class ProjectActionService
             && ($type === null || $asset->type === $type));
     }
 
+    /** @param array<int, string> $usageRoles */
+    private function hasAnyAssetRole(Project $project, array $usageRoles, ?string $type = null): bool
+    {
+        return $project->mediaAssets->contains(fn ($asset): bool => in_array($asset->usage_role ?? 'general', $usageRoles, true)
+            && ($type === null || $asset->type === $type));
+    }
+
+    /**
+     * @return Collection<int, Generation>
+     */
+    private function completedGenerations(Project $project, string $jobType): Collection
+    {
+        return $project->generations
+            ->filter(fn (Generation $generation): bool => $generation->status === Generation::STATUS_COMPLETED
+                && $generation->job_type === $jobType)
+            ->sortByDesc(fn (Generation $generation): string => $generation->created_at?->toISOString() ?? '');
+    }
+
     /**
      * @param  array<int, string>  $usageRoles
      * @return array<int, array<string, mixed>>
@@ -481,6 +634,8 @@ class ProjectActionService
                 && in_array($generation->job_type, [
                     'generate_affiliate_campaign',
                     'generate_product_video_script',
+                    'generate_video_to_campaign',
+                    'generate_auto_video_edit',
                 ], true)
                 && $this->voiceoverSources->extractTextFromGeneration($generation) !== null)
             ->sortByDesc(fn (Generation $generation): string => $generation->created_at?->toISOString() ?? '');
@@ -515,7 +670,9 @@ class ProjectActionService
         $title = data_get($payload, 'campaign_title')
             ?? data_get($payload, 'main_script.title')
             ?? data_get($payload, 'script.title')
-            ?? data_get($payload, 'concept_title');
+            ?? data_get($payload, 'concept_title')
+            ?? data_get($payload, 'edit_plan.title')
+            ?? data_get($payload, 'render_settings.editing_style');
 
         return is_string($title) && trim($title) !== ''
             ? trim($title)

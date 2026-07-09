@@ -144,6 +144,9 @@ class AiVoiceoverSourceResolver
         $direct = $this->nullableString($payload['voiceover_ready_script'] ?? null)
             ?? $this->nullableString(Arr::get($payload, 'main_script.voiceover_script'))
             ?? $this->nullableString($payload['narration_script'] ?? null)
+            ?? $this->nullableString($payload['narration_voice_script'] ?? null)
+            ?? $this->nullableString($payload['voiceover_script'] ?? null)
+            ?? $this->nullableString(Arr::get($payload, 'audio_mix_plan.voiceover_script'))
             ?? $this->nullableString($payload['caption'] ?? null)
             ?? $this->nullableString($payload['posting_text'] ?? null)
             ?? $this->nullableString($payload['improved_caption'] ?? null);

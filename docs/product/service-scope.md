@@ -30,6 +30,7 @@ Assisted media workflows.
 Typical workflows:
 
 - AI voiceover.
+- Video-to-Campaign analysis from uploaded product footage.
 - Video upload analysis.
 - Subtitles/transcript.
 - Cut/edit plans.
@@ -53,6 +54,7 @@ Expensive generative media.
 Typical workflows:
 
 - Fashion Try-On real provider output.
+- Auto Video Editor composite planning and future rendering.
 - Motion AI Video real provider output.
 - Product image-to-video real provider output.
 - AI avatar presenter.
@@ -89,6 +91,7 @@ Suggested copy pattern:
 - “Upgrade when you need higher-volume or premium workflows.”
 
 Avoid presenting Basic, Advanced and Premium as standalone pricing cards unless they become real subscription products later.
+
 ## Projects vs tools
 
 Nusa Creator Studio should use tools as workflows/actions, not isolated destinations that force creators to manually copy/paste outputs between pages.
@@ -127,10 +130,12 @@ Action cards should show service tier and credit cost before generation. Detaile
 | Tool | Service tier | Output type | Current implementation stage | Notes |
 | --- | --- | --- | --- | --- |
 | Affiliate Campaign Generator | Basic | Script pack | Mock + optional real provider | Low-cost campaign intelligence for scripts, hooks, captions, voiceover-ready copy and filming notes. OpenAI can be enabled for internal users only. |
-| Video Enhancer / Caption Pack | Advanced | Assisted media | Mock | Currently a mock edit plan; future real v1 should analyze uploaded video, transcripts or frames. |
+| Video Enhancer / Caption Pack | Advanced | Assisted media | Mock | Legacy-compatible mock edit/caption plan; future work should migrate toward the project workspace video workflows. |
+| Video-to-Campaign | Advanced | Campaign + edit plan | Mock | Analyzes selected project video assets and saves reusable hooks, narration text, captions, recommended cuts and edit plan. It does not generate audio. |
 | Product-to-Video Script Pack | Advanced | Assisted media | Mock | Current script/storyboard; future real v1 can move from product image or URL to storyboard/prompt; future real v2 can move toward image-to-video. |
 | AI Voiceover | Advanced | Audio | Mock + optional real provider | v1 can generate ElevenLabs audio for internal/eligible users and save it as a private MediaAsset; mock remains the default fallback. |
 | Fashion Try-On | Premium | Image | Mock | Future real provider should generate try-on images. |
+| Auto Video Editor | Premium | Video edit plan | Mock | Composite workflow that can reuse Video-to-Campaign analysis and voiceover/audio, or include those components when starting from scratch. Mock plan only; no real rendering yet. |
 | Motion AI Video | Premium | Video | Mock | Future real provider should generate video assets. |
 | AI Avatar Presenter | Premium | Avatar | Future | Future avatar-led product presenter videos with voice. |
 | Custom AI Avatar | Premium | Avatar | Future | Future reusable avatar identity from person images, photo sets or descriptions. |
@@ -156,6 +161,7 @@ Out of scope for this version:
 - Marketplace listing analysis.
 - Real ad performance prediction.
 - Billing or provider-cost-based credit pricing.
+
 ## AI Voiceover v1 real provider scope
 
 AI Voiceover is the first real provider-backed Advanced workflow. Its v1 scope is intentionally narrow:
@@ -195,6 +201,19 @@ Create a reusable avatar from a person image, photo set, or description. This wo
 
 Combine AI avatar presenters, voiceover and product scripts into social ads. This should wait until voiceover, script generation, media library, and provider cost controls are stable.
 
+## Composite workflow credit transparency
+
+Composite workflows can include multiple logical steps inside one action. Auto Video Editor is the first example:
+
+| Component | When charged | When reused at zero additional credits |
+| --- | --- | --- |
+| Base editor planning | Always part of the Auto Video Editor workflow for normal users. | Internal/unlimited accounts follow existing zero-charge behavior. |
+| Video campaign analysis | Charged when starting from raw video without a saved Video-to-Campaign result. | Reused when the user selects a completed Video-to-Campaign generation. |
+| Voiceover | Charged when the user chooses to include a new AI voiceover. | Reused when the user selects an existing voiceover generation or audio asset; zero when no voiceover is selected. |
+| Render placeholder | Zero for the mock phase. | Real rendering cost must be defined before provider integration. |
+
+The UI and saved generation metadata should show the estimated normal cost breakdown even when an internal/unlimited account is charged zero credits. This keeps the product honest and prepares the workflow for future real provider cost controls.
+
 ## Honest labeling
 
 Public UI, docs and examples should label outputs clearly:
@@ -204,7 +223,7 @@ Public UI, docs and examples should label outputs clearly:
 - `real provider-backed` - output generated by a real external provider after integration is enabled.
 - `future` - catalog item or concept that is not yet implemented.
 
-Mock outputs must not be confused with real provider-backed AI media. Future tools must remain visibly future/coming soon until they are truly available.
+Mock outputs must not be confused with real provider-backed AI media. Auto Video Editor mock results must clearly say they are edit plans only and that real rendering will be connected later. Future tools must remain visibly future/coming soon until they are truly available.
 
 ## Credit strategy by tier
 

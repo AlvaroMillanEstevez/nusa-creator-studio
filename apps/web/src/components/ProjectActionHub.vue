@@ -9,8 +9,10 @@ import { useAuthStore } from '@/stores/auth'
 import {
   campaignLanguageOptions,
   generationOutput,
+  isAutoVideoEditorResult,
   isCampaignGenerationResult,
   isProductToVideoResult,
+  isVideoToCampaignResult,
   voiceoverPaceOptions,
   voiceoverStyleOptions,
   voiceoverToneOptions,
@@ -79,6 +81,8 @@ const projectActionKeys: ProjectActionKey[] = [
   'generate_campaign',
   'start_fashion_try_on',
   'start_motion_video',
+  'generate_video_to_campaign',
+  'generate_auto_video_edit',
 ]
 const resultActionKeys: ProjectActionKey[] = [
   'generate_voiceover_from_script',
@@ -211,6 +215,37 @@ const selectedVoiceoverSource = computed(() => {
         }
   }
 
+
+  if (selected.job_type === 'generate_video_to_campaign' && isVideoToCampaignResult(output)) {
+    const text = cleanText(output.narration_voice_script)
+
+    return text === null
+      ? null
+      : {
+          generation_id: selected.id,
+          job_type: selected.job_type,
+          title: t('projectActions.useSelectedGeneration'),
+          created_at: selected.created_at,
+          excerpt: text,
+          fullText: text,
+        }
+  }
+
+  if (selected.job_type === 'generate_auto_video_edit' && isAutoVideoEditorResult(output)) {
+    const text = cleanText(output.voiceover_script) ?? cleanText(output.audio_mix_plan.mix_notes.join('\n'))
+
+    return text === null
+      ? null
+      : {
+          generation_id: selected.id,
+          job_type: selected.job_type,
+          title: t('projectActions.useSelectedGeneration'),
+          created_at: selected.created_at,
+          excerpt: text,
+          fullText: text,
+        }
+  }
+
   return null
 })
 
@@ -320,6 +355,14 @@ function isTryOnAction(action: ProjectAction): boolean {
 
 function isMotionAction(action: ProjectAction): boolean {
   return action.key === 'start_motion_video'
+}
+
+function isVideoToCampaignAction(action: ProjectAction): boolean {
+  return action.key === 'generate_video_to_campaign'
+}
+
+function isAutoVideoEditorAction(action: ProjectAction): boolean {
+  return action.key === 'generate_auto_video_edit'
 }
 
 function isComingSoon(action: ProjectAction): boolean {
@@ -446,6 +489,10 @@ function cardNote(action: ProjectAction): string | null {
     return action.locked_reason ?? t('projectActions.unavailableBody')
   }
 
+  if ((isVideoToCampaignAction(action) || isAutoVideoEditorAction(action)) && action.reason) {
+    return action.reason
+  }
+
   if (action.status === 'configure') {
     return t('projectActions.setupRequired')
   }
@@ -487,6 +534,14 @@ function actionButtonLabel(action: ProjectAction): string {
     return t('projectActions.configureMotionVideo')
   }
 
+  if (isVideoToCampaignAction(action)) {
+    return t('projectActions.generateVideoCampaign')
+  }
+
+  if (isAutoVideoEditorAction(action)) {
+    return t('projectActions.configureAutoVideoEditor')
+  }
+
   return action.primary_cta?.label ?? t('projectActions.configureAction')
 }
 
@@ -496,6 +551,21 @@ function isActionButtonDisabled(action: ProjectAction): boolean {
 
 function isActionSubmitting(action: ProjectAction): boolean {
   return isSubmitting.value && activeAction.value?.key === action.key
+}
+
+
+function videoToCampaignActionRoute() {
+  return {
+    name: 'project-video-to-campaign-action',
+    params: { projectId: String(props.projectId) },
+  }
+}
+
+function autoVideoEditorActionRoute() {
+  return {
+    name: 'project-auto-video-editor-action',
+    params: { projectId: String(props.projectId) },
+  }
 }
 
 function voiceoverActionRoute(action: ProjectAction) {
@@ -578,6 +648,16 @@ async function handleAction(action: ProjectAction): Promise<void> {
 
   if (isVoiceoverAction(action)) {
     await router.push(voiceoverActionRoute(action))
+    return
+  }
+
+  if (isVideoToCampaignAction(action)) {
+    await router.push(videoToCampaignActionRoute())
+    return
+  }
+
+  if (isAutoVideoEditorAction(action)) {
+    await router.push(autoVideoEditorActionRoute())
     return
   }
 

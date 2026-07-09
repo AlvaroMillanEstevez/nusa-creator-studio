@@ -510,6 +510,7 @@ onBeforeUnmount(stopPolling)
             :generation="generation"
             :show-queue-worker-hint="showQueueWorkerHint"
             :media-assets="projectAssets"
+            :project-id="project.id"
           />
 
           <ProjectActionHub

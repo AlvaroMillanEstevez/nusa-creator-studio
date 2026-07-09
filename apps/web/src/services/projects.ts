@@ -3,6 +3,7 @@ import type {
   AiVoiceoverFormPayload,
   AiVoiceoverGenerationResponse,
   AiVoiceoverProject,
+  AutoVideoEditorGenerationResponse,
   CampaignFormPayload,
   CampaignGenerationResponse,
   CampaignProject,
@@ -12,6 +13,8 @@ import type {
   CreatorProjectSettings,
   CreatorGeneration,
   GenerateAiVoiceoverPayload,
+  GenerateAutoVideoEditPayload,
+  GenerateVideoToCampaignPayload,
   FashionTryOnFormPayload,
   FashionTryOnGenerationResponse,
   FashionTryOnProject,
@@ -25,6 +28,7 @@ import type {
   ProductToVideoProject,
   VideoEnhancerForm,
   VideoEnhancerGenerationResponse,
+  VideoToCampaignGenerationResponse,
   VideoEnhancerProject,
   WorkspaceFormPayload,
   WorkspaceProject,
@@ -219,6 +223,26 @@ export function generateVideoEnhancerProject(
   return apiPost<VideoEnhancerGenerationResponse, Record<string, never>>(
     '/projects/' + projectId + '/generate-video-enhancer',
     {},
+  )
+}
+
+export function generateVideoToCampaign(
+  projectId: number | string,
+  payload: GenerateVideoToCampaignPayload = {},
+): Promise<VideoToCampaignGenerationResponse> {
+  return apiPost<VideoToCampaignGenerationResponse, GenerateVideoToCampaignPayload>(
+    '/projects/' + projectId + '/generate-video-campaign',
+    payload,
+  )
+}
+
+export function generateAutoVideoEdit(
+  projectId: number | string,
+  payload: GenerateAutoVideoEditPayload = {},
+): Promise<AutoVideoEditorGenerationResponse> {
+  return apiPost<AutoVideoEditorGenerationResponse, GenerateAutoVideoEditPayload>(
+    '/projects/' + projectId + '/generate-auto-video-edit',
+    payload,
   )
 }
 export function generateProductVideoScript(

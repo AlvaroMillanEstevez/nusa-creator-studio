@@ -61,6 +61,23 @@ const tools: CreatorTool[] = [
     sort_order: 20,
   },
   {
+    key: 'video_to_campaign',
+    title: 'Video-to-Campaign',
+    short_description: 'Analyze raw product footage and turn it into a campaign plan.',
+    long_description: 'Turn product footage into campaign hooks, narration, captions and an edit plan.',
+    category: 'assisted_media',
+    service_tier: 'advanced',
+    output_type: 'assisted_media',
+    implementation_stage: 'mock',
+    status: 'available',
+    route: '/dashboard?tool=video_to_campaign',
+    credit_cost: 2,
+    credit_cost_label: '2 credits',
+    badge_label: 'New mock',
+    is_recommended: false,
+    sort_order: 25,
+  },
+  {
     key: 'video_enhancer',
     title: 'Video Enhancer / Caption Pack',
     short_description: 'Polish an existing video.',
@@ -110,6 +127,23 @@ const tools: CreatorTool[] = [
     badge_label: 'New mock',
     is_recommended: false,
     sort_order: 38,
+  },
+  {
+    key: 'auto_video_editor',
+    title: 'Auto Video Editor',
+    short_description: 'Create an edit-ready vertical video plan.',
+    long_description: 'Turn product footage, campaign context and optional voiceover into an edit plan.',
+    category: 'ai_video',
+    service_tier: 'premium',
+    output_type: 'video',
+    implementation_stage: 'mock',
+    status: 'available',
+    route: '/dashboard?tool=auto_video_editor',
+    credit_cost: 2,
+    credit_cost_label: '2 credits',
+    badge_label: 'New mock',
+    is_recommended: false,
+    sort_order: 37,
   },
   {
     key: 'future_tool',
@@ -254,10 +288,32 @@ describe('ToolsView', () => {
     expect(basicSection.text()).toContain('Affiliate Campaign Generator')
     expect(advancedSection.text()).toContain('Advanced')
     expect(advancedSection.text()).toContain('AI Voiceover')
+    expect(advancedSection.text()).toContain('Video-to-Campaign')
     expect(premiumSection.text()).toContain('Premium')
+    expect(premiumSection.text()).toContain('Auto Video Editor')
     expect(premiumSection.text()).toContain('Fashion Try-On')
     expect(premiumSection.text()).toContain('AI Avatar Presenter')
     expect(premiumSection.text()).toContain('Future')
+  })
+
+  it('links new video workflows to dashboard workflow intents for authenticated users', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+    const videoCampaignCard = wrapper.get('[data-testid="tool-card-video_to_campaign"]')
+    const autoEditorCard = wrapper.get('[data-testid="tool-card-auto_video_editor"]')
+
+    expect(videoCampaignCard.element.tagName).toBe('A')
+    expect(videoCampaignCard.attributes('href')).toBe('/dashboard?tool=video_to_campaign')
+    expect(videoCampaignCard.text()).toContain('Video-to-Campaign')
+    expect(autoEditorCard.element.tagName).toBe('A')
+    expect(autoEditorCard.attributes('href')).toBe('/dashboard?tool=auto_video_editor')
+    expect(autoEditorCard.text()).toContain('Auto Video Editor')
   })
 
   it('links available AI Voiceover to the dashboard workflow intent for authenticated users', async () => {
@@ -323,6 +379,8 @@ describe('ToolsView', () => {
     const voiceoverCard = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
     const fashionCard = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
     const motionCard = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
+    const videoCampaignCard = wrapper.get('[data-testid="tool-card-video_to_campaign"]')
+    const autoEditorCard = wrapper.get('[data-testid="tool-card-auto_video_editor"]')
 
     expect(card.attributes('href')).toBe('/login?redirect=/dashboard?tool=affiliate_campaign')
     expect(card.text()).toContain('Log in to start')
@@ -332,6 +390,10 @@ describe('ToolsView', () => {
     expect(fashionCard.text()).toContain('Log in to start')
     expect(motionCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=motion_ai_video')
     expect(motionCard.text()).toContain('Log in to start')
+    expect(videoCampaignCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=video_to_campaign')
+    expect(videoCampaignCard.text()).toContain('Log in to start')
+    expect(autoEditorCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=auto_video_editor')
+    expect(autoEditorCard.text()).toContain('Log in to start')
   })
 
   it('keeps coming-soon and maintenance tools non-clickable and hides disabled tools', async () => {

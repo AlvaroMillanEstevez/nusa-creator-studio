@@ -19,7 +19,7 @@ class CreatorToolApiTest extends TestCase
         $this->seed(CreatorToolSeeder::class);
         $this->seed(CreatorToolSeeder::class);
 
-        $this->assertDatabaseCount('creator_tools', 9);
+        $this->assertDatabaseCount('creator_tools', 11);
     }
 
     public function test_seeded_existing_tools_have_service_tier_output_type_and_stage(): void
@@ -49,9 +49,21 @@ class CreatorToolApiTest extends TestCase
             'implementation_stage' => 'mock',
         ]);
         $this->assertDatabaseHas('creator_tools', [
+            'key' => 'video_to_campaign',
+            'service_tier' => 'advanced',
+            'output_type' => 'assisted_media',
+            'implementation_stage' => 'mock',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
             'key' => 'fashion_try_on',
             'service_tier' => 'premium',
             'output_type' => 'image',
+            'implementation_stage' => 'mock',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'auto_video_editor',
+            'service_tier' => 'premium',
+            'output_type' => 'video',
             'implementation_stage' => 'mock',
         ]);
         $this->assertDatabaseHas('creator_tools', [
@@ -125,7 +137,7 @@ class CreatorToolApiTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonCount(9, 'data');
+            ->assertJsonCount(11, 'data');
 
         $tool = collect($response->json('data'))->firstWhere('key', 'ai_voiceover');
 

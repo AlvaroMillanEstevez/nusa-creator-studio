@@ -213,6 +213,8 @@ onMounted(loadGenerationDetail)
           v-else
           :generation="generation"
           :media-assets="projectAssets"
+          :project-id="project.id"
+          :voiceover-action="voiceoverAction"
         />
 
         <ProjectActionHub

@@ -154,6 +154,18 @@ const router = createRouter({
       meta: { requiresAuth: true, titleKey: 'metadata.titles.generationResult' },
     },
     {
+      path: '/projects/:projectId/actions/video-to-campaign',
+      name: 'project-video-to-campaign-action',
+      component: () => import('../views/VideoToCampaignActionView.vue'),
+      meta: { requiresAuth: true, titleKey: 'metadata.titles.videoToCampaignAction' },
+    },
+    {
+      path: '/projects/:projectId/actions/auto-video-editor',
+      name: 'project-auto-video-editor-action',
+      component: () => import('../views/AutoVideoEditorActionView.vue'),
+      meta: { requiresAuth: true, titleKey: 'metadata.titles.autoVideoEditorAction' },
+    },
+    {
       path: '/projects/:projectId/actions/voiceover',
       name: 'project-voiceover-action',
       component: () => import('../views/VoiceoverActionView.vue'),

@@ -167,6 +167,20 @@ describe('DashboardView', () => {
     expect(wrapper.find('a[href="/dashboard?tool=ai_voiceover#analytics"]').exists()).toBe(true)
   })
 
+  it('shows selected video workflow intents for the new video workflows', async () => {
+    const videoCampaign = await mountDashboard(populatedDashboard, '/dashboard?tool=video_to_campaign')
+
+    expect(videoCampaign.wrapper.text()).toContain('Start with Video-to-Campaign')
+    expect(videoCampaign.wrapper.text()).toContain('Choose a project workspace to continue with Video-to-Campaign.')
+    expect(videoCampaign.wrapper.find('a[href="/dashboard?tool=video_to_campaign#analytics"]').exists()).toBe(true)
+
+    const autoEditor = await mountDashboard(populatedDashboard, '/dashboard?tool=auto_video_editor')
+
+    expect(autoEditor.wrapper.text()).toContain('Start with Auto Video Editor')
+    expect(autoEditor.wrapper.text()).toContain('Choose a project workspace to continue with Auto Video Editor.')
+    expect(autoEditor.wrapper.find('a[href="/dashboard?tool=auto_video_editor#analytics"]').exists()).toBe(true)
+  })
+
   it('shows a create-first-project state when no workspaces exist', async () => {
     const { wrapper } = await mountDashboard({
       ...populatedDashboard,

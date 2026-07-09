@@ -9,11 +9,13 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CreatorToolController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateAiVoiceoverController;
+use App\Http\Controllers\Api\V1\GenerateAutoVideoEditController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\GenerateFashionTryOnController;
 use App\Http\Controllers\Api\V1\GenerateMotionAiVideoController;
 use App\Http\Controllers\Api\V1\GenerateProductVideoScriptController;
 use App\Http\Controllers\Api\V1\GenerateVideoEnhancerController;
+use App\Http\Controllers\Api\V1\GenerateVideoToCampaignController;
 use App\Http\Controllers\Api\V1\GenerationController;
 use App\Http\Controllers\Api\V1\MediaAssetController;
 use App\Http\Controllers\Api\V1\MediaAssetDeliveryController;
@@ -103,6 +105,14 @@ Route::prefix('v1')->group(function () {
             'projects/{project}/generate-video-enhancer',
             GenerateVideoEnhancerController::class,
         )->name('projects.generate-video-enhancer');
+        Route::post(
+            'projects/{project}/generate-video-campaign',
+            GenerateVideoToCampaignController::class,
+        )->name('projects.generate-video-campaign');
+        Route::post(
+            'projects/{project}/generate-auto-video-edit',
+            GenerateAutoVideoEditController::class,
+        )->name('projects.generate-auto-video-edit');
         Route::post(
             'projects/{project}/generate-product-video-script',
             GenerateProductVideoScriptController::class,

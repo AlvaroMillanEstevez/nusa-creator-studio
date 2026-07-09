@@ -39,7 +39,12 @@ Useful roles include:
 
 - `product_image`
 - `source_video`
+- `raw_product_video`
+- `campaign_source_video`
+- `video_reference`
 - `audio_track`
+- `voiceover_audio`
+- `edited_video_result`
 - `model_reference`
 - `garment_reference`
 - `background_reference`
@@ -54,7 +59,7 @@ The v1 workspace model should support simple source relationships before a full 
 | `source_generation_id` | Reuse completed structured output from the same project/user | Campaign/Product-to-video → Voiceover |
 | `source_text` | Provide direct text for voiceover or future script-driven actions | AI Voiceover and same-project voiceover action |
 | `source_media_asset_ids` | Future explicit media inputs | Planned |
-| `usage_role` | Identify what each project asset can be used for | Media library, Fashion Try-On, Motion AI Video |
+| `usage_role` | Identify what each project asset can be used for | Media library, Video-to-Campaign, Auto Video Editor, Fashion Try-On, Motion AI Video |
 
 ## Action chaining example
 
@@ -66,6 +71,44 @@ Product brief
 ```
 
 The current v1 implementation makes the Campaign → Voiceover step work in the same project. The user should not need to manually copy/paste campaign copy into a separate isolated voiceover tool.
+
+## Video-to-Campaign and Auto Video Editor chain
+
+The next workspace chain is video-first:
+
+```text
+Project workspace
+→ upload raw product video
+→ Video-to-Campaign
+→ optional AI Voiceover
+→ optional Auto Video Editor
+```
+
+Video-to-Campaign is an Advanced workflow. It analyzes a selected project video asset and saves structured campaign context, including `video_summary`, detected product moments, recommended cuts, hooks, captions, an edit plan and `narration_voice_script`.
+
+Video-to-Campaign does not generate audio. The narration script is reusable text for the separate AI Voiceover action, so voiceover remains an intentional additional step unless another workflow explicitly includes it.
+
+Auto Video Editor is a Premium composite workflow. It creates a mock edit-ready vertical video plan from either:
+
+- an existing `generate_video_to_campaign` generation, or
+- a raw/source video asset that needs video analysis inside the composite flow.
+
+It can also reuse an existing AI Voiceover generation or audio asset, include a new voiceover component, or proceed with no voiceover. The result is still a structured mock edit plan only; no fake MP4 is created and no real rendering provider is called.
+
+### Composite credit reuse rules
+
+Auto Video Editor should make prior work visible in its credit breakdown:
+
+| Existing project context | Auto editor behavior |
+| --- | --- |
+| Completed Video-to-Campaign result selected | Video analysis is reused, so no additional video-analysis credit is added. |
+| Raw video selected without saved analysis | The composite cost includes the Video-to-Campaign analysis component. |
+| Existing voiceover generation or audio asset selected | Voiceover is reused, so no additional voiceover credit is added. |
+| Include voiceover with no existing voiceover selected | The composite cost includes the AI Voiceover component. |
+| No voiceover selected | Voiceover cost stays zero. |
+
+The charged effective credits should match the composite line items for normal users. Internal/unlimited users follow the existing zero-charge behavior while still seeing the normal estimated cost breakdown.
+
 
 ## Honest separation of generated content and UI actions
 
@@ -100,6 +143,7 @@ The Project Action Hub can appear in two contexts:
 
 - In the main workspace with no selected generation, where it starts or continues from project context.
 - In a focused generation result view with a selected generation, where actions can reuse that result as source context.
+
 ## Basic, Advanced and Premium relationship
 
 Basic workflows often create context for later Advanced or Premium workflows.
@@ -107,8 +151,8 @@ Basic workflows often create context for later Advanced or Premium workflows.
 | Tier | Workspace role |
 | --- | --- |
 | Basic | Create low-cost structured context: hooks, scripts, captions, insights and voiceover-ready text. |
-| Advanced | Reuse text/media context for assisted workflows such as voiceover, captions, video analysis and product-to-video planning. |
-| Premium | Reuse project context and media assets for expensive generative media such as try-on, motion video and avatar workflows. |
+| Advanced | Reuse text/media context for assisted workflows such as voiceover, captions, Video-to-Campaign analysis and product-to-video planning. |
+| Premium | Reuse project context, media assets and prior generations for expensive or composite workflows such as Auto Video Editor, try-on, motion video and avatar workflows. |
 
 ## Project action card metadata
 
@@ -134,7 +178,7 @@ Core fields:
 Card copy should stay positive:
 
 - `direct`: “Generate campaign”, “Generate another campaign version”, “Create voiceover”.
-- `configure`: “Setup Try-On”, “Configure Motion Video”, “Create voiceover”.
+- `configure`: “Generate campaign from video”, “Open Auto Video Editor”, “Setup Try-On”, “Configure Motion Video”, “Create voiceover”.
 - `upgrade`: “Upgrade subscription”.
 - `coming_soon`: “Coming soon”.
 
@@ -172,6 +216,8 @@ Implemented now:
 - Project actions endpoint returns contextual action metadata.
 - Project detail page can show a Project Action Hub.
 - Campaign/Product-to-video generations with usable scripts can become the source for a same-project AI Voiceover generation.
+- Video-to-Campaign can analyze project video assets and save reusable narration text plus an edit plan.
+- Auto Video Editor can reuse Video-to-Campaign analysis and existing voiceover/audio to avoid double-charging those components.
 - Generated voiceover audio remains attached to the same project as a private `MediaAsset` when real ElevenLabs output is used.
 
 Shown but not deeply refactored yet:
@@ -179,6 +225,7 @@ Shown but not deeply refactored yet:
 - Fashion Try-On is a configurable Premium action. Its card stays positive while launcher requirements ask for model and garment reference images.
 - Motion AI Video is a configurable Premium action. Its card stays positive while launcher requirements ask for visual references such as product image, source video, background or brand assets.
 - Video ad assembly and Avatar Presenter remain coming-soon contextual actions.
+- Auto Video Editor currently creates a mock edit plan only; real video rendering remains future provider work.
 
 Out of scope for v1:
 

@@ -222,6 +222,14 @@ function sourceTitle(generation: CreatorGeneration): string {
     return t('voiceoverAction.productVideoSource')
   }
 
+  if (generation.job_type === 'generate_video_to_campaign') {
+    return t('voiceoverAction.videoCampaignSource')
+  }
+
+  if (generation.job_type === 'generate_auto_video_edit') {
+    return t('voiceoverAction.autoEditorSource')
+  }
+
   return t('voiceoverAction.campaignSource')
 }
 

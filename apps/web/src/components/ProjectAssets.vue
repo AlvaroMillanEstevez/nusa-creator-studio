@@ -44,8 +44,12 @@ const roleOptions = computed<Array<{ value: MediaAssetUsageRole; label: string }
     return [
       { value: 'product_image', label: 'Product image' },
       { value: 'source_video', label: 'Source video' },
+      { value: 'raw_product_video', label: 'Raw product video' },
+      { value: 'campaign_source_video', label: 'Campaign source video' },
+      { value: 'video_reference', label: 'Video reference' },
       { value: 'background_reference', label: 'Background reference' },
       { value: 'audio_track', label: 'Audio track' },
+      { value: 'voiceover_audio', label: 'Voiceover audio' },
       { value: 'brand_reference', label: 'Brand reference' },
       { value: 'general', label: 'General' },
     ]
