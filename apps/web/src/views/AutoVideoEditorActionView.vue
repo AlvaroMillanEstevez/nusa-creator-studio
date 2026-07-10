@@ -352,7 +352,10 @@ onMounted(loadPage)
                 </select>
                 <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
                   <input v-model="voiceoverMode" type="radio" value="new" class="mt-1 accent-emerald-400">
-                  <span>{{ t('videoWorkflows.includeNewVoiceover') }}</span>
+                  <span>
+                    <span class="block font-semibold text-neutral-100">{{ t('videoWorkflows.includeNewVoiceover') }}</span>
+                    <span class="mt-1 block text-xs leading-5 text-neutral-500">{{ t('videoWorkflows.newVoiceoverBetaGuide') }}</span>
+                  </span>
                 </label>
               </div>
             </div>
@@ -411,6 +414,7 @@ onMounted(loadPage)
                 <p class="rounded-2xl border border-emerald-800 bg-emerald-950/40 p-3 text-sm font-semibold text-emerald-100">{{ t('videoWorkflows.totalCredits') }}: {{ costBreakdown.total }}</p>
               </div>
               <p class="mt-3 text-xs leading-5 text-neutral-500">{{ t('videoWorkflows.costBreakdownHelp') }}</p>
+              <p class="mt-3 rounded-2xl border border-sky-900/60 bg-sky-950/20 p-3 text-xs leading-5 text-sky-100/80">{{ t('videoWorkflows.renderProcessingCopy') }}</p>
               <p v-if="formError" role="alert" class="mt-4 rounded-xl border border-rose-900/60 bg-rose-950/30 p-3 text-sm leading-6 text-rose-200">{{ formError }}</p>
               <button type="submit" :disabled="isSubmitting" class="mt-5 min-h-12 w-full rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400">
                 {{ isSubmitting ? t('videoWorkflows.generating') : t('videoWorkflows.generateAutoVideoEdit') }}

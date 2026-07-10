@@ -768,7 +768,7 @@ export interface AutoVideoEditorReference {
 
 export interface AutoVideoEditorDecision {
   order: number
-  timestamp: string
+  timestamp: string | null
   decision: string
   reason: string
 }
@@ -778,12 +778,19 @@ export interface AutoVideoEditorTimelineItem {
   layer: string
   instruction: string
   text_overlay: string
+  start_seconds?: number | null
+  duration_seconds?: number | null
+  source_start_seconds?: number | null
+  source_end_seconds?: number | null
+  source?: string | null
 }
 
 export interface AutoVideoEditorClip {
   clip: string
   source: string
   use: string
+  timestamp?: string | null
+  text_overlay?: string | null
 }
 
 export interface AutoVideoEditorCaptionsPlan {
@@ -794,7 +801,7 @@ export interface AutoVideoEditorCaptionsPlan {
 
 export interface AutoVideoEditorAudioMixPlan {
   include_voiceover: boolean
-  voiceover_reference: AutoVideoEditorReference
+  voiceover_reference?: AutoVideoEditorReference
   music_direction: string
   mix_notes: string[]
 }
@@ -806,12 +813,16 @@ export interface AutoVideoEditorRenderSettings {
   editing_style: string
   pacing: string
   caption_style: string
+  provider?: string
+  actual_duration_seconds?: number
+  resolution?: string
+  aspect_ratio?: string
 }
 
 export interface AutoVideoEditorPlaceholder {
-  status: 'placeholder'
+  status: 'placeholder' | 'rendered'
   message: string
-  provider: 'mock'
+  provider: 'mock' | 'shotstack' | string
 }
 
 export interface AutoVideoEditorCostBreakdown {
@@ -839,6 +850,9 @@ export interface AutoVideoEditorResult {
   voiceover_script: string | null
   render_settings: AutoVideoEditorRenderSettings
   final_video_placeholder: AutoVideoEditorPlaceholder
+  final_video_asset_id?: number | null
+  final_video_stream_url?: string | null
+  final_video_download_url?: string | null
   cost_breakdown: AutoVideoEditorCostBreakdown
   compliance_notes: string[]
   usage_notes: string[]

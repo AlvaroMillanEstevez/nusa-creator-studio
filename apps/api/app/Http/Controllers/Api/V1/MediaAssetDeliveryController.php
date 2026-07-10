@@ -14,7 +14,7 @@ class MediaAssetDeliveryController extends Controller
     public function stream(Request $request, MediaAsset $mediaAsset): StreamedResponse
     {
         $this->authorizeOwner($request, $mediaAsset);
-        $this->ensureAudioAsset($mediaAsset, 'Only audio assets can be streamed.');
+        $this->ensurePlayableAsset($mediaAsset, 'Only audio or video assets can be streamed.');
         $this->ensureFileExists($mediaAsset);
 
         return $this->streamFile($mediaAsset, 'inline');
@@ -23,7 +23,7 @@ class MediaAssetDeliveryController extends Controller
     public function download(Request $request, MediaAsset $mediaAsset): StreamedResponse
     {
         $this->authorizeOwner($request, $mediaAsset);
-        $this->ensureAudioAsset($mediaAsset, 'Only audio assets can be downloaded right now.');
+        $this->ensurePlayableAsset($mediaAsset, 'Only audio or video assets can be downloaded.');
         $this->ensureFileExists($mediaAsset);
 
         return $this->streamFile($mediaAsset, 'attachment');
@@ -37,10 +37,10 @@ class MediaAssetDeliveryController extends Controller
         );
     }
 
-    private function ensureAudioAsset(MediaAsset $mediaAsset, string $message): void
+    private function ensurePlayableAsset(MediaAsset $mediaAsset, string $message): void
     {
         abort_if(
-            $mediaAsset->type !== 'audio',
+            ! in_array($mediaAsset->type, ['audio', 'video'], true),
             Response::HTTP_UNPROCESSABLE_ENTITY,
             $message,
         );
@@ -63,6 +63,7 @@ class MediaAssetDeliveryController extends Controller
                 $disposition,
                 addcslashes($this->downloadFilename($mediaAsset), '\\"'),
             ),
+            'Accept-Ranges' => 'bytes',
             'X-Content-Type-Options' => 'nosniff',
         ];
 
@@ -87,7 +88,7 @@ class MediaAssetDeliveryController extends Controller
 
     private function downloadFilename(MediaAsset $mediaAsset): string
     {
-        $fallback = 'media-'.$mediaAsset->getKey().'.mp3';
+        $fallback = 'media-'.$mediaAsset->getKey().($mediaAsset->type === 'video' ? '.mp4' : '.mp3');
         $name = $mediaAsset->original_name ?: $fallback;
         $name = basename(str_replace('\\', '/', $name));
         $name = preg_replace('/[\r\n\x00-\x1F\x7F"]+/u', '_', $name) ?: $fallback;
@@ -95,6 +96,10 @@ class MediaAssetDeliveryController extends Controller
 
         if ($name === '') {
             return $fallback;
+        }
+
+        if ($mediaAsset->mime_type === 'video/mp4' && ! str_ends_with(mb_strtolower($name), '.mp4')) {
+            $name .= '.mp4';
         }
 
         return mb_substr($name, 0, 180);

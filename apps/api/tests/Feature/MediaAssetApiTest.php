@@ -284,7 +284,7 @@ class MediaAssetApiTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_non_audio_assets_cannot_be_streamed(): void
+    public function test_non_audio_or_video_assets_cannot_be_streamed(): void
     {
         $user = User::factory()->create();
         $asset = MediaAsset::factory()->for($user)->create([
@@ -299,7 +299,7 @@ class MediaAssetApiTest extends TestCase
         $this->actingAs($user)
             ->getJson("/api/v1/media-assets/{$asset->id}/stream")
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'Only audio assets can be streamed.');
+            ->assertJsonPath('message', 'Only audio or video assets can be streamed.');
     }
 
     public function test_media_asset_resource_includes_safe_delivery_urls_for_audio_assets(): void

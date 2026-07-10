@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\ProjectActionController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
 use App\Http\Controllers\Api\V1\ProjectMediaAssetController;
+use App\Http\Controllers\Api\V1\ProviderAssetController;
 use App\Http\Controllers\Api\V1\SubscriptionPlanController;
 use App\Http\Controllers\Api\V1\VoiceoverVoiceController;
 use Illuminate\Http\Request;
@@ -54,6 +55,10 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::get('tools', CreatorToolController::class)->name('tools.index');
+    Route::get('provider-assets/{token}', ProviderAssetController::class)
+        ->where('token', '[A-Za-z0-9]+')
+        ->name('provider-assets.show');
+
     Route::get('plans', SubscriptionPlanController::class)->name('plans.index');
 
     Route::prefix('admin')

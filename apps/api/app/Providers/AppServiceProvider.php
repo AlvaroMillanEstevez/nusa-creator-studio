@@ -11,8 +11,8 @@ use App\Contracts\ProductVideoScriptProvider;
 use App\Contracts\VideoEnhancerProvider;
 use App\Contracts\VideoToCampaignProvider;
 use App\Services\Generation\AiVoiceoverProviderManager;
+use App\Services\Generation\AutoVideoEditorProviderManager;
 use App\Services\Generation\CampaignGenerationProviderManager;
-use App\Services\Generation\MockAutoVideoEditorProvider;
 use App\Services\Generation\MockFashionTryOnProvider;
 use App\Services\Generation\MockMotionAiVideoProvider;
 use App\Services\Generation\MockProductVideoScriptProvider;
@@ -34,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(FashionTryOnProvider::class, MockFashionTryOnProvider::class);
         $this->app->bind(MotionAiVideoProvider::class, MockMotionAiVideoProvider::class);
         $this->app->bind(VideoToCampaignProvider::class, VideoToCampaignProviderManager::class);
-        $this->app->bind(AutoVideoEditorProvider::class, MockAutoVideoEditorProvider::class);
+        $this->app->bind(AutoVideoEditorProvider::class, AutoVideoEditorProviderManager::class);
     }
 
     /**

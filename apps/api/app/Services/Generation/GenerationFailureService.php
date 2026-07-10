@@ -2,6 +2,7 @@
 
 namespace App\Services\Generation;
 
+use App\Exceptions\AutoVideoEditor\AutoVideoEditorProviderException;
 use App\Exceptions\VideoToCampaign\VideoToCampaignProviderException;
 use App\Models\Generation;
 use App\Services\Credits\CreditService;
@@ -58,7 +59,7 @@ class GenerationFailureService
      */
     private function safeFailurePayload(Generation $generation, ?Throwable $exception): ?array
     {
-        if (! $exception instanceof VideoToCampaignProviderException) {
+        if (! $exception instanceof VideoToCampaignProviderException && ! $exception instanceof AutoVideoEditorProviderException) {
             return null;
         }
 
@@ -69,6 +70,7 @@ class GenerationFailureService
             'failure_stage' => is_string($exception->context['stage'] ?? null) ? $exception->context['stage'] : null,
             'endpoint_type' => is_string($exception->context['endpoint_type'] ?? null) ? $exception->context['endpoint_type'] : null,
             'http_status' => is_numeric($exception->context['http_status'] ?? null) ? (int) $exception->context['http_status'] : null,
+            'render_id' => is_string($exception->context['render_id'] ?? null) ? $exception->context['render_id'] : null,
         ];
 
         return [

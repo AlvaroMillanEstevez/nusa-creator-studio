@@ -109,28 +109,42 @@ const retryRoute = computed(() => {
     return `/projects/${String(id)}/actions/video-to-campaign`
   }
 
+  if (props.generation?.job_type === 'generate_auto_video_edit') {
+    return `/projects/${String(id)}/actions/auto-video-editor`
+  }
+
   return `/projects/${String(id)}`
 })
 const isVideoToCampaignGeneration = computed(() =>
   props.generation?.job_type === 'generate_video_to_campaign',
 )
+const isAutoVideoEditorGeneration = computed(() =>
+  props.generation?.job_type === 'generate_auto_video_edit',
+)
+const isVideoProcessingWorkflow = computed(() =>
+  isVideoToCampaignGeneration.value || isAutoVideoEditorGeneration.value,
+)
 const processingTitle = computed(() =>
   isVideoToCampaignGeneration.value
     ? 'Analyzing your video and creating the campaign.'
-    : 'Creating your result...',
+    : isAutoVideoEditorGeneration.value
+      ? 'Rendering your video.'
+      : 'Creating your result...',
 )
 const processingDescription = computed(() =>
-  isVideoToCampaignGeneration.value
+  isVideoProcessingWorkflow.value
     ? 'This can take a few minutes depending on video length and provider processing time.'
     : 'We are creating your result. The result will update automatically.',
 )
 const failedTitle = computed(() =>
   isVideoToCampaignGeneration.value
     ? 'Video analysis failed. Your credits were refunded if they were charged.'
-    : 'Generation failed. Please try again.',
+    : isAutoVideoEditorGeneration.value
+      ? 'Video rendering failed. Your credits were refunded if they were charged.'
+      : 'Generation failed. Please try again.',
 )
 const failedDescription = computed(() =>
-  isVideoToCampaignGeneration.value
+  isVideoProcessingWorkflow.value
     ? 'The provider did not return a usable result. We kept the technical details out of the UI so private provider data stays safe.'
     : 'Your charged credits are returned automatically for an internal processing failure.',
 )
@@ -191,7 +205,7 @@ const failedDescription = computed(() =>
     <p class="mt-2 text-sm leading-6 text-rose-200">
       {{ failedDescription }}
     </p>
-    <div v-if="isVideoToCampaignGeneration" class="mt-5 grid gap-3 sm:grid-cols-2">
+    <div v-if="isVideoProcessingWorkflow" class="mt-5 grid gap-3 sm:grid-cols-2">
       <RouterLink
         :to="projectWorkspaceRoute"
         class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-100 transition hover:border-emerald-500 hover:bg-emerald-950/30"
@@ -256,6 +270,7 @@ const failedDescription = computed(() =>
     <AutoVideoEditorGenerationResult
       v-else-if="autoVideoEditorResult"
       :result="autoVideoEditorResult"
+      :generation-id="generation.id"
     />
   </div>
 </template>

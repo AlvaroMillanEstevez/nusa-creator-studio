@@ -24,10 +24,10 @@ class MediaAssetResource extends JsonResource
             'usage_role' => $this->usage_role,
             'disk' => $this->disk,
             'storage_identifier' => 'media-'.$this->id,
-            'stream_url' => $this->type === 'audio'
+            'stream_url' => $this->isPlayableMedia()
                 ? route('media-assets.stream', ['mediaAsset' => $this->id], false)
                 : null,
-            'download_url' => $this->type === 'audio'
+            'download_url' => $this->isPlayableMedia()
                 ? route('media-assets.download', ['mediaAsset' => $this->id], false)
                 : null,
             'original_name' => $this->original_name,
@@ -43,6 +43,11 @@ class MediaAssetResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
+    }
+
+    private function isPlayableMedia(): bool
+    {
+        return in_array($this->type, ['audio', 'video'], true);
     }
 
     private function sizeLabel(): ?string

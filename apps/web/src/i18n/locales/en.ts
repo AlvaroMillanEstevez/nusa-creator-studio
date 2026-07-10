@@ -683,6 +683,7 @@ export default {
     reuseVoiceoverGeneration: 'Reuse saved voiceover generation',
     reuseAudioAsset: 'Reuse uploaded/generated audio asset',
     includeNewVoiceover: 'Include new AI voiceover',
+    newVoiceoverBetaGuide: 'For the beta render, generate a voiceover first and select it here.',
     editSettings: 'Edit settings',
     configureEditPlan: 'Configure edit plan',
     editingStyle: 'Editing style',
@@ -697,6 +698,7 @@ export default {
     voiceover: 'Voiceover',
     totalCredits: 'Total credits',
     costBreakdownHelp: 'Internal credits only. Real rendering and external provider billing are not enabled yet.',
+    renderProcessingCopy: 'Rendering your video. This can take a few minutes depending on video length and provider processing time.',
     generateAutoVideoEdit: 'Generate auto video edit plan',
   },
   projects: {

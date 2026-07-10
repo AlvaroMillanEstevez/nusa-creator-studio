@@ -15,6 +15,7 @@ class AutoVideoEditorGenerationService
     public function __construct(
         private readonly GenerationSubmissionService $submissions,
         private readonly ToolAvailabilityService $tools,
+        private readonly AutoVideoEditorProviderManager $providers,
     ) {}
 
     /**
@@ -29,10 +30,20 @@ class AutoVideoEditorGenerationService
         $voiceoverGeneration = $this->voiceoverGeneration($project, $user, $options);
         $voiceoverAudioAsset = $this->voiceoverAudioAsset($project, $user, $options);
         $includeVoiceover = (bool) ($options['include_voiceover'] ?? false);
+        $selectedProvider = $this->providers->selectedProviderForUser($user);
+        $hasExistingVoiceover = $voiceoverGeneration instanceof Generation || $voiceoverAudioAsset instanceof MediaAsset;
+
+        if ($selectedProvider === 'shotstack' && $includeVoiceover && ! $this->hasReusableVoiceoverAudio($project, $user, $voiceoverGeneration, $voiceoverAudioAsset)) {
+            throw ValidationException::withMessages([
+                'voiceover_generation_id' => 'Generate a voiceover first, then reuse it in Auto Video Editor.',
+            ]);
+        }
+
         $costBreakdown = $this->costBreakdown(
             hasVideoAnalysis: $analysisGeneration instanceof Generation,
             includeVoiceover: $includeVoiceover,
-            hasExistingVoiceover: $voiceoverGeneration instanceof Generation || $voiceoverAudioAsset instanceof MediaAsset,
+            hasExistingVoiceover: $hasExistingVoiceover,
+            provider: $selectedProvider,
         );
 
         return $this->submissions->submit(
@@ -40,7 +51,7 @@ class AutoVideoEditorGenerationService
             user: $user,
             jobType: 'generate_auto_video_edit',
             creditCost: (int) $costBreakdown['total_credits'],
-            creditReason: 'Mock Auto Video Editor generation',
+            creditReason: $selectedProvider === 'shotstack' ? 'Auto Video Editor render' : 'Mock Auto Video Editor generation',
             dispatch: fn (int $generationId) => GenerateAutoVideoEditJob::dispatch($generationId),
             inputPayload: $this->inputPayload(
                 project: $project,
@@ -52,6 +63,7 @@ class AutoVideoEditorGenerationService
                 costBreakdown: $costBreakdown,
                 options: $options,
             ),
+            provider: $selectedProvider,
         );
     }
 
@@ -185,10 +197,31 @@ class AutoVideoEditorGenerationService
         ]);
     }
 
+    private function hasReusableVoiceoverAudio(Project $project, User $user, ?Generation $generation, ?MediaAsset $asset): bool
+    {
+        if ($asset instanceof MediaAsset) {
+            return true;
+        }
+
+        $assetId = $generation instanceof Generation
+            ? ($generation->output_payload['audio_asset_id'] ?? null)
+            : null;
+
+        if ($assetId === null || $assetId === '') {
+            return false;
+        }
+
+        return $user->mediaAssets()
+            ->whereKey((int) $assetId)
+            ->where('project_id', $project->getKey())
+            ->where('type', 'audio')
+            ->exists();
+    }
+
     /**
      * @return array<string, mixed>
      */
-    private function costBreakdown(bool $hasVideoAnalysis, bool $includeVoiceover, bool $hasExistingVoiceover): array
+    private function costBreakdown(bool $hasVideoAnalysis, bool $includeVoiceover, bool $hasExistingVoiceover, string $provider): array
     {
         $baseEditorCost = $this->tools->creditCost('auto_video_editor');
         $videoAnalysisCost = $hasVideoAnalysis ? 0 : $this->tools->creditCost('video_to_campaign');
@@ -199,7 +232,7 @@ class AutoVideoEditorGenerationService
 
         return [
             'base_editor_cost' => $baseEditorCost,
-            'base_editor_note' => 'Auto Video Editor mock planning workflow',
+            'base_editor_note' => $provider === 'shotstack' ? 'Auto Video Editor beta render workflow' : 'Auto Video Editor mock planning workflow',
             'video_analysis_cost' => $videoAnalysisCost,
             'video_analysis_note' => $hasVideoAnalysis
                 ? 'Video campaign analysis reused'
@@ -209,7 +242,7 @@ class AutoVideoEditorGenerationService
                 ? 'No voiceover included'
                 : ($hasExistingVoiceover ? 'Existing voiceover reused' : 'Includes new AI voiceover'),
             'render_cost_placeholder' => $renderCost,
-            'render_note' => 'Mock edit plan only; real rendering will be connected later',
+            'render_note' => $provider === 'shotstack' ? 'Real Shotstack render is enabled for this beta user' : 'Mock edit plan only; real rendering will be connected later',
             'total_credits' => $baseEditorCost + $videoAnalysisCost + $voiceoverCost + $renderCost,
         ];
     }

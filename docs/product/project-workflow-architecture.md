@@ -90,7 +90,7 @@ The real beta chain is:
 raw video
 → Gemini video analysis + campaign/edit-plan JSON
 → ElevenLabs voiceover from Gemini narration text
-→ Shotstack render later
+→ Shotstack Auto Video Editor render for internal beta users
 ```
 
 Video-to-Campaign is an Advanced workflow. It analyzes a selected project video asset and saves structured campaign context, including `video_summary`, observed product features, detected product moments, recommended cuts, hooks, captions, an edit plan and `narration_voice_script`.
@@ -99,12 +99,14 @@ In default mode it uses the deterministic mock provider. In internal beta mode i
 
 Video-to-Campaign produces narration text, not audio. The narration script is reusable text for the separate AI Voiceover action, so voiceover remains an intentional additional step unless another workflow explicitly includes it.
 
-Auto Video Editor is a Premium composite workflow. It creates a mock edit-ready vertical video plan from either:
+Auto Video Editor is a Premium composite workflow. It creates an edit-ready vertical video plan by default and can render a real beta MP4 with Shotstack for eligible internal users when enabled by configuration. It can start from either:
 
 - an existing `generate_video_to_campaign` generation, or
 - a raw/source video asset that needs video analysis inside the composite flow.
 
-It can also reuse an existing AI Voiceover generation or audio asset, include a new voiceover component, or proceed with no voiceover. The result is still a structured mock edit plan only; no fake MP4 is created and no real rendering provider is called.
+It can also reuse an existing AI Voiceover generation or audio asset, or proceed with no voiceover. In mock mode it may still plan a new voiceover component. In real Shotstack mode, automatic new ElevenLabs generation is intentionally deferred: creators should generate a voiceover first, then select that existing audio in Auto Video Editor.
+
+Shotstack renders require temporary provider-accessible URLs for private source video and optional voiceover audio. These URLs use opaque expiring tokens and do not expose raw storage paths. In local development, a public HTTPS tunnel such as ngrok or cloudflared is required because Shotstack cannot fetch private `localhost` URLs.
 
 ### Composite credit reuse rules
 
@@ -236,7 +238,7 @@ Shown but not deeply refactored yet:
 - Fashion Try-On is visible as a future/coming-soon Premium workflow. Legacy mock routes may remain for internal testing, but the active workspace flow should not present it as a core beta action.
 - Motion AI Video is visible as a future/coming-soon Premium workflow. Legacy mock routes may remain for internal testing, but the active workspace flow should not present it as a core beta action.
 - Video ad assembly and Avatar Presenter remain coming-soon contextual actions.
-- Auto Video Editor currently creates a mock edit plan only; Shotstack rendering is the planned next provider integration, not part of the Gemini Video-to-Campaign task.
+- Auto Video Editor defaults to mock edit plans, but Shotstack rendering can be enabled for eligible internal beta users. Completed renders are stored as private `MediaAsset` records with `usage_role=edited_video_result`.
 
 Out of scope for v1:
 

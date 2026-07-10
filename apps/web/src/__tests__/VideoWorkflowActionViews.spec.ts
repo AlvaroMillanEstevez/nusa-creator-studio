@@ -263,11 +263,13 @@ describe('video workflow action views', () => {
     expect(wrapper.text()).toContain('Reuse Video-to-Campaign analysis')
     expect(wrapper.text()).toContain('Reuse saved voiceover generation')
     expect(wrapper.text()).toContain('Cost breakdown')
+    expect(wrapper.text()).toContain('Rendering your video. This can take a few minutes depending on video length and provider processing time.')
     expect(wrapper.text()).toContain('Total credits: 2')
 
     await wrapper.get('input[value="new"]').setValue(true)
     await flushPromises()
 
     expect(wrapper.text()).toContain('Total credits: 3')
+    expect(wrapper.text()).toContain('For the beta render, generate a voiceover first and select it here.')
   })
 })

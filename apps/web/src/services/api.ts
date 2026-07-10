@@ -204,6 +204,12 @@ export async function apiGetBlob(pathOrUrl: string): Promise<Blob> {
     throw new ApiError(sanitizeApiErrorMessage(response.status, payload), response.status, code)
   }
 
+  const contentType = response.headers.get('Content-Type')?.toLowerCase() ?? ''
+
+  if (contentType.includes('text/html')) {
+    throw new ApiError('This media file could not be loaded.', response.status)
+  }
+
   return response.blob()
 }
 

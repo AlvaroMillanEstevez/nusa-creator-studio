@@ -1,8 +1,110 @@
 <script setup lang="ts">
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+
+import { fetchMediaBlob } from '@/services/media'
 import type { AutoVideoEditorResult } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
 
-defineProps<{ result: AutoVideoEditorResult }>()
+const props = defineProps<{
+  result: AutoVideoEditorResult
+  generationId?: number | string | null
+}>()
+
+const result = computed(() => props.result)
+const streamUrl = computed(() => result.value.final_video_stream_url ?? null)
+const downloadUrl = computed(() => result.value.final_video_download_url ?? null)
+const hasFinalVideo = computed(() => Boolean(streamUrl.value))
+const videoUrl = ref<string | null>(null)
+const isPreviewLoading = ref(false)
+const isDownloadingVideo = ref(false)
+const videoError = ref('')
+const downloadError = ref('')
+const downloadFilename = computed(() => {
+  const id = props.generationId ?? result.value.final_video_asset_id ?? 'video'
+
+  return `auto-video-editor-${String(id)}.mp4`
+})
+
+function revokeVideoUrl(): void {
+  if (videoUrl.value && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+    URL.revokeObjectURL(videoUrl.value)
+  }
+
+  videoUrl.value = null
+}
+
+function playableVideoBlob(blob: Blob): Blob {
+  const type = blob.type.toLowerCase()
+
+  if (type.includes('text/html')) {
+    throw new Error('Private media request returned HTML instead of a video file.')
+  }
+
+  return type === 'video/mp4' ? blob : new Blob([blob], { type: 'video/mp4' })
+}
+
+async function loadVideoPreview(): Promise<void> {
+  revokeVideoUrl()
+  videoError.value = ''
+
+  if (!streamUrl.value) {
+    return
+  }
+
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    videoError.value = 'Could not load the secure video preview.'
+    return
+  }
+
+  isPreviewLoading.value = true
+
+  try {
+    const blob = playableVideoBlob(await fetchMediaBlob(streamUrl.value))
+    videoUrl.value = URL.createObjectURL(blob)
+  } catch {
+    videoError.value = 'Could not load the secure video preview.'
+  } finally {
+    isPreviewLoading.value = false
+  }
+}
+
+async function downloadVideo(): Promise<void> {
+  if (!downloadUrl.value) {
+    return
+  }
+
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    downloadError.value = 'Could not download the video file.'
+    return
+  }
+
+  isDownloadingVideo.value = true
+  downloadError.value = ''
+
+  try {
+    const blob = playableVideoBlob(await fetchMediaBlob(downloadUrl.value))
+    const objectUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = downloadFilename.value
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(objectUrl)
+  } catch {
+    downloadError.value = 'Could not download the video file.'
+  } finally {
+    isDownloadingVideo.value = false
+  }
+}
+
+watch(streamUrl, () => {
+  void loadVideoPreview()
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  revokeVideoUrl()
+})
 </script>
 
 <template>
@@ -11,8 +113,46 @@ defineProps<{ result: AutoVideoEditorResult }>()
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Auto Video Editor</p>
       <h2 class="mt-3 text-2xl font-bold">Edit-ready vertical video plan</h2>
       <p class="mt-4 text-sm leading-7 text-neutral-200">{{ result.source_summary }}</p>
-      <p class="mt-4 rounded-2xl border border-sky-900/60 bg-sky-950/20 p-3 text-sm leading-6 text-sky-100/80">
+      <p v-if="!hasFinalVideo" class="mt-4 rounded-2xl border border-sky-900/60 bg-sky-950/20 p-3 text-sm leading-6 text-sky-100/80">
         {{ result.final_video_placeholder.message }}
+      </p>
+    </section>
+
+    <section v-if="hasFinalVideo" class="nusa-card-premium rounded-[2rem] p-5" data-testid="auto-video-final-preview">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Final video</p>
+          <h3 class="mt-2 text-xl font-semibold">Rendered vertical video</h3>
+          <p class="mt-2 text-sm leading-6 text-neutral-400">{{ result.final_video_placeholder.message }}</p>
+        </div>
+        <button
+          v-if="downloadUrl"
+          type="button"
+          :disabled="isDownloadingVideo"
+          class="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-wait disabled:opacity-60"
+          data-testid="auto-video-download"
+          @click="downloadVideo"
+        >
+          {{ isDownloadingVideo ? 'Preparing download...' : 'Download video' }}
+        </button>
+      </div>
+      <p v-if="isPreviewLoading" class="mt-5 rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4 text-sm text-neutral-400" data-testid="auto-video-preview-loading">
+        Loading secure video preview...
+      </p>
+      <p v-else-if="videoError" role="alert" class="mt-5 rounded-2xl border border-rose-900/60 bg-rose-950/30 p-4 text-sm text-rose-100" data-testid="auto-video-preview-error">
+        {{ videoError }}
+      </p>
+      <video
+        v-else-if="videoUrl"
+        class="mt-5 aspect-[9/16] w-full max-h-[70vh] rounded-[1.5rem] border border-neutral-800 bg-black object-contain"
+        :src="videoUrl"
+        controls
+        playsinline
+        preload="metadata"
+        data-testid="auto-video-player"
+      />
+      <p v-if="downloadError" role="alert" class="mt-3 rounded-2xl border border-rose-900/60 bg-rose-950/30 p-3 text-sm text-rose-100" data-testid="auto-video-download-error">
+        {{ downloadError }}
       </p>
     </section>
 
@@ -55,7 +195,7 @@ defineProps<{ result: AutoVideoEditorResult }>()
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Edit decision list</p>
       <div class="mt-4 space-y-3">
         <article v-for="item in result.edit_decision_list" :key="item.order" class="rounded-2xl bg-neutral-950/70 p-4">
-          <p class="text-xs font-semibold text-emerald-300">{{ item.timestamp }} ? Decision {{ item.order }}</p>
+          <p class="text-xs font-semibold text-emerald-300">{{ item.timestamp }} &mdash; Decision {{ item.order }}</p>
           <p class="mt-2 text-sm leading-6 text-neutral-100">{{ item.decision }}</p>
           <p class="mt-2 text-xs leading-5 text-neutral-500">{{ item.reason }}</p>
         </article>
@@ -66,7 +206,7 @@ defineProps<{ result: AutoVideoEditorResult }>()
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Timeline</p>
       <div class="mt-4 space-y-3">
         <article v-for="item in result.timeline" :key="item.timestamp + item.layer" class="rounded-2xl bg-neutral-950/70 p-4">
-          <p class="text-xs font-semibold text-emerald-300">{{ item.timestamp }} ? {{ formatLabel(item.layer) }}</p>
+          <p class="text-xs font-semibold text-emerald-300">{{ item.timestamp }} &mdash; {{ formatLabel(item.layer) }}</p>
           <p class="mt-2 text-sm leading-6 text-neutral-100">{{ item.instruction }}</p>
           <p class="mt-2 text-xs font-medium text-neutral-500">Overlay: {{ item.text_overlay }}</p>
         </article>
@@ -98,14 +238,14 @@ defineProps<{ result: AutoVideoEditorResult }>()
       <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Transition plan</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
-          <li v-for="item in result.transition_plan" :key="item">? {{ item }}</li>
+          <li v-for="item in result.transition_plan" :key="item">&bull; {{ item }}</li>
         </ul>
       </div>
       <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Audio mix plan</p>
         <p class="mt-3 text-sm leading-6 text-neutral-300">{{ result.audio_mix_plan.music_direction }}</p>
         <ul class="mt-3 space-y-2 text-sm leading-6 text-neutral-400">
-          <li v-for="item in result.audio_mix_plan.mix_notes" :key="item">? {{ item }}</li>
+          <li v-for="item in result.audio_mix_plan.mix_notes" :key="item">&bull; {{ item }}</li>
         </ul>
       </div>
     </section>
@@ -131,13 +271,13 @@ defineProps<{ result: AutoVideoEditorResult }>()
       <div class="rounded-3xl border border-amber-900/50 bg-amber-950/20 p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-400">Compliance notes</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-amber-100/80">
-          <li v-for="item in result.compliance_notes" :key="item">? {{ item }}</li>
+          <li v-for="item in result.compliance_notes" :key="item">&bull; {{ item }}</li>
         </ul>
       </div>
       <div class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Usage notes</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
-          <li v-for="item in result.usage_notes" :key="item">? {{ item }}</li>
+          <li v-for="item in result.usage_notes" :key="item">&bull; {{ item }}</li>
         </ul>
       </div>
     </section>

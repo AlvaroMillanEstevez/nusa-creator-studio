@@ -2,9 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Contracts\AutoVideoEditorProvider;
+use App\Services\Generation\AutoVideoEditorGenerationProcessor;
 use App\Services\Generation\GenerationFailureService;
-use App\Services\Generation\GenerationJobProcessor;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -15,19 +14,13 @@ class GenerateAutoVideoEditJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 60;
+    public int $timeout = 900;
 
     public function __construct(public readonly int $generationId) {}
 
-    public function handle(
-        AutoVideoEditorProvider $provider,
-        GenerationJobProcessor $processor,
-    ): void {
-        $processor->process(
-            $this->generationId,
-            'generate_auto_video_edit',
-            fn (array $input): array => $provider->generate($input),
-        );
+    public function handle(AutoVideoEditorGenerationProcessor $processor): void
+    {
+        $processor->process($this->generationId);
     }
 
     public function failed(?Throwable $exception): void

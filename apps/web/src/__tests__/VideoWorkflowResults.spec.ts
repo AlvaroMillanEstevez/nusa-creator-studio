@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import GenerationResultRenderer from '@/components/GenerationResultRenderer.vue'
+import { API_ORIGIN } from '@/services/api'
 import type { CreatorGeneration } from '@/types/project'
 
 const baseGeneration: CreatorGeneration = {
@@ -32,12 +33,48 @@ function router() {
       { path: '/', component: { template: '<div />' } },
       { path: '/projects/:id', name: 'project-detail', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
     ],
   })
 }
 
+function stubObjectUrls(...urls: string[]) {
+  const queuedUrls = urls.length > 0 ? [...urls] : ['blob:nusa-video']
+  const createObjectURL = vi.fn<() => string>(() => queuedUrls.shift() ?? 'blob:nusa-video')
+  const revokeObjectURL = vi.fn<() => void>()
+
+  Object.defineProperty(URL, 'createObjectURL', {
+    configurable: true,
+    value: createObjectURL,
+  })
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    configurable: true,
+    value: revokeObjectURL,
+  })
+
+  return { createObjectURL, revokeObjectURL }
+}
+
+function videoResponse(bytes = 'mp4-bytes'): Response {
+  return new Response(new Blob([bytes], { type: 'video/mp4' }), {
+    status: 200,
+    headers: { 'Content-Type': 'video/mp4' },
+  })
+}
+
+function htmlResponse(): Response {
+  return new Response(new Blob(['<html></html>'], { type: 'text/html' }), {
+    status: 200,
+    headers: { 'Content-Type': 'text/html' },
+  })
+}
+
 describe('video workflow result rendering', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
   it('renders the Video-to-Campaign processing disclaimer', async () => {
     const appRouter = router()
     await appRouter.push('/')
@@ -269,4 +306,227 @@ describe('video workflow result rendering', () => {
     expect(wrapper.text()).toContain('Mock edit plan only. Real rendering will be connected later.')
     expect(wrapper.text()).toContain('Total internal credits')
   })
+
+  it('fetches Auto Video Editor final video preview and download as authenticated blobs', async () => {
+    const objectUrls = stubObjectUrls('blob:nusa-video-preview', 'blob:nusa-video-download')
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(videoResponse('preview-mp4-bytes'))
+      .mockResolvedValueOnce(videoResponse('download-mp4-bytes'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const originalCreateElement = document.createElement.bind(document)
+    const createdAnchor = { current: null as HTMLAnchorElement | null }
+    const click = vi.fn<() => void>()
+
+    vi.spyOn(document, 'createElement').mockImplementation(((tagName: string, options?: ElementCreationOptions) => {
+      const element = originalCreateElement(tagName, options)
+
+      if (tagName.toLowerCase() === 'a') {
+        createdAnchor.current = element as HTMLAnchorElement
+        Object.defineProperty(element, 'click', {
+          configurable: true,
+          value: click,
+        })
+      }
+
+      return element
+    }) as typeof document.createElement)
+
+    const wrapper = mount(GenerationResultRenderer, {
+      props: {
+        generation: {
+          ...baseGeneration,
+          id: 103,
+          job_type: 'generate_auto_video_edit',
+          provider: 'shotstack',
+          result_payload: {
+            source_summary: 'Shotstack rendered a beta vertical edit.',
+            selected_video_analysis_reference: { type: 'video_to_campaign_generation', generation_id: 12, note: 'Video campaign analysis reused' },
+            selected_voiceover_reference: { type: 'voiceover_audio_asset', media_asset_id: 44, note: 'Existing voiceover audio reused' },
+            edit_decision_list: [{ order: 1, timestamp: '0-3s', decision: 'Open on product.', reason: 'Fast hook.' }],
+            timeline: [{ timestamp: '0-3s', layer: 'video', instruction: 'Hook shot.', text_overlay: 'Meet product' }],
+            clip_sequence: [{ clip: 'Clip 1', source: 'source video', use: 'opening hook' }],
+            captions_plan: { style: 'clean_subtitles', safe_zone: 'Keep lower third clear.', sample_captions: ['Meet product'] },
+            transition_plan: ['Use clean cuts.'],
+            audio_mix_plan: {
+              include_voiceover: true,
+              music_direction: 'No music added.',
+              mix_notes: ['Voiceover is placed on a dedicated audio track.'],
+            },
+            voiceover_script: null,
+            render_settings: {
+              provider: 'shotstack',
+              platform: 'tiktok',
+              format: 'vertical_9_16',
+              target_duration_seconds: 15,
+              actual_duration_seconds: 7,
+              editing_style: 'ugc_natural',
+              pacing: 'medium',
+              caption_style: 'clean_subtitles',
+              resolution: '720x1280',
+              aspect_ratio: '9:16',
+            },
+            final_video_placeholder: {
+              status: 'rendered',
+              message: 'Real video rendered and stored as a private project media asset.',
+              provider: 'shotstack',
+            },
+            final_video_asset_id: 301,
+            final_video_stream_url: '/api/v1/media-assets/301/stream',
+            final_video_download_url: '/api/v1/media-assets/301/download',
+            cost_breakdown: {
+              base_editor_cost: 2,
+              base_editor_note: 'Auto Video Editor beta render workflow',
+              video_analysis_cost: 0,
+              video_analysis_note: 'Video campaign analysis reused',
+              voiceover_cost: 0,
+              voiceover_note: 'Existing voiceover reused',
+              render_cost_placeholder: 0,
+              render_note: 'Real Shotstack render is enabled for this beta user',
+              total_credits: 2,
+            },
+            compliance_notes: ['Use owned assets.'],
+            usage_notes: ['Rendered video stored privately.'],
+            provider_metadata: { provider: 'shotstack', mode: 'real', render_id: 'render_test_123' },
+          },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_ORIGIN + '/api/v1/media-assets/301/stream',
+      expect.objectContaining({
+        credentials: 'include',
+        headers: { Accept: '*/*' },
+      }),
+    )
+    expect(objectUrls.createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
+    expect(wrapper.get('[data-testid="auto-video-final-preview"]').text()).toContain('Rendered vertical video')
+    expect(wrapper.get('[data-testid="auto-video-player"]').attributes('src')).toBe('blob:nusa-video-preview')
+    expect(wrapper.get('[data-testid="auto-video-download"]').element.tagName).toBe('BUTTON')
+    expect(wrapper.get('[data-testid="auto-video-download"]').attributes('href')).toBeUndefined()
+
+    await wrapper.get('[data-testid="auto-video-download"]').trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      API_ORIGIN + '/api/v1/media-assets/301/download',
+      expect.objectContaining({
+        credentials: 'include',
+        headers: { Accept: '*/*' },
+      }),
+    )
+    expect(createdAnchor.current?.download).toBe('auto-video-editor-103.mp4')
+    expect(createdAnchor.current?.href).toBe('blob:nusa-video-download')
+    expect(click).toHaveBeenCalledOnce()
+    expect(objectUrls.revokeObjectURL).toHaveBeenCalledWith('blob:nusa-video-download')
+
+    wrapper.unmount()
+    expect(objectUrls.revokeObjectURL).toHaveBeenCalledWith('blob:nusa-video-preview')
+  })
+
+  it('shows an error instead of using HTML responses as generated video files', async () => {
+    stubObjectUrls('blob:nusa-video-preview', 'blob:nusa-video-download')
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(htmlResponse())
+      .mockResolvedValueOnce(htmlResponse())
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(GenerationResultRenderer, {
+      props: {
+        generation: {
+          ...baseGeneration,
+          id: 104,
+          job_type: 'generate_auto_video_edit',
+          provider: 'shotstack',
+          result_payload: {
+            source_summary: 'Shotstack rendered a beta vertical edit.',
+            selected_video_analysis_reference: { type: 'video_to_campaign_generation', generation_id: 12, note: 'Video campaign analysis reused' },
+            selected_voiceover_reference: { type: 'none', note: 'No voiceover included' },
+            edit_decision_list: [{ order: 1, timestamp: '0-3s', decision: 'Open on product.', reason: 'Fast hook.' }],
+            timeline: [{ timestamp: '0-3s', layer: 'video', instruction: 'Hook shot.', text_overlay: 'Meet product' }],
+            clip_sequence: [{ clip: 'Clip 1', source: 'source video', use: 'opening hook' }],
+            captions_plan: { style: 'clean_subtitles', safe_zone: 'Keep lower third clear.', sample_captions: ['Meet product'] },
+            transition_plan: ['Use clean cuts.'],
+            audio_mix_plan: {
+              include_voiceover: false,
+              music_direction: 'No music added.',
+              mix_notes: ['Source audio only.'],
+            },
+            voiceover_script: null,
+            render_settings: {
+              provider: 'shotstack',
+              platform: 'tiktok',
+              format: 'vertical_9_16',
+              target_duration_seconds: 15,
+              editing_style: 'ugc_natural',
+              pacing: 'medium',
+              caption_style: 'clean_subtitles',
+            },
+            final_video_placeholder: {
+              status: 'rendered',
+              message: 'Real video rendered and stored as a private project media asset.',
+              provider: 'shotstack',
+            },
+            final_video_asset_id: 302,
+            final_video_stream_url: '/api/v1/media-assets/302/stream',
+            final_video_download_url: '/api/v1/media-assets/302/download',
+            cost_breakdown: {
+              base_editor_cost: 2,
+              base_editor_note: 'Auto Video Editor beta render workflow',
+              video_analysis_cost: 0,
+              video_analysis_note: 'Video campaign analysis reused',
+              voiceover_cost: 0,
+              voiceover_note: 'No voiceover included',
+              render_cost_placeholder: 0,
+              render_note: 'Real Shotstack render is enabled for this beta user',
+              total_credits: 2,
+            },
+            compliance_notes: ['Use owned assets.'],
+            usage_notes: ['Rendered video stored privately.'],
+            provider_metadata: { provider: 'shotstack', mode: 'real', render_id: 'render_test_456' },
+          },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="auto-video-preview-error"]').text()).toContain('Could not load the secure video preview.')
+    expect(wrapper.find('[data-testid="auto-video-player"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="auto-video-download"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="auto-video-download-error"]').text()).toContain('Could not download the video file.')
+  })
+
+  it('renders Auto Video Editor failed render state with refund copy and actions', async () => {
+    const appRouter = router()
+    await appRouter.push('/')
+    await appRouter.isReady()
+
+    const wrapper = mount(GenerationResultRenderer, {
+      props: {
+        projectId: 42,
+        generation: {
+          ...baseGeneration,
+          job_type: 'generate_auto_video_edit',
+          status: 'failed',
+          result_payload: null,
+          output_payload: null,
+          error_message: 'Generation failed due to an internal processing error.',
+        },
+      },
+      global: { plugins: [appRouter] },
+    })
+
+    expect(wrapper.get('[data-testid="generation-status"]').text()).toContain('Video rendering failed. Your credits were refunded if they were charged.')
+    expect(wrapper.text()).toContain('Back to workspace')
+    expect(wrapper.text()).toContain('Try again')
+    expect(wrapper.find('a[href="/projects/42/actions/auto-video-editor"]').exists()).toBe(true)
+  })
+
 })
