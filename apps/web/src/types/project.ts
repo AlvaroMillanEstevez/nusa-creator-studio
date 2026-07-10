@@ -389,6 +389,8 @@ export interface GenerateVideoToCampaignPayload {
   product_description?: string | null
   target_audience?: string | null
   campaign_context?: string | null
+  product_category?: string | null
+  selling_angle?: string | null
   language?: CampaignLanguage | string | null
   tone?: CampaignTone | string | null
   platform?: string | null
@@ -671,44 +673,79 @@ export interface FashionTryOnResult {
 
 
 
+export interface VideoToCampaignFeature {
+  feature: string
+  evidence: string
+  confidence: 'low' | 'medium' | 'high' | string
+}
+
 export interface VideoToCampaignMoment {
-  timestamp: string
-  moment: string
-  campaign_use: string
+  timestamp?: string
+  moment?: string
+  campaign_use?: string
+  start_seconds?: number
+  end_seconds?: number
+  title?: string
+  description?: string
+  why_it_matters?: string
+  visual_quality?: 'low' | 'medium' | 'high' | string
 }
 
 export interface VideoToCampaignObservation {
-  scene: string
+  scene?: string
   observation: string
-  confidence: string
+  confidence?: string
+  start_seconds?: number
+  end_seconds?: number
+  usable_for_edit?: boolean
 }
 
 export interface VideoToCampaignCut {
-  timestamp: string
-  cut: string
+  timestamp?: string
+  cut?: string
   reason: string
+  start_seconds?: number
+  end_seconds?: number
+  priority?: 'low' | 'medium' | 'high' | string
 }
 
+export interface VideoToCampaignHook {
+  hook: string
+  style?: string
+  best_for?: string
+}
+
+export type VideoToCampaignHookResult = string | VideoToCampaignHook
+
 export interface VideoToCampaignEditPlanItem {
-  timestamp: string
-  action: string
+  timestamp?: string
+  action?: string
+  start_seconds?: number
+  end_seconds?: number
+  instruction?: string
+  caption?: string
 }
 
 export interface VideoToCampaignEditPlan {
-  title: string
-  format: string
-  platform: string
+  title?: string
+  format?: string
+  platform?: string
+  target_duration_seconds?: number
+  opening?: string
+  middle?: string
+  closing?: string
   timeline: VideoToCampaignEditPlanItem[]
-  source_video_name: string
+  source_video_name?: string
 }
 
 export interface VideoToCampaignResult {
   video_summary: string
+  observed_product_features?: VideoToCampaignFeature[]
   detected_product_moments: VideoToCampaignMoment[]
   scene_observations: VideoToCampaignObservation[]
   recommended_cuts: VideoToCampaignCut[]
   campaign_angle: string
-  hooks: string[]
+  hooks: VideoToCampaignHookResult[]
   narration_voice_script: string
   captions: string[]
   hashtags: string[]
@@ -716,6 +753,8 @@ export interface VideoToCampaignResult {
   edit_plan: VideoToCampaignEditPlan
   compliance_notes: string[]
   usage_notes: string[]
+  missing_information?: string[]
+  unverified_claims?: string[]
   source_video_asset_id: number | null
   provider_metadata?: CampaignProviderMetadata & Record<string, unknown>
 }

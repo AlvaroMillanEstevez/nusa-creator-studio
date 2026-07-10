@@ -51,12 +51,12 @@ const tools: CreatorTool[] = [
     category: 'audio',
     service_tier: 'advanced',
     output_type: 'audio',
-    implementation_stage: 'mock',
+    implementation_stage: 'real_provider',
     status: 'available',
     route: '/voiceover/new',
     credit_cost: 1,
     credit_cost_label: '1 credit',
-    badge_label: 'New mock',
+    badge_label: 'Core beta',
     is_recommended: false,
     sort_order: 20,
   },
@@ -68,12 +68,12 @@ const tools: CreatorTool[] = [
     category: 'assisted_media',
     service_tier: 'advanced',
     output_type: 'assisted_media',
-    implementation_stage: 'mock',
+    implementation_stage: 'beta',
     status: 'available',
     route: '/dashboard?tool=video_to_campaign',
     credit_cost: 2,
     credit_cost_label: '2 credits',
-    badge_label: 'New mock',
+    badge_label: 'Core beta',
     is_recommended: false,
     sort_order: 25,
   },
@@ -102,12 +102,12 @@ const tools: CreatorTool[] = [
     category: 'fashion',
     service_tier: 'premium',
     output_type: 'image',
-    implementation_stage: 'mock',
-    status: 'available',
+    implementation_stage: 'future',
+    status: 'coming_soon',
     route: '/fashion-try-on/new',
     credit_cost: 2,
-    credit_cost_label: '2 credits',
-    badge_label: 'New mock',
+    credit_cost_label: '2 credits preview',
+    badge_label: 'Preview workflow',
     is_recommended: false,
     sort_order: 35,
   },
@@ -119,12 +119,12 @@ const tools: CreatorTool[] = [
     category: 'ai_video',
     service_tier: 'premium',
     output_type: 'video',
-    implementation_stage: 'mock',
-    status: 'available',
+    implementation_stage: 'future',
+    status: 'coming_soon',
     route: '/motion-video/new',
     credit_cost: 3,
-    credit_cost_label: '3 credits',
-    badge_label: 'New mock',
+    credit_cost_label: '3 credits preview',
+    badge_label: 'Preview workflow',
     is_recommended: false,
     sort_order: 38,
   },
@@ -136,7 +136,7 @@ const tools: CreatorTool[] = [
     category: 'ai_video',
     service_tier: 'premium',
     output_type: 'video',
-    implementation_stage: 'mock',
+    implementation_stage: 'beta',
     status: 'available',
     route: '/dashboard?tool=auto_video_editor',
     credit_cost: 2,
@@ -332,40 +332,6 @@ describe('ToolsView', () => {
     expect(card.text()).toContain('AI Voiceover')
     expect(card.text()).toContain('Start with this workflow')
   })
-  it('links available Fashion Try-On to the dashboard workflow intent for authenticated users', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    const wrapper = await mountToolsView(fetchMock)
-    const card = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
-
-    expect(card.element.tagName).toBe('A')
-    expect(card.attributes('href')).toBe('/dashboard?tool=fashion_try_on')
-    expect(card.text()).toContain('Fashion Try-On')
-    expect(card.text()).toContain('Start with this workflow')
-  })
-
-  it('links available Motion AI Video to the protected creation route for authenticated users', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    const wrapper = await mountToolsView(fetchMock)
-    const card = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
-
-    expect(card.element.tagName).toBe('A')
-    expect(card.attributes('href')).toBe('/dashboard?tool=motion_ai_video')
-    expect(card.text()).toContain('Motion AI Video')
-    expect(card.text()).toContain('Start with this workflow')
-  })
-
   it('sends guests through login with the intended tool route', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
@@ -377,8 +343,6 @@ describe('ToolsView', () => {
     const wrapper = await mountToolsView(fetchMock, null)
     const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
     const voiceoverCard = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
-    const fashionCard = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
-    const motionCard = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
     const videoCampaignCard = wrapper.get('[data-testid="tool-card-video_to_campaign"]')
     const autoEditorCard = wrapper.get('[data-testid="tool-card-auto_video_editor"]')
 
@@ -386,10 +350,6 @@ describe('ToolsView', () => {
     expect(card.text()).toContain('Log in to start')
     expect(voiceoverCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=ai_voiceover')
     expect(voiceoverCard.text()).toContain('Log in to start')
-    expect(fashionCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=fashion_try_on')
-    expect(fashionCard.text()).toContain('Log in to start')
-    expect(motionCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=motion_ai_video')
-    expect(motionCard.text()).toContain('Log in to start')
     expect(videoCampaignCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=video_to_campaign')
     expect(videoCampaignCard.text()).toContain('Log in to start')
     expect(autoEditorCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=auto_video_editor')
@@ -406,11 +366,19 @@ describe('ToolsView', () => {
 
     const wrapper = await mountToolsView(fetchMock)
     const comingSoon = wrapper.get('[data-testid="tool-card-future_tool"]')
+    const fashion = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
+    const motion = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
     const maintenance = wrapper.get('[data-testid="tool-card-video_enhancer"]')
 
     expect(comingSoon.element.tagName).toBe('ARTICLE')
     expect(comingSoon.attributes('aria-disabled')).toBe('true')
     expect(comingSoon.find('a').exists()).toBe(false)
+    expect(fashion.element.tagName).toBe('ARTICLE')
+    expect(fashion.text()).toContain('Preview workflow')
+    expect(fashion.find('a').exists()).toBe(false)
+    expect(motion.element.tagName).toBe('ARTICLE')
+    expect(motion.text()).toContain('Preview workflow')
+    expect(motion.find('a').exists()).toBe(false)
     expect(maintenance.element.tagName).toBe('ARTICLE')
     expect(maintenance.find('a').exists()).toBe(false)
     expect(maintenance.text()).toContain(

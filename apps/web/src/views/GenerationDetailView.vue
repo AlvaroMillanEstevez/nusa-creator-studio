@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
@@ -31,6 +31,9 @@ const isLoading = ref(true)
 const loadError = ref('')
 const loadErrorStatus = ref<number | null>(null)
 const actionRefreshNonce = ref(0)
+const POLL_INTERVAL_MS = 2_000
+
+let pollTimer: ReturnType<typeof setTimeout> | null = null
 
 const projectId = computed(() => {
   const value = Array.isArray(route.params.projectId) ? route.params.projectId[0] : route.params.projectId
@@ -76,7 +79,63 @@ const resultTitle = computed(() => {
   return generation.value ? formatLabel(generation.value.job_type) : t('metadata.titles.generationResult')
 })
 
+function isTerminalGeneration(status: CreatorGeneration['status']): boolean {
+  return status === 'completed' || status === 'failed'
+}
+
+function stopPolling(): void {
+  if (pollTimer !== null) {
+    clearTimeout(pollTimer)
+    pollTimer = null
+  }
+}
+
+function schedulePoll(): void {
+  if (pollTimer !== null || generation.value === null || isTerminalGeneration(generation.value.status)) {
+    return
+  }
+
+  pollTimer = setTimeout(() => {
+    pollTimer = null
+    void pollGenerationDetail()
+  }, POLL_INTERVAL_MS)
+}
+
+async function pollGenerationDetail(): Promise<void> {
+  const current = generation.value
+
+  if (current === null || isTerminalGeneration(current.status)) {
+    stopPolling()
+    return
+  }
+
+  try {
+    const updated = await getGeneration(current.id)
+
+    generation.value = updated
+
+    if (isTerminalGeneration(updated.status)) {
+      stopPolling()
+      return
+    }
+
+    schedulePoll()
+  } catch (error: unknown) {
+    stopPolling()
+    loadError.value = error instanceof ApiError ? error.message : 'We could not refresh this generation result.'
+  }
+}
+
+function startPollingIfNeeded(target: CreatorGeneration): void {
+  stopPolling()
+
+  if (!isTerminalGeneration(target.status)) {
+    schedulePoll()
+  }
+}
+
 async function loadGenerationDetail(): Promise<void> {
+  stopPolling()
   isLoading.value = true
   loadError.value = ''
   loadErrorStatus.value = null
@@ -97,6 +156,7 @@ async function loadGenerationDetail(): Promise<void> {
 
     project.value = loadedProject
     generation.value = loadedGeneration
+    startPollingIfNeeded(loadedGeneration)
     projectAssets.value = loadedAssets.data
     actions.value = Array.isArray(actionResponse.data) ? actionResponse.data : []
   } catch (error: unknown) {
@@ -120,6 +180,7 @@ function handleVoiceoverGenerated(): void {
 }
 
 onMounted(loadGenerationDetail)
+onBeforeUnmount(stopPolling)
 </script>
 
 <template>

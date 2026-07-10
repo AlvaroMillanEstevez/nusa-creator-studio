@@ -21,6 +21,17 @@ class FashionTryOnGenerationApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        CreatorTool::query()->where('key', 'fashion_try_on')->update([
+            'status' => 'available',
+            'implementation_stage' => 'mock',
+            'badge_label' => 'New mock',
+        ]);
+    }
+
     public function test_fashion_try_on_project_can_be_created(): void
     {
         $user = User::factory()->create();

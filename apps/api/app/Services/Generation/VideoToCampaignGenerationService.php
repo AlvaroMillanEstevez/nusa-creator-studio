@@ -15,6 +15,7 @@ class VideoToCampaignGenerationService
     public function __construct(
         private readonly GenerationSubmissionService $submissions,
         private readonly ToolAvailabilityService $tools,
+        private readonly VideoToCampaignProviderManager $providers,
     ) {}
 
     /**
@@ -23,15 +24,21 @@ class VideoToCampaignGenerationService
     public function generate(Project $project, User $user, array $options = []): Generation
     {
         $sourceVideo = $this->sourceVideoAsset($project, $user, $options);
+        $provider = $this->providers->selectedProviderForUser($user);
+
+        if ($provider === 'gemini') {
+            $this->ensureGeminiMediaLimits($sourceVideo);
+        }
 
         return $this->submissions->submit(
             project: $project,
             user: $user,
             jobType: 'generate_video_to_campaign',
             creditCost: $this->tools->creditCost('video_to_campaign'),
-            creditReason: 'Mock video-to-campaign generation',
+            creditReason: 'Video-to-Campaign generation',
             dispatch: fn (int $generationId) => GenerateVideoToCampaignJob::dispatch($generationId),
             inputPayload: $this->inputPayload($project, $sourceVideo, $options),
+            provider: $provider,
         );
     }
 
@@ -96,13 +103,50 @@ class VideoToCampaignGenerationService
             'source_video_asset' => $this->assetSummary($sourceVideo),
             'product_name' => $this->stringOption($options, 'product_name') ?? $this->stringOption($projectInput, 'product_name') ?? $project->title,
             'product_description' => $this->stringOption($options, 'product_description') ?? $this->stringOption($projectInput, 'product_description'),
+            'product_category' => $this->stringOption($options, 'product_category') ?? $this->stringOption($projectInput, 'product_category'),
             'target_audience' => $this->stringOption($options, 'target_audience') ?? $this->stringOption($projectInput, 'target_audience') ?? 'social commerce viewers',
             'campaign_context' => $this->stringOption($options, 'campaign_context') ?? $this->stringOption($projectInput, 'content_idea'),
+            'selling_angle' => $this->stringOption($options, 'selling_angle') ?? $this->stringOption($projectInput, 'selling_angle'),
             'language' => $this->stringOption($options, 'language') ?? $this->stringOption($projectInput, 'language') ?? 'english',
             'tone' => $this->stringOption($options, 'tone') ?? $this->stringOption($projectInput, 'tone') ?? 'natural',
             'platform' => $this->stringOption($options, 'platform') ?? $this->stringOption($settings, 'platform') ?? 'tiktok',
             'notes' => $this->stringOption($options, 'notes'),
         ]);
+    }
+
+    private function ensureGeminiMediaLimits(MediaAsset $asset): void
+    {
+        $maxBytes = max(1, (int) config('video_to_campaign.gemini.max_file_size_mb', 50)) * 1024 * 1024;
+
+        if ($asset->size_bytes !== null && $asset->size_bytes > $maxBytes) {
+            throw ValidationException::withMessages([
+                'source_video_asset_id' => 'The selected source video is too large for real video analysis.',
+            ]);
+        }
+
+        $duration = $this->durationSeconds($asset);
+        $maxDuration = max(1, (int) config('video_to_campaign.gemini.max_duration_seconds', 60));
+
+        if ($duration !== null && $duration > $maxDuration) {
+            throw ValidationException::withMessages([
+                'source_video_asset_id' => 'The selected source video is too long for real video analysis.',
+            ]);
+        }
+    }
+
+    private function durationSeconds(MediaAsset $asset): ?float
+    {
+        $metadata = is_array($asset->metadata) ? $asset->metadata : [];
+
+        foreach (['duration_seconds', 'duration', 'video.duration_seconds', 'video.duration'] as $key) {
+            $value = data_get($metadata, $key);
+
+            if (is_numeric($value)) {
+                return (float) $value;
+            }
+        }
+
+        return null;
     }
 
     /** @param array<string, mixed> $input */

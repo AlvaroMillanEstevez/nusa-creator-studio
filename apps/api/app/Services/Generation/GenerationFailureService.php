@@ -2,6 +2,7 @@
 
 namespace App\Services\Generation;
 
+use App\Exceptions\VideoToCampaign\VideoToCampaignProviderException;
 use App\Models\Generation;
 use App\Services\Credits\CreditService;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ class GenerationFailureService
 
     public function fail(int $generationId, ?Throwable $exception = null): void
     {
-        $generation = DB::transaction(function () use ($generationId): ?Generation {
+        $generation = DB::transaction(function () use ($generationId, $exception): ?Generation {
             $generation = Generation::query()
                 ->whereKey($generationId)
                 ->lockForUpdate()
@@ -28,11 +29,18 @@ class GenerationFailureService
                 return null;
             }
 
-            $generation->forceFill([
+            $updates = [
                 'status' => Generation::STATUS_FAILED,
                 'error_message' => self::SAFE_ERROR_MESSAGE,
                 'finished_at' => now(),
-            ])->save();
+            ];
+            $failurePayload = $this->safeFailurePayload($generation, $exception);
+
+            if ($failurePayload !== null) {
+                $updates['output_payload'] = $failurePayload;
+            }
+
+            $generation->forceFill($updates)->save();
 
             return $generation;
         });
@@ -43,5 +51,28 @@ class GenerationFailureService
                 'Refund for failed generation',
             );
         }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function safeFailurePayload(Generation $generation, ?Throwable $exception): ?array
+    {
+        if (! $exception instanceof VideoToCampaignProviderException) {
+            return null;
+        }
+
+        $metadata = [
+            'provider' => $generation->provider ?: 'unknown',
+            'mode' => 'failure',
+            'failure_reason' => $exception->reason,
+            'failure_stage' => is_string($exception->context['stage'] ?? null) ? $exception->context['stage'] : null,
+            'endpoint_type' => is_string($exception->context['endpoint_type'] ?? null) ? $exception->context['endpoint_type'] : null,
+            'http_status' => is_numeric($exception->context['http_status'] ?? null) ? (int) $exception->context['http_status'] : null,
+        ];
+
+        return [
+            'provider_metadata' => array_filter($metadata, fn (mixed $value): bool => $value !== null && $value !== ''),
+        ];
     }
 }

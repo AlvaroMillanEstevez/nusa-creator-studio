@@ -71,7 +71,7 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $this->assertSame('available', $tool['status']);
         $this->assertSame('/voiceover/new', $tool['route']);
         $this->assertSame(1, $tool['credit_cost']);
-        $this->assertSame('New mock', $tool['badge_label']);
+        $this->assertSame('Core beta', $tool['badge_label']);
     }
 
     public function test_generation_endpoint_requires_authentication(): void

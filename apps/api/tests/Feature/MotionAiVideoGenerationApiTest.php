@@ -21,6 +21,17 @@ class MotionAiVideoGenerationApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        CreatorTool::query()->where('key', 'motion_ai_video')->update([
+            'status' => 'available',
+            'implementation_stage' => 'mock',
+            'badge_label' => 'New mock',
+        ]);
+    }
+
     public function test_motion_ai_video_project_can_be_created(): void
     {
         $user = User::factory()->create();

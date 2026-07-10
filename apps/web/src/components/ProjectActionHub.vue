@@ -79,10 +79,10 @@ const voiceoverForm = ref<VoiceoverFormState>({
 
 const projectActionKeys: ProjectActionKey[] = [
   'generate_campaign',
-  'start_fashion_try_on',
-  'start_motion_video',
   'generate_video_to_campaign',
   'generate_auto_video_edit',
+  'start_fashion_try_on',
+  'start_motion_video',
 ]
 const resultActionKeys: ProjectActionKey[] = [
   'generate_voiceover_from_script',
@@ -526,12 +526,11 @@ function actionButtonLabel(action: ProjectAction): string {
   }
 
   if (isTryOnAction(action)) {
-
-    return t('projectActions.setupTryOn')
+    return isComingSoon(action) ? (action.primary_cta?.label ?? t('projectActions.status.coming_soon')) : t('projectActions.setupTryOn')
   }
 
   if (isMotionAction(action)) {
-    return t('projectActions.configureMotionVideo')
+    return isComingSoon(action) ? (action.primary_cta?.label ?? t('projectActions.status.coming_soon')) : t('projectActions.configureMotionVideo')
   }
 
   if (isVideoToCampaignAction(action)) {

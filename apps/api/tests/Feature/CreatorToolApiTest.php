@@ -46,31 +46,33 @@ class CreatorToolApiTest extends TestCase
             'key' => 'ai_voiceover',
             'service_tier' => 'advanced',
             'output_type' => 'audio',
-            'implementation_stage' => 'mock',
+            'implementation_stage' => 'real_provider',
         ]);
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'video_to_campaign',
             'service_tier' => 'advanced',
             'output_type' => 'assisted_media',
-            'implementation_stage' => 'mock',
+            'implementation_stage' => 'beta',
         ]);
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'fashion_try_on',
             'service_tier' => 'premium',
             'output_type' => 'image',
-            'implementation_stage' => 'mock',
+            'implementation_stage' => 'future',
+            'status' => 'coming_soon',
         ]);
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'auto_video_editor',
             'service_tier' => 'premium',
             'output_type' => 'video',
-            'implementation_stage' => 'mock',
+            'implementation_stage' => 'beta',
         ]);
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'motion_ai_video',
             'service_tier' => 'premium',
             'output_type' => 'video',
-            'implementation_stage' => 'mock',
+            'implementation_stage' => 'future',
+            'status' => 'coming_soon',
         ]);
     }
 
@@ -113,7 +115,7 @@ class CreatorToolApiTest extends TestCase
             ->assertJsonPath('data.1.status', 'maintenance')
             ->assertJsonPath('data.1.service_tier', 'advanced')
             ->assertJsonPath('data.1.output_type', 'audio')
-            ->assertJsonPath('data.1.implementation_stage', 'mock')
+            ->assertJsonPath('data.1.implementation_stage', 'real_provider')
             ->assertJsonPath('data.2.key', 'affiliate_campaign')
             ->assertJsonMissingPath('data.0.id')
             ->assertJsonMissingPath('data.0.metadata');

@@ -79,14 +79,25 @@ The next workspace chain is video-first:
 ```text
 Project workspace
 → upload raw product video
-→ Video-to-Campaign
+→ Video-to-Campaign analysis/campaign
 → optional AI Voiceover
 → optional Auto Video Editor
 ```
 
-Video-to-Campaign is an Advanced workflow. It analyzes a selected project video asset and saves structured campaign context, including `video_summary`, detected product moments, recommended cuts, hooks, captions, an edit plan and `narration_voice_script`.
+The real beta chain is:
 
-Video-to-Campaign does not generate audio. The narration script is reusable text for the separate AI Voiceover action, so voiceover remains an intentional additional step unless another workflow explicitly includes it.
+```text
+raw video
+→ Gemini video analysis + campaign/edit-plan JSON
+→ ElevenLabs voiceover from Gemini narration text
+→ Shotstack render later
+```
+
+Video-to-Campaign is an Advanced workflow. It analyzes a selected project video asset and saves structured campaign context, including `video_summary`, observed product features, detected product moments, recommended cuts, hooks, captions, an edit plan and `narration_voice_script`.
+
+In default mode it uses the deterministic mock provider. In internal beta mode it can use Gemini by reading the private media asset server-side, uploading it to the provider file-input flow, and storing only safe metadata in the generation result. Private storage paths and raw provider file URIs should not be exposed to the frontend.
+
+Video-to-Campaign produces narration text, not audio. The narration script is reusable text for the separate AI Voiceover action, so voiceover remains an intentional additional step unless another workflow explicitly includes it.
 
 Auto Video Editor is a Premium composite workflow. It creates a mock edit-ready vertical video plan from either:
 
@@ -216,16 +227,16 @@ Implemented now:
 - Project actions endpoint returns contextual action metadata.
 - Project detail page can show a Project Action Hub.
 - Campaign/Product-to-video generations with usable scripts can become the source for a same-project AI Voiceover generation.
-- Video-to-Campaign can analyze project video assets and save reusable narration text plus an edit plan.
+- Video-to-Campaign can analyze project video assets with mock output by default or Gemini for internal beta users, then save reusable narration text plus an edit plan.
 - Auto Video Editor can reuse Video-to-Campaign analysis and existing voiceover/audio to avoid double-charging those components.
 - Generated voiceover audio remains attached to the same project as a private `MediaAsset` when real ElevenLabs output is used.
 
 Shown but not deeply refactored yet:
 
-- Fashion Try-On is a configurable Premium action. Its card stays positive while launcher requirements ask for model and garment reference images.
-- Motion AI Video is a configurable Premium action. Its card stays positive while launcher requirements ask for visual references such as product image, source video, background or brand assets.
+- Fashion Try-On is visible as a future/coming-soon Premium workflow. Legacy mock routes may remain for internal testing, but the active workspace flow should not present it as a core beta action.
+- Motion AI Video is visible as a future/coming-soon Premium workflow. Legacy mock routes may remain for internal testing, but the active workspace flow should not present it as a core beta action.
 - Video ad assembly and Avatar Presenter remain coming-soon contextual actions.
-- Auto Video Editor currently creates a mock edit plan only; real video rendering remains future provider work.
+- Auto Video Editor currently creates a mock edit plan only; Shotstack rendering is the planned next provider integration, not part of the Gemini Video-to-Campaign task.
 
 Out of scope for v1:
 
@@ -234,4 +245,4 @@ Out of scope for v1:
 - Video overlay or subtitles.
 - Avatar generation.
 - Payment/billing changes.
-- New real provider integrations.
+- Additional real provider integrations beyond the current Gemini/ElevenLabs beta chain.

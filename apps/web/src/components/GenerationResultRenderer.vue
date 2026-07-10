@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import AiVoiceoverGenerationResult from '@/components/AiVoiceoverGenerationResult.vue'
 import AutoVideoEditorGenerationResult from '@/components/AutoVideoEditorGenerationResult.vue'
@@ -92,6 +93,47 @@ const hasSupportedResult = computed(
 const isQueued = computed(
   () => props.generation?.status === 'queued' || props.generation?.status === 'pending',
 )
+const projectWorkspaceRoute = computed(() => {
+  const id = props.projectId ?? props.generation?.project_id
+
+  return id === null || id === undefined ? '/dashboard' : `/projects/${String(id)}`
+})
+const retryRoute = computed(() => {
+  const id = props.projectId ?? props.generation?.project_id
+
+  if (id === null || id === undefined) {
+    return '/dashboard'
+  }
+
+  if (props.generation?.job_type === 'generate_video_to_campaign') {
+    return `/projects/${String(id)}/actions/video-to-campaign`
+  }
+
+  return `/projects/${String(id)}`
+})
+const isVideoToCampaignGeneration = computed(() =>
+  props.generation?.job_type === 'generate_video_to_campaign',
+)
+const processingTitle = computed(() =>
+  isVideoToCampaignGeneration.value
+    ? 'Analyzing your video and creating the campaign.'
+    : 'Creating your result...',
+)
+const processingDescription = computed(() =>
+  isVideoToCampaignGeneration.value
+    ? 'This can take a few minutes depending on video length and provider processing time.'
+    : 'We are creating your result. The result will update automatically.',
+)
+const failedTitle = computed(() =>
+  isVideoToCampaignGeneration.value
+    ? 'Video analysis failed. Your credits were refunded if they were charged.'
+    : 'Generation failed. Please try again.',
+)
+const failedDescription = computed(() =>
+  isVideoToCampaignGeneration.value
+    ? 'The provider did not return a usable result. We kept the technical details out of the UI so private provider data stays safe.'
+    : 'Your charged credits are returned automatically for an internal processing failure.',
+)
 </script>
 
 <template>
@@ -124,9 +166,15 @@ const isQueued = computed(
       />
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Processing</p>
-        <h2 class="mt-1 text-lg font-semibold">Creating your result...</h2>
+        <h2 class="mt-1 text-lg font-semibold">{{ processingTitle }}</h2>
       </div>
     </div>
+    <p class="mt-3 text-sm leading-6 text-neutral-300">
+      {{ processingDescription }}
+    </p>
+    <p class="mt-2 text-sm leading-6 text-neutral-400">
+      Please keep this page open. The result will update automatically.
+    </p>
     <p v-if="showQueueWorkerHint" class="mt-3 text-xs text-amber-300">
       Queue worker may not be running.
     </p>
@@ -139,10 +187,24 @@ const isQueued = computed(
     class="mt-5 rounded-3xl border border-rose-900/60 bg-rose-950/30 p-5"
   >
     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-rose-400">Failed</p>
-    <h2 class="mt-2 text-lg font-semibold">Generation failed. Please try again.</h2>
+    <h2 class="mt-2 text-lg font-semibold">{{ failedTitle }}</h2>
     <p class="mt-2 text-sm leading-6 text-rose-200">
-      Your charged credits are returned automatically for an internal processing failure.
+      {{ failedDescription }}
     </p>
+    <div v-if="isVideoToCampaignGeneration" class="mt-5 grid gap-3 sm:grid-cols-2">
+      <RouterLink
+        :to="projectWorkspaceRoute"
+        class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-100 transition hover:border-emerald-500 hover:bg-emerald-950/30"
+      >
+        Back to workspace
+      </RouterLink>
+      <RouterLink
+        :to="retryRoute"
+        class="flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+      >
+        Try again
+      </RouterLink>
+    </div>
   </section>
 
   <div

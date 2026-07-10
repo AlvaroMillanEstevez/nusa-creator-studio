@@ -2,6 +2,17 @@
 
 Nusa Creator Studio is structured into three service levels so creators can understand what a workflow produces, how expensive it may become, and how honestly it should be labeled while the product moves from mock outputs to real providers.
 
+## Beta core stack
+
+The beta should focus on the workflows that create a practical social commerce production chain:
+
+- Affiliate Campaign Generator: Basic campaign/script intelligence with mock default and optional internal text provider.
+- Video-to-Campaign: Advanced video analysis with Gemini available for internal beta users and mock fallback for everyone else.
+- AI Voiceover: Advanced audio generation with ElevenLabs available for eligible/internal users and mock fallback.
+- Auto Video Editor: Premium composite mock planning workflow; Shotstack rendering is planned next but not integrated yet.
+
+Future premium workflows such as Fashion Try-On, Motion AI Video, avatar presenters and custom avatars should remain clearly labeled as coming soon/preview until real providers, safety rules and cost controls are ready.
+
 ## Basic
 
 Low-cost content intelligence.
@@ -131,12 +142,12 @@ Action cards should show service tier and credit cost before generation. Detaile
 | --- | --- | --- | --- | --- |
 | Affiliate Campaign Generator | Basic | Script pack | Mock + optional real provider | Low-cost campaign intelligence for scripts, hooks, captions, voiceover-ready copy and filming notes. OpenAI can be enabled for internal users only. |
 | Video Enhancer / Caption Pack | Advanced | Assisted media | Mock | Legacy-compatible mock edit/caption plan; future work should migrate toward the project workspace video workflows. |
-| Video-to-Campaign | Advanced | Campaign + edit plan | Mock | Analyzes selected project video assets and saves reusable hooks, narration text, captions, recommended cuts and edit plan. It does not generate audio. |
+| Video-to-Campaign | Advanced | Campaign + edit plan | Beta real provider + mock fallback | Gemini can analyze selected project video assets for internal beta users; mock remains default. Saves reusable hooks, narration text, captions, recommended cuts and edit plan. It does not generate audio. |
 | Product-to-Video Script Pack | Advanced | Assisted media | Mock | Current script/storyboard; future real v1 can move from product image or URL to storyboard/prompt; future real v2 can move toward image-to-video. |
-| AI Voiceover | Advanced | Audio | Mock + optional real provider | v1 can generate ElevenLabs audio for internal/eligible users and save it as a private MediaAsset; mock remains the default fallback. |
-| Fashion Try-On | Premium | Image | Mock | Future real provider should generate try-on images. |
-| Auto Video Editor | Premium | Video edit plan | Mock | Composite workflow that can reuse Video-to-Campaign analysis and voiceover/audio, or include those components when starting from scratch. Mock plan only; no real rendering yet. |
-| Motion AI Video | Premium | Video | Mock | Future real provider should generate video assets. |
+| AI Voiceover | Advanced | Audio | Real provider + mock fallback | v1 can generate ElevenLabs audio for internal/eligible users and save it as a private MediaAsset; mock remains the default fallback. |
+| Fashion Try-On | Premium | Image | Future / coming soon | Future real provider should generate try-on images after safety, cost and UX controls are ready. |
+| Auto Video Editor | Premium | Video edit plan | Beta mock | Composite workflow that can reuse Video-to-Campaign analysis and voiceover/audio, or include those components when starting from scratch. Mock plan only; Shotstack rendering is planned next. |
+| Motion AI Video | Premium | Video | Future / coming soon | Future real provider should generate video assets after cost controls and provider selection are ready. |
 | AI Avatar Presenter | Premium | Avatar | Future | Future avatar-led product presenter videos with voice. |
 | Custom AI Avatar | Premium | Avatar | Future | Future reusable avatar identity from person images, photo sets or descriptions. |
 | Avatar Voice Ads | Premium | Mixed media | Future | Future avatar-led product ads combining presenter, voiceover and scripts. |
@@ -176,7 +187,7 @@ AI Voiceover is the first real provider-backed Advanced workflow. Its v1 scope i
 The workflow role is a reusable content chain asset:
 
 ```text
-campaign/script ? voiceover ? subtitles/captions ? video overlay / avatar / motion video later
+campaign/script → voiceover → subtitles/captions → video overlay / avatar / motion video later
 ```
 
 Out of scope for v1:
@@ -237,13 +248,20 @@ Do not let user balances go negative. Expensive tools should check credit balanc
 
 ## Recommended real implementation order
 
-1. AI Voiceover real provider.
-2. Affiliate Campaign Generator real text provider for internal users.
-3. Fashion Try-On real provider.
-4. Motion AI Video real provider.
-5. Product image-to-video real provider.
-6. AI Avatar Presenter.
-7. Custom AI Avatar.
-8. Avatar Voice Ads.
+Completed / in beta:
 
-This order keeps the first real integration relatively simple before moving into expensive generative media and identity-sensitive avatar workflows.
+1. AI Voiceover real provider with ElevenLabs.
+2. Affiliate Campaign Generator real text provider for internal users.
+3. Video-to-Campaign real video analysis provider with Gemini for internal beta users.
+
+Recommended next:
+
+4. Auto Video Editor real render provider, with Shotstack as the next planned integration candidate.
+5. Fashion Try-On real provider.
+6. Motion AI Video real provider.
+7. Product image-to-video real provider.
+8. AI Avatar Presenter.
+9. Custom AI Avatar.
+10. Avatar Voice Ads.
+
+This order keeps the beta chain practical: source video → Gemini analysis/campaign → ElevenLabs voiceover → Shotstack render later. Expensive generative media and identity-sensitive avatar workflows should wait until cost monitoring, labeling and safety controls are stronger.

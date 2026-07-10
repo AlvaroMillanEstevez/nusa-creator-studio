@@ -166,10 +166,10 @@ const baseActions: ProjectActionsResponse = {
       description: 'Use project assets for try-on.',
       service_tier: 'premium',
       output_type: 'image',
-      status: 'configure',
-      action_mode: 'configure',
+      status: 'coming_soon',
+      action_mode: 'coming_soon',
       credit_cost: 2,
-      primary_cta: { label: 'Setup Try-On', route: null, action: 'configure_fashion_try_on' },
+      primary_cta: { label: 'Coming soon', route: null, action: null },
       required_source: 'media_asset',
       action_endpoint: '/api/v1/projects/42/generate-fashion-try-on',
       tool_key: 'fashion_try_on',
@@ -198,10 +198,10 @@ const baseActions: ProjectActionsResponse = {
       description: 'Use project visuals for motion video.',
       service_tier: 'premium',
       output_type: 'video',
-      status: 'configure',
-      action_mode: 'configure',
+      status: 'coming_soon',
+      action_mode: 'coming_soon',
       credit_cost: 3,
-      primary_cta: { label: 'Configure Motion Video', route: null, action: 'configure_motion_video' },
+      primary_cta: { label: 'Coming soon', route: null, action: null },
       required_source: 'media_asset',
       action_endpoint: '/api/v1/projects/42/generate-motion-video',
       tool_key: 'motion_ai_video',
@@ -335,8 +335,9 @@ describe('ProjectActionHub', () => {
     expect(text).toContain('2 credits')
     expect(text).toContain('3 credits')
     expect(text).toContain('Included in your plan')
-    expect(text).toContain('Setup Try-On')
-    expect(text).toContain('Configure Motion Video')
+    expect(text).toContain('Generate video campaign')
+    expect(text).toContain('Configure Auto Video Editor')
+    expect(text).toContain('Coming soon')
     expect(text).not.toContain('Upload a clear model/person reference image in the launcher.')
     expect(text).not.toContain('Upload a clear garment/product reference image in the launcher.')
     expect(text).not.toContain('Upload or choose a product image for the motion video source.')
@@ -481,20 +482,16 @@ describe('ProjectActionHub', () => {
     expect(wrapper.text()).toContain('Can reuse existing video campaign analysis.')
   })
 
-  it('opens setup guidance for asset actions without running generation', async () => {
+  it('keeps coming-soon roadmap actions disabled without opening setup', async () => {
     const { wrapper, fetchMock } = await mountHub()
 
-    await wrapper
+    const tryOnButton = wrapper
       .get('[data-testid="project-action-start_fashion_try_on"]')
       .find('button')
-      .trigger('click')
-    await flushPromises()
 
-    const launcherText = wrapper.get('[data-testid="project-action-launcher"]').text()
-
-    expect(launcherText).toContain('Model reference image')
-    expect(launcherText).toContain('Garment reference image')
-    expect(launcherText).toContain('Open Project Assets')
+    expect(tryOnButton.text()).toContain('Coming soon')
+    expect(tryOnButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="project-action-launcher"]').exists()).toBe(false)
     expect(fetchMock).not.toHaveBeenCalledWith(
       expect.stringContaining('/generate-fashion-try-on'),
       expect.anything(),
