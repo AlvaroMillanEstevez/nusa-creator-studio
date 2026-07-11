@@ -7,6 +7,7 @@ use App\Models\Generation;
 use App\Models\MediaAsset;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Generation\GeminiVideoToCampaignPromptBuilder;
 use App\Services\Generation\VideoToCampaignGenerationProcessor;
 use App\Services\Generation\VideoToCampaignProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -125,6 +126,31 @@ class GeminiVideoToCampaignProviderTest extends TestCase
         $this->assertSame(Generation::STATUS_FAILED, $generation->status);
         $this->assertSame('Generation failed due to an internal processing error.', $generation->error_message);
         $this->assertSame(5, $user->refresh()->credits_balance);
+    }
+
+    public function test_gemini_prompt_requests_render_friendly_safe_campaign_output(): void
+    {
+        $builder = app(GeminiVideoToCampaignPromptBuilder::class);
+        $prompt = $builder->build([
+            'product_name' => 'Creator desk light',
+            'platform' => 'tiktok',
+            'language' => 'english',
+            'tone' => 'review',
+            'target_duration_seconds' => 20,
+            'editing_style' => 'premium_clean',
+            'pacing' => 'medium',
+            'caption_style' => 'clean_subtitles',
+        ]);
+        $schema = $builder->schema();
+
+        $this->assertStringContainsString('Render-friendly edit plan requirements', $prompt);
+        $this->assertStringContainsString('Do not invent product claims', $prompt);
+        $this->assertStringContainsString('future_auto_video_editor_settings', $prompt);
+        $this->assertStringContainsString('3-5 usable cuts', $prompt);
+        $this->assertArrayHasKey('purpose', $schema['properties']['recommended_cuts']['items']['properties']);
+        $this->assertArrayHasKey('visual_reason', $schema['properties']['recommended_cuts']['items']['properties']);
+        $this->assertArrayHasKey('caption_suggestion', $schema['properties']['edit_plan']['properties']['timeline']['items']['properties']);
+        $this->assertArrayHasKey('estimated_narration_duration_seconds', $schema['properties']);
     }
 
     public function test_gemini_provider_processes_http_faked_structured_response(): void

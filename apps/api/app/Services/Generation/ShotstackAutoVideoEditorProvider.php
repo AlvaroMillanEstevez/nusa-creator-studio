@@ -75,6 +75,8 @@ class ShotstackAutoVideoEditorProvider implements AutoVideoEditorProvider
                     'voiceover_asset_id' => $voiceoverAsset?->getKey(),
                     'source_video_to_campaign_generation_id' => $this->nullableInt($input['source_video_to_campaign_generation_id'] ?? null),
                     'timeline_summary' => $timeline['timeline_summary'] ?? null,
+                    'render_settings' => $timeline['render_settings'] ?? null,
+                    'captions_plan' => $timeline['captions_plan'] ?? null,
                     'render_status' => $completion['render_status'] ?? null,
                     'render_duration_ms' => $completion['render_time_ms'] ?? null,
                 ],
@@ -224,6 +226,10 @@ class ShotstackAutoVideoEditorProvider implements AutoVideoEditorProvider
             'captions_plan' => $timeline['captions_plan'] ?? [],
             'transition_plan' => $timeline['transition_plan'] ?? [],
             'audio_mix_plan' => $timeline['audio_mix_plan'] ?? [],
+            'timeline_summary' => $timelineSummary,
+            'creative_brief' => is_array($timeline['creative_brief'] ?? null)
+                ? $timeline['creative_brief']
+                : ($input['creative_brief'] ?? null),
             'voiceover_script' => data_get($input, 'voiceover_generation_summary.narration_script'),
             'render_settings' => $renderSettings,
             'final_video_asset_id' => $finalVideo->getKey(),
@@ -241,10 +247,17 @@ class ShotstackAutoVideoEditorProvider implements AutoVideoEditorProvider
                 'Use only footage, audio and music that the creator has rights to use.',
             ],
             'usage_notes' => array_values(array_filter([
-                'This beta render uses simple clean cuts from the selected video analysis.',
+                'This beta render uses clean product-focused cuts from the selected video analysis.',
                 $voiceoverAsset instanceof MediaAsset
-                    ? 'Voiceover was reused as an audio track; confirm timing before publishing.'
+                    ? 'The timeline is voiceover-aware so the selected narration is not cut off.'
                     : 'No voiceover track was included in this render.',
+                ($timelineSummary['duration_sync_strategy'] ?? null) === 'repeated_product_clip'
+                    ? 'Short source footage was extended by reusing the strongest product moment and CTA beat.'
+                    : null,
+                ($timelineSummary['duration_sync_strategy'] ?? null) === 'extended_with_end_card'
+                    ? 'A CTA/end-card beat was added so the final video finishes cleanly.'
+                    : null,
+                'Captions are kept short and positioned inside a vertical safe area.',
                 'Advanced transitions, music licensing and automatic new voiceover generation are planned later.',
             ])),
             'provider_metadata' => [
@@ -255,6 +268,24 @@ class ShotstackAutoVideoEditorProvider implements AutoVideoEditorProvider
                 'output_duration' => $renderSettings['actual_duration_seconds'] ?? null,
                 'output_size' => $finalVideo->size_bytes,
                 'selected_clip_count' => $timelineSummary['selected_clip_count'] ?? null,
+                'duration_sync_strategy' => $timelineSummary['duration_sync_strategy'] ?? null,
+                'caption_count' => $timelineSummary['caption_count'] ?? null,
+                'cta_used' => $timelineSummary['cta_used'] ?? null,
+                'voiceover_duration_seconds' => $timelineSummary['voiceover_duration_seconds'] ?? null,
+                'requested_target_duration_seconds' => $renderSettings['requested_target_duration_seconds'] ?? null,
+                'effective_target_duration_seconds' => $renderSettings['effective_target_duration_seconds'] ?? null,
+                'duration_adjusted_for_voiceover' => $renderSettings['duration_adjusted_for_voiceover'] ?? null,
+                'caption_schedule' => $renderSettings['caption_schedule'] ?? [],
+                'captions_overlapping' => $renderSettings['captions_overlapping'] ?? null,
+                'caption_visual_strategy' => $renderSettings['caption_visual_strategy'] ?? null,
+                'output_aspect_ratio' => $renderSettings['output_aspect_ratio'] ?? $renderSettings['aspect_ratio'] ?? null,
+                'output_width' => $renderSettings['output_width'] ?? null,
+                'output_height' => $renderSettings['output_height'] ?? null,
+                'source_fit_strategy' => $renderSettings['source_fit_strategy'] ?? null,
+                'has_letterboxing_expected' => $renderSettings['has_letterboxing_expected'] ?? null,
+                'caption_safe_area_applied' => $renderSettings['caption_safe_area_applied'] ?? null,
+                'caption_max_lines' => $renderSettings['caption_max_lines'] ?? null,
+                'caption_warnings' => $renderSettings['caption_warnings'] ?? [],
                 'final_video_asset_id' => $finalVideo->getKey(),
                 'provider_latency_ms' => $providerLatencyMs,
                 'render_time_ms' => $completion['render_time_ms'] ?? null,

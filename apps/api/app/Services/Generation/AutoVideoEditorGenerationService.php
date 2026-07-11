@@ -8,6 +8,7 @@ use App\Models\MediaAsset;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\ToolAvailabilityService;
+use App\Support\AutoVideoCaptionStyle;
 use Illuminate\Validation\ValidationException;
 
 class AutoVideoEditorGenerationService
@@ -16,6 +17,7 @@ class AutoVideoEditorGenerationService
         private readonly GenerationSubmissionService $submissions,
         private readonly ToolAvailabilityService $tools,
         private readonly AutoVideoEditorProviderManager $providers,
+        private readonly AutoVideoEditorCreativeBriefBuilder $creativeBriefs,
     ) {}
 
     /**
@@ -265,7 +267,17 @@ class AutoVideoEditorGenerationService
         $projectInput = is_array($project->input_payload) ? $project->input_payload : [];
         $settings = is_array($project->settings) ? $project->settings : [];
 
-        return array_merge($projectInput, [
+        $requestedTargetDuration = $this->intOption($options, 'requested_target_duration_seconds')
+            ?? $this->intOption($options, 'target_duration_seconds')
+            ?? 30;
+        $effectiveTargetDuration = max(
+            $requestedTargetDuration,
+            $this->intOption($options, 'effective_target_duration_seconds')
+                ?? $this->intOption($options, 'target_duration_seconds')
+                ?? $requestedTargetDuration,
+        );
+
+        $payload = array_merge($projectInput, [
             'project_title' => $project->title,
             'project_type' => $project->type,
             'source_video_asset_id' => $sourceVideo?->getKey(),
@@ -281,13 +293,19 @@ class AutoVideoEditorGenerationService
             'format' => $this->stringOption($options, 'format') ?? $this->stringOption($settings, 'format') ?? 'vertical_9_16',
             'editing_style' => $this->stringOption($options, 'editing_style') ?? 'ugc_natural',
             'pacing' => $this->stringOption($options, 'pacing') ?? 'medium',
-            'caption_style' => $this->stringOption($options, 'caption_style') ?? 'clean_subtitles',
-            'target_duration_seconds' => $this->intOption($options, 'target_duration_seconds') ?? 30,
+            'caption_style' => AutoVideoCaptionStyle::normalize($this->stringOption($options, 'caption_style')),
+            'requested_target_duration_seconds' => $requestedTargetDuration,
+            'effective_target_duration_seconds' => $effectiveTargetDuration,
+            'target_duration_seconds' => $requestedTargetDuration,
             'cta' => $this->stringOption($options, 'cta'),
             'music_direction' => $this->stringOption($options, 'music_direction'),
             'notes' => $this->stringOption($options, 'notes'),
             'cost_breakdown' => $costBreakdown,
         ]);
+
+        $payload['creative_brief'] = $this->creativeBriefs->build($payload);
+
+        return $payload;
     }
 
     /** @param array<string, mixed> $input */

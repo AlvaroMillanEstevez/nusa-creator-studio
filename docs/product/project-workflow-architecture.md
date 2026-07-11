@@ -122,6 +122,19 @@ Auto Video Editor should make prior work visible in its credit breakdown:
 
 The charged effective credits should match the composite line items for normal users. Internal/unlimited users follow the existing zero-charge behavior while still seeing the normal estimated cost breakdown.
 
+### Auto Video Editor beta quality pass
+
+The real beta chain now carries more context from each step into the next render step:
+
+- Gemini Video-to-Campaign prompts ask for render-friendly edit plans with 3-5 practical cuts, short caption-safe copy, narration duration guidance, CTA options and concrete visual reasons.
+- Auto Video Editor builds a normalized creative brief from user settings, selected Video-to-Campaign output, selected voiceover/audio metadata and project context.
+- Shotstack timeline generation is voiceover-aware: when voiceover duration is known or estimated, the final timeline should be at least as long as the narration plus a small ending buffer.
+- Short source footage can be extended with repeated product moments and a CTA/end-card beat instead of ending on black or cutting off audio.
+- Captions should stay in a conservative vertical safe area, use 1-2 short lines and avoid oversized text blocks.
+- The Auto Video Editor form can reuse prior campaign CTA/options and voiceover duration hints, while avoiding overwriting fields the creator has already edited.
+
+This is still a beta clean-cut renderer, not a full nonlinear editor. Advanced effects, licensed music selection, beat syncing, object-aware reframing and multi-scene creative direction remain later work.
+
 
 ## Honest separation of generated content and UI actions
 

@@ -234,6 +234,65 @@ class VideoWorkflowGenerationApiTest extends TestCase
             ->assertJsonPath('data.output_payload.cost_breakdown.voiceover_note', 'No voiceover included');
     }
 
+    public function test_auto_video_editor_accepts_and_normalizes_caption_styles(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 100, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $sourceVideo = $this->videoAsset($user, $project, 'raw_product_video');
+
+        $cases = [
+            'clean_subtitles' => 'clean_subtitles',
+            'bold_hook' => 'bold_hook',
+            'minimal' => 'minimal',
+            'premium_clean' => 'premium_clean',
+            'ugc_native' => 'ugc_native',
+            'missing' => 'clean_subtitles',
+            'clean' => 'clean_subtitles',
+            'subtitles' => 'clean_subtitles',
+            'bold' => 'bold_hook',
+            'premium' => 'premium_clean',
+            'ugc' => 'ugc_native',
+            'native' => 'ugc_native',
+            'bold_keywords' => 'bold_hook',
+            'karaoke' => 'ugc_native',
+        ];
+
+        foreach ($cases as $inputStyle => $expectedStyle) {
+            $payload = [
+                'source_video_asset_id' => $sourceVideo->id,
+                'include_voiceover' => false,
+            ];
+
+            if ($inputStyle !== 'missing') {
+                $payload['caption_style'] = $inputStyle;
+            }
+
+            $this->actingAs($user)
+                ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", $payload)
+                ->assertCreated()
+                ->assertJsonPath('data.input_payload.caption_style', $expectedStyle)
+                ->assertJsonPath('data.input_payload.creative_brief.caption_style', $expectedStyle);
+        }
+    }
+
+    public function test_auto_video_editor_rejects_invalid_caption_style(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $sourceVideo = $this->videoAsset($user, $project, 'raw_product_video');
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'source_video_asset_id' => $sourceVideo->id,
+                'include_voiceover' => false,
+                'caption_style' => 'chaotic_glitter_captions',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('caption_style');
+    }
+
     public function test_project_actions_include_new_video_workflows_with_reusable_hints(): void
     {
         $user = User::factory()->create(['plan_key' => 'creator']);

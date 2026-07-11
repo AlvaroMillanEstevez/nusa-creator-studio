@@ -235,7 +235,7 @@ describe('VoiceoverActionView', () => {
     expect(wrapper.text()).toContain('Generate AI narration from a saved campaign script or custom text.')
     expect(wrapper.text()).toContain('Select source')
     expect(wrapper.text()).toContain('Use saved generation')
-    expect(wrapper.text()).toContain('Campaign script source · #9')
+    expect(wrapper.text()).toContain('Campaign script source · Creator desk light · Jul 8')
     expect(wrapper.find<HTMLSelectElement>('[data-testid="voiceover-source-select"]').element.value).toBe('9')
     expect(wrapper.find('a[href="/projects/42/generations/9"]').text()).toContain('Back to campaign result')
   })

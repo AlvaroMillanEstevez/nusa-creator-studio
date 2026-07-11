@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
@@ -13,11 +13,15 @@ import {
   autoVideoDurationOptions,
   autoVideoEditingStyleOptions,
   autoVideoPacingOptions,
+  generationOutput,
+  isAiVoiceoverResult,
+  isVideoToCampaignResult,
   type CreatorGeneration,
   type CreatorProject,
   type GenerateAutoVideoEditPayload,
   type ProjectAction,
 } from '@/types/project'
+import { generationDisplayName } from '@/utils/generations'
 import { MEDIA_ACCEPT, MEDIA_MAX_SIZE_BYTES, validateMediaFile } from '@/utils/mediaValidation'
 
 const { t } = useTranslations()
@@ -39,7 +43,6 @@ const selectedVoiceoverGenerationId = ref<number | null>(null)
 const selectedVoiceoverAudioAssetId = ref<number | null>(null)
 const selectedFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-const generated = ref<CreatorGeneration | null>(null)
 const editingStyle = ref('ugc_natural')
 const pacing = ref('medium')
 const captionStyle = ref('clean_subtitles')
@@ -47,6 +50,12 @@ const durationSeconds = ref(30)
 const cta = ref('')
 const musicDirection = ref('')
 const notes = ref('')
+const ctaTouched = ref(false)
+const notesTouched = ref(false)
+const editingStyleTouched = ref(false)
+const pacingTouched = ref(false)
+const captionStyleTouched = ref(false)
+const durationTouched = ref(false)
 const isLoading = ref(true)
 const isUploading = ref(false)
 const isSubmitting = ref(false)
@@ -66,8 +75,71 @@ const videoCampaignGenerations = computed(() => generations.value.filter((item) 
 const voiceoverGenerations = computed(() => generations.value.filter((item) => item.job_type === 'generate_ai_voiceover' && item.status === 'completed'))
 const sourceVideos = computed(() => mediaAssets.value.filter((asset) => asset.type === 'video'))
 const voiceoverAudioAssets = computed(() => mediaAssets.value.filter((asset) => asset.type === 'audio' && ['voiceover_audio', 'audio_track'].includes(asset.usage_role ?? 'audio_track')))
+const selectedAnalysis = computed(() => videoCampaignGenerations.value.find((item) => item.id === selectedAnalysisId.value) ?? null)
+const selectedAnalysisResult = computed(() => {
+  const output = selectedAnalysis.value === null ? null : generationOutput(selectedAnalysis.value)
+
+  return isVideoToCampaignResult(output) ? output : null
+})
+const selectedVoiceoverGeneration = computed(() => voiceoverGenerations.value.find((item) => item.id === selectedVoiceoverGenerationId.value) ?? null)
+const selectedVoiceoverAudioAsset = computed(() => voiceoverAudioAssets.value.find((asset) => asset.id === selectedVoiceoverAudioAssetId.value) ?? null)
+const selectedVoiceoverDurationSeconds = computed(() => {
+  if (selectedVoiceoverGeneration.value === null) {
+    return null
+  }
+
+  const output = generationOutput(selectedVoiceoverGeneration.value)
+
+  if (!isAiVoiceoverResult(output)) {
+    return null
+  }
+
+  return output.audio?.duration_seconds ?? output.estimated_duration_seconds ?? null
+})
+const selectedVoiceoverAudioAssetDurationSeconds = computed(() => mediaAssetDurationSeconds(selectedVoiceoverAudioAsset.value))
+const activeVoiceoverDurationSeconds = computed(() => {
+  if (voiceoverMode.value === 'generation') {
+    return selectedVoiceoverDurationSeconds.value
+  }
+
+  if (voiceoverMode.value === 'audio_asset') {
+    return selectedVoiceoverAudioAssetDurationSeconds.value
+  }
+
+  return null
+})
 const isUpgradeRequired = computed(() => autoEditorAction.value?.upgrade_required === true || autoEditorAction.value?.action_mode === 'upgrade')
 const includeVoiceover = computed(() => voiceoverMode.value !== 'none')
+const effectiveTargetDurationSeconds = computed(() => {
+  const voiceoverDuration = activeVoiceoverDurationSeconds.value
+
+  if (!includeVoiceover.value || typeof voiceoverDuration !== 'number' || voiceoverDuration <= 0) {
+    return durationSeconds.value
+  }
+
+  return Math.max(durationSeconds.value, Math.ceil(voiceoverDuration))
+})
+const durationAdjustedForVoiceover = computed(() => effectiveTargetDurationSeconds.value > durationSeconds.value)
+const voiceoverSyncMessage = computed(() => {
+  if (!includeVoiceover.value || activeVoiceoverDurationSeconds.value === null) {
+    return ''
+  }
+
+  const duration = activeVoiceoverDurationSeconds.value
+
+  if (typeof duration !== 'number' || duration <= 0) {
+    return ''
+  }
+
+  const minimumLabel = secondsLabel(duration)
+  const base = `Selected voiceover is about ${minimumLabel}. The final video will be at least ${minimumLabel}.`
+
+  if (!durationAdjustedForVoiceover.value) {
+    return base
+  }
+
+  return `${base} Effective duration: ${secondsLabel(effectiveTargetDurationSeconds.value)} because voiceover is longer than selected target.`
+})
 const costBreakdown = computed(() => {
   const base = autoEditorAction.value?.credit_cost ?? 0
   const videoAnalysis = sourceMode.value === 'analysis' && selectedAnalysisId.value !== null
@@ -82,7 +154,6 @@ const costBreakdown = computed(() => {
     total: base + videoAnalysis + voiceover,
   }
 })
-const resultRoute = computed(() => generated.value === null ? null : `/projects/${projectId.value}/generations/${generated.value.id}`)
 
 function initializeSelection(): void {
   selectedAnalysisId.value = videoCampaignGenerations.value[0]?.id ?? null
@@ -91,6 +162,168 @@ function initializeSelection(): void {
   selectedVoiceoverAudioAssetId.value = voiceoverAudioAssets.value[0]?.id ?? null
   sourceMode.value = selectedAnalysisId.value === null ? 'raw_video' : 'analysis'
   voiceoverMode.value = selectedVoiceoverGenerationId.value !== null ? 'generation' : 'none'
+  applyAnalysisDefaults()
+  applyVoiceoverDefaults()
+}
+
+function generationLabel(generation: CreatorGeneration): string {
+  return generationDisplayName(generation, project.value)
+}
+
+function firstString(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim() !== '') {
+    return value.trim()
+  }
+
+  if (!Array.isArray(value)) {
+    return null
+  }
+
+  const found = value.find((item) => typeof item === 'string' && item.trim() !== '')
+
+  return typeof found === 'string' ? found.trim() : null
+}
+
+function secondsLabel(value: number): string {
+  return `${Number.isInteger(value) ? value : value.toFixed(1)}s`
+}
+
+function positiveNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }
+
+  return null
+}
+
+function mediaAssetDurationSeconds(asset: MediaAsset | null): number | null {
+  const metadata = asset?.metadata as Record<string, unknown> | null
+
+  return positiveNumber(metadata?.duration_seconds)
+    ?? positiveNumber(metadata?.estimated_duration_seconds)
+    ?? positiveNumber(metadata?.audio_duration_seconds)
+}
+
+function durationOptionFor(seconds: number): number {
+  const rounded = Math.ceil(seconds)
+  const options = [...autoVideoDurationOptions]
+
+  return options.find((option) => option >= rounded) ?? 60
+}
+
+function projectTone(): string {
+  const payload = project.value?.input_payload
+
+  return typeof payload === 'object' && payload !== null && 'tone' in payload && typeof payload.tone === 'string'
+    ? payload.tone
+    : ''
+}
+
+function suggestedEditingStyle(): string {
+  const analysis = selectedAnalysisResult.value
+  const text = [
+    projectTone(),
+    analysis?.campaign_angle,
+    analysis?.edit_plan.editing_style,
+    analysis?.edit_plan.editing_rhythm,
+  ].filter(Boolean).join(' ').toLowerCase()
+
+  if (text.includes('review')) {
+    return 'review'
+  }
+
+  if (text.includes('premium') || text.includes('clean')) {
+    return 'premium_clean'
+  }
+
+  if (text.includes('fast') || text.includes('energetic') || text.includes('ad')) {
+    return 'fast_cuts'
+  }
+
+  if (text.includes('story')) {
+    return 'storytelling'
+  }
+
+  return 'ugc_natural'
+}
+
+function suggestedPacing(): string {
+  const text = [selectedAnalysisResult.value?.edit_plan.editing_rhythm, suggestedEditingStyle()].filter(Boolean).join(' ').toLowerCase()
+
+  if (text.includes('fast')) {
+    return 'fast'
+  }
+
+  if (text.includes('slow') || text.includes('steady')) {
+    return 'steady'
+  }
+
+  return 'medium'
+}
+
+function suggestedCaptionStyle(): string {
+  const style = suggestedEditingStyle()
+
+  if (style === 'premium_clean') {
+    return 'premium_clean'
+  }
+
+  if (style === 'fast_cuts') {
+    return 'bold_hook'
+  }
+
+  if (style === 'review' || style === 'ugc_natural') {
+    return 'ugc_native'
+  }
+
+  return 'clean_subtitles'
+}
+
+function applyAnalysisDefaults(): void {
+  const analysis = selectedAnalysisResult.value
+
+  if (analysis === null) {
+    return
+  }
+
+  const candidateCta = firstString(analysis.cta_options)
+
+  if (candidateCta && !ctaTouched.value && cta.value.trim() === '') {
+    cta.value = candidateCta
+  }
+
+  const candidateNotes = analysis.campaign_angle || analysis.edit_plan.opening || null
+
+  if (candidateNotes && !notesTouched.value && notes.value.trim() === '') {
+    notes.value = candidateNotes
+  }
+
+  if (!editingStyleTouched.value) {
+    editingStyle.value = suggestedEditingStyle()
+  }
+
+  if (!pacingTouched.value) {
+    pacing.value = suggestedPacing()
+  }
+
+  if (!captionStyleTouched.value) {
+    captionStyle.value = suggestedCaptionStyle()
+  }
+
+  if (!durationTouched.value && typeof analysis.edit_plan.target_duration_seconds === 'number') {
+    durationSeconds.value = durationOptionFor(analysis.edit_plan.target_duration_seconds)
+  }
+}
+
+function applyVoiceoverDefaults(): void {
+  // Keep the selected value as the user's requested target. The effective
+  // duration is computed separately so voiceover extension stays visible.
 }
 
 function chooseFile(event: Event): void {
@@ -213,7 +446,9 @@ async function submit(): Promise<void> {
     editing_style: editingStyle.value,
     pacing: pacing.value,
     caption_style: captionStyle.value,
-    target_duration_seconds: durationSeconds.value,
+    target_duration_seconds: effectiveTargetDurationSeconds.value,
+    requested_target_duration_seconds: durationSeconds.value,
+    effective_target_duration_seconds: effectiveTargetDurationSeconds.value,
     cta: cta.value.trim() || null,
     music_direction: musicDirection.value.trim() || null,
     notes: notes.value.trim() || null,
@@ -221,7 +456,7 @@ async function submit(): Promise<void> {
 
   try {
     const response = await generateAutoVideoEdit(projectId.value, payload)
-    generated.value = response.data
+    await router.push(`/projects/${projectId.value}/generations/${response.data.id}`)
   } catch (error: unknown) {
     if (error instanceof ApiError && (error.code === 'insufficient_credits' || error.status === 402)) {
       formError.value = t('projectActions.insufficientCredits')
@@ -232,6 +467,14 @@ async function submit(): Promise<void> {
     isSubmitting.value = false
   }
 }
+
+watch(selectedAnalysisId, () => {
+  applyAnalysisDefaults()
+})
+
+watch([selectedVoiceoverGenerationId, voiceoverMode], () => {
+  applyVoiceoverDefaults()
+})
 
 onMounted(loadPage)
 </script>
@@ -260,28 +503,14 @@ onMounted(loadPage)
       <template v-else>
         <header class="mt-10">
           <RouterLink :to="`/projects/${projectId}`" class="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30">
-            ? {{ t('projectActions.backToWorkspace') }}
+            ← {{ t('projectActions.backToWorkspace') }}
           </RouterLink>
           <p class="mt-7 text-sm font-medium text-emerald-400">{{ project?.title }}</p>
           <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">{{ t('videoWorkflows.autoEditorTitle') }}</h1>
           <p class="mt-4 max-w-2xl text-sm leading-7 text-neutral-400">{{ t('videoWorkflows.autoEditorBody') }}</p>
         </header>
 
-        <section v-if="generated" class="nusa-card-premium mt-8 rounded-[2rem] p-5" data-testid="auto-video-editor-success">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ t('generation.completed') }}</p>
-          <h2 class="mt-3 text-2xl font-bold">{{ t('videoWorkflows.editPlanSaved') }}</h2>
-          <p class="mt-3 text-sm leading-6 text-neutral-400">{{ t('videoWorkflows.editPlanSavedBody') }}</p>
-          <div class="mt-6 grid gap-3 sm:grid-cols-2">
-            <RouterLink v-if="resultRoute" :to="resultRoute" class="flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300">
-              {{ t('videoWorkflows.viewEditPlan') }}
-            </RouterLink>
-            <RouterLink :to="`/projects/${projectId}`" class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-neutral-500 hover:bg-neutral-900">
-              {{ t('projectActions.backToWorkspace') }}
-            </RouterLink>
-          </div>
-        </section>
-
-        <form v-else class="mt-8 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]" @submit.prevent="submit">
+        <form class="mt-8 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]" @submit.prevent="submit">
           <section class="space-y-5">
             <div class="nusa-card-premium rounded-[2rem] p-5">
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ t('videoWorkflows.videoInput') }}</p>
@@ -295,9 +524,9 @@ onMounted(loadPage)
                     <span class="mt-1 block text-xs leading-5 text-neutral-500">{{ t('videoWorkflows.reuseAnalysisHelp') }}</span>
                   </span>
                 </label>
-                <select v-if="sourceMode === 'analysis' && videoCampaignGenerations.length" v-model.number="selectedAnalysisId" class="nusa-select">
+                <select v-if="sourceMode === 'analysis' && videoCampaignGenerations.length" v-model.number="selectedAnalysisId" class="nusa-select" data-testid="auto-video-analysis-select">
                   <option v-for="item in videoCampaignGenerations" :key="item.id" :value="item.id">
-                    #{{ item.id }} ? {{ item.created_at ?? 'Saved analysis' }}
+                    {{ generationLabel(item) }}
                   </option>
                 </select>
 
@@ -340,8 +569,8 @@ onMounted(loadPage)
                   <input v-model="voiceoverMode" type="radio" value="generation" class="mt-1 accent-emerald-400" :disabled="voiceoverGenerations.length === 0">
                   <span>{{ t('videoWorkflows.reuseVoiceoverGeneration') }}</span>
                 </label>
-                <select v-if="voiceoverMode === 'generation' && voiceoverGenerations.length" v-model.number="selectedVoiceoverGenerationId" class="nusa-select">
-                  <option v-for="item in voiceoverGenerations" :key="item.id" :value="item.id">#{{ item.id }} ? {{ item.created_at ?? 'Voiceover' }}</option>
+                <select v-if="voiceoverMode === 'generation' && voiceoverGenerations.length" v-model.number="selectedVoiceoverGenerationId" class="nusa-select" data-testid="auto-video-voiceover-select">
+                  <option v-for="item in voiceoverGenerations" :key="item.id" :value="item.id">{{ generationLabel(item) }}</option>
                 </select>
                 <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
                   <input v-model="voiceoverMode" type="radio" value="audio_asset" class="mt-1 accent-emerald-400" :disabled="voiceoverAudioAssets.length === 0">
@@ -368,32 +597,35 @@ onMounted(loadPage)
               <div class="mt-5 grid gap-4 sm:grid-cols-2">
                 <label class="block">
                   <span class="nusa-label">{{ t('videoWorkflows.editingStyle') }}</span>
-                  <select v-model="editingStyle" class="nusa-select mt-2">
+                  <select v-model="editingStyle" class="nusa-select mt-2" @change="editingStyleTouched = true">
                     <option v-for="option in autoVideoEditingStyleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                   </select>
                 </label>
                 <label class="block">
                   <span class="nusa-label">{{ t('videoWorkflows.pacing') }}</span>
-                  <select v-model="pacing" class="nusa-select mt-2">
+                  <select v-model="pacing" class="nusa-select mt-2" @change="pacingTouched = true">
                     <option v-for="option in autoVideoPacingOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                   </select>
                 </label>
                 <label class="block">
                   <span class="nusa-label">{{ t('videoWorkflows.captionStyle') }}</span>
-                  <select v-model="captionStyle" class="nusa-select mt-2">
+                  <select v-model="captionStyle" class="nusa-select mt-2" data-testid="auto-video-caption-style-select" @change="captionStyleTouched = true">
                     <option v-for="option in autoVideoCaptionStyleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                   </select>
                 </label>
                 <label class="block">
                   <span class="nusa-label">{{ t('videoWorkflows.duration') }}</span>
-                  <select v-model.number="durationSeconds" class="nusa-select mt-2">
+                  <select v-model.number="durationSeconds" class="nusa-select mt-2" data-testid="auto-video-duration-select" @change="durationTouched = true">
                     <option v-for="duration in autoVideoDurationOptions" :key="duration" :value="duration">{{ duration }}s</option>
                   </select>
                 </label>
               </div>
+              <p v-if="voiceoverSyncMessage" class="mt-4 rounded-2xl border border-sky-900/60 bg-sky-950/20 p-3 text-xs leading-5 text-sky-100/80" data-testid="auto-video-voiceover-sync-help">
+                {{ voiceoverSyncMessage }}
+              </p>
               <label class="mt-4 block">
                 <span class="nusa-label">CTA</span>
-                <input v-model="cta" class="nusa-input mt-2" type="text" :placeholder="t('videoWorkflows.ctaPlaceholder')">
+                <input v-model="cta" class="nusa-input mt-2" type="text" :placeholder="t('videoWorkflows.ctaPlaceholder')" data-testid="auto-video-cta-input" @input="ctaTouched = true">
               </label>
               <label class="mt-4 block">
                 <span class="nusa-label">{{ t('videoWorkflows.musicDirection') }}</span>
@@ -401,7 +633,7 @@ onMounted(loadPage)
               </label>
               <label class="mt-4 block">
                 <span class="nusa-label">{{ t('common.notes') }}</span>
-                <textarea v-model="notes" class="nusa-textarea mt-2 min-h-20" />
+                <textarea v-model="notes" class="nusa-textarea mt-2 min-h-20" @input="notesTouched = true" />
               </label>
             </div>
 

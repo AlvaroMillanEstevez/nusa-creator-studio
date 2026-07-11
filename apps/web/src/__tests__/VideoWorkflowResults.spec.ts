@@ -261,7 +261,15 @@ describe('video workflow result rendering', () => {
             edit_decision_list: [{ order: 1, timestamp: '0-2s', decision: 'Open on product.', reason: 'Fast hook.' }],
             timeline: [{ timestamp: '0-3s', layer: 'video', instruction: 'Hook shot.', text_overlay: 'Meet product' }],
             clip_sequence: [{ clip: 'A-roll', source: 'source video', use: 'opening hook' }],
-            captions_plan: { style: 'clean_subtitles', safe_zone: 'Keep lower third clear.', sample_captions: ['Meet product'] },
+            captions_plan: {
+              style: 'clean_subtitles',
+              safe_zone: 'Keep lower third clear.',
+              caption_count: 4,
+              caption_schedule: [{ start: 0.6, length: 2.2, text: 'Meet product', type: 'hook' }],
+              captions_overlapping: false,
+              caption_visual_strategy: 'compact_timed_html_overlays',
+              sample_captions: ['Meet product'],
+            },
             transition_plan: ['Use clean cuts.'],
             audio_mix_plan: {
               include_voiceover: false,
@@ -359,12 +367,37 @@ describe('video workflow result rendering', () => {
               platform: 'tiktok',
               format: 'vertical_9_16',
               target_duration_seconds: 15,
-              actual_duration_seconds: 7,
+              requested_target_duration_seconds: 15,
+              effective_target_duration_seconds: 21,
+              actual_duration_seconds: 21,
+              final_duration_seconds: 21,
+              voiceover_duration_seconds: 20,
+              duration_adjusted_for_voiceover: true,
+              duration_sync_strategy: 'repeated_product_clip',
               editing_style: 'ugc_natural',
               pacing: 'medium',
               caption_style: 'clean_subtitles',
+              caption_count: 4,
+              caption_schedule: [{ start: 0.6, length: 2.2, text: 'Meet product', type: 'hook' }],
+              captions_overlapping: false,
+              caption_visual_strategy: 'compact_timed_html_overlays',
               resolution: '720x1280',
               aspect_ratio: '9:16',
+            },
+            timeline_summary: {
+              selected_clip_count: 4,
+              final_duration_seconds: 21,
+              requested_target_duration_seconds: 15,
+              effective_target_duration_seconds: 21,
+              voiceover_duration_seconds: 20,
+              duration_adjusted_for_voiceover: true,
+              duration_sync_strategy: 'repeated_product_clip',
+              caption_schedule: [{ start: 0.6, length: 2.2, text: 'Meet product', type: 'hook' }],
+              caption_count: 4,
+              captions_overlapping: false,
+              caption_visual_strategy: 'compact_timed_html_overlays',
+              cta_used: 'Review details before buying.',
+              timeline_quality_warnings: ['Timeline was extended so the selected voiceover is not cut off.'],
             },
             final_video_placeholder: {
               status: 'rendered',
@@ -404,6 +437,18 @@ describe('video workflow result rendering', () => {
     )
     expect(objectUrls.createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
     expect(wrapper.get('[data-testid="auto-video-final-preview"]').text()).toContain('Rendered vertical video')
+    const summary = wrapper.get('[data-testid="auto-video-timeline-summary"]').text()
+
+    expect(summary).toContain('Repeated Product Clip')
+    expect(summary).toContain('Requested target')
+    expect(summary).toContain('Effective target')
+    expect(summary).toContain('21s')
+    expect(summary).toContain('Duration adjusted for voiceover')
+    expect(summary).toContain('Yes')
+    expect(summary).toContain('Captions used')
+    expect(summary).toContain('CTA used')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('Caption Schedule')
     expect(wrapper.get('[data-testid="auto-video-player"]').attributes('src')).toBe('blob:nusa-video-preview')
     expect(wrapper.get('[data-testid="auto-video-download"]').element.tagName).toBe('BUTTON')
     expect(wrapper.get('[data-testid="auto-video-download"]').attributes('href')).toBeUndefined()

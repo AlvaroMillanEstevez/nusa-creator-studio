@@ -3,6 +3,7 @@
 namespace App\Services\Generation;
 
 use App\Contracts\AutoVideoEditorProvider;
+use App\Support\AutoVideoCaptionStyle;
 use Illuminate\Support\Str;
 
 class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
@@ -19,7 +20,8 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
         $format = $this->label($this->value($input, 'format', 'vertical_9_16', 80));
         $style = $this->label($this->value($input, 'editing_style', 'ugc_natural', 80));
         $pacing = $this->label($this->value($input, 'pacing', 'medium', 80));
-        $captionStyle = $this->label($this->value($input, 'caption_style', 'clean_subtitles', 80));
+        $captionStyle = AutoVideoCaptionStyle::normalize($input['caption_style'] ?? null);
+        $captionStyleLabel = $this->label($captionStyle);
         $duration = $this->intValue($input, 'target_duration_seconds', 30);
         $cta = $this->value($input, 'cta', 'Review the product details before buying.', 240);
         $music = $this->value($input, 'music_direction', 'Use light, creator-friendly background music if licensed.', 300);
@@ -42,7 +44,7 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
             'edit_decision_list' => [
                 ['order' => 1, 'timestamp' => '0-2s', 'decision' => 'Open on the clearest product frame with a direct hook.', 'reason' => 'Immediate context reduces swipe-away risk.'],
                 ['order' => 2, 'timestamp' => '2-8s', 'decision' => "Use {$pacing} cuts to show the product context.", 'reason' => 'The middle should feel informative without being overloaded.'],
-                ['order' => 3, 'timestamp' => '8-18s', 'decision' => "Add {$captionStyle} captions over the strongest explanation beats.", 'reason' => 'Many social commerce viewers watch muted first.'],
+                ['order' => 3, 'timestamp' => '8-18s', 'decision' => "Add {$captionStyleLabel} captions over the strongest explanation beats.", 'reason' => 'Many social commerce viewers watch muted first.'],
                 ['order' => 4, 'timestamp' => '18-'.$duration.'s', 'decision' => "Close with CTA: {$cta}", 'reason' => 'The ending should tell viewers the safe next step.'],
             ],
             'timeline' => [

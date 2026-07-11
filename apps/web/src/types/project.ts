@@ -175,9 +175,10 @@ export const autoVideoPacingOptions = [
 
 export const autoVideoCaptionStyleOptions = [
   { value: 'clean_subtitles', label: 'Clean subtitles' },
-  { value: 'bold_keywords', label: 'Bold keywords' },
+  { value: 'bold_hook', label: 'Bold hook captions' },
   { value: 'minimal', label: 'Minimal' },
-  { value: 'karaoke', label: 'Karaoke' },
+  { value: 'premium_clean', label: 'Premium clean' },
+  { value: 'ugc_native', label: 'UGC native' },
 ] as const
 
 export const autoVideoDurationOptions = [15, 30, 45, 60] as const
@@ -409,6 +410,8 @@ export interface GenerateAutoVideoEditPayload {
   pacing?: AutoVideoPacing | string | null
   caption_style?: AutoVideoCaptionStyle | string | null
   target_duration_seconds?: AutoVideoDuration | number | null
+  requested_target_duration_seconds?: AutoVideoDuration | number | null
+  effective_target_duration_seconds?: AutoVideoDuration | number | null
   cta?: string | null
   music_direction?: string | null
   notes?: string | null
@@ -706,6 +709,9 @@ export interface VideoToCampaignCut {
   reason: string
   start_seconds?: number
   end_seconds?: number
+  purpose?: string
+  visual_reason?: string
+  caption_suggestion?: string
   priority?: 'low' | 'medium' | 'high' | string
 }
 
@@ -724,6 +730,10 @@ export interface VideoToCampaignEditPlanItem {
   end_seconds?: number
   instruction?: string
   caption?: string
+  purpose?: string
+  visual_reason?: string
+  caption_suggestion?: string
+  priority?: 'low' | 'medium' | 'high' | string
 }
 
 export interface VideoToCampaignEditPlan {
@@ -731,6 +741,10 @@ export interface VideoToCampaignEditPlan {
   format?: string
   platform?: string
   target_duration_seconds?: number
+  estimated_narration_duration_seconds?: number
+  editing_rhythm?: string
+  editing_style?: string
+  caption_style?: string
   opening?: string
   middle?: string
   closing?: string
@@ -751,6 +765,7 @@ export interface VideoToCampaignResult {
   hashtags: string[]
   cta_options: string[]
   edit_plan: VideoToCampaignEditPlan
+  estimated_narration_duration_seconds?: number
   compliance_notes: string[]
   usage_notes: string[]
   missing_information?: string[]
@@ -793,9 +808,35 @@ export interface AutoVideoEditorClip {
   text_overlay?: string | null
 }
 
+export interface AutoVideoEditorCaptionScheduleItem {
+  start: number
+  length: number
+  text: string
+  type: string
+}
+
 export interface AutoVideoEditorCaptionsPlan {
   style: string
   safe_zone: string
+  safe_area?: {
+    position?: string
+    width_percent?: number
+    width_pixels?: number
+    height_pixels?: number
+    bottom_margin_percent?: number
+    max_lines?: number
+    max_characters_per_line?: number
+    font_size?: string
+    font_size_pixels?: number
+    letter_spacing?: number
+  }
+  caption_count?: number
+  caption_schedule?: AutoVideoEditorCaptionScheduleItem[]
+  captions_overlapping?: boolean
+  caption_visual_strategy?: string
+  caption_safe_area_applied?: boolean
+  caption_max_lines?: number
+  caption_warnings?: string[]
   sample_captions: string[]
 }
 
@@ -810,13 +851,51 @@ export interface AutoVideoEditorRenderSettings {
   platform: string
   format: string
   target_duration_seconds: number
+  requested_target_duration_seconds?: number
+  effective_target_duration_seconds?: number
+  actual_duration_seconds?: number
+  final_duration_seconds?: number
+  voiceover_duration_seconds?: number | null
+  duration_adjusted_for_voiceover?: boolean
+  duration_sync_strategy?: string | null
   editing_style: string
   pacing: string
   caption_style: string
   provider?: string
-  actual_duration_seconds?: number
   resolution?: string
   aspect_ratio?: string
+  output_aspect_ratio?: string
+  output_width?: number
+  output_height?: number
+  source_fit_strategy?: string
+  has_letterboxing_expected?: boolean
+  caption_schedule?: AutoVideoEditorCaptionScheduleItem[]
+  caption_count?: number
+  captions_overlapping?: boolean
+  caption_visual_strategy?: string
+  caption_safe_area_applied?: boolean
+  caption_max_lines?: number
+  caption_warnings?: string[]
+}
+
+export interface AutoVideoEditorTimelineSummary {
+  selected_clip_count?: number | null
+  final_duration_seconds?: number | null
+  duration_seconds?: number | null
+  requested_target_duration_seconds?: number | null
+  effective_target_duration_seconds?: number | null
+  voiceover_duration_seconds?: number | null
+  duration_adjusted_for_voiceover?: boolean | null
+  duration_sync_strategy?: string | null
+  caption_schedule?: AutoVideoEditorCaptionScheduleItem[]
+  caption_count?: number | null
+  captions_overlapping?: boolean | null
+  caption_style?: string | null
+  caption_visual_strategy?: string | null
+  caption_warnings?: string[]
+  cta_used?: string | null
+  source?: string | null
+  timeline_quality_warnings?: string[]
 }
 
 export interface AutoVideoEditorPlaceholder {
@@ -847,6 +926,8 @@ export interface AutoVideoEditorResult {
   captions_plan: AutoVideoEditorCaptionsPlan
   transition_plan: string[]
   audio_mix_plan: AutoVideoEditorAudioMixPlan
+  timeline_summary?: AutoVideoEditorTimelineSummary
+  creative_brief?: Record<string, unknown> | null
   voiceover_script: string | null
   render_settings: AutoVideoEditorRenderSettings
   final_video_placeholder: AutoVideoEditorPlaceholder

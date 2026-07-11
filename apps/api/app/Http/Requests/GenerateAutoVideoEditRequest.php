@@ -2,11 +2,19 @@
 
 namespace App\Http\Requests;
 
+use App\Support\AutoVideoCaptionStyle;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class GenerateAutoVideoEditRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'caption_style' => AutoVideoCaptionStyle::normalize($this->input('caption_style')),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -27,8 +35,10 @@ class GenerateAutoVideoEditRequest extends FormRequest
             'format' => ['sometimes', 'nullable', 'string', 'max:80'],
             'editing_style' => ['sometimes', 'nullable', 'string', Rule::in(['ugc_natural', 'premium_clean', 'fast_cuts', 'storytelling', 'review'])],
             'pacing' => ['sometimes', 'nullable', 'string', Rule::in(['steady', 'medium', 'fast'])],
-            'caption_style' => ['sometimes', 'nullable', 'string', Rule::in(['clean_subtitles', 'bold_keywords', 'minimal', 'karaoke'])],
+            'caption_style' => ['sometimes', 'nullable', 'string', Rule::in(AutoVideoCaptionStyle::canonicalValues())],
             'target_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:120'],
+            'requested_target_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:120'],
+            'effective_target_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:120'],
             'cta' => ['sometimes', 'nullable', 'string', 'max:240'],
             'music_direction' => ['sometimes', 'nullable', 'string', 'max:500'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],

@@ -4,7 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import AudioAssetPlayer from '@/components/AudioAssetPlayer.vue'
-import { useTranslations } from '@/i18n'
+import { currentLocale, useTranslations } from '@/i18n'
 import { ApiError } from '@/services/api'
 import {
   generateAiVoiceover,
@@ -231,6 +231,35 @@ function sourceTitle(generation: CreatorGeneration): string {
   }
 
   return t('voiceoverAction.campaignSource')
+}
+
+function sourceDisplayLabel(source: VoiceoverSource): string {
+  const product = projectProductName() ?? project.value?.title ?? null
+  const date = shortDate(source.created_at)
+
+  return [source.title, product, date].filter(Boolean).join(' · ')
+}
+
+function projectProductName(): string | null {
+  const payload = project.value?.input_payload
+
+  return typeof payload === 'object' && payload !== null && 'product_name' in payload && typeof payload.product_name === 'string'
+    ? payload.product_name
+    : null
+}
+
+function shortDate(value: string | null): string | null {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return new Intl.DateTimeFormat(currentLocale.value, { month: 'short', day: 'numeric' }).format(date)
 }
 
 function sourceFromGeneration(generation: CreatorGeneration): VoiceoverSource | null {
@@ -556,7 +585,7 @@ onBeforeUnmount(stopVoiceoverPolling)
                     :key="source.generation_id"
                     :value="source.generation_id"
                   >
-                    {{ source.title }} · #{{ source.generation_id }}
+                    {{ sourceDisplayLabel(source) }}
                   </option>
                 </select>
 

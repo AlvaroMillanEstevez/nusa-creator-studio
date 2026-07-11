@@ -153,6 +153,30 @@ Action cards should show service tier and credit cost before generation. Detaile
 | Avatar Voice Ads | Premium | Mixed media | Future | Future avatar-led product ads combining presenter, voiceover and scripts. |
 
 
+## Auto Video Editor beta scope and limitations
+
+Auto Video Editor is currently a beta clean-cut workflow. The goal is to make the real render useful and honest without implying it is a finished professional editor.
+
+Current beta behavior:
+
+- Reuses Video-to-Campaign analysis when selected, including CTA options, edit plan cuts and campaign angle.
+- Reuses existing voiceover generation/audio when selected.
+- Builds a structured creative brief from user settings such as editing style, pacing, caption style, CTA, music direction and target duration.
+- Extends the timeline to fit known or estimated voiceover duration so narration is not cut off.
+- Uses simple clean cuts, repeated product shots and CTA/end-card holds as safe fallback techniques.
+- Keeps captions short and inside a vertical safe area.
+- Stores timeline summary, duration sync strategy, caption count and CTA metadata in the generation output.
+
+Known beta limitations:
+
+- Not a full professional video editor yet.
+- No automated beat sync or licensed music selection.
+- No object-aware crop/reframe decisions beyond basic vertical cover fitting.
+- No advanced transitions, motion graphics or scene reconstruction.
+- Source footage that is too short may still reuse product clips visibly.
+- Creators should review product claims, captions and timing before publishing.
+
+
 ## Affiliate Campaign Generator v1 real provider scope
 
 Affiliate Campaign Generator is the first Basic workflow that can use a real text provider. Its scope is intentionally narrow:

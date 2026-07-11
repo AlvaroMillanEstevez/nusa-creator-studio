@@ -231,10 +231,39 @@ class ShotstackAutoVideoEditorProviderTest extends TestCase
         $this->assertSame($asset->id, $generation->output_payload['final_video_asset_id']);
         $this->assertSame("/api/v1/media-assets/{$asset->id}/stream", $generation->output_payload['final_video_stream_url']);
         $this->assertSame("/api/v1/media-assets/{$asset->id}/download", $generation->output_payload['final_video_download_url']);
+        $this->assertSame('repeated_product_clip', $generation->output_payload['timeline_summary']['duration_sync_strategy']);
+        $this->assertGreaterThanOrEqual(20.5, $generation->output_payload['timeline_summary']['final_duration_seconds']);
+        $this->assertSame(15, $generation->output_payload['timeline_summary']['requested_target_duration_seconds']);
+        $this->assertGreaterThanOrEqual(20.5, $generation->output_payload['timeline_summary']['effective_target_duration_seconds']);
+        $this->assertTrue($generation->output_payload['timeline_summary']['duration_adjusted_for_voiceover']);
+        $this->assertFalse($generation->output_payload['timeline_summary']['captions_overlapping']);
+        $this->assertNotEmpty($generation->output_payload['timeline_summary']['caption_schedule']);
+        $this->assertSame('compact_timed_html_overlays', $generation->output_payload['timeline_summary']['caption_visual_strategy']);
+        $this->assertSame('Check the product details.', $generation->output_payload['timeline_summary']['cta_used']);
+        $this->assertSame('Check the product details.', $generation->output_payload['creative_brief']['selected_cta']);
+        $this->assertSame('shotstack', $generation->output_payload['provider_metadata']['provider']);
+        $this->assertSame(15, $generation->output_payload['provider_metadata']['requested_target_duration_seconds']);
+        $this->assertGreaterThanOrEqual(20.5, $generation->output_payload['provider_metadata']['effective_target_duration_seconds']);
+        $this->assertTrue($generation->output_payload['provider_metadata']['duration_adjusted_for_voiceover']);
+        $this->assertFalse($generation->output_payload['provider_metadata']['captions_overlapping']);
+        $this->assertNotEmpty($generation->output_payload['provider_metadata']['caption_schedule']);
+        $this->assertSame('compact_timed_html_overlays', $generation->output_payload['provider_metadata']['caption_visual_strategy']);
+        $this->assertSame('repeated_product_clip', $generation->output_payload['provider_metadata']['duration_sync_strategy']);
+        $this->assertSame('9:16', $generation->output_payload['provider_metadata']['output_aspect_ratio']);
+        $this->assertSame(720, $generation->output_payload['provider_metadata']['output_width']);
+        $this->assertSame(1280, $generation->output_payload['provider_metadata']['output_height']);
+        $this->assertSame('cover_crop_to_vertical', $generation->output_payload['provider_metadata']['source_fit_strategy']);
+        $this->assertFalse($generation->output_payload['provider_metadata']['has_letterboxing_expected']);
+        $this->assertTrue($generation->output_payload['provider_metadata']['caption_safe_area_applied']);
         $this->assertSame('shotstack', $asset->metadata['provider']);
         $this->assertSame('render_test_123', $asset->metadata['render_id']);
         $this->assertSame($sourceVideo->id, $asset->metadata['source_video_asset_id']);
         $this->assertSame($voiceover->id, $asset->metadata['voiceover_asset_id']);
+        $this->assertSame('repeated_product_clip', $asset->metadata['timeline_summary']['duration_sync_strategy']);
+        $this->assertSame('9:16', $asset->metadata['render_settings']['output_aspect_ratio']);
+        $this->assertSame(720, $asset->metadata['render_settings']['output_width']);
+        $this->assertSame(1280, $asset->metadata['render_settings']['output_height']);
+        $this->assertTrue($asset->metadata['captions_plan']['caption_safe_area_applied']);
         Storage::disk('media-test')->assertExists($asset->path);
 
         $json = json_encode($generation->output_payload, JSON_THROW_ON_ERROR);
@@ -468,6 +497,9 @@ class ShotstackAutoVideoEditorProviderTest extends TestCase
             'original_name' => 'raw-product-demo.mp4',
             'mime_type' => 'video/mp4',
             'size_bytes' => strlen($contents),
+            'metadata' => [
+                'duration_seconds' => 20,
+            ],
         ]);
     }
 
@@ -485,6 +517,9 @@ class ShotstackAutoVideoEditorProviderTest extends TestCase
             'original_name' => 'voiceover.mp3',
             'mime_type' => 'audio/mpeg',
             'size_bytes' => strlen($contents),
+            'metadata' => [
+                'duration_seconds' => 20,
+            ],
         ]);
     }
 
