@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
@@ -23,6 +23,7 @@ import {
   voiceoverStyleOptions,
   voiceoverToneOptions,
   type AiVoiceoverGeneratedAudio,
+  type CampaignLanguage,
   type CreatorGeneration,
   type CreatorProject,
   type GenerateAiVoiceoverPayload,
@@ -36,7 +37,7 @@ const VOICEOVER_POLL_INTERVAL_MS = 2_000
 type SourceMode = 'recommended' | 'manual'
 type VoiceoverState = 'idle' | 'submitting' | 'processing' | 'completed' | 'failed'
 
-type VoiceoverSource = ProjectActionRecommendedSource & { fullText?: string }
+type VoiceoverSource = ProjectActionRecommendedSource & { fullText?: string; sourceLanguage?: CampaignLanguage | null }
 
 const { t } = useTranslations()
 const route = useRoute()
@@ -118,8 +119,22 @@ const activeSourceOptions = computed<VoiceoverSource[]>(() => {
   const sources = [...(voiceoverAction.value?.recommended_sources ?? [])] as VoiceoverSource[]
   const querySource = querySourceOption.value
 
-  if (querySource !== null && !sources.some((source) => source.generation_id === querySource.generation_id)) {
-    sources.unshift(querySource)
+  if (querySource !== null) {
+    const existingIndex = sources.findIndex((source) => source.generation_id === querySource.generation_id)
+
+    if (existingIndex >= 0) {
+      const existing = sources[existingIndex]
+
+      if (existing) {
+        sources[existingIndex] = {
+          ...existing,
+          fullText: querySource.fullText ?? existing.fullText,
+          sourceLanguage: querySource.sourceLanguage ?? existing.sourceLanguage ?? null,
+        }
+      }
+    } else {
+      sources.unshift(querySource)
+    }
   }
 
   return sources
@@ -138,6 +153,15 @@ const selectedSourcePreview = computed(() => {
 
   return selectedSource.value?.fullText ?? selectedSource.value?.excerpt ?? ''
 })
+const selectedSourceLanguage = computed<CampaignLanguage>(() =>
+  selectedSource.value?.sourceLanguage ?? projectLanguage() ?? 'english',
+)
+const isSavedGenerationSource = computed(() => sourceMode.value === 'recommended' && selectedSource.value !== null)
+const languageHelper = computed(() =>
+  isSavedGenerationSource.value
+    ? t('voiceoverAction.savedGenerationLanguageLocked')
+    : t('voiceoverAction.manualSourceSpokenAsWritten'),
+)
 const sourceCharacterCount = computed(() => selectedSourcePreview.value.length)
 const validationError = computed(() => {
   if (sourceMode.value === 'recommended' && selectedSource.value !== null) {
@@ -206,6 +230,60 @@ const generatedAudio = computed<AiVoiceoverGeneratedAudio | null>(() =>
 const audioTitle = computed(() =>
   generatedAudio.value?.media_asset_name ?? t('voiceover.generatedAudio'),
 )
+
+function normalizeVoiceoverLanguage(value: unknown): CampaignLanguage | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim().toLowerCase()
+
+  if (['english', 'en', 'eng'].includes(normalized)) {
+    return 'english'
+  }
+
+  if (['indonesian', 'id', 'bahasa', 'bahasa indonesia'].includes(normalized)) {
+    return 'indonesian'
+  }
+
+  if (['spanish', 'es', 'español', 'espanol'].includes(normalized)) {
+    return 'spanish'
+  }
+
+  return null
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : null
+}
+
+function languageFromRecord(record: Record<string, unknown> | null, keys: string[]): CampaignLanguage | null {
+  if (record === null) {
+    return null
+  }
+
+  for (const key of keys) {
+    const language = normalizeVoiceoverLanguage(record[key])
+
+    if (language !== null) {
+      return language
+    }
+  }
+
+  return null
+}
+
+function generationLanguage(generation: CreatorGeneration): CampaignLanguage | null {
+  const output = asRecord(generationOutput(generation))
+
+  return languageFromRecord(generation.input_payload, ['language', 'voiceover_output_language', 'source_generation_language']) ??
+    languageFromRecord(output, ['language', 'voiceover_output_language', 'source_language']) ??
+    projectLanguage()
+}
+
+function projectLanguage(): CampaignLanguage | null {
+  return languageFromRecord(project.value?.input_payload ?? null, ['language'])
+}
 
 function cleanText(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
@@ -286,6 +364,7 @@ function sourceFromGeneration(generation: CreatorGeneration): VoiceoverSource | 
           created_at: generation.created_at,
           excerpt: text,
           fullText: text,
+          sourceLanguage: generationLanguage(generation),
         }
   }
 
@@ -301,6 +380,7 @@ function sourceFromGeneration(generation: CreatorGeneration): VoiceoverSource | 
           created_at: generation.created_at,
           excerpt: text,
           fullText: text,
+          sourceLanguage: generationLanguage(generation),
         }
   }
 
@@ -453,6 +533,12 @@ function generateAnotherVoiceover(): void {
   voiceoverState.value = 'idle'
   actionError.value = ''
 }
+
+watch([isSavedGenerationSource, selectedSourceLanguage], ([isLocked, sourceLanguage]) => {
+  if (isLocked) {
+    language.value = sourceLanguage
+  }
+})
 
 onMounted(loadVoiceoverAction)
 onBeforeUnmount(stopVoiceoverPolling)
@@ -615,11 +701,20 @@ onBeforeUnmount(stopVoiceoverPolling)
               <div class="grid gap-3 sm:grid-cols-2">
                 <label class="block">
                   <span class="nusa-label">{{ t('projectActions.language') }}</span>
-                  <select v-model="language" class="nusa-select mt-2">
+                  <select
+                    v-model="language"
+                    class="nusa-select mt-2 disabled:cursor-not-allowed disabled:border-neutral-800 disabled:bg-neutral-900/80 disabled:text-neutral-400"
+                    data-testid="voiceover-language-select"
+                    :disabled="isSavedGenerationSource"
+                    aria-describedby="voiceover-language-helper"
+                  >
                     <option v-for="option in campaignLanguageOptions" :key="option.value" :value="option.value">
                       {{ option.label }}
                     </option>
                   </select>
+                  <p id="voiceover-language-helper" class="mt-2 text-xs leading-5 text-neutral-500" data-testid="voiceover-language-helper">
+                    {{ languageHelper }}
+                  </p>
                 </label>
 
                 <label class="block">

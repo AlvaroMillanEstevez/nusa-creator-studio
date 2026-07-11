@@ -49,6 +49,26 @@ const providerBadge = computed(() => {
 })
 
 const editPlanTitle = computed(() => props.result.edit_plan.title ?? 'Video edit plan')
+const hooks = computed(() => props.result.hooks.filter((hook) => meaningfulString(hookText(hook))))
+const captions = computed(() => props.result.captions.filter(meaningfulString))
+const hashtags = computed(() => props.result.hashtags.filter(meaningfulString))
+const ctaOptions = computed(() => props.result.cta_options.filter(meaningfulString))
+const observedProductFeatures = computed(() => (props.result.observed_product_features ?? []).filter((feature) => meaningfulString(feature.feature) || meaningfulString(feature.evidence)))
+const detectedProductMoments = computed(() => props.result.detected_product_moments.filter(hasMomentContent))
+const sceneObservations = computed(() => props.result.scene_observations.filter(hasObservationContent))
+const recommendedCuts = computed(() => props.result.recommended_cuts.filter(hasCutContent))
+const editPlanTimeline = computed(() => props.result.edit_plan.timeline.filter(hasEditTimelineContent))
+const hasEditPlanOverview = computed(() => [props.result.edit_plan.opening, props.result.edit_plan.middle, props.result.edit_plan.closing].some(meaningfulString))
+const complianceNotes = computed(() => props.result.compliance_notes.filter(meaningfulString))
+const usageNotes = computed(() => props.result.usage_notes.filter(meaningfulString))
+
+function meaningfulString(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.trim() !== ''
+}
+
+function hasTiming(item: { timestamp?: string; start_seconds?: number; end_seconds?: number }): boolean {
+  return meaningfulString(item.timestamp) || typeof item.start_seconds === 'number' || typeof item.end_seconds === 'number'
+}
 
 function secondsLabel(value: number | undefined): string | null {
   if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -105,6 +125,15 @@ function momentMeta(moment: VideoToCampaignMoment): string | null {
   return [moment.why_it_matters, formatMeta(moment.visual_quality)].filter(Boolean).join(' · ') || null
 }
 
+function hasMomentContent(moment: VideoToCampaignMoment): boolean {
+  return hasTiming(moment)
+    || meaningfulString(moment.title)
+    || meaningfulString(moment.moment)
+    || meaningfulString(moment.description)
+    || meaningfulString(moment.campaign_use)
+    || meaningfulString(moment.why_it_matters)
+}
+
 function observationTitle(item: VideoToCampaignObservation): string {
   return item.scene ?? timeRange(item)
 }
@@ -121,20 +150,43 @@ function observationMeta(item: VideoToCampaignObservation): string | null {
   return null
 }
 
+function hasObservationContent(item: VideoToCampaignObservation): boolean {
+  return hasTiming(item) || meaningfulString(item.scene) || meaningfulString(item.observation)
+}
+
 function cutText(item: VideoToCampaignCut): string {
   return item.cut ?? item.reason
 }
 
 function cutMeta(item: VideoToCampaignCut): string | null {
-  return [item.cut ? item.reason : null, formatMeta(item.priority)].filter(Boolean).join(' · ') || null
+  return [item.cut ? item.reason : null, formatMeta(item.priority), formatMeta(item.visual_quality), formatMeta(item.stability), formatMeta(item.product_visibility)].filter(Boolean).join(' · ') || null
+}
+
+function hasCutContent(item: VideoToCampaignCut): boolean {
+  return hasTiming(item)
+    || meaningfulString(item.cut)
+    || meaningfulString(item.reason)
+    || meaningfulString(item.purpose)
+    || meaningfulString(item.visual_reason)
+    || meaningfulString(item.caption_suggestion)
 }
 
 function editInstruction(item: VideoToCampaignEditPlanItem): string {
-  return item.action ?? item.instruction ?? 'Edit this moment.'
+  return item.action ?? item.instruction ?? item.purpose ?? item.visual_reason ?? 'Edit this moment.'
 }
 
 function editCaption(item: VideoToCampaignEditPlanItem): string | null {
-  return item.caption ?? null
+  return item.caption ?? item.caption_suggestion ?? null
+}
+
+function hasEditTimelineContent(item: VideoToCampaignEditPlanItem): boolean {
+  return hasTiming(item)
+    || meaningfulString(item.action)
+    || meaningfulString(item.instruction)
+    || meaningfulString(item.purpose)
+    || meaningfulString(item.visual_reason)
+    || meaningfulString(item.caption)
+    || meaningfulString(item.caption_suggestion)
 }
 </script>
 
@@ -177,84 +229,85 @@ function editCaption(item: VideoToCampaignEditPlanItem): string | null {
       </p>
     </section>
 
-    <section class="grid gap-5 lg:grid-cols-2">
-      <div class="nusa-card-premium rounded-[2rem] p-5">
+    <section v-if="hooks.length || captions.length" class="grid gap-5 lg:grid-cols-2">
+      <div v-if="hooks.length" class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Hooks</p>
         <ol class="mt-4 space-y-3 text-sm leading-6 text-neutral-200">
-          <li v-for="(hook, index) in result.hooks" :key="`${index}-${hookText(hook)}`" class="rounded-2xl bg-neutral-950/70 p-3">
+          <li v-for="(hook, index) in hooks" :key="`${index}-${hookText(hook)}`" class="rounded-2xl bg-neutral-950/70 p-3">
             <span class="text-emerald-300">{{ index + 1 }}.</span> {{ hookText(hook) }}
             <p v-if="hookMeta(hook)" class="mt-1 text-xs leading-5 text-neutral-500">{{ hookMeta(hook) }}</p>
           </li>
         </ol>
       </div>
 
-      <div class="nusa-card-premium rounded-[2rem] p-5">
+      <div v-if="captions.length" class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Captions</p>
         <ul class="mt-4 space-y-3 text-sm leading-6 text-neutral-200">
-          <li v-for="caption in result.captions" :key="caption" class="rounded-2xl bg-neutral-950/70 p-3">
+          <li v-for="caption in captions" :key="caption" class="rounded-2xl bg-neutral-950/70 p-3">
             {{ caption }}
           </li>
         </ul>
       </div>
     </section>
 
-    <section v-if="result.observed_product_features?.length" class="nusa-card-premium rounded-[2rem] p-5">
+    <section v-if="observedProductFeatures.length" class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Observed product features</p>
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
-        <article v-for="feature in result.observed_product_features" :key="feature.feature" class="rounded-2xl bg-neutral-950/70 p-4">
-          <p class="text-sm font-semibold text-neutral-100">{{ feature.feature }}</p>
-          <p class="mt-2 text-sm leading-6 text-neutral-400">{{ feature.evidence }}</p>
-          <p class="mt-2 text-xs text-neutral-600">Confidence: {{ feature.confidence }}</p>
+        <article v-for="feature in observedProductFeatures" :key="feature.feature || feature.evidence" class="rounded-2xl bg-neutral-950/70 p-4">
+          <p v-if="feature.feature" class="text-sm font-semibold text-neutral-100">{{ feature.feature }}</p>
+          <p v-if="feature.evidence" class="mt-2 text-sm leading-6 text-neutral-400">{{ feature.evidence }}</p>
+          <p v-if="feature.confidence" class="mt-2 text-xs text-neutral-600">Confidence: {{ feature.confidence }}</p>
         </article>
       </div>
     </section>
 
-    <section class="nusa-card-premium rounded-[2rem] p-5">
+    <section v-if="detectedProductMoments.length" class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Detected product moments</p>
       <div class="mt-4 space-y-3">
-        <article v-for="(moment, index) in result.detected_product_moments" :key="`${index}-${timeRange(moment)}-${momentTitle(moment)}`" class="rounded-2xl bg-neutral-950/70 p-4">
+        <article v-for="(moment, index) in detectedProductMoments" :key="`${index}-${timeRange(moment)}-${momentTitle(moment)}`" class="rounded-2xl bg-neutral-950/70 p-4">
           <p class="text-xs font-semibold text-emerald-300">{{ timeRange(moment) }}</p>
           <p class="mt-2 text-sm font-semibold text-neutral-100">{{ momentTitle(moment) }}</p>
-          <p class="mt-2 text-sm leading-6 text-neutral-400">{{ momentDescription(moment) }}</p>
+          <p v-if="momentDescription(moment)" class="mt-2 text-sm leading-6 text-neutral-400">{{ momentDescription(moment) }}</p>
           <p v-if="momentMeta(moment)" class="mt-2 text-xs leading-5 text-neutral-500">{{ momentMeta(moment) }}</p>
         </article>
       </div>
     </section>
 
-    <section class="grid gap-5 lg:grid-cols-2">
-      <div class="nusa-card-premium rounded-[2rem] p-5">
+    <section v-if="sceneObservations.length || recommendedCuts.length" class="grid gap-5 lg:grid-cols-2">
+      <div v-if="sceneObservations.length" class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Scene observations</p>
         <div class="mt-4 space-y-3">
-          <article v-for="(item, index) in result.scene_observations" :key="`${index}-${observationTitle(item)}`" class="rounded-2xl bg-neutral-950/70 p-4">
+          <article v-for="(item, index) in sceneObservations" :key="`${index}-${observationTitle(item)}`" class="rounded-2xl bg-neutral-950/70 p-4">
             <p class="text-sm font-semibold text-neutral-100">{{ observationTitle(item) }}</p>
-            <p class="mt-2 text-sm leading-6 text-neutral-400">{{ item.observation }}</p>
+            <p v-if="item.observation" class="mt-2 text-sm leading-6 text-neutral-400">{{ item.observation }}</p>
             <p v-if="observationMeta(item)" class="mt-2 text-xs text-neutral-600">{{ observationMeta(item) }}</p>
           </article>
         </div>
       </div>
 
-      <div class="nusa-card-premium rounded-[2rem] p-5">
+      <div v-if="recommendedCuts.length" class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Recommended cuts</p>
         <div class="mt-4 space-y-3">
-          <article v-for="(item, index) in result.recommended_cuts" :key="`${index}-${timeRange(item)}-${cutText(item)}`" class="rounded-2xl bg-neutral-950/70 p-4">
+          <article v-for="(item, index) in recommendedCuts" :key="`${index}-${timeRange(item)}-${cutText(item)}`" class="rounded-2xl bg-neutral-950/70 p-4">
             <p class="text-xs font-semibold text-emerald-300">{{ timeRange(item) }}</p>
             <p class="mt-2 text-sm leading-6 text-neutral-100">{{ cutText(item) }}</p>
+            <p v-if="item.visual_reason" class="mt-2 text-sm leading-6 text-neutral-400">{{ item.visual_reason }}</p>
             <p v-if="cutMeta(item)" class="mt-2 text-xs leading-5 text-neutral-500">{{ cutMeta(item) }}</p>
           </article>
         </div>
       </div>
     </section>
 
-    <section class="nusa-card-premium rounded-[2rem] p-5">
+    <section v-if="hasEditPlanOverview || editPlanTimeline.length" class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Edit plan</p>
       <h3 class="mt-2 text-xl font-semibold">{{ editPlanTitle }}</h3>
-      <div v-if="result.edit_plan.opening || result.edit_plan.middle || result.edit_plan.closing" class="mt-4 grid gap-3 sm:grid-cols-3">
+      <div v-if="hasEditPlanOverview" class="mt-4 grid gap-3 sm:grid-cols-3">
         <p v-if="result.edit_plan.opening" class="rounded-2xl bg-neutral-950/70 p-3 text-sm leading-6 text-neutral-300">{{ result.edit_plan.opening }}</p>
         <p v-if="result.edit_plan.middle" class="rounded-2xl bg-neutral-950/70 p-3 text-sm leading-6 text-neutral-300">{{ result.edit_plan.middle }}</p>
         <p v-if="result.edit_plan.closing" class="rounded-2xl bg-neutral-950/70 p-3 text-sm leading-6 text-neutral-300">{{ result.edit_plan.closing }}</p>
       </div>
-      <div class="mt-4 space-y-3">
-        <article v-for="(item, index) in result.edit_plan.timeline" :key="`${index}-${timeRange(item)}`" class="rounded-2xl bg-neutral-950/70 p-4">
+      <div v-if="editPlanTimeline.length" class="mt-4 space-y-3">
+        <article v-for="(item, index) in editPlanTimeline" :key="`${index}-${timeRange(item)}`" class="rounded-2xl bg-neutral-950/70 p-4">
           <p class="text-xs font-semibold text-emerald-300">{{ timeRange(item) }}</p>
           <p class="mt-2 text-sm leading-6 text-neutral-200">{{ editInstruction(item) }}</p>
           <p v-if="editCaption(item)" class="mt-2 text-xs leading-5 text-neutral-500">Caption: {{ editCaption(item) }}</p>
@@ -262,31 +315,31 @@ function editCaption(item: VideoToCampaignEditPlanItem): string | null {
       </div>
     </section>
 
-    <section class="nusa-card-premium rounded-[2rem] p-5">
+    <section v-if="hashtags.length || ctaOptions.length" class="nusa-card-premium rounded-[2rem] p-5">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Hashtags and CTA</p>
-      <div class="mt-4 flex flex-wrap gap-2">
-        <span v-for="hashtag in result.hashtags" :key="hashtag" class="rounded-full border border-neutral-700 bg-neutral-950 px-3 py-1 text-xs font-semibold text-neutral-200">
+      <div v-if="hashtags.length" class="mt-4 flex flex-wrap gap-2">
+        <span v-for="hashtag in hashtags" :key="hashtag" class="rounded-full border border-neutral-700 bg-neutral-950 px-3 py-1 text-xs font-semibold text-neutral-200">
           {{ hashtag }}
         </span>
       </div>
-      <div class="mt-5 grid gap-3 sm:grid-cols-3">
-        <p v-for="cta in result.cta_options" :key="cta" class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-3 text-sm leading-6 text-neutral-200">
+      <div v-if="ctaOptions.length" class="mt-5 grid gap-3 sm:grid-cols-3">
+        <p v-for="cta in ctaOptions" :key="cta" class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-3 text-sm leading-6 text-neutral-200">
           {{ cta }}
         </p>
       </div>
     </section>
 
-    <section class="grid gap-5 lg:grid-cols-2">
-      <div class="rounded-3xl border border-amber-900/50 bg-amber-950/20 p-5">
+    <section v-if="complianceNotes.length || usageNotes.length" class="grid gap-5 lg:grid-cols-2">
+      <div v-if="complianceNotes.length" class="rounded-3xl border border-amber-900/50 bg-amber-950/20 p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-400">Compliance notes</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-amber-100/80">
-          <li v-for="item in result.compliance_notes" :key="item">• {{ item }}</li>
+          <li v-for="item in complianceNotes" :key="item">• {{ item }}</li>
         </ul>
       </div>
-      <div class="nusa-card-premium rounded-[2rem] p-5">
+      <div v-if="usageNotes.length" class="nusa-card-premium rounded-[2rem] p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Usage notes</p>
         <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
-          <li v-for="item in result.usage_notes" :key="item">• {{ item }}</li>
+          <li v-for="item in usageNotes" :key="item">• {{ item }}</li>
         </ul>
       </div>
     </section>

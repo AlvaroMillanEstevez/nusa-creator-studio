@@ -23,9 +23,9 @@ class AiVoiceoverSourceResolver
             $input = [];
         }
 
-        $input = $this->applyLauncherOptions($input, $options);
-
         $sourceGenerationId = $this->nullableInt($options['source_generation_id'] ?? $input['source_generation_id'] ?? null);
+        $input = $this->applyLauncherOptions($input, $options, $sourceGenerationId !== null);
+
         $explicitSourceText = $this->nullableString($options['source_text'] ?? $input['source_text'] ?? null);
         $sourceGenerationExcerpt = $this->nullableString($input['source_generation_excerpt'] ?? null);
 
@@ -54,11 +54,34 @@ class AiVoiceoverSourceResolver
             }
 
             $sourceGenerationExcerpt = Str::limit($explicitSourceText, 240, '');
+            $sourceLanguage = $this->sourceGenerationLanguage($sourceGeneration, $project, $input);
+            $input['source_generation_language'] = $sourceLanguage;
+            $input['voiceover_output_language'] = $sourceLanguage;
+            $input['language'] = $sourceLanguage;
+            $input['script_preparation'] = [
+                'mode' => 'saved_generation_language_locked',
+                'translation_applied' => false,
+                'original_text' => $explicitSourceText,
+                'prepared_text' => $explicitSourceText,
+            ];
         }
 
         $input['source_text'] = $explicitSourceText ?? $this->fallbackText($input);
         $input['source_generation_id'] = $sourceGenerationId;
         $input['source_generation_excerpt'] = $sourceGenerationExcerpt;
+
+        if ($sourceGenerationId === null) {
+            $language = $this->normalizeLanguage($this->nullableString($input['language'] ?? null)) ?? 'english';
+            $input['language'] = $language;
+            $input['source_generation_language'] = null;
+            $input['voiceover_output_language'] = $language;
+            $input['script_preparation'] = [
+                'mode' => 'manual_text_spoken_as_written',
+                'translation_applied' => false,
+                'original_text' => $input['source_text'],
+                'prepared_text' => $input['source_text'],
+            ];
+        }
 
         return $input;
     }
@@ -68,9 +91,13 @@ class AiVoiceoverSourceResolver
      * @param  array<string, mixed>  $options
      * @return array<string, mixed>
      */
-    private function applyLauncherOptions(array $input, array $options): array
+    private function applyLauncherOptions(array $input, array $options, bool $hasSourceGeneration): array
     {
-        foreach (['language', 'tone', 'pace', 'voice_id', 'notes'] as $key) {
+        $keys = $hasSourceGeneration
+            ? ['tone', 'pace', 'voice_id', 'notes']
+            : ['language', 'tone', 'pace', 'voice_id', 'notes'];
+
+        foreach ($keys as $key) {
             $value = $this->nullableString($options[$key] ?? null);
 
             if ($value !== null) {
@@ -111,6 +138,41 @@ class AiVoiceoverSourceResolver
         }
 
         return $allowed;
+    }
+
+    private function sourceGenerationLanguage(Generation $generation, Project $project, array $input): string
+    {
+        foreach ([
+            data_get($generation->input_payload, 'language'),
+            data_get($generation->input_payload, 'voiceover_output_language'),
+            data_get($generation->output_payload, 'language'),
+            data_get($generation->output_payload, 'voiceover_output_language'),
+            data_get($generation->output_payload, 'source_language'),
+            data_get($project->input_payload, 'language'),
+            $input['language'] ?? null,
+        ] as $value) {
+            $language = $this->normalizeLanguage($this->nullableString($value));
+
+            if ($language !== null) {
+                return $language;
+            }
+        }
+
+        return 'english';
+    }
+
+    private function normalizeLanguage(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return match (strtolower(trim($value))) {
+            'en', 'eng', 'english' => 'english',
+            'id', 'indonesian', 'bahasa', 'bahasa indonesia' => 'indonesian',
+            'es', 'spa', 'spanish', 'español', 'espanol' => 'spanish',
+            default => null,
+        };
     }
 
     private function nullableInt(mixed $value): ?int

@@ -50,6 +50,7 @@ class AutoVideoEditorCreativeBriefBuilder
             'pacing' => $this->string($input['pacing'] ?? null, 'medium'),
             'music_direction' => $this->nullableString($input['music_direction'] ?? null),
             'notes' => $this->nullableString($input['notes'] ?? null),
+            'source_duration_seconds' => $this->sourceDuration($input),
             'safe_area_rules' => [
                 'position' => 'bottom_center',
                 'width_percent' => 80,
@@ -57,7 +58,7 @@ class AutoVideoEditorCreativeBriefBuilder
                 'max_lines' => 2,
                 'max_characters_per_line' => 28,
             ],
-            'preferred_cuts' => $this->cuts(data_get($analysis, 'edit_plan.timeline')),
+            'preferred_cuts' => $this->cuts($this->cutCandidates($analysis)),
             'fallback_cuts' => $this->cuts($analysis['recommended_cuts'] ?? null),
             'final_screen' => [
                 'type' => 'cta_overlay',
@@ -121,6 +122,32 @@ class AutoVideoEditorCreativeBriefBuilder
         return round(max(3.0, ($wordCount / 145) * 60), 2);
     }
 
+    /** @param array<string, mixed> $analysis */
+    private function cutCandidates(array $analysis): array
+    {
+        $groups = [
+            data_get($analysis, 'edit_plan.timeline'),
+            $analysis['recommended_cuts'] ?? null,
+            $analysis['detected_product_moments'] ?? null,
+            $analysis['scene_observations'] ?? null,
+        ];
+        $candidates = [];
+
+        foreach ($groups as $group) {
+            if (! is_array($group)) {
+                continue;
+            }
+
+            foreach ($group as $item) {
+                if (is_array($item)) {
+                    $candidates[] = $item;
+                }
+            }
+        }
+
+        return $candidates;
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function cuts(mixed $value): array
     {
@@ -137,11 +164,37 @@ class AutoVideoEditorCreativeBriefBuilder
                 'start_seconds' => $this->numeric($item['start_seconds'] ?? null),
                 'end_seconds' => $this->numeric($item['end_seconds'] ?? null),
                 'timestamp' => $this->nullableString($item['timestamp'] ?? null),
-                'purpose' => $this->nullableString($item['purpose'] ?? $item['reason'] ?? $item['instruction'] ?? null),
-                'caption' => $this->nullableString($item['caption'] ?? $item['text_overlay'] ?? $item['on_screen_text'] ?? null),
+                'purpose' => $this->nullableString($item['purpose'] ?? $item['reason'] ?? $item['instruction'] ?? $item['observation'] ?? null),
+                'visual_reason' => $this->nullableString($item['visual_reason'] ?? $item['campaign_use'] ?? $item['description'] ?? null),
+                'caption' => $this->nullableString($item['caption'] ?? $item['caption_suggestion'] ?? $item['text_overlay'] ?? $item['on_screen_text'] ?? null),
                 'priority' => $this->nullableString($item['priority'] ?? null) ?? 'medium',
+                'visual_quality' => $this->nullableString($item['visual_quality'] ?? null),
+                'stability' => $this->nullableString($item['stability'] ?? null),
+                'product_visibility' => $this->nullableString($item['product_visibility'] ?? null),
+                'is_transition_moment' => is_bool($item['is_transition_moment'] ?? null) ? $item['is_transition_moment'] : null,
+                'use_for_final_edit' => is_bool($item['use_for_final_edit'] ?? null) ? $item['use_for_final_edit'] : (is_bool($item['usable_for_edit'] ?? null) ? $item['usable_for_edit'] : null),
             ];
         }, $value)));
+    }
+
+    /** @param array<string, mixed> $input */
+    private function sourceDuration(array $input): ?float
+    {
+        foreach ([
+            'source_video_duration_seconds',
+            'source_video_asset.metadata.duration_seconds',
+            'source_video_asset.metadata.duration',
+            'source_video_asset.metadata.video.duration_seconds',
+            'source_video_asset.metadata.video.duration',
+        ] as $key) {
+            $duration = data_get($input, $key);
+
+            if (is_numeric($duration) && (float) $duration > 0) {
+                return round((float) $duration, 2);
+            }
+        }
+
+        return null;
     }
 
     private function duration(mixed $value, int $fallback, int $min, int $max): int

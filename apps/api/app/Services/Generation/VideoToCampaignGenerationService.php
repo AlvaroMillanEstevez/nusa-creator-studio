@@ -100,6 +100,7 @@ class VideoToCampaignGenerationService
             'project_title' => $project->title,
             'project_type' => $project->type,
             'source_video_asset_id' => $sourceVideo->getKey(),
+            'source_video_duration_seconds' => $this->durationSeconds($sourceVideo),
             'source_video_asset' => $this->assetSummary($sourceVideo),
             'product_name' => $this->stringOption($options, 'product_name') ?? $this->stringOption($projectInput, 'product_name') ?? $project->title,
             'product_description' => $this->stringOption($options, 'product_description') ?? $this->stringOption($projectInput, 'product_description'),

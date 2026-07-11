@@ -290,17 +290,23 @@ describe('video workflow action views', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain('Select or upload a source video first.')
   })
 
-  it('submits Video-to-Campaign with the selected source video', async () => {
-    const { wrapper, fetchMock } = await mountView(VideoToCampaignActionView, '/projects/42/actions/video-to-campaign')
+  it('submits Video-to-Campaign with the selected source video and redirects to generation detail', async () => {
+    const { wrapper, fetchMock, router } = await mountView(VideoToCampaignActionView, '/projects/42/actions/video-to-campaign')
+
+    expect(wrapper.text()).toContain('← Back to workspace')
+    expect(wrapper.text()).not.toContain('? Back to workspace')
 
     await wrapper.get('form').trigger('submit')
+    await flushPromises()
     await flushPromises()
 
     const call = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/projects/42/generate-video-campaign'))
     const body = JSON.parse(String(call?.[1]?.body)) as Record<string, unknown>
 
     expect(body.source_video_asset_id).toBe(88)
-    expect(wrapper.get('[data-testid="video-to-campaign-success"]').text()).toContain('View generated campaign')
+    expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/101')
+    expect(wrapper.find('[data-testid="video-to-campaign-success"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('View generated campaign')
   })
 
   it('renders Auto Video Editor source, voiceover and cost controls', async () => {
@@ -317,13 +323,19 @@ describe('video workflow action views', () => {
     expect(wrapper.get('[data-testid="auto-video-cta-input"]').element).toHaveProperty('value', 'Check the details.')
     expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Video campaign · Pocket Light')
     expect(wrapper.get('[data-testid="auto-video-voiceover-select"]').text()).toContain('Voiceover · Pocket Light · 20s')
-    expect(wrapper.get<HTMLSelectElement>('[data-testid="auto-video-duration-select"]').element.value).toBe('15')
+    const durationSelect = wrapper.get<HTMLSelectElement>('[data-testid="auto-video-duration-select"]')
+
+    expect(durationSelect.element.value).toBe('15')
+    expect(durationSelect.text()).toContain('15s · extends to 20s')
 
     const syncHelp = wrapper.get('[data-testid="auto-video-voiceover-sync-help"]').text()
 
-    expect(syncHelp).toContain('Selected voiceover is about 20s')
-    expect(syncHelp).toContain('The final video will be at least 20s')
-    expect(syncHelp).toContain('Effective duration: 20s because voiceover is longer than selected target.')
+    expect(syncHelp).toContain('Final video will extend to about 20s to fit the voiceover.')
+
+    await durationSelect.setValue('30')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="auto-video-voiceover-sync-help"]').text()).toContain('Voiceover is about 20s. Extra video time will be filled with additional product footage and CTA visuals.')
 
     await wrapper.get('input[value="new"]').setValue(true)
     await flushPromises()

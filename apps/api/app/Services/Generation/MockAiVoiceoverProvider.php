@@ -76,6 +76,17 @@ class MockAiVoiceoverProvider implements AiVoiceoverProvider
             ),
         };
 
+        $payload['source_generation_language'] = $this->nullableValue($input, 'source_generation_language');
+        $payload['voiceover_output_language'] = $this->nullableValue($input, 'voiceover_output_language') ?? $language;
+        $payload['script_preparation'] = is_array($input['script_preparation'] ?? null)
+            ? $input['script_preparation']
+            : [
+                'mode' => $data->sourceGenerationId !== null ? 'saved_generation_language_locked' : 'manual_text_spoken_as_written',
+                'translation_applied' => false,
+                'original_text' => $sourceText,
+                'prepared_text' => $sourceText,
+            ];
+
         return AiVoiceoverResultData::mock($payload, mb_strlen($data->text));
     }
 
@@ -349,5 +360,15 @@ class MockAiVoiceoverProvider implements AiVoiceoverProvider
     private function label(string $value): string
     {
         return str_replace('_', ' ', $value);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function nullableValue(array $input, string $key): ?string
+    {
+        $value = $input[$key] ?? null;
+
+        return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 }

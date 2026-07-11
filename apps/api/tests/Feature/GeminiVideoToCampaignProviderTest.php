@@ -146,10 +146,17 @@ class GeminiVideoToCampaignProviderTest extends TestCase
         $this->assertStringContainsString('Render-friendly edit plan requirements', $prompt);
         $this->assertStringContainsString('Do not invent product claims', $prompt);
         $this->assertStringContainsString('future_auto_video_editor_settings', $prompt);
-        $this->assertStringContainsString('3-5 usable cuts', $prompt);
+        $this->assertStringContainsString('Review the full video from beginning to end', $prompt);
+        $this->assertStringContainsString('5-8 cut candidates', $prompt);
+        $this->assertStringContainsString('raw handheld footage', $prompt);
+        $this->assertStringContainsString('Avoid shaky transitions', $prompt);
         $this->assertArrayHasKey('purpose', $schema['properties']['recommended_cuts']['items']['properties']);
         $this->assertArrayHasKey('visual_reason', $schema['properties']['recommended_cuts']['items']['properties']);
         $this->assertArrayHasKey('caption_suggestion', $schema['properties']['edit_plan']['properties']['timeline']['items']['properties']);
+        $this->assertArrayHasKey('stability', $schema['properties']['recommended_cuts']['items']['properties']);
+        $this->assertArrayHasKey('product_visibility', $schema['properties']['recommended_cuts']['items']['properties']);
+        $this->assertArrayHasKey('is_transition_moment', $schema['properties']['recommended_cuts']['items']['properties']);
+        $this->assertArrayHasKey('use_for_final_edit', $schema['properties']['recommended_cuts']['items']['properties']);
         $this->assertArrayHasKey('estimated_narration_duration_seconds', $schema['properties']);
     }
 

@@ -626,6 +626,8 @@ export default {
     needsAnotherTry: 'This voiceover setup needs another try.',
     loadError: 'We could not load the voiceover setup. Please try again.',
     useSavedGeneration: 'Use saved generation',
+    savedGenerationLanguageLocked: 'Voiceover language follows the selected campaign script.',
+    manualSourceSpokenAsWritten: 'Manual text will be spoken as written. Translation is not applied automatically yet.',
     selectSourceOrWriteCustomText: 'Select a source or write custom text.',
     costAndAccess: 'Cost and access',
     campaignSource: 'Saved campaign generation',

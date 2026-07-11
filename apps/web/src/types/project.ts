@@ -615,6 +615,13 @@ export interface AiVoiceoverMockAudio {
   provider: 'mock'
 }
 
+export interface AiVoiceoverScriptPreparation {
+  mode: 'saved_generation_language_locked' | 'manual_text_spoken_as_written' | string
+  translation_applied: boolean
+  original_text?: string | null
+  prepared_text?: string | null
+}
+
 export interface AiVoiceoverGeneratedAudio {
   status: 'generated'
   media_asset_id: number
@@ -636,6 +643,9 @@ export interface AiVoiceoverResult {
   narration_script: string
   source_generation_id?: number | null
   source_generation_excerpt?: string | null
+  source_generation_language?: CampaignLanguage | string | null
+  voiceover_output_language?: CampaignLanguage | string | null
+  script_preparation?: AiVoiceoverScriptPreparation | null
   audio_asset_id?: number | null
   scene_timing: AiVoiceoverSceneTiming[]
   voice_direction: string
@@ -692,6 +702,10 @@ export interface VideoToCampaignMoment {
   description?: string
   why_it_matters?: string
   visual_quality?: 'low' | 'medium' | 'high' | string
+  stability?: 'low' | 'medium' | 'high' | string
+  product_visibility?: 'low' | 'medium' | 'high' | string
+  is_transition_moment?: boolean
+  use_for_final_edit?: boolean
 }
 
 export interface VideoToCampaignObservation {
@@ -701,6 +715,11 @@ export interface VideoToCampaignObservation {
   start_seconds?: number
   end_seconds?: number
   usable_for_edit?: boolean
+  visual_quality?: 'low' | 'medium' | 'high' | string
+  stability?: 'low' | 'medium' | 'high' | string
+  product_visibility?: 'low' | 'medium' | 'high' | string
+  is_transition_moment?: boolean
+  use_for_final_edit?: boolean
 }
 
 export interface VideoToCampaignCut {
@@ -713,6 +732,11 @@ export interface VideoToCampaignCut {
   visual_reason?: string
   caption_suggestion?: string
   priority?: 'low' | 'medium' | 'high' | string
+  visual_quality?: 'low' | 'medium' | 'high' | string
+  stability?: 'low' | 'medium' | 'high' | string
+  product_visibility?: 'low' | 'medium' | 'high' | string
+  is_transition_moment?: boolean
+  use_for_final_edit?: boolean
 }
 
 export interface VideoToCampaignHook {
@@ -797,6 +821,10 @@ export interface AutoVideoEditorTimelineItem {
   duration_seconds?: number | null
   source_start_seconds?: number | null
   source_end_seconds?: number | null
+  timeline_start_seconds?: number | null
+  timeline_end_seconds?: number | null
+  source_range?: string | null
+  timeline_range?: string | null
   source?: string | null
 }
 
@@ -806,6 +834,12 @@ export interface AutoVideoEditorClip {
   use: string
   timestamp?: string | null
   text_overlay?: string | null
+  source_start_seconds?: number | null
+  source_end_seconds?: number | null
+  timeline_start_seconds?: number | null
+  timeline_end_seconds?: number | null
+  source_range?: string | null
+  timeline_range?: string | null
 }
 
 export interface AutoVideoEditorCaptionScheduleItem {
@@ -833,6 +867,10 @@ export interface AutoVideoEditorCaptionsPlan {
   caption_count?: number
   caption_schedule?: AutoVideoEditorCaptionScheduleItem[]
   captions_overlapping?: boolean
+  caption_schedule_validated?: boolean
+  captions_dropped_for_overlap?: number
+  final_caption_count?: number
+  cta_caption_start_seconds?: number | null
   caption_visual_strategy?: string
   caption_safe_area_applied?: boolean
   caption_max_lines?: number
@@ -872,10 +910,27 @@ export interface AutoVideoEditorRenderSettings {
   caption_schedule?: AutoVideoEditorCaptionScheduleItem[]
   caption_count?: number
   captions_overlapping?: boolean
+  caption_schedule_validated?: boolean
+  captions_dropped_for_overlap?: number
+  final_caption_count?: number
+  cta_caption_start_seconds?: number | null
   caption_visual_strategy?: string
   caption_safe_area_applied?: boolean
   caption_max_lines?: number
   caption_warnings?: string[]
+  source_clip_ranges_used?: string[]
+  candidate_clip_count?: number
+  unique_candidate_clip_count?: number
+  fallback_even_segments_added?: number
+  repeated_clip_count?: number
+  repeated_clip_reason?: string | null
+  post_voiceover_visual_strategy?: string | null
+  source_segments_used_after_voiceover?: number
+  diverse_source_segments_used?: boolean
+  invalid_clip_ranges_discarded?: number
+  source_duration_seconds?: number | null
+  deduped_caption_count?: number
+  repeated_captions_removed?: number
 }
 
 export interface AutoVideoEditorTimelineSummary {
@@ -890,9 +945,26 @@ export interface AutoVideoEditorTimelineSummary {
   caption_schedule?: AutoVideoEditorCaptionScheduleItem[]
   caption_count?: number | null
   captions_overlapping?: boolean | null
+  caption_schedule_validated?: boolean
+  captions_dropped_for_overlap?: number
+  final_caption_count?: number
+  cta_caption_start_seconds?: number | null
   caption_style?: string | null
   caption_visual_strategy?: string | null
   caption_warnings?: string[]
+  source_clip_ranges_used?: string[]
+  candidate_clip_count?: number
+  unique_candidate_clip_count?: number
+  fallback_even_segments_added?: number
+  repeated_clip_count?: number
+  repeated_clip_reason?: string | null
+  post_voiceover_visual_strategy?: string | null
+  source_segments_used_after_voiceover?: number
+  diverse_source_segments_used?: boolean
+  invalid_clip_ranges_discarded?: number
+  source_duration_seconds?: number | null
+  deduped_caption_count?: number
+  repeated_captions_removed?: number
   cta_used?: string | null
   source?: string | null
   timeline_quality_warnings?: string[]

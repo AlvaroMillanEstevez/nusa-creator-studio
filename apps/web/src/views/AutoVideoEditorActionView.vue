@@ -132,14 +132,27 @@ const voiceoverSyncMessage = computed(() => {
   }
 
   const minimumLabel = secondsLabel(duration)
-  const base = `Selected voiceover is about ${minimumLabel}. The final video will be at least ${minimumLabel}.`
 
-  if (!durationAdjustedForVoiceover.value) {
-    return base
+  if (durationAdjustedForVoiceover.value) {
+    return `Final video will extend to about ${secondsLabel(effectiveTargetDurationSeconds.value)} to fit the voiceover.`
   }
 
-  return `${base} Effective duration: ${secondsLabel(effectiveTargetDurationSeconds.value)} because voiceover is longer than selected target.`
+  if (durationSeconds.value > Math.ceil(duration)) {
+    return `Voiceover is about ${minimumLabel}. Extra video time will be filled with additional product footage and CTA visuals.`
+  }
+
+  return `Selected voiceover is about ${minimumLabel}. The final video will be at least ${minimumLabel}.`
 })
+
+function durationOptionLabel(duration: number): string {
+  const voiceoverDuration = activeVoiceoverDurationSeconds.value
+
+  if (!includeVoiceover.value || typeof voiceoverDuration !== 'number' || voiceoverDuration <= 0 || duration >= Math.ceil(voiceoverDuration)) {
+    return `${duration}s`
+  }
+
+  return `${duration}s · extends to ${secondsLabel(Math.ceil(voiceoverDuration))}`
+}
 const costBreakdown = computed(() => {
   const base = autoEditorAction.value?.credit_cost ?? 0
   const videoAnalysis = sourceMode.value === 'analysis' && selectedAnalysisId.value !== null
@@ -616,7 +629,7 @@ onMounted(loadPage)
                 <label class="block">
                   <span class="nusa-label">{{ t('videoWorkflows.duration') }}</span>
                   <select v-model.number="durationSeconds" class="nusa-select mt-2" data-testid="auto-video-duration-select" @change="durationTouched = true">
-                    <option v-for="duration in autoVideoDurationOptions" :key="duration" :value="duration">{{ duration }}s</option>
+                    <option v-for="duration in autoVideoDurationOptions" :key="duration" :value="duration">{{ durationOptionLabel(duration) }}</option>
                   </select>
                 </label>
               </div>

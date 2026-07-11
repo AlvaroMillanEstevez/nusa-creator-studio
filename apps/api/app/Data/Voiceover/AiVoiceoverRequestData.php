@@ -36,7 +36,9 @@ class AiVoiceoverRequestData
 
         return new self(
             text: $text,
-            language: self::stringValue($input['language'] ?? null) ?? 'english',
+            language: self::stringValue($input['voiceover_output_language'] ?? null)
+                ?? self::stringValue($input['language'] ?? null)
+                ?? 'english',
             voiceId: self::stringValue($input['voice_id'] ?? null) ?: config('voiceover.elevenlabs.default_voice_id'),
             modelId: self::stringValue($input['model_id'] ?? null) ?: config('voiceover.elevenlabs.default_model_id'),
             voiceSettings: self::voiceSettings($input['voice_settings'] ?? null),

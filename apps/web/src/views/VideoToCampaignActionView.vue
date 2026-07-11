@@ -11,7 +11,6 @@ import type { MediaAsset } from '@/types/media'
 import {
   campaignLanguageOptions,
   campaignToneOptions,
-  type CreatorGeneration,
   type CreatorProject,
   type GenerateVideoToCampaignPayload,
   type ProjectAction,
@@ -28,7 +27,6 @@ const mediaAssets = ref<MediaAsset[]>([])
 const selectedVideoAssetId = ref<number | null>(null)
 const selectedFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-const generated = ref<CreatorGeneration | null>(null)
 const productName = ref('')
 const productDescription = ref('')
 const targetAudience = ref('')
@@ -64,15 +62,6 @@ const costLabel = computed(() => {
   return cost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: cost })
 })
 const isUpgradeRequired = computed(() => action.value?.upgrade_required === true || action.value?.action_mode === 'upgrade')
-const resultRoute = computed(() => generated.value === null ? null : `/projects/${projectId.value}/generations/${generated.value.id}`)
-const voiceoverRoute = computed(() => generated.value === null ? null : {
-  name: 'project-voiceover-action',
-  params: { projectId: projectId.value },
-  query: {
-    source_generation_id: String(generated.value.id),
-    return_to: `/projects/${projectId.value}/generations/${generated.value.id}`,
-  },
-})
 
 function initializeForm(loadedProject: CreatorProject): void {
   const input = (loadedProject.input_payload ?? {}) as Record<string, unknown>
@@ -189,7 +178,7 @@ async function submit(): Promise<void> {
 
   try {
     const response = await generateVideoToCampaign(projectId.value, payload)
-    generated.value = response.data
+    await router.push(`/projects/${projectId.value}/generations/${response.data.id}`)
   } catch (error: unknown) {
     if (error instanceof ApiError && (error.code === 'insufficient_credits' || error.status === 402)) {
       formError.value = t('projectActions.insufficientCredits')
@@ -228,31 +217,14 @@ onMounted(loadPage)
       <template v-else>
         <header class="mt-10">
           <RouterLink :to="`/projects/${projectId}`" class="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30">
-            ? {{ t('projectActions.backToWorkspace') }}
+            ← {{ t('projectActions.backToWorkspace') }}
           </RouterLink>
           <p class="mt-7 text-sm font-medium text-emerald-400">{{ project?.title }}</p>
           <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">{{ t('videoWorkflows.videoToCampaignTitle') }}</h1>
           <p class="mt-4 max-w-2xl text-sm leading-7 text-neutral-400">{{ t('videoWorkflows.videoToCampaignBody') }}</p>
         </header>
 
-        <section v-if="generated" class="nusa-card-premium mt-8 rounded-[2rem] p-5" data-testid="video-to-campaign-success">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ t('generation.completed') }}</p>
-          <h2 class="mt-3 text-2xl font-bold">{{ t('videoWorkflows.videoCampaignSaved') }}</h2>
-          <p class="mt-3 text-sm leading-6 text-neutral-400">{{ t('videoWorkflows.videoCampaignSavedBody') }}</p>
-          <div class="mt-6 grid gap-3 sm:grid-cols-3">
-            <RouterLink v-if="resultRoute" :to="resultRoute" class="flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300">
-              {{ t('videoWorkflows.viewGeneratedCampaign') }}
-            </RouterLink>
-            <RouterLink v-if="voiceoverRoute" :to="voiceoverRoute" class="flex min-h-11 items-center justify-center rounded-2xl border border-sky-800 bg-sky-950/40 px-4 text-sm font-semibold text-sky-100 transition hover:border-sky-500 hover:bg-sky-900/50">
-              {{ t('videoWorkflows.createVoiceoverFromCampaign') }}
-            </RouterLink>
-            <RouterLink :to="`/projects/${projectId}`" class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-neutral-500 hover:bg-neutral-900">
-              {{ t('projectActions.backToWorkspace') }}
-            </RouterLink>
-          </div>
-        </section>
-
-        <section v-else class="mt-8 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+        <section class="mt-8 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
           <div class="nusa-card-premium rounded-[2rem] p-5">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ t('videoWorkflows.sourceVideo') }}</p>
             <h2 class="mt-2 text-xl font-semibold">{{ t('videoWorkflows.chooseSourceVideo') }}</h2>

@@ -110,6 +110,11 @@ class AiVoiceoverGenerationProcessor
             'narration_script' => $requestData->text,
             'source_generation_id' => $requestData->sourceGenerationId,
             'source_generation_excerpt' => $requestData->sourceGenerationExcerpt,
+            'source_generation_language' => $this->stringInput($requestData->input['source_generation_language'] ?? null),
+            'voiceover_output_language' => $this->stringInput($requestData->input['voiceover_output_language'] ?? null) ?? $requestData->language,
+            'script_preparation' => is_array($requestData->input['script_preparation'] ?? null)
+                ? $requestData->input['script_preparation']
+                : null,
             'audio_asset_id' => $asset->getKey(),
             'scene_timing' => [],
             'voice_direction' => 'Generated with the configured ElevenLabs default voice. A voice selector can be added later.',
@@ -146,5 +151,10 @@ class AiVoiceoverGenerationProcessor
                 'Add required affiliate disclosure before using this audio in social commerce content.',
             ],
         ];
+    }
+
+    private function stringInput(mixed $value): ?string
+    {
+        return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 }

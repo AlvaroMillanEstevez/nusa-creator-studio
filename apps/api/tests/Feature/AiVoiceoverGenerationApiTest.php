@@ -238,7 +238,12 @@ class AiVoiceoverGenerationApiTest extends TestCase
 
         $this->assertSame($sourceGeneration->id, $generation->input_payload['source_generation_id']);
         $this->assertSame('Use this edited narration from the campaign detail page.', $generation->input_payload['source_text']);
-        $this->assertSame('spanish', $generation->input_payload['language']);
+        $this->assertSame('english', $generation->input_payload['language']);
+        $this->assertSame('english', $generation->input_payload['source_generation_language']);
+        $this->assertSame('english', $generation->input_payload['voiceover_output_language']);
+        $this->assertSame('saved_generation_language_locked', $generation->input_payload['script_preparation']['mode']);
+        $this->assertFalse($generation->input_payload['script_preparation']['translation_applied']);
+        $this->assertSame('Use this edited narration from the campaign detail page.', $generation->input_payload['script_preparation']['original_text']);
         $this->assertSame('premium', $generation->input_payload['tone']);
         $this->assertSame('fast', $generation->input_payload['pace']);
         $this->assertSame('confident_creator', $generation->input_payload['style']);
@@ -249,6 +254,30 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $this->assertSame(0.8, $generation->input_payload['voice_settings']['similarity_boost']);
         $this->assertSame(0.25, $generation->input_payload['voice_settings']['style']);
         $this->assertTrue($generation->input_payload['voice_settings']['use_speaker_boost']);
+    }
+
+    public function test_manual_voiceover_source_records_spoken_as_written_language_metadata(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->campaignProject($user);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-voiceover", [
+                'source_text' => '¿Quieres crear contenido rápido? Explica el producto con claridad.',
+                'language' => 'spanish',
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        $generation = Generation::query()->findOrFail($generationId);
+
+        $this->assertNull($generation->input_payload['source_generation_language']);
+        $this->assertSame('spanish', $generation->input_payload['language']);
+        $this->assertSame('spanish', $generation->input_payload['voiceover_output_language']);
+        $this->assertSame('manual_text_spoken_as_written', $generation->input_payload['script_preparation']['mode']);
+        $this->assertFalse($generation->input_payload['script_preparation']['translation_applied']);
+        $this->assertSame('¿Quieres crear contenido rápido? Explica el producto con claridad.', $generation->input_payload['script_preparation']['prepared_text']);
     }
 
     public function test_source_generation_id_from_another_project_is_rejected(): void
@@ -390,6 +419,9 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $this->assertArrayHasKey('voiceover_title', $generation->output_payload);
         $this->assertArrayHasKey('mock_audio', $generation->output_payload);
         $this->assertSame('placeholder', $generation->output_payload['mock_audio']['status']);
+        $this->assertSame('manual_text_spoken_as_written', $generation->output_payload['script_preparation']['mode']);
+        $this->assertFalse($generation->output_payload['script_preparation']['translation_applied']);
+        $this->assertSame('english', $generation->output_payload['voiceover_output_language']);
         $this->assertNotNull($generation->started_at);
         $this->assertNotNull($generation->finished_at);
     }
@@ -743,6 +775,10 @@ class AiVoiceoverGenerationApiTest extends TestCase
         $asset = MediaAsset::query()->firstOrFail();
 
         $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame('english', $generation->output_payload['source_generation_language']);
+        $this->assertSame('english', $generation->output_payload['voiceover_output_language']);
+        $this->assertSame('saved_generation_language_locked', $generation->output_payload['script_preparation']['mode']);
+        $this->assertFalse($generation->output_payload['script_preparation']['translation_applied']);
         $this->assertSame($project->id, $generation->project_id);
         $this->assertSame($project->id, $asset->project_id);
         $this->assertSame('audio', $asset->type);

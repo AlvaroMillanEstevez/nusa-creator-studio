@@ -48,6 +48,8 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
         $this->assertSame('Review the product details before buying.', $timeline['timeline_summary']['cta_used']);
         $this->assertContains('repeated_product_clip', array_column($timeline['timeline'], 'source'));
         $this->assertContains('cta_end_card', array_column($timeline['timeline'], 'source'));
+        $this->assertGreaterThan(0, $timeline['timeline_summary']['repeated_clip_count']);
+        $this->assertSame('Voiceover or target duration was longer than the distinct usable source clips.', $timeline['timeline_summary']['repeated_clip_reason']);
     }
 
     public function test_caption_schedule_is_short_limited_and_non_overlapping(): void
@@ -76,6 +78,9 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
         $this->assertLessThanOrEqual(5, count($schedule));
         $this->assertFalse($timeline['captions_plan']['captions_overlapping']);
         $this->assertFalse($timeline['timeline_summary']['captions_overlapping']);
+        $this->assertTrue($timeline['captions_plan']['caption_schedule_validated']);
+        $this->assertTrue($timeline['timeline_summary']['caption_schedule_validated']);
+        $this->assertSame(count($schedule), $timeline['timeline_summary']['final_caption_count']);
         $this->assertSame($schedule, $timeline['timeline_summary']['caption_schedule']);
 
         $previousEnd = 0.0;
@@ -169,7 +174,10 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
         $this->assertSame('bottom', $captionClip['position']);
         $this->assertSame(0.22, $captionClip['offset']['y']);
         $this->assertStringContainsString('display:inline-block', $captionClip['asset']['css']);
-        $this->assertStringContainsString('max-width:460px', $captionClip['asset']['css']);
+        $this->assertStringContainsString('max-width:430px', $captionClip['asset']['css']);
+        $this->assertStringContainsString('background:rgba(0, 0, 0, 0)', $captionClip['asset']['css']);
+        $this->assertStringContainsString('box-shadow:none', $captionClip['asset']['css']);
+        $this->assertSame('shadow_text_light_caption', $timeline['captions_plan']['caption_visual_strategy']);
         $this->assertStringContainsString('letter-spacing:0', $captionClip['asset']['css']);
         $this->assertStringContainsString('text-transform:none', $captionClip['asset']['css']);
         $this->assertStringNotContainsString('letter-spacing:4', $captionClip['asset']['css']);
@@ -211,7 +219,7 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
         }
     }
 
-    public function test_invalid_cut_timestamps_are_clamped_to_safe_positive_ranges(): void
+    public function test_invalid_cut_timestamps_are_discarded_and_timeline_ranges_stay_safe(): void
     {
         $timeline = app(ShotstackTimelineBuilder::class)->build(
             sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
@@ -228,12 +236,122 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
             ],
         );
 
+        $this->assertSame(2, $timeline['timeline_summary']['invalid_clip_ranges_discarded']);
+
         foreach ($timeline['timeline'] as $item) {
-            $this->assertGreaterThanOrEqual(0, $item['start_seconds']);
-            $this->assertGreaterThanOrEqual(0.5, $item['duration_seconds']);
+            $this->assertArrayHasKey('timeline_start_seconds', $item);
+            $this->assertArrayHasKey('timeline_end_seconds', $item);
+            $this->assertArrayHasKey('source_start_seconds', $item);
+            $this->assertArrayHasKey('source_end_seconds', $item);
+            $this->assertGreaterThanOrEqual(0, $item['timeline_start_seconds']);
+            $this->assertGreaterThan($item['timeline_start_seconds'], $item['timeline_end_seconds']);
             $this->assertGreaterThanOrEqual(0, $item['source_start_seconds']);
             $this->assertGreaterThan($item['source_start_seconds'], $item['source_end_seconds']);
+            $this->assertStringNotContainsString('-3s', $item['timestamp']);
+            $this->assertStringNotContainsString('16-2s', $item['timestamp']);
         }
+    }
+
+    public function test_long_source_video_uses_diverse_segments_before_repeating(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: null,
+            input: [
+                'target_duration_seconds' => 20,
+                'creative_brief' => [
+                    'source_duration_seconds' => 55,
+                    'target_duration_seconds' => 20,
+                    'selected_cta' => 'Review details before buying.',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 4, 'caption' => 'Opening reveal', 'priority' => 'high', 'product_visibility' => 'high', 'stability' => 'high', 'visual_quality' => 'high', 'use_for_final_edit' => true],
+                        ['start_seconds' => 12, 'end_seconds' => 16, 'caption' => 'Side angle', 'priority' => 'high', 'product_visibility' => 'high', 'stability' => 'medium', 'visual_quality' => 'high', 'use_for_final_edit' => true],
+                        ['start_seconds' => 24, 'end_seconds' => 28, 'caption' => 'Button demo', 'priority' => 'high', 'product_visibility' => 'high', 'stability' => 'high', 'visual_quality' => 'medium', 'use_for_final_edit' => true],
+                        ['start_seconds' => 36, 'end_seconds' => 40, 'caption' => 'Detail lighting', 'priority' => 'medium', 'product_visibility' => 'high', 'stability' => 'high', 'visual_quality' => 'high', 'use_for_final_edit' => true],
+                        ['start_seconds' => 48, 'end_seconds' => 52, 'caption' => 'Final hero shot', 'priority' => 'high', 'product_visibility' => 'high', 'stability' => 'high', 'visual_quality' => 'high', 'use_for_final_edit' => true],
+                    ],
+                ],
+            ],
+        );
+
+        $ranges = $timeline['timeline_summary']['source_clip_ranges_used'];
+
+        $this->assertGreaterThanOrEqual(5, count($ranges));
+        $this->assertContains('48-52s', $ranges);
+        $this->assertSame(0, $timeline['timeline_summary']['repeated_clip_count']);
+        $this->assertTrue($timeline['timeline_summary']['diverse_source_segments_used']);
+        $this->assertNotContains('repeated_product_clip', array_column($timeline['timeline'], 'source'));
+    }
+
+    public function test_long_source_with_sparse_gemini_cuts_adds_even_fallback_segments_before_repeating(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: 'https://assets.nusa.test/voiceover.mp3',
+            input: [
+                'target_duration_seconds' => 30,
+                'source_video_to_campaign_summary' => [
+                    'recommended_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 3, 'caption' => 'Opening reveal', 'priority' => 'high', 'product_visibility' => 'high', 'stability' => 'high', 'visual_quality' => 'high', 'use_for_final_edit' => true],
+                        ['start_seconds' => 8, 'end_seconds' => 11, 'caption' => 'Button detail', 'priority' => 'high', 'product_visibility' => 'high', 'stability' => 'medium', 'visual_quality' => 'medium', 'use_for_final_edit' => true],
+                    ],
+                ],
+                'creative_brief' => [
+                    'source_duration_seconds' => 55,
+                    'target_duration_seconds' => 30,
+                    'effective_target_duration_seconds' => 30,
+                    'voiceover_duration_seconds' => 18.0,
+                    'selected_cta' => 'Review details before buying.',
+                ],
+            ],
+        );
+
+        $ranges = $timeline['timeline_summary']['source_clip_ranges_used'];
+
+        $this->assertGreaterThan(0, $timeline['timeline_summary']['fallback_even_segments_added']);
+        $this->assertGreaterThanOrEqual(5, $timeline['timeline_summary']['candidate_clip_count']);
+        $this->assertGreaterThanOrEqual(5, $timeline['timeline_summary']['unique_candidate_clip_count']);
+        $this->assertGreaterThanOrEqual(30.0, $timeline['timeline_summary']['final_duration_seconds']);
+        $this->assertSame(0, $timeline['timeline_summary']['repeated_clip_count']);
+        $this->assertNull($timeline['timeline_summary']['repeated_clip_reason']);
+        $this->assertSame('diverse_product_showcase_and_cta', $timeline['timeline_summary']['post_voiceover_visual_strategy']);
+        $this->assertGreaterThan(0, $timeline['timeline_summary']['source_segments_used_after_voiceover']);
+        $this->assertTrue(collect($ranges)->contains(fn (string $range): bool => str_starts_with($range, '49')));
+    }
+
+    public function test_repeated_captions_are_deduplicated_and_cta_only_appears_near_end(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: null,
+            input: [
+                'target_duration_seconds' => 20,
+                'source_video_to_campaign_summary' => [
+                    'captions' => ['Easy setup', 'Easy setup', 'Review details before buying.'],
+                    'hooks' => [['hook' => 'Easy setup']],
+                ],
+                'creative_brief' => [
+                    'target_duration_seconds' => 20,
+                    'selected_cta' => 'Review details before buying.',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 4, 'caption' => 'Easy setup'],
+                        ['start_seconds' => 8, 'end_seconds' => 12, 'caption' => 'Easy setup'],
+                        ['start_seconds' => 16, 'end_seconds' => 20, 'caption' => 'Clear product view'],
+                    ],
+                ],
+            ],
+        );
+
+        $schedule = $timeline['captions_plan']['caption_schedule'];
+        $texts = array_map(fn (array $caption): string => $caption['text'], $schedule);
+        $ctaItems = array_values(array_filter($schedule, fn (array $caption): bool => $caption['type'] === 'cta'));
+
+        $this->assertGreaterThan(0, $timeline['timeline_summary']['repeated_captions_removed']);
+        $this->assertSame(count($texts), count(array_unique($texts)));
+        $this->assertCount(1, $ctaItems);
+        $this->assertGreaterThanOrEqual($timeline['timeline_summary']['final_duration_seconds'] - 4.0, $ctaItems[0]['start']);
+        $this->assertSame($ctaItems[0]['start'], $timeline['timeline_summary']['cta_caption_start_seconds']);
+        $this->assertFalse($timeline['timeline_summary']['captions_overlapping']);
     }
 
     public function test_creative_brief_uses_context_cta_and_voiceover_duration(): void
@@ -263,6 +381,7 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
         $this->assertSame(15, $brief['target_duration_seconds']);
         $this->assertSame('review', $brief['editing_style']);
         $this->assertNotEmpty($brief['preferred_cuts']);
+        $this->assertArrayHasKey('source_duration_seconds', $brief);
 
         $override = app(AutoVideoEditorCreativeBriefBuilder::class)->build([
             'cta' => 'Use my custom CTA.',

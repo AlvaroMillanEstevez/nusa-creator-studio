@@ -37,7 +37,7 @@ const sourceGeneration: CreatorGeneration = {
   status: 'completed',
   cost_usd: '0.0000',
   credits_charged: 1,
-  input_payload: null,
+  input_payload: { language: 'spanish' },
   output_payload: {
     hooks: ['Hook'],
     voiceover_ready_script: 'Voiceover-ready script from the selected campaign.',
@@ -237,6 +237,9 @@ describe('VoiceoverActionView', () => {
     expect(wrapper.text()).toContain('Use saved generation')
     expect(wrapper.text()).toContain('Campaign script source · Creator desk light · Jul 8')
     expect(wrapper.find<HTMLSelectElement>('[data-testid="voiceover-source-select"]').element.value).toBe('9')
+    expect(wrapper.get<HTMLSelectElement>('[data-testid="voiceover-language-select"]').element.disabled).toBe(true)
+    expect(wrapper.get<HTMLSelectElement>('[data-testid="voiceover-language-select"]').element.value).toBe('spanish')
+    expect(wrapper.get('[data-testid="voiceover-language-helper"]').text()).toBe('Voiceover language follows the selected campaign script.')
     expect(wrapper.find('a[href="/projects/42/generations/9"]').text()).toContain('Back to campaign result')
   })
 
@@ -257,7 +260,7 @@ describe('VoiceoverActionView', () => {
     expect(voiceoverCall).toBeTruthy()
     expect(JSON.parse(String(voiceoverCall?.[1]?.body))).toMatchObject({
       source_generation_id: 9,
-      language: 'english',
+      language: 'spanish',
       tone: 'natural',
       pace: 'medium',
       style: 'natural_creator',
@@ -270,6 +273,8 @@ describe('VoiceoverActionView', () => {
   it('submits manual source text when manual mode is selected', async () => {
     const { wrapper, fetchMock } = await mountVoiceoverAction('/projects/42/actions/voiceover', noSourceActions)
 
+    expect(wrapper.get<HTMLSelectElement>('[data-testid="voiceover-language-select"]').element.disabled).toBe(false)
+    expect(wrapper.get('[data-testid="voiceover-language-helper"]').text()).toBe('Manual text will be spoken as written. Translation is not applied automatically yet.')
     await wrapper.get('[data-testid="voiceover-source-text"]').setValue('Manual narration for this product campaign.')
     await wrapper.get('[data-testid="voiceover-action-submit"]').trigger('click')
     await flushPromises()

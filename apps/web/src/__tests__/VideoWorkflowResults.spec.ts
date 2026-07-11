@@ -247,6 +247,50 @@ describe('video workflow result rendering', () => {
     expect(wrapper.text()).not.toContain('gemini://')
   })
 
+  it('hides empty Video-to-Campaign result sections', () => {
+    const wrapper = mount(GenerationResultRenderer, {
+      props: {
+        generation: {
+          ...baseGeneration,
+          id: 109,
+          job_type: 'generate_video_to_campaign',
+          result_payload: {
+            video_summary: 'Gemini created a concise campaign summary.',
+            campaign_angle: 'A practical product demo angle.',
+            narration_voice_script: 'Show the product clearly and keep claims factual.',
+            hooks: [],
+            captions: [],
+            hashtags: [],
+            cta_options: [],
+            edit_plan: { title: 'Empty plan', timeline: [] },
+            detected_product_moments: [],
+            scene_observations: [],
+            recommended_cuts: [],
+            compliance_notes: [],
+            usage_notes: [],
+            source_video_asset_id: 88,
+            provider_metadata: { provider: 'gemini' },
+          },
+        },
+      },
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="video-to-campaign-result"]').text()).toContain('Campaign from source video')
+    expect(wrapper.text()).toContain('Voiceover-ready script')
+    expect(wrapper.text()).not.toContain('Detected product moments')
+    expect(wrapper.text()).not.toContain('Scene observations')
+    expect(wrapper.text()).not.toContain('Recommended cuts')
+    expect(wrapper.text()).not.toContain('Hooks')
+    expect(wrapper.text()).not.toContain('Captions')
+    expect(wrapper.text()).not.toContain('Hashtags and CTA')
+    expect(wrapper.text()).not.toContain('Edit plan')
+  })
+
   it('renders Auto Video Editor output', () => {
     const wrapper = mount(GenerationResultRenderer, {
       props: {
@@ -267,7 +311,7 @@ describe('video workflow result rendering', () => {
               caption_count: 4,
               caption_schedule: [{ start: 0.6, length: 2.2, text: 'Meet product', type: 'hook' }],
               captions_overlapping: false,
-              caption_visual_strategy: 'compact_timed_html_overlays',
+              caption_visual_strategy: 'shadow_text_light_caption',
               sample_captions: ['Meet product'],
             },
             transition_plan: ['Use clean cuts.'],
@@ -313,6 +357,12 @@ describe('video workflow result rendering', () => {
     expect(wrapper.get('[data-testid="auto-video-editor-result"]').text()).toContain('Edit-ready vertical video plan')
     expect(wrapper.text()).toContain('Mock edit plan only. Real rendering will be connected later.')
     expect(wrapper.text()).toContain('Total internal credits')
+    expect(wrapper.get('[data-testid="auto-video-timeline-clips"]').text()).toContain('Timeline / clips used')
+    expect(wrapper.text()).not.toContain('Edit decision list')
+    expect(wrapper.text()).not.toContain('Clip sequence')
+    expect(wrapper.text()).not.toContain('Transition plan')
+    expect(wrapper.text()).not.toContain('Audio mix plan')
+    expect(wrapper.find('[data-testid="auto-video-repeat-warning"]').exists()).toBe(false)
   })
 
   it('fetches Auto Video Editor final video preview and download as authenticated blobs', async () => {
@@ -380,7 +430,9 @@ describe('video workflow result rendering', () => {
               caption_count: 4,
               caption_schedule: [{ start: 0.6, length: 2.2, text: 'Meet product', type: 'hook' }],
               captions_overlapping: false,
-              caption_visual_strategy: 'compact_timed_html_overlays',
+              caption_visual_strategy: 'shadow_text_light_caption',
+              repeated_clip_count: 2,
+              post_voiceover_visual_strategy: 'showcase_with_repeated_fallback',
               resolution: '720x1280',
               aspect_ratio: '9:16',
             },
@@ -395,7 +447,9 @@ describe('video workflow result rendering', () => {
               caption_schedule: [{ start: 0.6, length: 2.2, text: 'Meet product', type: 'hook' }],
               caption_count: 4,
               captions_overlapping: false,
-              caption_visual_strategy: 'compact_timed_html_overlays',
+              caption_visual_strategy: 'shadow_text_light_caption',
+              repeated_clip_count: 2,
+              post_voiceover_visual_strategy: 'showcase_with_repeated_fallback',
               cta_used: 'Review details before buying.',
               timeline_quality_warnings: ['Timeline was extended so the selected voiceover is not cut off.'],
             },
@@ -447,6 +501,8 @@ describe('video workflow result rendering', () => {
     expect(summary).toContain('Yes')
     expect(summary).toContain('Captions used')
     expect(summary).toContain('CTA used')
+    expect(wrapper.get('[data-testid="auto-video-post-voiceover-summary"]').text()).toContain('Extra time after voiceover used for product showcase / CTA visuals.')
+    expect(wrapper.get('[data-testid="auto-video-repeat-warning"]').text()).toContain('Repeated 2 clips')
     expect(wrapper.text()).not.toContain('[object Object]')
     expect(wrapper.text()).not.toContain('Caption Schedule')
     expect(wrapper.get('[data-testid="auto-video-player"]').attributes('src')).toBe('blob:nusa-video-preview')
