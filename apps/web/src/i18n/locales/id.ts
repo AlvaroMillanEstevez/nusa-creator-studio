@@ -469,7 +469,7 @@ export default {
     ...en.media,
     kicker: 'Aset kreator',
     title: 'Media Library',
-    body: 'Kelola aset proyek yang diunggah di seluruh workflow kreator Anda.',
+    body: 'Kelola aset yang diunggah dan dibuat oleh Nusa.',
     loading: 'Memuat media library...',
     filters: 'Filter',
     findAssets: 'Temukan aset dengan cepat',

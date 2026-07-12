@@ -7,7 +7,7 @@ import AudioAssetPlayer from '@/components/AudioAssetPlayer.vue'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { deleteMediaAsset, fetchMediaBlob, getMediaAssetStats, listMediaAssets } from '@/services/media'
-import type { MediaAsset, MediaAssetOrigin, MediaAssetType, MediaAssetUsageRole } from '@/types/media'
+import type { MediaAsset, MediaAssetOrigin, MediaAssetType } from '@/types/media'
 import { formatDate, formatLabel } from '@/utils/formatters'
 
 const assets = ref<MediaAsset[]>([])
@@ -19,7 +19,6 @@ const error = ref('')
 const successMessage = ref('')
 const search = ref('')
 const selectedType = ref<MediaAssetType | ''>('')
-const selectedUsageRole = ref<MediaAssetUsageRole | ''>('')
 const selectedOrigin = ref<MediaAssetOrigin | ''>('')
 const currentPage = ref(1)
 const lastPage = ref(1)
@@ -42,21 +41,6 @@ const originOptions: Array<{ value: MediaAssetOrigin; labelKey: string }> = [
   { value: 'generated', labelKey: 'media.generatedOrigin' },
 ]
 
-const usageRoleOptions: Array<{ value: MediaAssetUsageRole; labelKey: string }> = [
-  { value: 'general', labelKey: 'media.roles.general' },
-  { value: 'product_image', labelKey: 'media.roles.productImage' },
-  { value: 'source_video', labelKey: 'media.roles.sourceVideo' },
-  { value: 'raw_product_video', labelKey: 'media.roles.rawProductVideo' },
-  { value: 'campaign_source_video', labelKey: 'media.roles.campaignSourceVideo' },
-  { value: 'video_reference', labelKey: 'media.roles.videoReference' },
-  { value: 'audio_track', labelKey: 'media.roles.audioTrack' },
-  { value: 'voiceover_audio', labelKey: 'media.roles.voiceoverAudio' },
-  { value: 'edited_video_result', labelKey: 'media.roles.editedVideoResult' },
-  { value: 'model_reference', labelKey: 'media.roles.modelReference' },
-  { value: 'garment_reference', labelKey: 'media.roles.garmentReference' },
-  { value: 'background_reference', labelKey: 'media.roles.backgroundReference' },
-  { value: 'brand_reference', labelKey: 'media.roles.brandReference' },
-]
 
 const summaryCards = computed(() => [
   { label: t('media.totalAssets'), value: stats.value?.total_assets ?? 0 },
@@ -68,7 +52,7 @@ const summaryCards = computed(() => [
 ])
 
 const hasActiveFilters = computed(
-  () => search.value.trim() !== '' || selectedType.value !== '' || selectedUsageRole.value !== '' || selectedOrigin.value !== '',
+  () => search.value.trim() !== '' || selectedType.value !== '' || selectedOrigin.value !== '',
 )
 
 function friendlyError(requestError: unknown, fallback: string): string {
@@ -84,7 +68,6 @@ async function loadAssets(page = 1): Promise<void> {
   const response = await listMediaAssets({
     search: search.value,
     type: selectedType.value || undefined,
-    usage_role: selectedUsageRole.value || undefined,
     origin: selectedOrigin.value || undefined,
     page,
     per_page: 12,
@@ -133,7 +116,6 @@ async function applyFilters(): Promise<void> {
 async function clearFilters(): Promise<void> {
   search.value = ''
   selectedType.value = ''
-  selectedUsageRole.value = ''
   selectedOrigin.value = ''
   await applyFilters()
 }
@@ -346,7 +328,7 @@ onBeforeUnmount(closePreview)
             <p class="text-xs text-neutral-500">{{ t('media.matchingAssets', { count: totalAssets }) }}</p>
           </div>
 
-          <form class="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4" @submit.prevent="applyFilters">
+          <form class="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3" @submit.prevent="applyFilters">
             <label class="min-w-0 sm:col-span-2 lg:col-span-1">
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
                 {{ t('media.search') }}
@@ -376,25 +358,6 @@ onBeforeUnmount(closePreview)
               </select>
             </label>
 
-            <label class="min-w-0">
-              <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                {{ t('media.usageRole') }}
-              </span>
-              <select
-                v-model="selectedUsageRole"
-                name="usage_role"
-                class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 text-sm text-white outline-none transition focus:border-emerald-500"
-              >
-                <option value="">{{ t('media.allRoles') }}</option>
-                <option
-                  v-for="option in usageRoleOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ t(option.labelKey) }}
-                </option>
-              </select>
-            </label>
 
             <label class="min-w-0">
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
@@ -412,7 +375,7 @@ onBeforeUnmount(closePreview)
               </select>
             </label>
 
-            <div class="grid min-w-0 gap-3 sm:col-span-2 lg:col-span-4 lg:flex">
+            <div class="grid min-w-0 gap-3 sm:col-span-2 lg:col-span-3 lg:flex">
               <button
                 type="submit"
                 :disabled="isFiltering"

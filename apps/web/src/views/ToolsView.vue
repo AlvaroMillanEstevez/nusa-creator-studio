@@ -57,9 +57,7 @@ const groupedToolSections = computed<StudioToolSection[]>(() => [
         title: t('tools.videoToCampaignInsight.title'),
         short_description: t('tools.videoToCampaignInsight.description'),
       }),
-      comingSoonCard('hook_generator', t('tools.roadmapCards.hookGenerator'), 'text_insight', 30),
-      comingSoonCard('caption_hashtag_pack', t('tools.roadmapCards.captionHashtagPack'), 'script_pack', 31),
-      comingSoonCard('script_variations', t('tools.roadmapCards.scriptVariations'), 'script_pack', 32),
+
     ]),
   },
   {
@@ -78,26 +76,7 @@ const groupedToolSections = computed<StudioToolSection[]>(() => [
       cardFromApi('auto_video_editor'),
     ]),
   },
-  {
-    key: 'assets',
-    title: t('tools.categories.assets.title'),
-    description: t('tools.categories.assets.description'),
-    tools: [
-      staticCard({
-        key: 'media_library',
-        title: t('tools.mediaLibrary.title'),
-        short_description: t('tools.mediaLibrary.description'),
-        category: 'assets',
-        output_type: 'mixed_media',
-        status: 'available',
-        route: '/media',
-        credit_cost: 0,
-        credit_cost_label: t('projectActions.noCreditCharge'),
-        badge_label: t('common.available'),
-        sort_order: 10,
-      }),
-    ],
-  },
+
   {
     key: 'roadmap',
     title: t('tools.categories.roadmap.title'),

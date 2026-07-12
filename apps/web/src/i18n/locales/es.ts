@@ -430,7 +430,7 @@ export default {
     ...en.media,
     kicker: 'Activos de creador',
     title: 'Biblioteca de media',
-    body: 'Gestiona los activos subidos en todos tus flujos de creador.',
+    body: 'Gestiona activos subidos y generados.',
     loading: 'Cargando biblioteca de media...',
     filters: 'Filtros',
     findAssets: 'Encuentra activos rápido',

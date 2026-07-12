@@ -62,7 +62,8 @@ describe('NewProjectWorkspaceView', () => {
     await wrapper.get('#project-title').setValue('Creator desk launch')
     await wrapper.get('#content-idea').setValue('Compact creator desk lighting kit')
     await wrapper.get('#product-name').setValue('Creator desk light')
-    await wrapper.get('#product-category').setValue('Creator lighting')
+    expect(wrapper.get('#product-category').attributes('placeholder')).toContain('Gaming accessory')
+    expect(wrapper.text()).toContain('Optional. Use any category that helps Nusa understand your product.')
     await wrapper.get('#key-selling-points').setValue('Compact, soft light, easy setup')
     await wrapper.get('#project-context').setValue('A compact desk light for mobile-first creators.')
     await wrapper.get('#target-audience').setValue('TikTok affiliate creators')
@@ -84,7 +85,7 @@ describe('NewProjectWorkspaceView', () => {
           status: 'draft',
           input_payload: {
             product_name: 'Creator desk light',
-            product_category: 'Creator lighting',
+            product_category: null,
             content_idea: 'Compact creator desk lighting kit',
             product_description: 'A compact desk light for mobile-first creators.',
             target_audience: 'TikTok affiliate creators',
@@ -118,7 +119,6 @@ describe('NewProjectWorkspaceView', () => {
 
     expect(wrapper.text()).toContain('Add a project name.')
     expect(wrapper.text()).toContain('Add a product or service name.')
-    expect(wrapper.text()).toContain('Add a product category.')
     expect(wrapper.text()).toContain('Add project context so actions have enough brief detail.')
     expect(wrapper.text()).toContain('Describe the target audience.')
     expect(fetchMock).not.toHaveBeenCalled()

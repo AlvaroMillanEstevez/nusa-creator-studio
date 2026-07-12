@@ -60,9 +60,6 @@ function validateForm(): boolean {
     errors.product_name = t('projectWorkspace.errors.productName')
   }
 
-  if (!(form.product_category ?? '').trim()) {
-    errors.product_category = t('projectWorkspace.errors.productCategory')
-  }
 
   if (!form.product_description.trim()) {
     errors.product_description = t('projectWorkspace.errors.projectContext')
@@ -92,7 +89,7 @@ async function submitWorkspace(): Promise<void> {
     const project = await createWorkspaceProject(
       {
         product_name: productName,
-        product_category: (form.product_category ?? '').trim(),
+        product_category: optionalText(form.product_category),
         content_idea: form.content_idea.trim() || productName,
         product_description: form.product_description.trim(),
         target_audience: form.target_audience.trim(),
@@ -197,13 +194,27 @@ async function submitWorkspace(): Promise<void> {
                 name="product_category"
                 type="text"
                 autocomplete="off"
+                list="product-category-suggestions"
                 :placeholder="t('projectWorkspace.productCategoryPlaceholder')"
                 :aria-invalid="Boolean(fieldErrors.product_category)"
                 :aria-describedby="fieldErrors.product_category ? 'product-category-error' : undefined"
                 class="nusa-input mt-2"
               />
-              <p v-if="fieldErrors.product_category" id="product-category-error" class="mt-2 text-sm text-rose-400">
-                {{ fieldErrors.product_category }}
+              <datalist id="product-category-suggestions">
+                <option value="Beauty & skincare" />
+                <option value="Fashion" />
+                <option value="Accessories" />
+                <option value="Home & living" />
+                <option value="Kitchen appliance" />
+                <option value="Gaming accessory" />
+                <option value="Tech gadget" />
+                <option value="Fitness" />
+                <option value="Food & beverage" />
+                <option value="Digital product" />
+                <option value="Other" />
+              </datalist>
+              <p class="mt-2 text-xs leading-5 text-neutral-500">
+                {{ t('projectWorkspace.productCategoryHelp') }}
               </p>
             </div>
           </div>

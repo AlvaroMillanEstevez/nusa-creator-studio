@@ -108,7 +108,7 @@ export default {
   tools: {
     kicker: 'Creator Studio',
     headline: 'What do you want to create today?',
-    body: 'Choose a focused workflow to start or continue a creative workspace. Tools reuse the same project brief, assets and saved generations so your content stays connected.',
+    body: 'Choose a workflow to create campaign content, voiceovers and edited videos from your project brief and media.',
     serviceCatalog: 'Service catalog',
     serviceLevels: 'Basic, Advanced and Premium workflows',
     workflowCategory: 'Workflow category',
@@ -189,7 +189,7 @@ export default {
     },
     productContentKit: {
       title: 'Product Content Kit',
-      description: 'Create hooks, a short-form script, caption, hashtags, CTA and practical filming notes from your project brief.',
+      description: 'Create hooks, a short-form script, captions, hashtags, CTA options and practical filming notes from your project brief.',
     },
     videoToCampaignInsight: {
       title: 'Video-to-Campaign Insight',
@@ -324,7 +324,8 @@ export default {
     productName: 'Product/service name',
     productNamePlaceholder: 'e.g. Creator desk light',
     productCategory: 'Product category',
-    productCategoryPlaceholder: 'e.g. Creator lighting, skincare, fashion accessory',
+    productCategoryHelp: 'Optional. Use any category that helps Nusa understand your product.',
+    productCategoryPlaceholder: 'Gaming accessory, skincare, fashion, home appliance, digital product...',
     projectContext: 'Short product description',
     projectContextTitle: 'Project context',
     projectContextPlaceholder: 'Describe what it is, who it helps and what makes it useful. Keep claims realistic.',
@@ -364,7 +365,6 @@ export default {
       titleLength: 'Keep the project name under 255 characters.',
       contentIdea: 'Add a product or content idea.',
       productName: 'Add a product or service name.',
-      productCategory: 'Add a product category.',
       projectContext: 'Add project context so actions have enough brief detail.',
       targetAudience: 'Describe the target audience.',
       createFailed: 'We could not create the project workspace. Check the API connection and try again.',
@@ -484,7 +484,7 @@ export default {
   media: {
     kicker: 'Creator assets',
     title: 'Media Library',
-    body: 'Manage uploaded and generated project assets across your creator workflows.',
+    body: 'Manage uploaded and generated assets.',
     loading: 'Loading media library...',
     unavailable: 'Media unavailable',
     retryTitle: 'Your library needs another try.',
@@ -667,7 +667,7 @@ export default {
     actions: {
       generate_campaign: {
         title: 'Product Content Kit',
-        description: 'Create hooks, a short-form script, caption, hashtags and practical filming notes from this project brief.',
+        description: 'Create hooks, a short-form script, captions, hashtags, CTA options and practical publishing notes from this product brief.',
       },
       generate_voiceover_from_script: {
         title: 'Create voiceover',

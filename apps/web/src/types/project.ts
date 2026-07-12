@@ -333,7 +333,7 @@ export interface ProjectActionsResponse {
 }
 export interface WorkspaceFormPayload {
   product_name: string
-  product_category?: string
+  product_category?: string | null
   content_idea: string
   product_description: string
   target_audience: string

@@ -186,11 +186,11 @@ describe('MediaLibraryView', () => {
     const wrapper = await mountMediaLibrary(fetchMock)
 
     expect(wrapper.text()).toContain('Media Library')
-    expect(wrapper.text()).toContain('Manage uploaded and generated project assets across your creator workflows.')
+    expect(wrapper.text()).toContain('Manage uploaded and generated assets.')
     expect(wrapper.text()).toContain('Total assets')
     expect(wrapper.text()).toContain('2.0 KB')
     expect(wrapper.text()).toContain('product hero.png')
-    expect(wrapper.text()).toContain('Product image')
+    expect(wrapper.text()).toContain('Product Image')
     expect(wrapper.text()).toContain('Uploaded')
     expect(wrapper.text()).toContain('Summer launch campaign')
     expect(wrapper.text()).toContain('Affiliate Campaign')
@@ -286,13 +286,13 @@ describe('MediaLibraryView', () => {
     expect(wrapper.text()).not.toContain('users/1/generated/voiceovers')
   })
 
-  it('calls the API with search, type, usage role and origin filters', async () => {
+  it('renders without usage role filter and calls the API with search, type and origin filters', async () => {
     const fetchMock = createFetchMock()
     const wrapper = await mountMediaLibrary(fetchMock)
 
     await wrapper.get('input[name="search"]').setValue('hero')
     await wrapper.get('select[name="type"]').setValue('image')
-    await wrapper.get('select[name="usage_role"]').setValue('product_image')
+    expect(wrapper.find('select[name="usage_role"]').exists()).toBe(false)
     await wrapper.get('select[name="origin"]').setValue('uploaded')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -304,7 +304,7 @@ describe('MediaLibraryView', () => {
     expect(url.pathname).toBe('/api/v1/media-assets')
     expect(url.searchParams.get('search')).toBe('hero')
     expect(url.searchParams.get('type')).toBe('image')
-    expect(url.searchParams.get('usage_role')).toBe('product_image')
+    expect(url.searchParams.has('usage_role')).toBe(false)
     expect(url.searchParams.get('origin')).toBe('uploaded')
     expect(url.searchParams.get('per_page')).toBe('12')
   })
