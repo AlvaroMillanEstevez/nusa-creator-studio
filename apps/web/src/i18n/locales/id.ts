@@ -95,7 +95,7 @@ export default {
   tools: {
     ...en.tools,
     headline: 'Apa yang ingin Anda buat hari ini?',
-    body: 'Pilih workflow untuk memulai atau melanjutkan project workspace. Workspace menghubungkan aksi, aset, dan hasil generasi; workflow Basic membuat konteks yang bisa dipakai ulang oleh aksi Advanced dan Premium.',
+    body: 'Pilih workflow untuk memulai atau melanjutkan project workspace. Setiap tool memakai kredit yang jelas, dan hasilnya tetap tersimpan di workspace Anda.',
     ready: 'Siap digunakan',
     availableTools: 'Tools tersedia',
     openTool: 'Buka tool',
@@ -156,7 +156,7 @@ export default {
     privateStorageHidden: 'Path penyimpanan privat sengaja disembunyikan.',
   },
   campaignResult: {
-    campaignPackage: 'Paket kampanye',
+    campaignPackage: 'Product Content Kit',
     productAngle: 'Sudut produk',
     audience: 'Audiens',
     hooks: 'Hook',
@@ -209,9 +209,9 @@ export default {
     includedInPlan: 'Termasuk dalam paket Anda',
     upgradeRequired: 'Perlu upgrade',
     upgradeSubscription: 'Upgrade subscription',
-    basicWorkflow: 'Workflow Basic',
-    advancedWorkflow: 'Workflow Advanced',
-    premiumWorkflow: 'Workflow Premium',
+    basicWorkflow: 'Workflow berbasis kredit',
+    advancedWorkflow: 'Workflow media',
+    premiumWorkflow: 'Workflow kreatif intensif',
     oneCredit: '1 kredit',
     manyCredits: '{credits} kredit',
     actionCosts: 'Aksi ini memakai {credits} kredit.',
@@ -221,7 +221,7 @@ export default {
     configureAction: 'Konfigurasi aksi',
     setupRequired: 'Perlu setup',
     addRequiredAssets: 'Tambahkan aset wajib',
-    generateAnotherCampaignVersion: 'Buat versi campaign lain',
+    generateAnotherCampaignVersion: 'Buat Product Content Kit lain',
     viewLatestVoiceover: 'Lihat voiceover terbaru',
     latestVoiceoverGenerated: 'Voiceover terbaru sudah dibuat',
     createAnotherVoiceover: 'Buat voiceover lain',
@@ -282,8 +282,8 @@ export default {
     },
     actions: {
       generate_campaign: {
-        title: 'Buat campaign',
-        description: 'Buat hook, skrip, caption, hashtag, dan catatan filming dari brief project ini.',
+        title: 'Product Content Kit',
+        description: 'Buat hook, skrip, caption, hashtag, CTA, dan catatan publikasi dari brief produk ini.',
       },
       generate_voiceover_from_script: {
         title: 'Buat voiceover',
@@ -306,7 +306,7 @@ export default {
         description: 'Gunakan aset model dan garment dari project ini untuk workflow try-on.',
       },
       generate_video_to_campaign: {
-        title: 'Buat campaign video',
+        title: 'Video-to-Campaign Insight',
         description: 'Turn source product footage into hooks, narration, captions, recommended cuts and an edit plan.',
       },
       generate_auto_video_edit: {
@@ -330,9 +330,9 @@ export default {
     recommended: 'Direkomendasikan',
     free: 'Gratis',
     viewPlan: 'Lihat paket',
-    subscriptionAccessNote: 'Paket langganan memberi kredit bulanan dan akses ke tier workflow. Upgrade saat butuh volume lebih tinggi atau workflow premium.',
-    toolTiersExplained: 'Tier tool dijelaskan di halaman Tools agar pricing tetap fokus pada langganan, kredit, dan akses.',
-    viewToolTiers: 'Lihat tier tool',
+    subscriptionAccessNote: 'Paket langganan memberi kredit bulanan untuk workflow kreator. Upgrade saat membutuhkan volume output lebih tinggi.',
+    toolTiersExplained: 'Kredit digunakan bersama di seluruh tool workspace Anda.',
+    viewToolTiers: 'Lihat tools',
     serviceTiers: {
       basic: {
         label: 'Basic',
@@ -415,7 +415,7 @@ export default {
     quickActions: 'Aksi cepat',
     browseTools: 'Jelajahi tools kreator',
     noProjectsBody: 'Buat project workspace pertama untuk menghubungkan brief, aset, dan generasi.',
-    serviceTierCredits: 'Kredit dapat digunakan di tool Basic, Advanced, dan Premium. Workflow mahal dapat membutuhkan lebih banyak kredit.',
+    serviceTierCredits: 'Kredit digunakan bersama di seluruh tool workspace. Workflow media yang lebih intensif dapat membutuhkan lebih banyak kredit.',
   },
   voiceoverAction: {
     ...en.voiceoverAction,

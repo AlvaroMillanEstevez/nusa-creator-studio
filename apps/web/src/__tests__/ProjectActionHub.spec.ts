@@ -324,20 +324,21 @@ describe('ProjectActionHub', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows tier, credit and access badges without scary requirement text on cards', async () => {
+  it('shows active beta workflow credit and access badges without roadmap clutter', async () => {
     const { wrapper } = await mountHub()
     const text = wrapper.text()
 
-    expect(text).toContain('Basic workflow')
-    expect(text).toContain('Advanced workflow')
-    expect(text).toContain('Premium workflow')
+    expect(text).not.toContain('Basic workflow')
+    expect(text).not.toContain('Advanced workflow')
+    expect(text).not.toContain('Premium workflow')
     expect(text).toContain('1 credit')
     expect(text).toContain('2 credits')
-    expect(text).toContain('3 credits')
     expect(text).toContain('Included in your plan')
-    expect(text).toContain('Generate video campaign')
+    expect(text).toContain('Generate video insight')
     expect(text).toContain('Configure Auto Video Editor')
-    expect(text).toContain('Coming soon')
+    expect(text).not.toContain('Coming soon')
+    expect(wrapper.find('[data-testid="project-action-start_fashion_try_on"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="project-action-start_motion_video"]').exists()).toBe(false)
     expect(text).not.toContain('Upload a clear model/person reference image in the launcher.')
     expect(text).not.toContain('Upload a clear garment/product reference image in the launcher.')
     expect(text).not.toContain('Upload or choose a product image for the motion video source.')
@@ -350,7 +351,7 @@ describe('ProjectActionHub', () => {
       .get('[data-testid="project-action-generate_campaign"]')
       .find('button')
 
-    expect(campaignButton.text()).toContain('Generate another affiliate campaign')
+    expect(campaignButton.text()).toContain('Generate another Product Content Kit')
     expect(wrapper.get('[data-testid="view-generated-campaign"]').attributes('href')).toBe('/projects/42/generations/9')
     await campaignButton.trigger('click')
     await flushPromises()
@@ -362,37 +363,13 @@ describe('ProjectActionHub', () => {
     expect(wrapper.emitted('generated')?.[0]).toEqual([campaignResponse])
   })
 
-  it('routes locked premium actions to pricing instead of starting generation', async () => {
-    const lockedActions: ProjectActionsResponse = {
-      data: baseActions.data.map((item) => item.key === 'start_fashion_try_on'
-        ? {
-            ...item,
-            status: 'unavailable',
-            user_has_access: false,
-            upgrade_required: true,
-            action_mode: 'upgrade',
-            locked_reason: 'Premium actions require Creator or Pro access.',
-            primary_cta: { label: 'Upgrade subscription', route: '/pricing', action: null },
-          }
-        : item),
-    }
-    const { wrapper, fetchMock, router } = await mountHub(lockedActions)
+  it('does not render premium roadmap actions in the focused workspace hub', async () => {
+    const { wrapper } = await mountHub()
 
-    const upgradeButton = wrapper
-      .get('[data-testid="project-action-start_fashion_try_on"]')
-      .find('button')
-
-    expect(upgradeButton.text()).toContain('Upgrade subscription')
-    await upgradeButton.trigger('click')
-    await flushPromises()
-
-    expect(router.currentRoute.value.path).toBe('/pricing')
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      expect.stringContaining('/generate-fashion-try-on'),
-      expect.anything(),
-    )
+    expect(wrapper.find('[data-testid="project-action-start_fashion_try_on"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="project-action-start_motion_video"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="project-action-avatar_presenter"]').exists()).toBe(false)
   })
-
   it('routes voiceover actions to the dedicated setup page with selected source context', async () => {
     const { wrapper, fetchMock, router } = await mountHub(
       baseActions,
@@ -482,19 +459,4 @@ describe('ProjectActionHub', () => {
     expect(wrapper.text()).toContain('Can reuse existing video campaign analysis.')
   })
 
-  it('keeps coming-soon roadmap actions disabled without opening setup', async () => {
-    const { wrapper, fetchMock } = await mountHub()
-
-    const tryOnButton = wrapper
-      .get('[data-testid="project-action-start_fashion_try_on"]')
-      .find('button')
-
-    expect(tryOnButton.text()).toContain('Coming soon')
-    expect(tryOnButton.attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-testid="project-action-launcher"]').exists()).toBe(false)
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      expect.stringContaining('/generate-fashion-try-on'),
-      expect.anything(),
-    )
-  })
 })

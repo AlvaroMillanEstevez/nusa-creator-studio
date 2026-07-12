@@ -284,22 +284,48 @@ class MediaAssetApiTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_non_audio_or_video_assets_cannot_be_streamed(): void
+    public function test_owner_can_stream_own_image_asset_for_private_preview(): void
     {
         $user = User::factory()->create();
+        $contents = 'png bytes';
         $asset = MediaAsset::factory()->for($user)->create([
             'type' => 'image',
             'disk' => 'media-test',
-            'path' => "users/{$user->id}/media/not-audio.png",
-            'original_name' => 'not-audio.png',
+            'path' => "users/{$user->id}/media/product-preview.png",
+            'original_name' => 'product-preview.png',
             'mime_type' => 'image/png',
+            'size_bytes' => strlen($contents),
         ]);
-        Storage::disk('media-test')->put($asset->path, 'png bytes');
+        Storage::disk('media-test')->put($asset->path, $contents);
+
+        $response = $this->actingAs($user)
+            ->get("/api/v1/media-assets/{$asset->id}/stream", ['Accept' => 'image/png']);
+
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertHeader('Content-Disposition', 'inline; filename="product-preview.png"');
+
+        $this->assertSame($contents, $response->streamedContent());
+        $this->assertStringNotContainsString($asset->path, $response->headers->get('Content-Disposition', ''));
+    }
+
+    public function test_document_assets_cannot_be_streamed(): void
+    {
+        $user = User::factory()->create();
+        $asset = MediaAsset::factory()->for($user)->create([
+            'type' => 'document',
+            'disk' => 'media-test',
+            'path' => "users/{$user->id}/media/spec.pdf",
+            'original_name' => 'spec.pdf',
+            'mime_type' => 'application/pdf',
+        ]);
+        Storage::disk('media-test')->put($asset->path, 'pdf bytes');
 
         $this->actingAs($user)
             ->getJson("/api/v1/media-assets/{$asset->id}/stream")
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'Only audio or video assets can be streamed.');
+            ->assertJsonPath('message', 'Only image, audio or video assets can be streamed.');
     }
 
     public function test_media_asset_resource_includes_safe_delivery_urls_for_audio_assets(): void
@@ -367,9 +393,44 @@ class MediaAssetApiTest extends TestCase
             ->assertJsonPath('data.0.project.id', $project->id)
             ->assertJsonPath('data.0.project.title', 'Spain launch kit')
             ->assertJsonPath('data.0.project.type', 'affiliate_campaign')
+            ->assertJsonPath('data.0.project_label', 'Spain launch kit')
+            ->assertJsonPath('data.0.origin', 'uploaded')
+            ->assertJsonPath('data.0.stream_url', "/api/v1/media-assets/{$matching->id}/stream")
+            ->assertJsonPath('data.0.download_url', "/api/v1/media-assets/{$matching->id}/download")
             ->assertJsonPath('meta.per_page', 1)
             ->assertJsonPath('meta.total', 1)
             ->assertJsonMissingPath('data.0.path');
+    }
+
+    public function test_media_library_origin_filter_separates_uploaded_and_generated_assets(): void
+    {
+        $user = User::factory()->create();
+        $uploaded = MediaAsset::factory()->for($user)->create([
+            'type' => 'image',
+            'usage_role' => 'product_image',
+            'path' => "users/{$user->id}/media/product.png",
+            'metadata' => null,
+        ]);
+        $generated = MediaAsset::factory()->for($user)->create([
+            'type' => 'audio',
+            'usage_role' => 'voiceover_audio',
+            'path' => "users/{$user->id}/generated/voiceovers/voiceover.mp3",
+            'metadata' => ['generated' => true, 'generation_id' => 123],
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/media-assets?origin=uploaded')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $uploaded->id)
+            ->assertJsonPath('data.0.origin', 'uploaded');
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/media-assets?origin=generated')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $generated->id)
+            ->assertJsonPath('data.0.origin', 'generated');
     }
 
     public function test_media_library_project_filter_is_scoped_to_owned_projects(): void

@@ -10,11 +10,15 @@ import {
 } from '@/types/project'
 
 const jobTypeLabels: Record<string, string> = {
-  generate_affiliate_campaign: 'Affiliate campaign',
+  generate_affiliate_campaign: 'Product Content Kit',
   generate_video_to_campaign: 'Video campaign',
   generate_ai_voiceover: 'Voiceover',
   generate_auto_video_edit: 'Auto edit',
   generate_product_video_script: 'Product video script',
+}
+
+export function generationJobTypeLabel(jobType: string): string {
+  return jobTypeLabels[jobType] ?? 'Generation'
 }
 
 export function generationDisplayName(

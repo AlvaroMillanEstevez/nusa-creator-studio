@@ -70,6 +70,24 @@ export const voiceoverPlatformOptions = [
   { value: 'generic_vertical_video', label: 'Generic vertical video' },
 ] as const
 
+export const workspacePlatformOptions = [
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'instagram_reels', label: 'Instagram Reels' },
+  { value: 'youtube_shorts', label: 'YouTube Shorts' },
+  { value: 'tiktok_shop', label: 'TikTok Shop' },
+  { value: 'ecommerce', label: 'E-commerce' },
+  { value: 'general', label: 'General' },
+] as const
+
+export const workspaceMainGoalOptions = [
+  { value: 'product_review', label: 'Product review' },
+  { value: 'direct_sales', label: 'Direct sales' },
+  { value: 'affiliate_content', label: 'Affiliate content' },
+  { value: 'product_demo', label: 'Product demo' },
+  { value: 'educational_content', label: 'Educational content' },
+  { value: 'brand_awareness', label: 'Brand awareness' },
+  { value: 'ecommerce_listing', label: 'E-commerce listing' },
+] as const
 export const fashionGarmentTypeOptions = [
   { value: 'shirt', label: 'Shirt' },
   { value: 't_shirt', label: 'T-shirt' },
@@ -194,6 +212,8 @@ export type VoiceoverTone = (typeof voiceoverToneOptions)[number]['value']
 export type VoiceoverPace = (typeof voiceoverPaceOptions)[number]['value']
 export type VoiceoverDuration = (typeof voiceoverDurationOptions)[number]
 export type VoiceoverPlatform = (typeof voiceoverPlatformOptions)[number]['value']
+export type WorkspacePlatform = (typeof workspacePlatformOptions)[number]['value']
+export type WorkspaceMainGoal = (typeof workspaceMainGoalOptions)[number]['value']
 export type FashionGarmentType = (typeof fashionGarmentTypeOptions)[number]['value']
 export type FashionStyleGoal = (typeof fashionStyleGoalOptions)[number]['value']
 export type FashionOutputStyle = (typeof fashionOutputStyleOptions)[number]['value']
@@ -208,7 +228,7 @@ export type AutoVideoEditingStyle = (typeof autoVideoEditingStyleOptions)[number
 export type AutoVideoPacing = (typeof autoVideoPacingOptions)[number]['value']
 export type AutoVideoCaptionStyle = (typeof autoVideoCaptionStyleOptions)[number]['value']
 export type AutoVideoDuration = (typeof autoVideoDurationOptions)[number]
-export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionPlatform
+export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionPlatform | WorkspacePlatform
 
 export type ProjectType =
   | 'workspace'
@@ -313,12 +333,19 @@ export interface ProjectActionsResponse {
 }
 export interface WorkspaceFormPayload {
   product_name: string
+  product_category?: string
   content_idea: string
   product_description: string
   target_audience: string
   language: CampaignLanguage
   tone: CampaignTone
-  platform: CreatorPlatform
+  platform: WorkspacePlatform
+  main_goal?: WorkspaceMainGoal
+  key_selling_points?: string | null
+  claims_to_avoid?: string | null
+  brand_notes?: string | null
+  cta_preference?: string | null
+  competitor_notes?: string | null
   notes: string | null
 }
 export interface CampaignFormPayload {
@@ -446,7 +473,7 @@ export interface MotionVideoFormPayload {
   target_audience: string | null
   platform: MotionPlatform
   language: CampaignLanguage
-  brand_notes: string | null
+  brand_notes?: string | null
   scene_notes: string | null
   audio_notes: string | null
   notes: string | null

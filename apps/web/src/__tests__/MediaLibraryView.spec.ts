@@ -31,13 +31,18 @@ const asset: MediaAsset = {
   project_id: 42,
   type: 'image',
   usage_role: 'product_image',
+  origin: 'uploaded',
+  origin_label: 'Uploaded',
   disk: 'local',
   storage_identifier: 'media-12',
+  stream_url: '/api/v1/media-assets/12/stream',
+  download_url: '/api/v1/media-assets/12/download',
   original_name: 'product hero.png',
   mime_type: 'image/png',
   size_bytes: 2048,
   size_label: '2.0 KB',
   metadata: null,
+  project_label: 'Summer launch campaign',
   project: {
     id: 42,
     title: 'Summer launch campaign',
@@ -81,6 +86,13 @@ function jsonResponse(payload: unknown, status = 200): Response {
   })
 }
 
+function blobResponse(type = 'image/png'): Response {
+  return new Response(new Blob(['private media bytes'], { type }), {
+    status: 200,
+    headers: { 'Content-Type': type },
+  })
+}
+
 function createFetchMock(
   options: {
     assets?: MediaAsset[]
@@ -105,6 +117,10 @@ function createFetchMock(
 
     if (method === 'DELETE' && url.endsWith('/media-assets/12')) {
       return jsonResponse({ message: 'Media asset deleted successfully.' })
+    }
+
+    if (url.includes('/stream') || url.includes('/download')) {
+      return blobResponse(url.includes('55') ? 'audio/mpeg' : 'image/png')
     }
 
     if (url.includes('/media-assets')) {
@@ -170,18 +186,17 @@ describe('MediaLibraryView', () => {
     const wrapper = await mountMediaLibrary(fetchMock)
 
     expect(wrapper.text()).toContain('Media Library')
-    expect(wrapper.text()).toContain(
-      'Manage uploaded project assets across your creator workflows.',
-    )
+    expect(wrapper.text()).toContain('Manage uploaded and generated project assets across your creator workflows.')
     expect(wrapper.text()).toContain('Total assets')
     expect(wrapper.text()).toContain('2.0 KB')
     expect(wrapper.text()).toContain('product hero.png')
     expect(wrapper.text()).toContain('Product image')
+    expect(wrapper.text()).toContain('Uploaded')
     expect(wrapper.text()).toContain('Summer launch campaign')
     expect(wrapper.text()).toContain('Affiliate Campaign')
   })
 
-  it('keeps long asset filenames inside responsive card markup', async () => {
+  it('keeps long asset filenames inside responsive compact card markup', async () => {
     const longName =
       'super-ultra-long-product-photo-file-name-without-spaces-and-extra-long-suffix-for-mobile-overflow-testing.png'
     const longProjectTitle =
@@ -191,6 +206,7 @@ describe('MediaLibraryView', () => {
         {
           ...asset,
           original_name: longName,
+          project_label: longProjectTitle,
           project: asset.project ? { ...asset.project, title: longProjectTitle } : null,
         },
       ],
@@ -200,17 +216,36 @@ describe('MediaLibraryView', () => {
 
     expect(wrapper.text()).toContain(longName)
     expect(wrapper.text()).toContain(longProjectTitle)
-    expect(card.classes()).toEqual(
-      expect.arrayContaining(['min-w-0', 'max-w-full', 'overflow-hidden']),
-    )
+    expect(card.classes()).toEqual(expect.arrayContaining(['min-w-0', 'max-w-full', 'overflow-hidden']))
     expect(card.get('h3').classes()).toContain('break-words')
-    expect(card.get('dl').classes()).toEqual(
-      expect.arrayContaining(['grid-cols-1', 'min-w-0']),
+    expect(card.get('dl').classes()).toEqual(expect.arrayContaining(['grid-cols-2', 'min-w-0']))
+    expect(card.findAll('button').map((button) => button.text())).toEqual(
+      expect.arrayContaining(['Preview', 'Download', 'Delete asset']),
     )
-    expect(card.get('button').classes()).toContain('w-full')
   })
 
-  it('renders audio playback and download actions for audio assets', async () => {
+  it('opens an image preview modal with a private blob URL', async () => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn<() => string>(() => 'blob:library-image'),
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn<() => void>(),
+    })
+
+    const fetchMock = createFetchMock()
+    const wrapper = await mountMediaLibrary(fetchMock)
+
+    await wrapper.get('[data-testid="media-library-asset-12"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="media-preview-modal"]').exists()).toBe(true)
+    expect(wrapper.find('img[src="blob:library-image"]').exists()).toBe(true)
+    expect(fetchMock.mock.calls.some((call) => call[0] === API_BASE_URL + '/media-assets/12/stream')).toBe(true)
+  })
+
+  it('renders audio playback inside the preview modal for audio assets', async () => {
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
       value: vi.fn<() => string>(() => 'blob:library-audio'),
@@ -237,6 +272,11 @@ describe('MediaLibraryView', () => {
       ],
     })
     const wrapper = await mountMediaLibrary(fetchMock)
+
+    expect(wrapper.text()).toContain('voiceover-55.mp3')
+    expect(wrapper.text()).not.toContain('Play audio')
+
+    await wrapper.get('[data-testid="media-library-asset-55"] button').trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('Play audio')
@@ -246,19 +286,18 @@ describe('MediaLibraryView', () => {
     expect(wrapper.text()).not.toContain('users/1/generated/voiceovers')
   })
 
-  it('calls the API with search, type and usage role filters', async () => {
+  it('calls the API with search, type, usage role and origin filters', async () => {
     const fetchMock = createFetchMock()
     const wrapper = await mountMediaLibrary(fetchMock)
 
     await wrapper.get('input[name="search"]').setValue('hero')
     await wrapper.get('select[name="type"]').setValue('image')
     await wrapper.get('select[name="usage_role"]').setValue('product_image')
+    await wrapper.get('select[name="origin"]').setValue('uploaded')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    const filteredCall = fetchMock.mock.calls.find((call) =>
-      String(call[0]).includes('search=hero'),
-    )
+    const filteredCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('search=hero'))
     expect(filteredCall).toBeDefined()
 
     const url = new URL(String(filteredCall?.[0]))
@@ -266,18 +305,21 @@ describe('MediaLibraryView', () => {
     expect(url.searchParams.get('search')).toBe('hero')
     expect(url.searchParams.get('type')).toBe('image')
     expect(url.searchParams.get('usage_role')).toBe('product_image')
+    expect(url.searchParams.get('origin')).toBe('uploaded')
     expect(url.searchParams.get('per_page')).toBe('12')
   })
 
   it('deletes an asset after confirmation and removes it from the list', async () => {
     const fetchMock = createFetchMock()
-    vi.stubGlobal(
-      'confirm',
-      vi.fn<() => boolean>(() => true),
-    )
+    vi.stubGlobal('confirm', vi.fn<() => boolean>(() => true))
     const wrapper = await mountMediaLibrary(fetchMock)
+    const deleteButton = wrapper
+      .get('[data-testid="media-library-asset-12"]')
+      .findAll('button')
+      .find((button) => button.text() === 'Delete asset')
 
-    await wrapper.get('[data-testid="media-library-asset-12"] button').trigger('click')
+    expect(deleteButton).toBeDefined()
+    await deleteButton?.trigger('click')
     await flushPromises()
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -301,9 +343,7 @@ describe('MediaLibraryView', () => {
     const fetchMock = createFetchMock({ fail: true })
     const wrapper = await mountMediaLibrary(fetchMock)
 
-    expect(wrapper.get('[role="alert"]').text()).toContain(
-      'Something went wrong. Please try again.',
-    )
+    expect(wrapper.get('[role="alert"]').text()).toContain('Something went wrong. Please try again.')
     expect(wrapper.text()).toContain('Media unavailable')
   })
 })

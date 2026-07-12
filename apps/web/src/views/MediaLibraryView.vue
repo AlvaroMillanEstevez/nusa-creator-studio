@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import AudioAssetPlayer from '@/components/AudioAssetPlayer.vue'
-import { ApiError } from '@/services/api'
-import { deleteMediaAsset, getMediaAssetStats, listMediaAssets } from '@/services/media'
-import type { MediaAsset, MediaAssetType, MediaAssetUsageRole } from '@/types/media'
 import { t } from '@/i18n'
+import { ApiError } from '@/services/api'
+import { deleteMediaAsset, fetchMediaBlob, getMediaAssetStats, listMediaAssets } from '@/services/media'
+import type { MediaAsset, MediaAssetOrigin, MediaAssetType, MediaAssetUsageRole } from '@/types/media'
 import { formatDate, formatLabel } from '@/utils/formatters'
 
 const assets = ref<MediaAsset[]>([])
@@ -20,9 +20,14 @@ const successMessage = ref('')
 const search = ref('')
 const selectedType = ref<MediaAssetType | ''>('')
 const selectedUsageRole = ref<MediaAssetUsageRole | ''>('')
+const selectedOrigin = ref<MediaAssetOrigin | ''>('')
 const currentPage = ref(1)
 const lastPage = ref(1)
 const totalAssets = ref(0)
+const previewAsset = ref<MediaAsset | null>(null)
+const previewObjectUrl = ref<string | null>(null)
+const isPreviewLoading = ref(false)
+const previewError = ref('')
 
 const typeOptions: Array<{ value: MediaAssetType; labelKey: string }> = [
   { value: 'image', labelKey: 'media.images' },
@@ -30,6 +35,11 @@ const typeOptions: Array<{ value: MediaAssetType; labelKey: string }> = [
   { value: 'audio', labelKey: 'media.audio' },
   { value: 'document', labelKey: 'media.documents' },
   { value: 'other', labelKey: 'common.other' },
+]
+
+const originOptions: Array<{ value: MediaAssetOrigin; labelKey: string }> = [
+  { value: 'uploaded', labelKey: 'media.uploadedOrigin' },
+  { value: 'generated', labelKey: 'media.generatedOrigin' },
 ]
 
 const usageRoleOptions: Array<{ value: MediaAssetUsageRole; labelKey: string }> = [
@@ -58,7 +68,7 @@ const summaryCards = computed(() => [
 ])
 
 const hasActiveFilters = computed(
-  () => search.value.trim() !== '' || selectedType.value !== '' || selectedUsageRole.value !== '',
+  () => search.value.trim() !== '' || selectedType.value !== '' || selectedUsageRole.value !== '' || selectedOrigin.value !== '',
 )
 
 function friendlyError(requestError: unknown, fallback: string): string {
@@ -75,6 +85,7 @@ async function loadAssets(page = 1): Promise<void> {
     search: search.value,
     type: selectedType.value || undefined,
     usage_role: selectedUsageRole.value || undefined,
+    origin: selectedOrigin.value || undefined,
     page,
     per_page: 12,
   })
@@ -123,6 +134,7 @@ async function clearFilters(): Promise<void> {
   search.value = ''
   selectedType.value = ''
   selectedUsageRole.value = ''
+  selectedOrigin.value = ''
   await applyFilters()
 }
 
@@ -180,7 +192,94 @@ function assetIcon(type: MediaAssetType): string {
   }[type]
 }
 
+function originLabel(asset: MediaAsset): string {
+  if (asset.origin === 'generated') {
+    return t('media.generatedOrigin')
+  }
+
+  return t('media.uploadedOrigin')
+}
+
+function canPreview(asset: MediaAsset): boolean {
+  return ['image', 'video', 'audio'].includes(asset.type) && Boolean(asset.stream_url)
+}
+
+function canDownload(asset: MediaAsset): boolean {
+  return Boolean(asset.download_url)
+}
+
+function cleanupPreviewObjectUrl(): void {
+  if (previewObjectUrl.value) {
+    URL.revokeObjectURL(previewObjectUrl.value)
+    previewObjectUrl.value = null
+  }
+}
+
+function handlePreviewKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    closePreview()
+  }
+}
+
+async function openPreview(asset: MediaAsset): Promise<void> {
+  previewAsset.value = asset
+  previewError.value = ''
+  cleanupPreviewObjectUrl()
+  window.addEventListener('keydown', handlePreviewKeydown)
+
+  if (!canPreview(asset)) {
+    previewError.value = t('media.previewUnavailable')
+    return
+  }
+
+  if (asset.type === 'audio') {
+    return
+  }
+
+  isPreviewLoading.value = true
+
+  try {
+    const blob = await fetchMediaBlob(asset.stream_url ?? '')
+    previewObjectUrl.value = URL.createObjectURL(blob)
+  } catch (requestError: unknown) {
+    previewError.value = friendlyError(requestError, t('media.previewUnavailable'))
+  } finally {
+    isPreviewLoading.value = false
+  }
+}
+
+function closePreview(): void {
+  previewAsset.value = null
+  previewError.value = ''
+  isPreviewLoading.value = false
+  cleanupPreviewObjectUrl()
+  window.removeEventListener('keydown', handlePreviewKeydown)
+}
+
+async function downloadAsset(asset: MediaAsset): Promise<void> {
+  if (!asset.download_url) {
+    return
+  }
+
+  error.value = ''
+
+  try {
+    const blob = await fetchMediaBlob(asset.download_url)
+    const objectUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = asset.original_name ?? 'nusa-media-asset'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(objectUrl)
+  } catch (requestError: unknown) {
+    error.value = friendlyError(requestError, t('media.downloadUnavailable'))
+  }
+}
+
 onMounted(loadLibrary)
+onBeforeUnmount(closePreview)
 </script>
 
 <template>
@@ -247,8 +346,8 @@ onMounted(loadLibrary)
             <p class="text-xs text-neutral-500">{{ t('media.matchingAssets', { count: totalAssets }) }}</p>
           </div>
 
-          <form class="mt-5 grid min-w-0 gap-3 sm:grid-cols-3" @submit.prevent="applyFilters">
-            <label class="sm:col-span-3 lg:col-span-1">
+          <form class="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4" @submit.prevent="applyFilters">
+            <label class="min-w-0 sm:col-span-2 lg:col-span-1">
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
                 {{ t('media.search') }}
               </span>
@@ -261,7 +360,7 @@ onMounted(loadLibrary)
               />
             </label>
 
-            <label>
+            <label class="min-w-0">
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
                 {{ t('media.type') }}
               </span>
@@ -277,7 +376,7 @@ onMounted(loadLibrary)
               </select>
             </label>
 
-            <label>
+            <label class="min-w-0">
               <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
                 {{ t('media.usageRole') }}
               </span>
@@ -297,18 +396,34 @@ onMounted(loadLibrary)
               </select>
             </label>
 
-            <div class="grid min-w-0 gap-3 sm:col-span-3 sm:flex">
+            <label class="min-w-0">
+              <span class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                {{ t('media.origin') }}
+              </span>
+              <select
+                v-model="selectedOrigin"
+                name="origin"
+                class="mt-2 min-h-12 w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 text-sm text-white outline-none transition focus:border-emerald-500"
+              >
+                <option value="">{{ t('media.allOrigins') }}</option>
+                <option v-for="option in originOptions" :key="option.value" :value="option.value">
+                  {{ t(option.labelKey) }}
+                </option>
+              </select>
+            </label>
+
+            <div class="grid min-w-0 gap-3 sm:col-span-2 lg:col-span-4 lg:flex">
               <button
                 type="submit"
                 :disabled="isFiltering"
-                class="min-h-12 w-full rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:opacity-60 sm:flex-1"
+                class="min-h-12 w-full rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:opacity-60 lg:flex-1"
               >
                 {{ isFiltering ? t('media.filtering') : t('common.applyFilters') }}
               </button>
               <button
                 type="button"
                 :disabled="isFiltering || !hasActiveFilters"
-                class="min-h-12 w-full rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                class="min-h-12 w-full rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
                 @click="clearFilters"
               >
                 {{ t('common.clear') }}
@@ -368,73 +483,85 @@ onMounted(loadLibrary)
             </div>
           </div>
 
-          <div v-else class="mt-5 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+          <div v-else class="mt-5 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2">
             <article
               v-for="asset in assets"
               :key="asset.id"
               :data-testid="'media-library-asset-' + asset.id"
-              class="nusa-card-soft min-w-0 max-w-full overflow-hidden rounded-[2rem] p-4 sm:p-5"
+              class="nusa-card-soft min-w-0 max-w-full overflow-hidden rounded-[1.5rem] p-4"
             >
-              <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-                <div
-                  class="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-neutral-700 bg-neutral-950 text-xs font-semibold text-emerald-300 sm:size-14"
-                >
-                  {{ assetIcon(asset.type) }}
-                </div>
-                <div class="min-w-0 max-w-full flex-1 overflow-hidden">
-                  <h3 class="max-w-full break-words text-base font-semibold leading-6 text-neutral-100">
-                    {{ asset.original_name ?? t('media.uploadedAsset') }}
-                  </h3>
-                  <div class="mt-3 flex flex-wrap gap-2">
-                    <span
-                      class="rounded-full border border-emerald-900/70 bg-emerald-950/40 px-3 py-1 text-xs font-semibold text-emerald-300"
-                    >
-                      {{ formatLabel(asset.type) }}
-                    </span>
-                    <span
-                      v-if="asset.usage_role"
-                      class="rounded-full border border-neutral-700 bg-neutral-950 px-3 py-1 text-xs font-medium text-neutral-300"
-                    >
-                      {{ formatLabel(asset.usage_role) }}
-                    </span>
+              <div class="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
+                <div class="flex min-w-0 flex-1 gap-3">
+                  <div class="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-neutral-700 bg-neutral-950 text-[11px] font-semibold text-emerald-300">
+                    {{ assetIcon(asset.type) }}
                   </div>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="max-w-full break-words text-sm font-semibold leading-6 text-neutral-100 sm:text-base">
+                      {{ asset.original_name ?? t('media.uploadedAsset') }}
+                    </h3>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      <span class="rounded-full border border-emerald-900/70 bg-emerald-950/40 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
+                        {{ formatLabel(asset.type) }}
+                      </span>
+                      <span class="rounded-full border border-cyan-900/60 bg-cyan-950/30 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">
+                        {{ originLabel(asset) }}
+                      </span>
+                      <span
+                        v-if="asset.usage_role"
+                        class="max-w-full break-words rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-medium text-neutral-300"
+                      >
+                        {{ formatLabel(asset.usage_role) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid shrink-0 grid-cols-1 gap-2 sm:w-36">
+                  <button
+                    type="button"
+                    :disabled="!canPreview(asset)"
+                    class="min-h-10 rounded-2xl border border-neutral-700 px-3 text-xs font-semibold text-neutral-200 transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    @click="openPreview(asset)"
+                  >
+                    {{ t('media.preview') }}
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="!canDownload(asset)"
+                    class="min-h-10 rounded-2xl border border-neutral-700 px-3 text-xs font-semibold text-neutral-200 transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    @click="downloadAsset(asset)"
+                  >
+                    {{ t('media.download') }}
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="deletingId === asset.id"
+                    class="min-h-10 rounded-2xl border border-rose-900/60 px-3 text-xs font-semibold text-rose-300 transition hover:bg-rose-950/40 disabled:cursor-wait disabled:opacity-60"
+                    @click="deleteAsset(asset)"
+                  >
+                    {{ deletingId === asset.id ? t('media.deleting') : t('media.deleteAsset') }}
+                  </button>
                 </div>
               </div>
 
-              <dl class="mt-5 grid min-w-0 grid-cols-1 gap-3 border-t border-neutral-800 pt-4 text-sm sm:grid-cols-2">
+              <dl class="mt-4 grid min-w-0 grid-cols-2 gap-3 border-t border-neutral-800 pt-4 text-xs sm:grid-cols-4">
                 <div class="min-w-0">
-                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.size') }}</dt>
-                  <dd class="mt-1 text-neutral-300">
+                  <dt class="uppercase tracking-[0.14em] text-neutral-600">{{ t('media.size') }}</dt>
+                  <dd class="mt-1 truncate text-neutral-300">
                     {{ asset.size_label ?? t('media.sizeUnavailable') }}
                   </dd>
                 </div>
                 <div class="min-w-0">
-                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.uploaded') }}</dt>
-                  <dd class="mt-1 text-neutral-300">{{ formatDate(asset.created_at) }}</dd>
+                  <dt class="uppercase tracking-[0.14em] text-neutral-600">{{ t('media.uploaded') }}</dt>
+                  <dd class="mt-1 truncate text-neutral-300">{{ formatDate(asset.created_at) }}</dd>
                 </div>
                 <div v-if="asset.project" class="min-w-0 sm:col-span-2">
-                  <dt class="text-xs uppercase tracking-[0.14em] text-neutral-600">{{ t('media.project') }}</dt>
+                  <dt class="uppercase tracking-[0.14em] text-neutral-600">{{ t('media.project') }}</dt>
                   <dd class="mt-1 max-w-full break-words text-neutral-300">
-                    {{ asset.project.title }} · {{ formatLabel(asset.project.type) }}
+                    {{ asset.project_label ?? asset.project.title }} · {{ formatLabel(asset.project.type) }}
                   </dd>
                 </div>
               </dl>
-
-              <AudioAssetPlayer
-                v-if="asset.type === 'audio' && asset.stream_url"
-                :media-asset="asset"
-                :title="asset.original_name ?? t('media.generatedAudio')"
-                class="mt-5"
-              />
-
-              <button
-                type="button"
-                :disabled="deletingId === asset.id"
-                class="mt-5 min-h-11 w-full rounded-2xl border border-rose-900/60 px-4 text-sm font-semibold text-rose-300 transition hover:bg-rose-950/40 disabled:cursor-wait disabled:opacity-60"
-                @click="deleteAsset(asset)"
-              >
-                {{ deletingId === asset.id ? t('media.deleting') : t('media.deleteAsset') }}
-              </button>
             </article>
           </div>
         </section>
@@ -459,6 +586,64 @@ onMounted(loadLibrary)
           </button>
         </div>
       </template>
+
+      <div
+        v-if="previewAsset"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-neutral-950/80 px-0 pt-8 backdrop-blur-sm sm:items-center sm:px-6 sm:py-8"
+        role="dialog"
+        aria-modal="true"
+        data-testid="media-preview-modal"
+        @click.self="closePreview"
+      >
+        <div class="max-h-[92vh] w-full overflow-y-auto rounded-t-[2rem] border border-emerald-900/60 bg-neutral-950 p-4 shadow-2xl shadow-emerald-950/40 sm:max-w-3xl sm:rounded-[2rem] sm:p-5">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+                {{ t('media.privateMediaFile') }}
+              </p>
+              <h2 class="mt-2 break-words text-lg font-semibold text-white">
+                {{ previewAsset.original_name ?? t('media.uploadedAsset') }}
+              </h2>
+            </div>
+            <button
+              type="button"
+              class="min-h-10 rounded-xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-900"
+              @click="closePreview"
+            >
+              {{ t('media.closePreview') }}
+            </button>
+          </div>
+
+          <div class="mt-5 overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-900/80 p-3">
+            <p v-if="isPreviewLoading" class="p-6 text-center text-sm text-neutral-400">
+              {{ t('media.loadingPreview') }}
+            </p>
+            <p v-else-if="previewError" role="alert" class="p-6 text-center text-sm text-rose-200">
+              {{ previewError }}
+            </p>
+            <img
+              v-else-if="previewAsset.type === 'image' && previewObjectUrl"
+              :src="previewObjectUrl"
+              :alt="previewAsset.original_name ?? t('media.uploadedAsset')"
+              class="max-h-[70vh] w-full rounded-2xl object-contain"
+            >
+            <video
+              v-else-if="previewAsset.type === 'video' && previewObjectUrl"
+              :src="previewObjectUrl"
+              class="max-h-[70vh] w-full rounded-2xl bg-black"
+              controls
+            />
+            <AudioAssetPlayer
+              v-else-if="previewAsset.type === 'audio' && previewAsset.stream_url"
+              :media-asset="previewAsset"
+              :title="previewAsset.original_name ?? t('media.generatedAudio')"
+            />
+            <p v-else class="p-6 text-center text-sm text-neutral-400">
+              {{ t('media.previewUnavailable') }}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 </template>

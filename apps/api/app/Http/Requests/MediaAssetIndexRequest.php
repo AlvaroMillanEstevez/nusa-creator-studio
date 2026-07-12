@@ -23,6 +23,7 @@ class MediaAssetIndexRequest extends FormRequest
             'project_id' => ['nullable', 'integer'],
             'type' => ['nullable', 'string', Rule::in(MediaAsset::TYPES)],
             'usage_role' => ['nullable', 'string', Rule::in(MediaAsset::USAGE_ROLES)],
+            'origin' => ['nullable', 'string', Rule::in(['uploaded', 'generated'])],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ];

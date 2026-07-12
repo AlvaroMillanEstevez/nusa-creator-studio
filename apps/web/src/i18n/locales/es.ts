@@ -93,7 +93,7 @@ export default {
   tools: {
     ...en.tools,
     headline: '¿Qué quieres crear hoy?',
-    body: 'Elige un workflow para iniciar o continuar un workspace de proyecto. El workspace conecta acciones, assets y generaciones; los workflows Basic crean contexto que las acciones Advanced y Premium pueden reutilizar.',
+    body: 'Elige un workflow para iniciar o continuar un workspace de proyecto. Cada herramienta muestra su coste en créditos y mantiene los resultados dentro del workspace.',
     ready: 'Listo para usar',
     availableTools: 'Herramientas disponibles',
     openTool: 'Abrir herramienta',
@@ -117,7 +117,7 @@ export default {
     privateStorageHidden: 'Las rutas de almacenamiento privado se ocultan intencionalmente.',
   },
   campaignResult: {
-    campaignPackage: 'Paquete de campaña',
+    campaignPackage: 'Product Content Kit',
     productAngle: 'Ángulo del producto',
     audience: 'Audiencia',
     hooks: 'Ganchos',
@@ -170,9 +170,9 @@ export default {
     includedInPlan: 'Incluido en tu plan',
     upgradeRequired: 'Requiere upgrade',
     upgradeSubscription: 'Upgrade subscription',
-    basicWorkflow: 'Workflow Basic',
-    advancedWorkflow: 'Workflow Advanced',
-    premiumWorkflow: 'Workflow Premium',
+    basicWorkflow: 'Workflow con créditos',
+    advancedWorkflow: 'Workflow de media',
+    premiumWorkflow: 'Workflow creativo intensivo',
     oneCredit: '1 crédito',
     manyCredits: '{credits} créditos',
     actionCosts: 'Esta acción cuesta {credits} créditos.',
@@ -182,7 +182,7 @@ export default {
     configureAction: 'Configurar acción',
     setupRequired: 'Setup requerido',
     addRequiredAssets: 'Añadir assets requeridos',
-    generateAnotherCampaignVersion: 'Generar otra versión de campaña',
+    generateAnotherCampaignVersion: 'Generar otro Product Content Kit',
     viewLatestVoiceover: 'Ver último voiceover',
     latestVoiceoverGenerated: 'Último voiceover generado',
     createAnotherVoiceover: 'Crear otro voiceover',
@@ -243,7 +243,7 @@ export default {
     },
     actions: {
       generate_campaign: {
-        title: 'Generar campaña',
+        title: 'Product Content Kit',
         description: 'Crea ganchos, guion, caption, hashtags y notas prácticas de grabación desde el brief del proyecto.',
       },
       generate_voiceover_from_script: {
@@ -291,9 +291,9 @@ export default {
     recommended: 'Recomendado',
     free: 'Gratis',
     viewPlan: 'Ver plan',
-    subscriptionAccessNote: 'Los planes de suscripción dan créditos mensuales y acceso a niveles de workflows. Sube de plan cuando necesites más volumen o workflows premium.',
-    toolTiersExplained: 'Los niveles de herramientas se explican en Herramientas para que la página de precios se enfoque en suscripciones, créditos y acceso.',
-    viewToolTiers: 'Ver niveles de herramientas',
+    subscriptionAccessNote: 'Los planes de suscripción dan créditos mensuales para workflows de creadores. Sube de plan cuando necesites más volumen de output.',
+    toolTiersExplained: 'Los créditos se comparten entre las herramientas de tu workspace.',
+    viewToolTiers: 'Ver herramientas',
     serviceTiers: {
       basic: {
         label: 'Basic',
@@ -376,7 +376,7 @@ export default {
     quickActions: 'Acciones rápidas',
     browseTools: 'Explorar herramientas',
     noProjectsBody: 'Crea tu primer workspace de proyecto para conectar briefs, assets y generaciones.',
-    serviceTierCredits: 'Los créditos pueden usarse en herramientas Basic, Advanced y Premium. Los flujos costosos pueden requerir más créditos.',
+    serviceTierCredits: 'Los créditos se comparten entre las herramientas del workspace. Los workflows de media más intensivos pueden requerir más créditos.',
   },
   voiceoverAction: {
     ...en.voiceoverAction,
@@ -401,7 +401,7 @@ export default {
     ...en.videoWorkflows,
     loading: 'Cargando configuración del workflow de vídeo...',
     unavailable: 'Workflow de vídeo no disponible',
-    videoToCampaignTitle: 'Generar campaña desde vídeo',
+    videoToCampaignTitle: 'Video-to-Campaign Insight',
     videoToCampaignBody: 'Convierte footage bruto de producto en hooks, narración, captions, cortes recomendados y plan de edición.',
     generateVideoCampaign: 'Generar campaña de vídeo',
     videoCampaignSaved: 'Campaña de vídeo guardada',
@@ -452,7 +452,7 @@ export default {
     emptyBody: 'Sube activos desde un flujo de proyecto y luego gestiónalos aquí para campañas, voiceovers, try-ons y video tools.',
     browseTools: 'Explorar herramientas',
     noProjectsBody: 'Crea tu primer workspace de proyecto para conectar briefs, assets y generaciones.',
-    serviceTierCredits: 'Los créditos pueden usarse en herramientas Basic, Advanced y Premium. Los flujos costosos pueden requerir más créditos.',
+    serviceTierCredits: 'Los créditos se comparten entre las herramientas del workspace. Los workflows de media más intensivos pueden requerir más créditos.',
     backDashboard: 'Volver al dashboard',
     playAudio: 'Reproducir audio',
     loadingAudio: 'Cargando audio...',

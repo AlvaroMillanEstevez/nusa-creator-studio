@@ -26,7 +26,7 @@ const user: AuthUser = {
 
 const availableTool: CreatorTool = {
   key: 'affiliate_campaign',
-  title: 'Affiliate Campaign Generator',
+  title: 'Product Content Kit',
   short_description: 'Generate a complete campaign pack.',
   long_description: null,
   category: 'campaign_creation',
@@ -88,7 +88,7 @@ describe('App', () => {
 
     expect(studioLinks.some((link) => link.text().includes('Open Creator Studio'))).toBe(true)
     expect(wrapper.find('a[href="/dashboard"]').exists()).toBe(true)
-    expect(wrapper.text()).not.toContain('Affiliate Campaign Generator')
+    expect(wrapper.text()).not.toContain('Product Content Kit')
     expect(wrapper.text()).not.toContain('Video Enhancer / Caption Pack')
     expect(wrapper.find('[data-testid^="tool-card-"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('API ok - v1')
@@ -128,7 +128,7 @@ describe('App', () => {
     expect(wrapper.find('a[href="/login"]').exists()).toBe(false)
     const authenticatedToolCard = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
 
-    expect(authenticatedToolCard.text()).toContain('Start with this workflow')
+    expect(authenticatedToolCard.text()).toContain('Open tool')
     expect(authenticatedToolCard.attributes('href')).toBe('/dashboard?tool=affiliate_campaign')
     expect(
       fetchMock.mock.calls.filter(([input]) => String(input).includes('/auth/me')),
@@ -171,7 +171,7 @@ describe('App', () => {
     expect(wrapper.find('details').exists()).toBe(false)
     const guestToolCard = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
 
-    expect(guestToolCard.text()).toContain('Log in to start')
+    expect(guestToolCard.text()).toContain('Log in to use')
     expect(guestToolCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=affiliate_campaign')
     expect(auth.error).toBe('')
     wrapper.unmount()

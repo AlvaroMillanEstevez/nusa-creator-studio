@@ -9,19 +9,13 @@ import { createWorkspaceProject } from '@/services/projects'
 import {
   campaignLanguageOptions,
   campaignToneOptions,
-  type CreatorPlatform,
+  workspaceMainGoalOptions,
+  workspacePlatformOptions,
   type WorkspaceFormPayload,
 } from '@/types/project'
 
 type FormField = keyof WorkspaceFormPayload | 'title'
 type FormErrors = Partial<Record<FormField, string>>
-
-const platformOptions: Array<{ value: CreatorPlatform; label: string }> = [
-  { value: 'tiktok', label: 'TikTok' },
-  { value: 'instagram_reels', label: 'Instagram Reels' },
-  { value: 'youtube_shorts', label: 'YouTube Shorts' },
-  { value: 'generic_vertical_video', label: 'Generic vertical video' },
-]
 
 const router = useRouter()
 const isSubmitting = ref(false)
@@ -31,14 +25,27 @@ const fieldErrors = ref<FormErrors>({})
 const form = reactive<WorkspaceFormPayload & { title: string }>({
   title: '',
   product_name: '',
+  product_category: '',
   content_idea: '',
   product_description: '',
   target_audience: '',
   language: 'english',
   tone: 'natural',
   platform: 'tiktok',
+  main_goal: 'affiliate_content',
+  key_selling_points: '',
+  claims_to_avoid: '',
+  brand_notes: '',
+  cta_preference: '',
+  competitor_notes: '',
   notes: '',
 })
+
+function optionalText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? ''
+
+  return trimmed === '' ? null : trimmed
+}
 
 function validateForm(): boolean {
   const errors: FormErrors = {}
@@ -49,8 +56,12 @@ function validateForm(): boolean {
     errors.title = t('projectWorkspace.errors.titleLength')
   }
 
-  if (!form.content_idea.trim()) {
-    errors.content_idea = t('projectWorkspace.errors.contentIdea')
+  if (!form.product_name.trim()) {
+    errors.product_name = t('projectWorkspace.errors.productName')
+  }
+
+  if (!(form.product_category ?? '').trim()) {
+    errors.product_category = t('projectWorkspace.errors.productCategory')
   }
 
   if (!form.product_description.trim()) {
@@ -77,17 +88,24 @@ async function submitWorkspace(): Promise<void> {
 
   try {
     const title = form.title.trim()
-    const contentIdea = form.content_idea.trim()
+    const productName = form.product_name.trim()
     const project = await createWorkspaceProject(
       {
-        product_name: form.product_name.trim() || contentIdea || title,
-        content_idea: contentIdea,
+        product_name: productName,
+        product_category: (form.product_category ?? '').trim(),
+        content_idea: form.content_idea.trim() || productName,
         product_description: form.product_description.trim(),
         target_audience: form.target_audience.trim(),
         language: form.language,
         tone: form.tone,
         platform: form.platform,
-        notes: form.notes?.trim() ? form.notes.trim() : null,
+        main_goal: form.main_goal,
+        key_selling_points: optionalText(form.key_selling_points),
+        claims_to_avoid: optionalText(form.claims_to_avoid),
+        brand_notes: optionalText(form.brand_notes),
+        cta_preference: optionalText(form.cta_preference),
+        competitor_notes: optionalText(form.competitor_notes),
+        notes: optionalText(form.notes),
       },
       title,
     )
@@ -117,139 +135,276 @@ async function submitWorkspace(): Promise<void> {
         <p class="mt-4 text-sm leading-6 text-neutral-400">
           {{ t('projectWorkspace.body') }}
         </p>
+        <p class="mt-4 rounded-2xl border border-emerald-900/50 bg-emerald-950/20 p-4 text-sm leading-6 text-emerald-100/80">
+          {{ t('projectWorkspace.reusableBriefHelp') }}
+        </p>
       </section>
 
-      <form class="nusa-form-card mt-8 space-y-7 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitWorkspace">
-        <div>
-          <label for="project-title" class="nusa-label">{{ t('projectWorkspace.projectName') }}</label>
-          <input
-            id="project-title"
-            v-model="form.title"
-            name="title"
-            type="text"
-            autocomplete="off"
-            maxlength="255"
-            :placeholder="t('projectWorkspace.projectNamePlaceholder')"
-            :aria-invalid="Boolean(fieldErrors.title)"
-            :aria-describedby="fieldErrors.title ? 'project-title-error' : undefined"
-            class="nusa-input mt-2"
-          />
-          <p v-if="fieldErrors.title" id="project-title-error" class="mt-2 text-sm text-rose-400">
-            {{ fieldErrors.title }}
-          </p>
-        </div>
-
-        <div>
-          <label for="content-idea" class="nusa-label">{{ t('projectWorkspace.contentIdea') }}</label>
-          <input
-            id="content-idea"
-            v-model="form.content_idea"
-            name="content_idea"
-            type="text"
-            autocomplete="off"
-            :placeholder="t('projectWorkspace.contentIdeaPlaceholder')"
-            :aria-invalid="Boolean(fieldErrors.content_idea)"
-            :aria-describedby="fieldErrors.content_idea ? 'content-idea-error' : undefined"
-            class="nusa-input mt-2"
-          />
-          <p v-if="fieldErrors.content_idea" id="content-idea-error" class="mt-2 text-sm text-rose-400">
-            {{ fieldErrors.content_idea }}
-          </p>
-        </div>
-
-        <div>
-          <label for="product-name" class="nusa-label">{{ t('projectWorkspace.productName') }}</label>
-          <input
-            id="product-name"
-            v-model="form.product_name"
-            name="product_name"
-            type="text"
-            autocomplete="off"
-            :placeholder="t('projectWorkspace.productNamePlaceholder')"
-            class="nusa-input mt-2"
-          />
-        </div>
-
-        <div>
-          <label for="project-context" class="nusa-label">{{ t('projectWorkspace.projectContext') }}</label>
-          <textarea
-            id="project-context"
-            v-model="form.product_description"
-            name="product_description"
-            rows="5"
-            :placeholder="t('projectWorkspace.projectContextPlaceholder')"
-            :aria-invalid="Boolean(fieldErrors.product_description)"
-            :aria-describedby="fieldErrors.product_description ? 'project-context-error' : undefined"
-            class="nusa-textarea mt-2"
-          />
-          <p v-if="fieldErrors.product_description" id="project-context-error" class="mt-2 text-sm text-rose-400">
-            {{ fieldErrors.product_description }}
-          </p>
-        </div>
-
-        <div>
-          <label for="target-audience" class="nusa-label">{{ t('projectWorkspace.targetAudience') }}</label>
-          <textarea
-            id="target-audience"
-            v-model="form.target_audience"
-            name="target_audience"
-            rows="3"
-            :placeholder="t('projectWorkspace.targetAudiencePlaceholder')"
-            :aria-invalid="Boolean(fieldErrors.target_audience)"
-            :aria-describedby="fieldErrors.target_audience ? 'target-audience-error' : undefined"
-            class="nusa-textarea mt-2"
-          />
-          <p v-if="fieldErrors.target_audience" id="target-audience-error" class="mt-2 text-sm text-rose-400">
-            {{ fieldErrors.target_audience }}
-          </p>
-        </div>
-
-        <div class="grid gap-4 sm:grid-cols-2">
+      <form class="nusa-form-card mt-8 space-y-8 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitWorkspace">
+        <section class="space-y-5">
           <div>
-            <label for="language" class="nusa-label">{{ t('projectWorkspace.language') }}</label>
-            <select id="language" v-model="form.language" name="language" class="nusa-select mt-2">
-              <option v-for="option in campaignLanguageOptions" :key="option.value" :value="option.value">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+              {{ t('projectWorkspace.sections.productBasics') }}
+            </p>
+            <p class="mt-2 text-sm leading-6 text-neutral-500">
+              {{ t('projectWorkspace.sections.productBasicsBody') }}
+            </p>
+          </div>
+
+          <div>
+            <label for="project-title" class="nusa-label">{{ t('projectWorkspace.projectName') }}</label>
+            <input
+              id="project-title"
+              v-model="form.title"
+              name="title"
+              type="text"
+              autocomplete="off"
+              maxlength="255"
+              :placeholder="t('projectWorkspace.projectNamePlaceholder')"
+              :aria-invalid="Boolean(fieldErrors.title)"
+              :aria-describedby="fieldErrors.title ? 'project-title-error' : undefined"
+              class="nusa-input mt-2"
+            />
+            <p v-if="fieldErrors.title" id="project-title-error" class="mt-2 text-sm text-rose-400">
+              {{ fieldErrors.title }}
+            </p>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="product-name" class="nusa-label">{{ t('projectWorkspace.productName') }}</label>
+              <input
+                id="product-name"
+                v-model="form.product_name"
+                name="product_name"
+                type="text"
+                autocomplete="off"
+                :placeholder="t('projectWorkspace.productNamePlaceholder')"
+                :aria-invalid="Boolean(fieldErrors.product_name)"
+                :aria-describedby="fieldErrors.product_name ? 'product-name-error' : undefined"
+                class="nusa-input mt-2"
+              />
+              <p v-if="fieldErrors.product_name" id="product-name-error" class="mt-2 text-sm text-rose-400">
+                {{ fieldErrors.product_name }}
+              </p>
+            </div>
+
+            <div>
+              <label for="product-category" class="nusa-label">{{ t('projectWorkspace.productCategory') }}</label>
+              <input
+                id="product-category"
+                v-model="form.product_category"
+                name="product_category"
+                type="text"
+                autocomplete="off"
+                :placeholder="t('projectWorkspace.productCategoryPlaceholder')"
+                :aria-invalid="Boolean(fieldErrors.product_category)"
+                :aria-describedby="fieldErrors.product_category ? 'product-category-error' : undefined"
+                class="nusa-input mt-2"
+              />
+              <p v-if="fieldErrors.product_category" id="product-category-error" class="mt-2 text-sm text-rose-400">
+                {{ fieldErrors.product_category }}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label for="project-context" class="nusa-label">{{ t('projectWorkspace.projectContext') }}</label>
+            <textarea
+              id="project-context"
+              v-model="form.product_description"
+              name="product_description"
+              rows="5"
+              :placeholder="t('projectWorkspace.projectContextPlaceholder')"
+              :aria-invalid="Boolean(fieldErrors.product_description)"
+              :aria-describedby="fieldErrors.product_description ? 'project-context-error' : undefined"
+              class="nusa-textarea mt-2"
+            />
+            <p v-if="fieldErrors.product_description" id="project-context-error" class="mt-2 text-sm text-rose-400">
+              {{ fieldErrors.product_description }}
+            </p>
+          </div>
+
+          <div>
+            <label for="key-selling-points" class="nusa-label">{{ t('projectWorkspace.keySellingPoints') }}</label>
+            <textarea
+              id="key-selling-points"
+              v-model="form.key_selling_points"
+              name="key_selling_points"
+              rows="3"
+              :placeholder="t('projectWorkspace.keySellingPointsPlaceholder')"
+              class="nusa-textarea mt-2"
+            />
+          </div>
+        </section>
+
+        <section class="space-y-5 border-t border-neutral-800 pt-7">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+              {{ t('projectWorkspace.sections.audiencePlatform') }}
+            </p>
+            <p class="mt-2 text-sm leading-6 text-neutral-500">
+              {{ t('projectWorkspace.sections.audiencePlatformBody') }}
+            </p>
+          </div>
+
+          <div>
+            <label for="target-audience" class="nusa-label">{{ t('projectWorkspace.targetAudience') }}</label>
+            <textarea
+              id="target-audience"
+              v-model="form.target_audience"
+              name="target_audience"
+              rows="3"
+              :placeholder="t('projectWorkspace.targetAudiencePlaceholder')"
+              :aria-invalid="Boolean(fieldErrors.target_audience)"
+              :aria-describedby="fieldErrors.target_audience ? 'target-audience-error' : undefined"
+              class="nusa-textarea mt-2"
+            />
+            <p v-if="fieldErrors.target_audience" id="target-audience-error" class="mt-2 text-sm text-rose-400">
+              {{ fieldErrors.target_audience }}
+            </p>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="platform" class="nusa-label">{{ t('projectWorkspace.platform') }}</label>
+              <select id="platform" v-model="form.platform" name="platform" class="nusa-select mt-2">
+                <option v-for="option in workspacePlatformOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label for="language" class="nusa-label">{{ t('projectWorkspace.language') }}</label>
+              <select id="language" v-model="form.language" name="language" class="nusa-select mt-2">
+                <option v-for="option in campaignLanguageOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="space-y-5 border-t border-neutral-800 pt-7">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+              {{ t('projectWorkspace.sections.styleGoals') }}
+            </p>
+            <p class="mt-2 text-sm leading-6 text-neutral-500">
+              {{ t('projectWorkspace.sections.styleGoalsBody') }}
+            </p>
+          </div>
+
+          <div>
+            <label for="main-goal" class="nusa-label">{{ t('projectWorkspace.mainGoal') }}</label>
+            <select id="main-goal" v-model="form.main_goal" name="main_goal" class="nusa-select mt-2">
+              <option v-for="option in workspaceMainGoalOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
               </option>
             </select>
           </div>
 
-          <div>
-            <label for="platform" class="nusa-label">{{ t('projectWorkspace.platform') }}</label>
-            <select id="platform" v-model="form.platform" name="platform" class="nusa-select mt-2">
-              <option v-for="option in platformOptions" :key="option.value" :value="option.value">
+          <fieldset>
+            <legend class="nusa-label">{{ t('projectWorkspace.tone') }}</legend>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <label
+                v-for="option in campaignToneOptions"
+                :key="option.value"
+                class="nusa-choice flex items-center"
+                :class="form.tone === option.value ? 'nusa-choice-active' : 'nusa-choice-idle'"
+              >
+                <input v-model="form.tone" class="sr-only" type="radio" name="tone" :value="option.value" />
                 {{ option.label }}
-              </option>
-            </select>
-          </div>
-        </div>
+              </label>
+            </div>
+          </fieldset>
 
-        <fieldset>
-          <legend class="nusa-label">{{ t('projectWorkspace.tone') }}</legend>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <label
-              v-for="option in campaignToneOptions"
-              :key="option.value"
-              class="nusa-choice flex items-center"
-              :class="form.tone === option.value ? 'nusa-choice-active' : 'nusa-choice-idle'"
-            >
-              <input v-model="form.tone" class="sr-only" type="radio" name="tone" :value="option.value" />
-              {{ option.label }}
-            </label>
+          <div>
+            <label for="content-idea" class="nusa-label">{{ t('projectWorkspace.contentIdea') }}</label>
+            <input
+              id="content-idea"
+              v-model="form.content_idea"
+              name="content_idea"
+              type="text"
+              autocomplete="off"
+              :placeholder="t('projectWorkspace.contentIdeaPlaceholder')"
+              class="nusa-input mt-2"
+            />
           </div>
-        </fieldset>
 
-        <div>
-          <label for="project-notes" class="nusa-label">{{ t('projectWorkspace.notes') }}</label>
-          <textarea
-            id="project-notes"
-            v-model="form.notes"
-            name="notes"
-            rows="3"
-            :placeholder="t('projectWorkspace.notesPlaceholder')"
-            class="nusa-textarea mt-2"
-          />
-        </div>
+          <div>
+            <label for="cta-preference" class="nusa-label">{{ t('projectWorkspace.ctaPreference') }}</label>
+            <input
+              id="cta-preference"
+              v-model="form.cta_preference"
+              name="cta_preference"
+              type="text"
+              autocomplete="off"
+              :placeholder="t('projectWorkspace.ctaPreferencePlaceholder')"
+              class="nusa-input mt-2"
+            />
+          </div>
+        </section>
+
+        <section class="space-y-5 border-t border-neutral-800 pt-7">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+              {{ t('projectWorkspace.sections.brandNotes') }}
+            </p>
+            <p class="mt-2 text-sm leading-6 text-neutral-500">
+              {{ t('projectWorkspace.sections.brandNotesBody') }}
+            </p>
+          </div>
+
+          <div>
+            <label for="claims-to-avoid" class="nusa-label">{{ t('projectWorkspace.claimsToAvoid') }}</label>
+            <textarea
+              id="claims-to-avoid"
+              v-model="form.claims_to_avoid"
+              name="claims_to_avoid"
+              rows="3"
+              :placeholder="t('projectWorkspace.claimsToAvoidPlaceholder')"
+              class="nusa-textarea mt-2"
+            />
+          </div>
+
+          <div>
+            <label for="brand-notes" class="nusa-label">{{ t('projectWorkspace.brandNotes') }}</label>
+            <textarea
+              id="brand-notes"
+              v-model="form.brand_notes"
+              name="brand_notes"
+              rows="3"
+              :placeholder="t('projectWorkspace.brandNotesPlaceholder')"
+              class="nusa-textarea mt-2"
+            />
+          </div>
+
+          <div>
+            <label for="competitor-notes" class="nusa-label">{{ t('projectWorkspace.competitorNotes') }}</label>
+            <textarea
+              id="competitor-notes"
+              v-model="form.competitor_notes"
+              name="competitor_notes"
+              rows="3"
+              :placeholder="t('projectWorkspace.competitorNotesPlaceholder')"
+              class="nusa-textarea mt-2"
+            />
+          </div>
+
+          <div>
+            <label for="project-notes" class="nusa-label">{{ t('projectWorkspace.notes') }}</label>
+            <textarea
+              id="project-notes"
+              v-model="form.notes"
+              name="notes"
+              rows="3"
+              :placeholder="t('projectWorkspace.notesPlaceholder')"
+              class="nusa-textarea mt-2"
+            />
+          </div>
+        </section>
 
         <div v-if="submitError" role="alert" class="rounded-2xl border border-rose-900/60 bg-rose-950/50 px-4 py-3 text-sm leading-6 text-rose-200">
           {{ submitError }}

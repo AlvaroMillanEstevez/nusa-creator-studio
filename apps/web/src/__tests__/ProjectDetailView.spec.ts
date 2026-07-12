@@ -424,7 +424,7 @@ describe('ProjectDetailView', () => {
     expect(renderedText).toContain('¿Quieres crear contenido rápido?')
     expect(renderedText).toContain('Campaña para pequeños creadores en España')
     expect(renderedText).toContain('Diseñado para creadores que necesitan automatización')
-    expect(renderedText).toContain('Continue with selected result')
+    expect(renderedText).not.toContain('Continue with selected result')
     expect(renderedText).toContain('Create voiceover')
     expect(wrapper.find('[data-testid="project-action-hub"]').exists()).toBe(true)
     expect(renderedText).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)

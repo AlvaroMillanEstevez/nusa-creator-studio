@@ -162,17 +162,23 @@ onMounted(() => {
       <section
         v-if="!isLoading && !error"
         class="nusa-card-soft mx-auto mt-10 max-w-3xl rounded-[2rem] p-5 text-center"
-        data-testid="pricing-tool-tier-note"
+        data-testid="pricing-credits-note"
       >
-        <p class="text-sm leading-6 text-neutral-300">
-          {{ t('pricing.subscriptionAccessNote') }}
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+          {{ t('pricing.creditsInfoKicker') }}
+        </p>
+        <h2 class="mt-2 text-xl font-semibold text-neutral-100">
+          {{ t('pricing.creditsInfoTitle') }}
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-neutral-300">
+          {{ t('pricing.creditsInfoBody') }}
         </p>
         <RouterLink
           to="/tools"
           data-testid="pricing-tools-link"
           class="mt-4 inline-flex min-h-10 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-xs font-semibold text-neutral-100 transition hover:border-emerald-500 hover:bg-emerald-950/30"
         >
-          {{ t('pricing.viewToolTiers') }}
+          {{ t('pricing.viewTools') }}
         </RouterLink>
       </section>
 

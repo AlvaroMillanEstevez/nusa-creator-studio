@@ -7,15 +7,31 @@ import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getCreatorTools } from '@/services/tools'
 import { useAuthStore } from '@/stores/auth'
-import type {
-  CreatorTool,
-  ToolImplementationStage,
-  ToolOutputType,
-  ToolServiceTier,
-} from '@/types/tool'
+import type { CreatorTool, ToolOutputType, ToolStatus } from '@/types/tool'
 import { formatLabel } from '@/utils/formatters'
 
-const serviceTierOrder: ToolServiceTier[] = ['basic', 'advanced', 'premium']
+interface StudioToolCard {
+  key: string
+  title: string
+  short_description: string
+  long_description: string | null
+  category: string
+  output_type: ToolOutputType | null
+  status: ToolStatus
+  route: string | null
+  credit_cost: number
+  credit_cost_label: string | null
+  badge_label: string | null
+  sort_order: number
+  source: 'api' | 'static'
+}
+
+interface StudioToolSection {
+  key: string
+  title: string
+  description: string
+  tools: StudioToolCard[]
+}
 
 const tools = ref<CreatorTool[]>([])
 const isLoading = ref(true)
@@ -23,50 +39,160 @@ const error = ref('')
 const auth = useAuthStore()
 
 const visibleTools = computed(() => tools.value.filter((tool) => tool.status !== 'disabled'))
-const groupedToolSections = computed(() =>
-  serviceTierOrder.map((tier) => ({
-    tier,
-    title: t('tools.serviceTiers.' + tier + '.title'),
-    description: t('tools.serviceTiers.' + tier + '.description'),
-    tools: visibleTools.value
-      .filter((tool) => tool.service_tier === tier)
-      .sort((left, right) => left.sort_order - right.sort_order || left.title.localeCompare(right.title)),
-  })),
+const toolsByKey = computed(() =>
+  new Map(visibleTools.value.map((tool) => [tool.key, tool])),
 )
 
-function toolDestination(tool: CreatorTool): RouteLocationRaw {
-  const dashboardRoute = { path: '/dashboard', query: { tool: tool.key } }
+const groupedToolSections = computed<StudioToolSection[]>(() => [
+  {
+    key: 'campaign_content',
+    title: t('tools.categories.campaignContent.title'),
+    description: t('tools.categories.campaignContent.description'),
+    tools: compactTools([
+      cardFromApi('affiliate_campaign', {
+        title: t('tools.productContentKit.title'),
+        short_description: t('tools.productContentKit.description'),
+      }),
+      cardFromApi('video_to_campaign', {
+        title: t('tools.videoToCampaignInsight.title'),
+        short_description: t('tools.videoToCampaignInsight.description'),
+      }),
+      comingSoonCard('hook_generator', t('tools.roadmapCards.hookGenerator'), 'text_insight', 30),
+      comingSoonCard('caption_hashtag_pack', t('tools.roadmapCards.captionHashtagPack'), 'script_pack', 31),
+      comingSoonCard('script_variations', t('tools.roadmapCards.scriptVariations'), 'script_pack', 32),
+    ]),
+  },
+  {
+    key: 'voice',
+    title: t('tools.categories.voice.title'),
+    description: t('tools.categories.voice.description'),
+    tools: compactTools([
+      cardFromApi('ai_voiceover'),
+    ]),
+  },
+  {
+    key: 'video',
+    title: t('tools.categories.video.title'),
+    description: t('tools.categories.video.description'),
+    tools: compactTools([
+      cardFromApi('auto_video_editor'),
+    ]),
+  },
+  {
+    key: 'assets',
+    title: t('tools.categories.assets.title'),
+    description: t('tools.categories.assets.description'),
+    tools: [
+      staticCard({
+        key: 'media_library',
+        title: t('tools.mediaLibrary.title'),
+        short_description: t('tools.mediaLibrary.description'),
+        category: 'assets',
+        output_type: 'mixed_media',
+        status: 'available',
+        route: '/media',
+        credit_cost: 0,
+        credit_cost_label: t('projectActions.noCreditCharge'),
+        badge_label: t('common.available'),
+        sort_order: 10,
+      }),
+    ],
+  },
+  {
+    key: 'roadmap',
+    title: t('tools.categories.roadmap.title'),
+    description: t('tools.categories.roadmap.description'),
+    tools: compactTools([
+      cardFromApi('fashion_try_on', { title: t('tools.roadmapCards.fashionStudio') }),
+      comingSoonCard('product_photo_studio', t('tools.roadmapCards.productPhotoStudio'), 'image', 52),
+      comingSoonCard('product_ad_templates', t('tools.roadmapCards.productAdTemplates'), 'mixed_media', 53),
+      cardFromApi('ai_avatar_presenter', { title: t('tools.roadmapCards.aiAvatarPresenter') }),
+      cardFromApi('motion_ai_video', { title: t('tools.roadmapCards.motionAiVideo') }),
+      comingSoonCard('brand_kit', t('tools.roadmapCards.brandKit'), 'mixed_media', 56),
+      comingSoonCard('content_calendar', t('tools.roadmapCards.contentCalendar'), 'text_insight', 57),
+    ]),
+  },
+])
+
+function compactTools(candidates: Array<StudioToolCard | null>): StudioToolCard[] {
+  return candidates.filter((tool): tool is StudioToolCard => tool !== null)
+}
+
+function cardFromApi(
+  key: string,
+  overrides: Partial<Pick<StudioToolCard, 'title' | 'short_description' | 'long_description'>> = {},
+): StudioToolCard | null {
+  const tool = toolsByKey.value.get(key)
+
+  if (!tool) {
+    return null
+  }
+
+  return {
+    key: tool.key,
+    title: overrides.title ?? tool.title,
+    short_description: overrides.short_description ?? tool.short_description,
+    long_description: overrides.long_description ?? tool.long_description,
+    category: tool.category,
+    output_type: tool.output_type,
+    status: tool.status,
+    route: tool.route,
+    credit_cost: tool.credit_cost,
+    credit_cost_label: tool.credit_cost_label,
+    badge_label: tool.badge_label,
+    sort_order: tool.sort_order,
+    source: 'api',
+  }
+}
+
+function staticCard(tool: Omit<StudioToolCard, 'source' | 'long_description'> & { long_description?: string | null }): StudioToolCard {
+  return {
+    ...tool,
+    long_description: tool.long_description ?? null,
+    source: 'static',
+  }
+}
+
+function comingSoonCard(
+  key: string,
+  title: string,
+  outputType: ToolOutputType | null,
+  sortOrder: number,
+): StudioToolCard {
+  return staticCard({
+    key,
+    title,
+    short_description: t('tools.roadmapCards.comingSoonDescription'),
+    category: 'roadmap',
+    output_type: outputType,
+    status: 'coming_soon',
+    route: null,
+    credit_cost: 0,
+    credit_cost_label: t('tools.creditCostComingSoon'),
+    badge_label: t('common.comingSoon'),
+    sort_order: sortOrder,
+  })
+}
+
+function toolDestination(tool: StudioToolCard): RouteLocationRaw {
+  const targetPath = tool.source === 'api'
+    ? '/dashboard?tool=' + encodeURIComponent(tool.key)
+    : tool.route ?? '/tools'
 
   return auth.isAuthenticated
-    ? dashboardRoute
-    : { path: '/login', query: { redirect: '/dashboard?tool=' + tool.key } }
+    ? targetPath
+    : { path: '/login', query: { redirect: targetPath } }
+}
+
+function isActionable(tool: StudioToolCard): boolean {
+  return tool.status === 'available' && tool.route !== null
 }
 
 function outputTypeLabel(outputType: ToolOutputType | null): string | null {
   return outputType ? t('tools.outputTypes.' + outputType) : null
 }
 
-function implementationStageLabel(stage: ToolImplementationStage): string {
-  return t('tools.implementationStages.' + stage)
-}
-
-function stageClasses(stage: ToolImplementationStage): string {
-  if (stage === 'real_provider') {
-    return 'border-emerald-800 bg-emerald-950 text-emerald-300'
-  }
-
-  if (stage === 'beta') {
-    return 'border-cyan-800 bg-cyan-950 text-cyan-300'
-  }
-
-  if (stage === 'future') {
-    return 'border-violet-900 bg-violet-950 text-violet-300'
-  }
-
-  return 'border-neutral-700 bg-neutral-900 text-neutral-300'
-}
-
-function statusClasses(status: CreatorTool['status']): string {
+function statusClasses(status: StudioToolCard['status']): string {
   if (status === 'available') {
     return 'border-emerald-800 bg-emerald-950 text-emerald-300'
   }
@@ -139,13 +265,13 @@ onMounted(() => {
       <template v-else>
         <section
           v-for="section in groupedToolSections"
-          :key="section.tier"
-          :data-testid="'tool-tier-section-' + section.tier"
+          :key="section.key"
+          :data-testid="'tool-category-section-' + section.key"
           class="mt-10"
         >
           <div class="max-w-3xl">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-              {{ t('tools.serviceTier') }}
+              {{ t('tools.workflowCategory') }}
             </p>
             <h2 class="mt-1 text-2xl font-semibold">{{ section.title }}</h2>
             <p class="mt-3 text-sm leading-6 text-neutral-400">
@@ -156,40 +282,32 @@ onMounted(() => {
           <div v-if="section.tools.length" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <template v-for="tool in section.tools" :key="tool.key">
               <RouterLink
-                v-if="tool.status === 'available' && tool.route"
+                v-if="isActionable(tool)"
                 :to="toolDestination(tool)"
                 :data-testid="'tool-card-' + tool.key"
                 class="nusa-card-interactive nusa-focus-ring group block rounded-[2rem] p-5 transition"
               >
                 <div class="flex items-start justify-between gap-4">
-                  <div>
+                  <div class="min-w-0">
                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-400">
                       {{ formatLabel(tool.category) }}
                     </p>
-                    <h3 class="mt-2 text-xl font-semibold">{{ tool.title }}</h3>
+                    <h3 class="mt-2 break-words text-xl font-semibold">{{ tool.title }}</h3>
                   </div>
-                  <span
-                    class="nusa-badge shrink-0 rounded-full px-3 py-1 text-xs font-bold"
-                  >
+                  <span class="nusa-badge shrink-0 rounded-full px-3 py-1 text-xs font-bold">
                     {{ tool.badge_label ?? t('common.available') }}
                   </span>
                 </div>
 
                 <div class="mt-4 flex flex-wrap gap-2">
-                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
-                    {{ section.title }}
-                  </span>
                   <span
                     v-if="outputTypeLabel(tool.output_type)"
                     class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300"
                   >
                     {{ outputTypeLabel(tool.output_type) }}
                   </span>
-                  <span
-                    class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-                    :class="stageClasses(tool.implementation_stage)"
-                  >
-                    {{ implementationStageLabel(tool.implementation_stage) }}
+                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
+                    {{ tool.credit_cost_label ?? tool.credit_cost + ' credits' }}
                   </span>
                 </div>
 
@@ -200,14 +318,12 @@ onMounted(() => {
                   {{ tool.long_description }}
                 </p>
 
-                <div
-                  class="mt-5 flex items-center justify-between border-t border-neutral-800 pt-4"
-                >
+                <div class="mt-5 flex items-center justify-between border-t border-neutral-800 pt-4">
                   <span class="text-xs font-medium text-neutral-400">
-                    {{ tool.credit_cost_label ?? tool.credit_cost + ' credits' }}
+                    {{ tool.status === 'available' ? t('tools.ready') : formatLabel(tool.status) }}
                   </span>
                   <span class="text-sm font-semibold text-emerald-300">
-                    {{ auth.isAuthenticated ? t('tools.startWithWorkflow') : t('tools.loginToStart') }}
+                    {{ auth.isAuthenticated ? t('tools.openTool') : t('tools.loginToUse') }}
                     <span aria-hidden="true">&rarr;</span>
                   </span>
                 </div>
@@ -220,11 +336,11 @@ onMounted(() => {
                 class="nusa-card-soft rounded-[2rem] p-5 opacity-80"
               >
                 <div class="flex items-start justify-between gap-4">
-                  <div>
+                  <div class="min-w-0">
                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
                       {{ formatLabel(tool.category) }}
                     </p>
-                    <h3 class="mt-2 text-lg font-semibold text-neutral-200">{{ tool.title }}</h3>
+                    <h3 class="mt-2 break-words text-lg font-semibold text-neutral-200">{{ tool.title }}</h3>
                   </div>
                   <span
                     class="shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold"
@@ -235,20 +351,14 @@ onMounted(() => {
                 </div>
 
                 <div class="mt-4 flex flex-wrap gap-2">
-                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
-                    {{ section.title }}
-                  </span>
                   <span
                     v-if="outputTypeLabel(tool.output_type)"
                     class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300"
                   >
                     {{ outputTypeLabel(tool.output_type) }}
                   </span>
-                  <span
-                    class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-                    :class="stageClasses(tool.implementation_stage)"
-                  >
-                    {{ implementationStageLabel(tool.implementation_stage) }}
+                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
+                    {{ tool.credit_cost_label ?? t('tools.creditCostComingSoon') }}
                   </span>
                 </div>
 
@@ -256,21 +366,12 @@ onMounted(() => {
                 <p v-if="tool.status === 'maintenance'" class="mt-4 text-sm leading-6 text-amber-200">
                   {{ t('tools.maintenanceBody') }}
                 </p>
-                <p v-else-if="tool.status === 'available'" class="mt-4 text-xs text-amber-300">
-                  {{ t('tools.launchRouteMissing') }}
-                </p>
                 <p v-else class="mt-4 text-xs font-medium text-neutral-600">
-                  {{ tool.credit_cost_label ?? t('tools.creditCostComingSoon') }}
+                  {{ tool.status === 'coming_soon' ? t('tools.comingSoon') : formatLabel(tool.status) }}
                 </p>
               </article>
             </template>
           </div>
-          <p
-            v-else
-            class="mt-5 rounded-3xl border border-dashed border-neutral-800 p-6 text-sm text-neutral-500"
-          >
-            {{ t('tools.noToolsInTier') }}
-          </p>
         </section>
       </template>
     </div>

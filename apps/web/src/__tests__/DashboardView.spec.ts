@@ -126,9 +126,9 @@ describe('DashboardView', () => {
     )
     expect(text).toContain('Your project workspaces')
     expect(text.match(/Your project workspaces/g) ?? []).toHaveLength(1)
-    expect(text).toContain('Manage projects, assets and AI generations from one place.')
+    expect(text).toContain('Manage creative workspaces, shared briefs, assets and generated outputs from one place.')
     expect(text).toContain('Recent projects')
-    expect(text).toContain('Open a workspace to continue with campaigns, voiceovers, try-on and motion actions.')
+    expect(text).toContain('Open a workspace to continue with Product Content Kit, Voiceover, Video-to-Campaign Insight or Auto Video Editor.')
     expect(text).toContain('Portable key light launch')
     expect(text).toContain('Workspace')
     expect(text).toContain('2 generations')
@@ -137,7 +137,7 @@ describe('DashboardView', () => {
     expect(text).toContain('Workspace activity')
     expect(text).toContain('Analytics coming soon')
     expect(text).toContain('Recent generations')
-    expect(text).toContain('Generate Affiliate Campaign')
+    expect(text).toContain('Product Content Kit')
     expect(text).toContain('mock')
     expect(text).toContain('1 credit charged')
 
@@ -161,7 +161,7 @@ describe('DashboardView', () => {
     expect(text).toContain('Choose existing project')
     expect(text).toContain('Open workspace and run from Continue from here')
     expect(text).toContain('View workspace activity')
-    expect(text).not.toContain('Manage projects, assets and AI generations from one place.')
+    expect(text).not.toContain('Manage creative workspaces, shared briefs, assets and generated outputs from one place.')
     expect(text).not.toContain('Your project workspaces')
     expect(wrapper.findAll('a[href="/projects/new"]')).toHaveLength(1)
     expect(wrapper.find('a[href="/dashboard?tool=ai_voiceover#analytics"]').exists()).toBe(true)
@@ -170,8 +170,8 @@ describe('DashboardView', () => {
   it('shows selected video workflow intents for the new video workflows', async () => {
     const videoCampaign = await mountDashboard(populatedDashboard, '/dashboard?tool=video_to_campaign')
 
-    expect(videoCampaign.wrapper.text()).toContain('Start with Video-to-Campaign')
-    expect(videoCampaign.wrapper.text()).toContain('Choose a project workspace to continue with Video-to-Campaign.')
+    expect(videoCampaign.wrapper.text()).toContain('Start with Video-to-Campaign Insight')
+    expect(videoCampaign.wrapper.text()).toContain('Choose a project workspace to continue with Video-to-Campaign Insight.')
     expect(videoCampaign.wrapper.find('a[href="/dashboard?tool=video_to_campaign#analytics"]').exists()).toBe(true)
 
     const autoEditor = await mountDashboard(populatedDashboard, '/dashboard?tool=auto_video_editor')

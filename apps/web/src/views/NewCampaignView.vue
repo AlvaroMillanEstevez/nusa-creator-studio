@@ -40,7 +40,7 @@ function validateForm(): boolean {
   }
 
   if (!form.target_audience.trim()) {
-    errors.target_audience = 'Describe who should see this campaign.'
+    errors.target_audience = 'Describe who should see this content.'
   }
 
   fieldErrors.value = errors
@@ -71,7 +71,7 @@ async function submitCampaign(): Promise<void> {
     submitError.value =
       error instanceof ApiError
         ? error.message
-        : 'We could not create the campaign. Check the API connection and try again.'
+        : 'We could not create the Product Content Kit. Check the API connection and try again.'
   } finally {
     isSubmitting.value = false
   }
@@ -84,12 +84,12 @@ async function submitCampaign(): Promise<void> {
       <AppNav />
 
       <section class="max-w-2xl">
-        <p class="text-sm font-medium text-emerald-400">TikTok affiliate campaign</p>
+        <p class="text-sm font-medium text-emerald-400">Product Content Kit</p>
         <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">
-          Turn one product into your next campaign.
+          Turn one product into a reusable content kit.
         </h1>
         <p class="mt-4 text-sm leading-6 text-neutral-400">
-          Give us the product context now. Script and video generation will arrive in the next step.
+          Add product context now, then generate hooks, script, captions, hashtags and CTA from the project workspace.
         </p>
       </section>
 
@@ -228,7 +228,7 @@ async function submitCampaign(): Promise<void> {
             class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950"
             aria-hidden="true"
           />
-          {{ isSubmitting ? 'Creating campaign...' : 'Create campaign' }}
+          {{ isSubmitting ? 'Creating content kit...' : 'Create content kit' }}
         </button>
       </form>
     </div>

@@ -209,6 +209,7 @@ async function mountToolsView(
       { path: '/', component: placeholder },
       { path: '/tools', component: ToolsView },
       { path: '/dashboard', component: placeholder },
+      { path: '/media', component: placeholder },
       { path: '/pricing', component: placeholder },
       { path: '/account', component: placeholder },
       { path: '/login', component: placeholder },
@@ -246,7 +247,7 @@ describe('ToolsView', () => {
     vi.unstubAllGlobals()
   })
 
-  it('loads tools from the API and links available tools', async () => {
+  it('loads tools from the API and presents category sections instead of service tiers', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -258,20 +259,27 @@ describe('ToolsView', () => {
     const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
 
     expect(wrapper.text()).toContain('What do you want to create today?')
+    expect(wrapper.text()).toContain('Campaign & Content')
+    expect(wrapper.text()).toContain('Voice')
+    expect(wrapper.text()).toContain('Video')
+    expect(wrapper.text()).toContain('Assets')
+    expect(wrapper.text()).toContain('Coming Soon / Roadmap')
+    expect(wrapper.find('[data-testid="tool-tier-section-basic"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Service tier')
     expect(card.element.tagName).toBe('A')
     expect(card.attributes('href')).toBe('/dashboard?tool=affiliate_campaign')
-    expect(card.text()).toContain('Affiliate Campaign Generator')
-    expect(card.text()).toContain('Basic')
+    expect(card.text()).toContain('Product Content Kit')
+    expect(card.text()).not.toContain('Affiliate Campaign Generator')
     expect(card.text()).toContain('Script pack')
-    expect(card.text()).toContain('Mock')
-    expect(card.text()).toContain('Start with this workflow')
+    expect(card.text()).not.toContain('Mock')
+    expect(card.text()).toContain('Open tool')
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/tools',
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
   })
 
-  it('groups tools by Basic, Advanced and Premium service tiers', async () => {
+  it('groups active beta tools, media library and roadmap cards into product categories', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -280,23 +288,28 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
-    const basicSection = wrapper.get('[data-testid="tool-tier-section-basic"]')
-    const advancedSection = wrapper.get('[data-testid="tool-tier-section-advanced"]')
-    const premiumSection = wrapper.get('[data-testid="tool-tier-section-premium"]')
+    const campaignSection = wrapper.get('[data-testid="tool-category-section-campaign_content"]')
+    const voiceSection = wrapper.get('[data-testid="tool-category-section-voice"]')
+    const videoSection = wrapper.get('[data-testid="tool-category-section-video"]')
+    const assetsSection = wrapper.get('[data-testid="tool-category-section-assets"]')
+    const roadmapSection = wrapper.get('[data-testid="tool-category-section-roadmap"]')
 
-    expect(basicSection.text()).toContain('Basic')
-    expect(basicSection.text()).toContain('Affiliate Campaign Generator')
-    expect(advancedSection.text()).toContain('Advanced')
-    expect(advancedSection.text()).toContain('AI Voiceover')
-    expect(advancedSection.text()).toContain('Video-to-Campaign')
-    expect(premiumSection.text()).toContain('Premium')
-    expect(premiumSection.text()).toContain('Auto Video Editor')
-    expect(premiumSection.text()).toContain('Fashion Try-On')
-    expect(premiumSection.text()).toContain('AI Avatar Presenter')
-    expect(premiumSection.text()).toContain('Future')
+    expect(campaignSection.text()).toContain('Product Content Kit')
+    expect(campaignSection.text()).toContain('Video-to-Campaign Insight')
+    expect(campaignSection.text()).toContain('Hook Generator')
+    expect(campaignSection.text()).toContain('Caption & Hashtag Pack')
+    expect(campaignSection.text()).toContain('Script Variations')
+    expect(voiceSection.text()).toContain('AI Voiceover')
+    expect(videoSection.text()).toContain('Auto Video Editor')
+    expect(assetsSection.text()).toContain('Media Library')
+    expect(roadmapSection.text()).toContain('Fashion Studio')
+    expect(roadmapSection.text()).toContain('Product Photo Studio')
+    expect(roadmapSection.text()).toContain('AI Avatar Presenter')
+    expect(roadmapSection.text()).toContain('Motion AI Video')
+    expect(wrapper.find('[data-testid="tool-card-video_enhancer"]').exists()).toBe(false)
   })
 
-  it('links new video workflows to dashboard workflow intents for authenticated users', async () => {
+  it('links active tools and media library for authenticated users', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -305,34 +318,15 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
-    const videoCampaignCard = wrapper.get('[data-testid="tool-card-video_to_campaign"]')
-    const autoEditorCard = wrapper.get('[data-testid="tool-card-auto_video_editor"]')
 
-    expect(videoCampaignCard.element.tagName).toBe('A')
-    expect(videoCampaignCard.attributes('href')).toBe('/dashboard?tool=video_to_campaign')
-    expect(videoCampaignCard.text()).toContain('Video-to-Campaign')
-    expect(autoEditorCard.element.tagName).toBe('A')
-    expect(autoEditorCard.attributes('href')).toBe('/dashboard?tool=auto_video_editor')
-    expect(autoEditorCard.text()).toContain('Auto Video Editor')
+    expect(wrapper.get('[data-testid="tool-card-video_to_campaign"]').attributes('href')).toBe('/dashboard?tool=video_to_campaign')
+    expect(wrapper.get('[data-testid="tool-card-video_to_campaign"]').text()).toContain('Video-to-Campaign Insight')
+    expect(wrapper.get('[data-testid="tool-card-auto_video_editor"]').attributes('href')).toBe('/dashboard?tool=auto_video_editor')
+    expect(wrapper.get('[data-testid="tool-card-ai_voiceover"]').attributes('href')).toBe('/dashboard?tool=ai_voiceover')
+    expect(wrapper.get('[data-testid="tool-card-media_library"]').attributes('href')).toBe('/media')
   })
 
-  it('links available AI Voiceover to the dashboard workflow intent for authenticated users', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    const wrapper = await mountToolsView(fetchMock)
-    const card = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
-
-    expect(card.element.tagName).toBe('A')
-    expect(card.attributes('href')).toBe('/dashboard?tool=ai_voiceover')
-    expect(card.text()).toContain('AI Voiceover')
-    expect(card.text()).toContain('Start with this workflow')
-  })
-  it('sends guests through login with the intended tool route', async () => {
+  it('sends guests through login with the intended destination', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -341,22 +335,13 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock, null)
-    const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
-    const voiceoverCard = wrapper.get('[data-testid="tool-card-ai_voiceover"]')
-    const videoCampaignCard = wrapper.get('[data-testid="tool-card-video_to_campaign"]')
-    const autoEditorCard = wrapper.get('[data-testid="tool-card-auto_video_editor"]')
 
-    expect(card.attributes('href')).toBe('/login?redirect=/dashboard?tool=affiliate_campaign')
-    expect(card.text()).toContain('Log in to start')
-    expect(voiceoverCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=ai_voiceover')
-    expect(voiceoverCard.text()).toContain('Log in to start')
-    expect(videoCampaignCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=video_to_campaign')
-    expect(videoCampaignCard.text()).toContain('Log in to start')
-    expect(autoEditorCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=auto_video_editor')
-    expect(autoEditorCard.text()).toContain('Log in to start')
+    expect(wrapper.get('[data-testid="tool-card-affiliate_campaign"]').attributes('href')).toBe('/login?redirect=/dashboard?tool=affiliate_campaign')
+    expect(wrapper.get('[data-testid="tool-card-affiliate_campaign"]').text()).toContain('Log in to use')
+    expect(wrapper.get('[data-testid="tool-card-media_library"]').attributes('href')).toBe('/login?redirect=/media')
   })
 
-  it('keeps coming-soon and maintenance tools non-clickable and hides disabled tools', async () => {
+  it('keeps roadmap tools non-clickable and hides disabled tools', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -365,25 +350,15 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
-    const comingSoon = wrapper.get('[data-testid="tool-card-future_tool"]')
+    const hookGenerator = wrapper.get('[data-testid="tool-card-hook_generator"]')
     const fashion = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
     const motion = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
-    const maintenance = wrapper.get('[data-testid="tool-card-video_enhancer"]')
 
-    expect(comingSoon.element.tagName).toBe('ARTICLE')
-    expect(comingSoon.attributes('aria-disabled')).toBe('true')
-    expect(comingSoon.find('a').exists()).toBe(false)
+    expect(hookGenerator.element.tagName).toBe('ARTICLE')
+    expect(hookGenerator.attributes('aria-disabled')).toBe('true')
     expect(fashion.element.tagName).toBe('ARTICLE')
-    expect(fashion.text()).toContain('Preview workflow')
     expect(fashion.find('a').exists()).toBe(false)
     expect(motion.element.tagName).toBe('ARTICLE')
-    expect(motion.text()).toContain('Preview workflow')
-    expect(motion.find('a').exists()).toBe(false)
-    expect(maintenance.element.tagName).toBe('ARTICLE')
-    expect(maintenance.find('a').exists()).toBe(false)
-    expect(maintenance.text()).toContain(
-      'Temporarily unavailable while improvements are being made.',
-    )
     expect(wrapper.find('[data-testid="tool-card-hidden_tool"]').exists()).toBe(false)
   })
 

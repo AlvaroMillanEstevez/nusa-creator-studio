@@ -3,7 +3,8 @@ import { RouterLink } from 'vue-router'
 
 import { useTranslations } from '@/i18n'
 import type { CreatorGeneration, GenerationStatus } from '@/types/project'
-import { formatDate, formatLabel } from '@/utils/formatters'
+import { formatDate } from '@/utils/formatters'
+import { generationJobTypeLabel } from '@/utils/generations'
 
 const props = withDefaults(defineProps<{
   generations: CreatorGeneration[]
@@ -123,7 +124,7 @@ function resultRoute(item: CreatorGeneration): string {
             </span>
           </div>
           <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
-            <span>{{ formatLabel(item.job_type) }}</span>
+            <span>{{ generationJobTypeLabel(item.job_type) }}</span>
             <span aria-hidden="true">&bull;</span>
             <span>{{ item.provider ?? 'Unknown provider' }}</span>
             <span aria-hidden="true">&bull;</span>
@@ -171,7 +172,7 @@ function resultRoute(item: CreatorGeneration): string {
             </span>
           </div>
           <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
-            <span>{{ formatLabel(item.job_type) }}</span>
+            <span>{{ generationJobTypeLabel(item.job_type) }}</span>
             <span aria-hidden="true">&bull;</span>
             <span>{{ item.provider ?? 'Unknown provider' }}</span>
             <span aria-hidden="true">&bull;</span>

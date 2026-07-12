@@ -8,6 +8,7 @@ import { ApiError } from '@/services/api'
 import { getDashboardSummary } from '@/services/dashboard'
 import type { DashboardSummary } from '@/types/dashboard'
 import { formatDate, formatLabel } from '@/utils/formatters'
+import { generationJobTypeLabel } from '@/utils/generations'
 
 const route = useRoute()
 const dashboard = ref<DashboardSummary | null>(null)
@@ -15,9 +16,9 @@ const isLoading = ref(true)
 const loadError = ref('')
 
 const toolIntentLabels: Record<string, string> = {
-  affiliate_campaign: 'Affiliate Campaign Generator',
+  affiliate_campaign: 'Product Content Kit',
   video_enhancer: 'Video Enhancer / Caption Pack',
-  video_to_campaign: 'Video-to-Campaign',
+  video_to_campaign: 'Video-to-Campaign Insight',
   product_to_video: 'Product-to-Video Script Pack',
   ai_voiceover: 'AI Voiceover',
   fashion_try_on: 'Fashion Try-On',
@@ -298,7 +299,7 @@ onMounted(loadDashboard)
                     {{ generation.project_title ?? t('dashboard.projectUnavailable') }}
                   </p>
                   <p class="mt-1 text-xs text-neutral-500">
-                    {{ formatLabel(generation.job_type) }}
+                    {{ generationJobTypeLabel(generation.job_type) }}
                   </p>
                 </div>
                 <span

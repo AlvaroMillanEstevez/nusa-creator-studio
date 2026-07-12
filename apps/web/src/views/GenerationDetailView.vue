@@ -21,6 +21,7 @@ import {
   isCampaignGenerationResult,
 } from '@/types/project'
 import { formatDate, formatLabel } from '@/utils/formatters'
+import { generationJobTypeLabel } from '@/utils/generations'
 
 const route = useRoute()
 const project = ref<CreatorProject | null>(null)
@@ -76,7 +77,7 @@ const resultTitle = computed(() => {
     return t('projectActions.campaignResult')
   }
 
-  return generation.value ? formatLabel(generation.value.job_type) : t('metadata.titles.generationResult')
+  return generation.value ? generationJobTypeLabel(generation.value.job_type) : t('metadata.titles.generationResult')
 })
 
 function isTerminalGeneration(status: CreatorGeneration['status']): boolean {
@@ -256,7 +257,7 @@ onBeforeUnmount(stopPolling)
           <p class="mt-5 text-sm font-medium text-emerald-400">{{ project.title }}</p>
           <h1 class="mt-2 text-3xl font-bold leading-tight sm:text-4xl">{{ resultTitle }}</h1>
           <p class="mt-3 text-sm text-neutral-500">
-            {{ t('metadata.titles.generationResult') }} #{{ generation.id }} · {{ formatLabel(generation.job_type) }}
+            {{ t('metadata.titles.generationResult') }} #{{ generation.id }} · {{ generationJobTypeLabel(generation.job_type) }}
           </p>
         </section>
 

@@ -240,6 +240,10 @@ describe('VoiceoverActionView', () => {
     expect(wrapper.get<HTMLSelectElement>('[data-testid="voiceover-language-select"]').element.disabled).toBe(true)
     expect(wrapper.get<HTMLSelectElement>('[data-testid="voiceover-language-select"]').element.value).toBe('spanish')
     expect(wrapper.get('[data-testid="voiceover-language-helper"]').text()).toBe('Voiceover language follows the selected campaign script.')
+    expect(wrapper.text()).toContain('Cost and access')
+    expect(wrapper.text()).toContain('Included')
+    expect(wrapper.text()).toContain('1 credit')
+    expect(wrapper.text()).not.toContain('Advanced workflow')
     expect(wrapper.find('a[href="/projects/42/generations/9"]').text()).toContain('Back to campaign result')
   })
 

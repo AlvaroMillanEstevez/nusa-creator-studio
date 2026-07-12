@@ -13,13 +13,20 @@ const payload = computed(() => props.project.input_payload)
 const settings = computed(() => props.project.settings)
 
 const briefItems = computed(() => [
-  { label: t('projectWorkspace.contentIdea'), value: payload.value?.content_idea },
   { label: t('projectWorkspace.productName'), value: payload.value?.product_name },
+  { label: t('projectWorkspace.productCategory'), value: payload.value?.product_category },
   { label: t('projectWorkspace.projectContext'), value: payload.value?.product_description },
   { label: t('projectWorkspace.targetAudience'), value: payload.value?.target_audience },
-  { label: t('projectWorkspace.language'), value: payload.value?.language ? formatLabel(payload.value.language) : null },
-  { label: t('projectWorkspace.tone'), value: payload.value?.tone ? formatLabel(payload.value.tone) : null },
   { label: t('projectWorkspace.platform'), value: settings.value?.platform ? formatLabel(settings.value.platform) : null },
+  { label: t('projectWorkspace.language'), value: payload.value?.language ? formatLabel(payload.value.language) : null },
+  { label: t('projectWorkspace.mainGoal'), value: payload.value?.main_goal ? formatLabel(payload.value.main_goal) : null },
+  { label: t('projectWorkspace.tone'), value: payload.value?.tone ? formatLabel(payload.value.tone) : null },
+  { label: t('projectWorkspace.contentIdea'), value: payload.value?.content_idea },
+  { label: t('projectWorkspace.keySellingPoints'), value: payload.value?.key_selling_points },
+  { label: t('projectWorkspace.claimsToAvoid'), value: payload.value?.claims_to_avoid },
+  { label: t('projectWorkspace.brandNotes'), value: payload.value?.brand_notes },
+  { label: t('projectWorkspace.ctaPreference'), value: payload.value?.cta_preference },
+  { label: t('projectWorkspace.competitorNotes'), value: payload.value?.competitor_notes },
   { label: t('projectWorkspace.notes'), value: payload.value?.notes },
 ].filter((item) => typeof item.value === 'string' && item.value.trim() !== ''))
 </script>

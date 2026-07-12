@@ -197,22 +197,16 @@ const costLabel = computed(() => {
     ? t('projectActions.oneCredit')
     : t('projectActions.manyCredits', { credits: action.credit_cost })
 })
-const serviceTierLabel = computed(() => {
-  const tier = voiceoverAction.value?.service_tier
-
-  if (tier === 'premium') {
-    return t('projectActions.premiumWorkflow')
+const availabilityLabel = computed(() => {
+  if (isUpgradeAction.value) {
+    return t('projectActions.upgradeRequired')
   }
 
-  if (tier === 'advanced') {
-    return t('projectActions.advancedWorkflow')
+  if (hasInternalOrUnlimitedAccess.value) {
+    return t('projectActions.internalAccess')
   }
 
-  if (tier === 'basic') {
-    return t('projectActions.basicWorkflow')
-  }
-
-  return tier ?? t('tools.serviceTier')
+  return voiceoverAction.value?.access_label ?? t('projectActions.status.available')
 })
 const generatedOutput = computed(() =>
   generatedGeneration.value === null ? null : generationOutput(generatedGeneration.value),
@@ -763,7 +757,7 @@ onBeforeUnmount(stopVoiceoverPolling)
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
                   {{ t('voiceoverAction.costAndAccess') }}
                 </p>
-                <p class="mt-3 text-sm font-semibold text-neutral-100">{{ serviceTierLabel }}</p>
+                <p class="mt-3 text-sm font-semibold text-neutral-100">{{ availabilityLabel }}</p>
                 <p class="mt-2 text-sm text-emerald-300">{{ costLabel }}</p>
                 <p v-if="isUpgradeAction" class="mt-3 text-xs leading-5 text-amber-200">
                   {{ voiceoverAction?.locked_reason ?? t('projectActions.upgradeRequired') }}

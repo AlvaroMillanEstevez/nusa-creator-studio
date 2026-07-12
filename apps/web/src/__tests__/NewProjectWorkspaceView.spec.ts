@@ -62,8 +62,14 @@ describe('NewProjectWorkspaceView', () => {
     await wrapper.get('#project-title').setValue('Creator desk launch')
     await wrapper.get('#content-idea').setValue('Compact creator desk lighting kit')
     await wrapper.get('#product-name').setValue('Creator desk light')
+    await wrapper.get('#product-category').setValue('Creator lighting')
+    await wrapper.get('#key-selling-points').setValue('Compact, soft light, easy setup')
     await wrapper.get('#project-context').setValue('A compact desk light for mobile-first creators.')
     await wrapper.get('#target-audience').setValue('TikTok affiliate creators')
+    await wrapper.get('#cta-preference').setValue('Check product details')
+    await wrapper.get('#claims-to-avoid').setValue('Do not promise professional studio results.')
+    await wrapper.get('#brand-notes').setValue('Premium but practical.')
+    await wrapper.get('#competitor-notes').setValue('Avoid direct competitor callouts.')
     await wrapper.get('#project-notes').setValue('Keep claims practical.')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -78,12 +84,19 @@ describe('NewProjectWorkspaceView', () => {
           status: 'draft',
           input_payload: {
             product_name: 'Creator desk light',
+            product_category: 'Creator lighting',
             content_idea: 'Compact creator desk lighting kit',
             product_description: 'A compact desk light for mobile-first creators.',
             target_audience: 'TikTok affiliate creators',
             language: 'english',
             tone: 'natural',
             platform: 'tiktok',
+            main_goal: 'affiliate_content',
+            key_selling_points: 'Compact, soft light, easy setup',
+            claims_to_avoid: 'Do not promise professional studio results.',
+            brand_notes: 'Premium but practical.',
+            cta_preference: 'Check product details',
+            competitor_notes: 'Avoid direct competitor callouts.',
             notes: 'Keep claims practical.',
           },
           settings: {
@@ -104,7 +117,8 @@ describe('NewProjectWorkspaceView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Add a project name.')
-    expect(wrapper.text()).toContain('Add a product or content idea.')
+    expect(wrapper.text()).toContain('Add a product or service name.')
+    expect(wrapper.text()).toContain('Add a product category.')
     expect(wrapper.text()).toContain('Add project context so actions have enough brief detail.')
     expect(wrapper.text()).toContain('Describe the target audience.')
     expect(fetchMock).not.toHaveBeenCalled()

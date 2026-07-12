@@ -141,6 +141,10 @@ class MediaAssetController extends Controller
             $query->where('usage_role', $validated['usage_role']);
         }
 
+        if (isset($validated['origin'])) {
+            $this->applyOriginFilter($query, $validated['origin']);
+        }
+
         if (isset($validated['search'])) {
             $search = trim((string) $validated['search']);
 
@@ -148,6 +152,44 @@ class MediaAssetController extends Controller
                 $query->whereRaw('LOWER(original_name) LIKE ?', ['%'.mb_strtolower($search).'%']);
             }
         }
+    }
+
+    /**
+     * @param  HasMany<MediaAsset, mixed>  $query
+     */
+    private function applyOriginFilter(HasMany $query, string $origin): void
+    {
+        if ($origin === 'generated') {
+            $query->where(function ($generatedQuery): void {
+                $generatedQuery
+                    ->whereIn('usage_role', ['voiceover_audio', 'edited_video_result'])
+                    ->orWhere('path', 'like', '%/generated/%')
+                    ->orWhere('metadata->generated', true)
+                    ->orWhereNotNull('metadata->generation_id')
+                    ->orWhereNotNull('metadata->provider')
+                    ->orWhereNotNull('metadata->render_provider');
+            });
+
+            return;
+        }
+
+        $query->where(function ($uploadedQuery): void {
+            $uploadedQuery
+                ->where(function ($roleQuery): void {
+                    $roleQuery
+                        ->whereNull('usage_role')
+                        ->orWhereNotIn('usage_role', ['voiceover_audio', 'edited_video_result']);
+                })
+                ->where('path', 'not like', '%/generated/%')
+                ->where(function ($metadataQuery): void {
+                    $metadataQuery
+                        ->whereNull('metadata->generated')
+                        ->orWhere('metadata->generated', false);
+                })
+                ->whereNull('metadata->generation_id')
+                ->whereNull('metadata->provider')
+                ->whereNull('metadata->render_provider');
+        });
     }
 
     private function sizeLabel(int $sizeBytes): string

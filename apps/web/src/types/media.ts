@@ -1,4 +1,5 @@
 export type MediaAssetType = 'image' | 'video' | 'audio' | 'document' | 'other'
+export type MediaAssetOrigin = 'uploaded' | 'generated'
 export type MediaAssetUsageRole =
   | 'general'
   | 'product_image'
@@ -26,6 +27,8 @@ export interface MediaAsset {
   project_id: number | null
   type: MediaAssetType
   usage_role: MediaAssetUsageRole | null
+  origin?: MediaAssetOrigin
+  origin_label?: string | null
   disk: string
   storage_identifier: string
   stream_url?: string | null
@@ -38,7 +41,11 @@ export interface MediaAsset {
     detected_extension?: string
     uploaded_extension?: string
     validation_source?: 'server'
+    generated?: boolean
+    generation_id?: number
+    provider?: string
   } | null
+  project_label?: string | null
   project?: MediaAssetProjectSummary | null
   created_at: string | null
   updated_at: string | null
@@ -69,6 +76,7 @@ export interface MediaAssetFilters {
   project_id?: number | string
   type?: MediaAssetType
   usage_role?: MediaAssetUsageRole
+  origin?: MediaAssetOrigin
   page?: number
   per_page?: number
 }

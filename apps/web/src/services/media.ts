@@ -55,6 +55,10 @@ export function listMediaAssets(filters: MediaAssetFilters = {}): Promise<MediaA
     search.set('usage_role', filters.usage_role)
   }
 
+  if (filters.origin) {
+    search.set('origin', filters.origin)
+  }
+
   if (filters.page !== undefined) {
     search.set('page', String(filters.page))
   }

@@ -107,11 +107,11 @@ class VideoToCampaignGenerationService
             'product_category' => $this->stringOption($options, 'product_category') ?? $this->stringOption($projectInput, 'product_category'),
             'target_audience' => $this->stringOption($options, 'target_audience') ?? $this->stringOption($projectInput, 'target_audience') ?? 'social commerce viewers',
             'campaign_context' => $this->stringOption($options, 'campaign_context') ?? $this->stringOption($projectInput, 'content_idea'),
-            'selling_angle' => $this->stringOption($options, 'selling_angle') ?? $this->stringOption($projectInput, 'selling_angle'),
+            'selling_angle' => $this->stringOption($options, 'selling_angle') ?? $this->stringOption($projectInput, 'selling_angle') ?? $this->stringOption($projectInput, 'main_goal'),
             'language' => $this->stringOption($options, 'language') ?? $this->stringOption($projectInput, 'language') ?? 'english',
             'tone' => $this->stringOption($options, 'tone') ?? $this->stringOption($projectInput, 'tone') ?? 'natural',
             'platform' => $this->stringOption($options, 'platform') ?? $this->stringOption($settings, 'platform') ?? 'tiktok',
-            'notes' => $this->stringOption($options, 'notes'),
+            'notes' => $this->stringOption($options, 'notes') ?? $this->stringOption($projectInput, 'notes'),
         ]);
     }
 

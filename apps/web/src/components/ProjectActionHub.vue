@@ -80,17 +80,11 @@ const voiceoverForm = ref<VoiceoverFormState>({
 const projectActionKeys: ProjectActionKey[] = [
   'generate_campaign',
   'generate_video_to_campaign',
-  'generate_auto_video_edit',
-  'start_fashion_try_on',
-  'start_motion_video',
-]
-const resultActionKeys: ProjectActionKey[] = [
   'generate_voiceover_from_script',
   'generate_voiceover_from_campaign',
-  'create_video_ad',
-  'start_video_ad',
-  'avatar_presenter',
+  'generate_auto_video_edit',
 ]
+const resultActionKeys: ProjectActionKey[] = []
 
 
 const campaignGenerationForView = computed(() => {
@@ -142,10 +136,10 @@ const voiceoverResultRoute = computed(() => {
     : `/projects/${String(props.projectId)}/generations/${String(generation.id)}`
 })
 const projectActions = computed(() =>
-  actions.value.filter((action) => projectActionKeys.includes(action.key)),
+  actions.value.filter((action) => projectActionKeys.includes(action.key) && !isComingSoon(action)),
 )
 const resultActions = computed(() =>
-  actions.value.filter((action) => resultActionKeys.includes(action.key)),
+  actions.value.filter((action) => resultActionKeys.includes(action.key) && !isComingSoon(action)),
 )
 const actionSections = computed(() => [
   {
@@ -375,34 +369,6 @@ function isUpgradeAction(action: ProjectAction): boolean {
 
 function isUnavailableAction(action: ProjectAction): boolean {
   return action.status === 'unavailable' && !isUpgradeAction(action)
-}
-
-function serviceTierLabel(action: ProjectAction): string {
-  if (action.service_tier === 'basic') {
-    return t('projectActions.basicWorkflow')
-  }
-
-  if (action.service_tier === 'advanced') {
-    return t('projectActions.advancedWorkflow')
-  }
-
-  if (action.service_tier === 'premium') {
-    return t('projectActions.premiumWorkflow')
-  }
-
-  return action.service_tier ?? t('tools.serviceTier')
-}
-
-function serviceTierClasses(action: ProjectAction): string {
-  if (action.service_tier === 'premium') {
-    return 'border-violet-800 bg-violet-950/70 text-violet-200'
-  }
-
-  if (action.service_tier === 'advanced') {
-    return 'border-cyan-800 bg-cyan-950/70 text-cyan-200'
-  }
-
-  return 'border-emerald-800 bg-emerald-950/70 text-emerald-200'
 }
 
 function creditCostBadge(action: ProjectAction): string {
@@ -822,12 +788,7 @@ watch(
                 </div>
 
                 <div class="flex flex-wrap gap-2">
-                  <span
-                    class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-                    :class="serviceTierClasses(action)"
-                  >
-                    {{ serviceTierLabel(action) }}
-                  </span>
+
                   <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
                     {{ creditCostBadge(action) }}
                   </span>
@@ -903,12 +864,7 @@ watch(
               {{ launcherTitle(activeAction) }}
             </h3>
             <div class="mt-3 flex flex-wrap gap-2">
-              <span
-                class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-                :class="serviceTierClasses(activeAction)"
-              >
-                {{ serviceTierLabel(activeAction) }}
-              </span>
+
               <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
                 {{ creditCostBadge(activeAction) }}
               </span>
