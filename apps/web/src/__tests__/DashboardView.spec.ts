@@ -126,9 +126,13 @@ describe('DashboardView', () => {
     )
     expect(text).toContain('Your project workspaces')
     expect(text.match(/Your project workspaces/g) ?? []).toHaveLength(1)
-    expect(text).toContain('Manage creative workspaces, shared briefs, assets and generated outputs from one place.')
+    expect(text).toContain('Start with a product workspace, then generate campaign content, organic videos, paid ads or AI motion videos from the same brief and assets.')
     expect(text).toContain('Recent projects')
-    expect(text).toContain('Open a workspace to continue with Product Content Kit, Voiceover, Video-to-Campaign Insight or Auto Video Editor.')
+    expect(text).toContain('Open a workspace to continue with Product Content Kit, Auto Video Editor, Auto Video Ads or Motion AI Video.')
+    expect(wrapper.get('[data-testid="dashboard-beta-workflows"]').text()).toContain('Product Content Kit')
+    expect(wrapper.get('[data-testid="dashboard-beta-workflows"]').text()).toContain('Auto Video Editor')
+    expect(wrapper.get('[data-testid="dashboard-beta-workflows"]').text()).toContain('Auto Video Ads')
+    expect(wrapper.get('[data-testid="dashboard-beta-workflows"]').text()).toContain('Motion AI Video')
     expect(text).toContain('Portable key light launch')
     expect(text).toContain('Workspace')
     expect(text).toContain('2 generations')
@@ -161,24 +165,35 @@ describe('DashboardView', () => {
     expect(text).toContain('Choose existing project')
     expect(text).toContain('Open workspace and run from Continue from here')
     expect(text).toContain('View workspace activity')
-    expect(text).not.toContain('Manage creative workspaces, shared briefs, assets and generated outputs from one place.')
+    expect(text).not.toContain('Start with a product workspace, then generate campaign content, organic videos, paid ads or AI motion videos from the same brief and assets.')
     expect(text).not.toContain('Your project workspaces')
     expect(wrapper.findAll('a[href="/projects/new"]')).toHaveLength(1)
     expect(wrapper.find('a[href="/dashboard?tool=ai_voiceover#analytics"]').exists()).toBe(true)
   })
 
-  it('shows selected video workflow intents for the new video workflows', async () => {
-    const videoCampaign = await mountDashboard(populatedDashboard, '/dashboard?tool=video_to_campaign')
+  it('shows selected workflow intents for beta workflow keys and legacy video analysis links', async () => {
+    const productKit = await mountDashboard(populatedDashboard, '/dashboard?tool=product_content_kit')
 
-    expect(videoCampaign.wrapper.text()).toContain('Start with Video-to-Campaign Insight')
-    expect(videoCampaign.wrapper.text()).toContain('Choose a project workspace to continue with Video-to-Campaign Insight.')
-    expect(videoCampaign.wrapper.find('a[href="/dashboard?tool=video_to_campaign#analytics"]').exists()).toBe(true)
+    expect(productKit.wrapper.text()).toContain('Start with Product Content Kit')
+    expect(productKit.wrapper.text()).toContain('Choose a project workspace to continue with Product Content Kit.')
+    expect(productKit.wrapper.find('a[href="/dashboard?tool=product_content_kit#analytics"]').exists()).toBe(true)
+
+    const videoAnalysis = await mountDashboard(populatedDashboard, '/dashboard?tool=video_to_campaign')
+
+    expect(videoAnalysis.wrapper.text()).toContain('Start with Product Content Kit · Video analysis')
+    expect(videoAnalysis.wrapper.text()).toContain('Choose a project workspace to continue with Product Content Kit · Video analysis.')
+    expect(videoAnalysis.wrapper.find('a[href="/dashboard?tool=video_to_campaign#analytics"]').exists()).toBe(true)
 
     const autoEditor = await mountDashboard(populatedDashboard, '/dashboard?tool=auto_video_editor')
 
     expect(autoEditor.wrapper.text()).toContain('Start with Auto Video Editor')
     expect(autoEditor.wrapper.text()).toContain('Choose a project workspace to continue with Auto Video Editor.')
     expect(autoEditor.wrapper.find('a[href="/dashboard?tool=auto_video_editor#analytics"]').exists()).toBe(true)
+
+    const autoVideoAds = await mountDashboard(populatedDashboard, '/dashboard?tool=auto_video_ads')
+
+    expect(autoVideoAds.wrapper.text()).toContain('Start with Auto Video Ads')
+    expect(autoVideoAds.wrapper.text()).toContain('Choose a project workspace to continue with Auto Video Ads.')
   })
 
   it('shows a create-first-project state when no workspaces exist', async () => {

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import { betaWorkflows } from '@/config/workflows'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getDashboardSummary } from '@/services/dashboard'
@@ -16,9 +17,11 @@ const isLoading = ref(true)
 const loadError = ref('')
 
 const toolIntentLabels: Record<string, string> = {
+  product_content_kit: 'Product Content Kit',
+  auto_video_ads: 'Auto Video Ads',
   affiliate_campaign: 'Product Content Kit',
   video_enhancer: 'Video Enhancer / Caption Pack',
-  video_to_campaign: 'Video-to-Campaign Insight',
+  video_to_campaign: 'Product Content Kit · Video analysis',
   product_to_video: 'Product-to-Video Script Pack',
   ai_voiceover: 'AI Voiceover',
   fashion_try_on: 'Fashion Try-On',
@@ -38,6 +41,15 @@ const toolIntent = computed(() => {
     label: toolIntentLabels[value],
   }
 })
+
+const dashboardWorkflowCards = computed(() =>
+  betaWorkflows.map((workflow) => ({
+    key: workflow.key,
+    title: t('workflows.' + workflow.key + '.title'),
+    description: t('workflows.' + workflow.key + '.shortDescription'),
+    status: workflow.status === 'available' ? t('common.available') : t('workflows.plannedClosedBeta'),
+  })),
+)
 
 const statCards = computed(() => {
   const stats = dashboard.value?.stats
@@ -179,6 +191,43 @@ onMounted(loadDashboard)
                 {{ t('dashboard.viewWorkspaceActivity') }}
               </RouterLink>
             </div>
+          </div>
+        </section>
+
+        <section class="mt-9" data-testid="dashboard-beta-workflows">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+                {{ t('workflows.mainWorkflows') }}
+              </p>
+              <h2 class="mt-2 text-xl font-semibold">{{ t('workflows.toolsTitle') }}</h2>
+              <p class="mt-2 max-w-2xl text-sm leading-6 text-neutral-500">
+                {{ t('dashboard.betaWorkflowBody') }}
+              </p>
+            </div>
+            <RouterLink
+              to="/tools"
+              class="nusa-focus-ring inline-flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800"
+            >
+              {{ t('dashboard.browseTools') }}
+            </RouterLink>
+          </div>
+
+          <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <article
+              v-for="workflow in dashboardWorkflowCards"
+              :key="workflow.key"
+              class="nusa-card-soft rounded-2xl p-4"
+              :data-testid="'dashboard-workflow-' + workflow.key"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <h3 class="text-sm font-semibold text-neutral-100">{{ workflow.title }}</h3>
+                <span class="shrink-0 rounded-full border border-neutral-700 bg-neutral-900 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+                  {{ workflow.status }}
+                </span>
+              </div>
+              <p class="mt-3 text-xs leading-5 text-neutral-500">{{ workflow.description }}</p>
+            </article>
           </div>
         </section>
 

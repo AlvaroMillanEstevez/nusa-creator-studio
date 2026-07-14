@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { betaWorkflows } from '@/config/workflows'
 import { useTranslations } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { generateAiVoiceover, generateCampaignProject, getProjectActions } from '@/services/projects'
@@ -77,15 +78,11 @@ const voiceoverForm = ref<VoiceoverFormState>({
   notes: '',
 })
 
-const projectActionKeys: ProjectActionKey[] = [
-  'generate_campaign',
-  'generate_video_to_campaign',
+const supportingActionKeys: ProjectActionKey[] = [
   'generate_voiceover_from_script',
   'generate_voiceover_from_campaign',
-  'generate_auto_video_edit',
+  'generate_video_to_campaign',
 ]
-const resultActionKeys: ProjectActionKey[] = []
-
 
 const campaignGenerationForView = computed(() => {
   if (
@@ -135,26 +132,28 @@ const voiceoverResultRoute = computed(() => {
     ? null
     : `/projects/${String(props.projectId)}/generations/${String(generation.id)}`
 })
-const projectActions = computed(() =>
-  actions.value.filter((action) => projectActionKeys.includes(action.key) && !isComingSoon(action)),
+const mainWorkflowActions = computed(() =>
+  betaWorkflows
+    .map((workflow) => actionForWorkflow(workflow.projectActionKey))
+    .filter((action): action is ProjectAction => action !== null),
 )
-const resultActions = computed(() =>
-  actions.value.filter((action) => resultActionKeys.includes(action.key) && !isComingSoon(action)),
+const supportingActions = computed(() =>
+  actions.value.filter((action) => supportingActionKeys.includes(action.key) && !isComingSoon(action)),
 )
 const actionSections = computed(() => [
   {
-    key: 'project',
-    title: t('projectActions.continueProject'),
-    description: t('projectActions.continueFromProjectContext'),
-    actions: projectActions.value,
+    key: 'main_workflows',
+    title: t('projectActions.mainWorkflows'),
+    description: t('projectActions.mainWorkflowsBody'),
+    actions: mainWorkflowActions.value,
   },
   {
-    key: 'result',
-    title: t('projectActions.continueResult'),
-    description: t('projectActions.cleanContentRule'),
-    actions: resultActions.value,
+    key: 'supporting_tools',
+    title: t('projectActions.supportingTools'),
+    description: t('projectActions.supportingToolsBody'),
+    actions: supportingActions.value,
   },
-].filter((section) => section.actions.length > 0))
+].filter((section) => section.actions.length > 0 || section.key === 'supporting_tools'))
 
 const hasInternalOrUnlimitedAccess = computed(() => {
   const user = auth.user
@@ -299,6 +298,54 @@ const voiceoverValidationError = computed(() => {
 
   return ''
 })
+
+function actionForWorkflow(projectActionKey: ProjectActionKey | null): ProjectAction | null {
+  if (projectActionKey === null) {
+    return null
+  }
+
+  if (projectActionKey === 'create_video_ad') {
+    return findAction('create_video_ad') ?? findAction('start_video_ad') ?? placeholderAction('create_video_ad')
+  }
+
+  if (projectActionKey === 'start_motion_video') {
+    return findAction('start_motion_video') ?? placeholderAction('start_motion_video')
+  }
+
+  return findAction(projectActionKey)
+}
+
+function findAction(key: ProjectActionKey): ProjectAction | null {
+  return actions.value.find((action) => action.key === key) ?? null
+}
+
+function placeholderAction(key: Extract<ProjectActionKey, 'create_video_ad' | 'start_motion_video'>): ProjectAction {
+  return {
+    key,
+    title: t('projectActions.actions.' + key + '.title'),
+    description: t('projectActions.actions.' + key + '.description'),
+    service_tier: null,
+    output_type: 'video',
+    status: 'coming_soon',
+    credit_cost: null,
+    user_has_access: false,
+    upgrade_required: false,
+    access_label: null,
+    locked_reason: null,
+    action_mode: 'coming_soon',
+    primary_cta: { label: t('projectActions.status.coming_soon'), route: null, action: null },
+    requirements: [],
+    recommended_sources: [],
+    recommended_assets: [],
+    missing_requirements_count: 0,
+    required_source: null,
+    source_generation_id: null,
+    reason: null,
+    action_endpoint: null,
+    tool_key: key === 'create_video_ad' ? 'auto_video_ads' : 'motion_ai_video',
+    tool_status: 'coming_soon',
+  }
+}
 
 function cleanText(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
@@ -500,7 +547,7 @@ function actionButtonLabel(action: ProjectAction): string {
   }
 
   if (isVideoToCampaignAction(action)) {
-    return t('projectActions.generateVideoCampaign')
+    return t('projectActions.analyzeFootage')
   }
 
   if (isAutoVideoEditorAction(action)) {
@@ -838,6 +885,21 @@ watch(
                 {{ isActionSubmitting(action) ? t('projectActions.generating') : actionButtonLabel(action) }}
               </button>
             </article>
+
+            <RouterLink
+              v-if="section.key === 'supporting_tools'"
+              to="/media"
+              class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 transition hover:border-emerald-800 hover:bg-emerald-950/20"
+              data-testid="project-support-media-library"
+            >
+              <p class="text-sm font-semibold text-white">{{ t('projectActions.manageMediaAssets') }}</p>
+              <p class="mt-2 text-xs leading-5 text-neutral-500">
+                {{ t('projectActions.manageMediaAssetsBody') }}
+              </p>
+              <span class="mt-4 inline-flex text-sm font-semibold text-emerald-300">
+                {{ t('nav.mediaLibrary') }} <span aria-hidden="true">&rarr;</span>
+              </span>
+            </RouterLink>
           </div>
         </section>
       </div>

@@ -74,4 +74,42 @@ describe('GenerationHistory', () => {
       expect(wrapper.text()).toContain(status)
     }
   })
+
+  it('uses friendly workflow labels for campaign variants and video analysis', () => {
+    const imageAssisted = {
+      ...makeGeneration(3, '2026-07-06T03:00:00.000000Z'),
+      input_payload: { campaign_input_mode: 'image_assisted' },
+    }
+    const videoAnalysis = {
+      ...makeGeneration(4, '2026-07-06T04:00:00.000000Z'),
+      job_type: 'generate_video_to_campaign',
+      input_payload: { campaign_input_mode: 'video_analysis' },
+    }
+    const voiceover = {
+      ...makeGeneration(5, '2026-07-06T05:00:00.000000Z'),
+      job_type: 'generate_ai_voiceover',
+    }
+    const autoEditor = {
+      ...makeGeneration(6, '2026-07-06T06:00:00.000000Z'),
+      job_type: 'generate_auto_video_edit',
+    }
+
+    const wrapper = mount(GenerationHistory, {
+      props: {
+        generations: [imageAssisted, videoAnalysis, voiceover, autoEditor],
+        selectedGeneration: imageAssisted,
+        isLoading: false,
+        error: '',
+        emptyCopy: 'No saved generations yet.',
+      },
+    })
+
+    expect(wrapper.text()).toContain('Product Content Kit · Image assisted')
+    expect(wrapper.text()).toContain('Product Content Kit · Video analysis')
+    expect(wrapper.text()).toContain('AI Voiceover')
+    expect(wrapper.text()).toContain('Auto Video Editor')
+    expect(wrapper.text()).not.toContain('generate_video_to_campaign')
+    expect(wrapper.text()).not.toContain('affiliate_campaign')
+  })
+
 })

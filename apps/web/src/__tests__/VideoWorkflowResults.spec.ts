@@ -280,7 +280,7 @@ describe('video workflow result rendering', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="video-to-campaign-result"]').text()).toContain('Campaign from source video')
+    expect(wrapper.get('[data-testid="video-to-campaign-result"]').text()).toContain('Product Content Kit from video')
     expect(wrapper.text()).toContain('Voiceover-ready script')
     expect(wrapper.text()).not.toContain('Detected product moments')
     expect(wrapper.text()).not.toContain('Scene observations')

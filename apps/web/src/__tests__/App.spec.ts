@@ -126,10 +126,10 @@ describe('App', () => {
     expect(wrapper.find('details').exists()).toBe(true)
     expect(wrapper.text()).toContain('Hi, Nusa')
     expect(wrapper.find('a[href="/login"]').exists()).toBe(false)
-    const authenticatedToolCard = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
+    const authenticatedToolCard = wrapper.get('[data-testid="workflow-card-product_content_kit"]')
 
-    expect(authenticatedToolCard.text()).toContain('Open tool')
-    expect(authenticatedToolCard.attributes('href')).toBe('/dashboard?tool=affiliate_campaign')
+    expect(authenticatedToolCard.text()).toContain('Start with this workflow')
+    expect(authenticatedToolCard.attributes('href')).toBe('/dashboard?tool=product_content_kit')
     expect(
       fetchMock.mock.calls.filter(([input]) => String(input).includes('/auth/me')),
     ).toHaveLength(1)
@@ -169,10 +169,10 @@ describe('App', () => {
     expect(wrapper.find('a[href="/login"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/register"]').exists()).toBe(true)
     expect(wrapper.find('details').exists()).toBe(false)
-    const guestToolCard = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
+    const guestToolCard = wrapper.get('[data-testid="workflow-card-product_content_kit"]')
 
-    expect(guestToolCard.text()).toContain('Log in to use')
-    expect(guestToolCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=affiliate_campaign')
+    expect(guestToolCard.text()).toContain('Log in to start')
+    expect(guestToolCard.attributes('href')).toBe('/login?redirect=/dashboard?tool=product_content_kit')
     expect(auth.error).toBe('')
     wrapper.unmount()
   })

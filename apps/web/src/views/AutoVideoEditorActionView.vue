@@ -632,7 +632,7 @@ onMounted(loadPage)
                   <input v-model="sourceMode" type="radio" value="ai_video_analysis" class="mt-1 accent-emerald-400" data-testid="auto-video-source-mode" :disabled="videoCampaignGenerations.length === 0">
                   <span>
                     <span class="block font-semibold text-neutral-100">Use AI video analysis</span>
-                    <span class="mt-1 block text-xs leading-5 text-neutral-500">Use a previous Video-to-Campaign Insight with detected product moments and recommended cuts.</span>
+                    <span class="mt-1 block text-xs leading-5 text-neutral-500">Use a previous video analysis with detected product moments and recommended cuts.</span>
                   </span>
                 </label>
                 <select v-if="sourceMode === 'ai_video_analysis' && videoCampaignGenerations.length" v-model.number="selectedAnalysisId" class="nusa-select" data-testid="auto-video-analysis-select">
@@ -641,14 +641,14 @@ onMounted(loadPage)
                   </option>
                 </select>
                 <p v-if="sourceMode === 'ai_video_analysis' && unavailableCampaignGenerations.length" class="rounded-2xl border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-5 text-amber-100/80" data-testid="auto-video-ineligible-campaign-note">
-                  This campaign was created from text or images, so it does not include video cuts. Upload a source video or generate a Video-to-Campaign Insight first.
+                  This content kit was created from text or images, so it does not include video cuts. Upload a source video or run Analyze footage first.
                 </p>
 
                 <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
                   <input v-model="sourceMode" type="radio" value="manual_edit" class="mt-1 accent-emerald-400" data-testid="auto-video-source-mode">
                   <span>
                     <span class="block font-semibold text-neutral-100">Manual edit setup</span>
-                    <span class="mt-1 block text-xs leading-5 text-neutral-500">Upload or select a source video and choose editing settings manually. For best results, generate a Video-to-Campaign Insight first.</span>
+                    <span class="mt-1 block text-xs leading-5 text-neutral-500">Upload or select a source video and choose editing settings manually. For best results, run Analyze footage first.</span>
                   </span>
                 </label>
                 <select v-if="sourceMode === 'manual_edit' && sourceVideos.length" v-model.number="selectedVideoAssetId" class="nusa-select" data-testid="auto-video-manual-source-select">

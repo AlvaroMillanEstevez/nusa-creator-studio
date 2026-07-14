@@ -2,13 +2,38 @@
 
 Nusa Creator Studio should feel like a creator workspace, not a catalog of disconnected tools.
 
+## Closed beta workflow architecture
+
+The closed beta should be organized around four main user-facing workflows inside one Project Workspace:
+
+1. **Product Content Kit** — creates campaign angles, hooks, scripts, captions, hashtags, CTA options and publishing notes from a brief, product image or product video analysis.
+2. **Auto Video Editor** — turns real/raw product footage into an organic creator/social video using AI video analysis or manual edit setup.
+3. **Auto Video Ads** — planned closed-beta workflow for paid ad creatives with hook, benefits, promo overlays, CTA and end card. It should reuse Product Content Kit output, project assets, voiceover and Shotstack timeline logic later.
+4. **Motion AI Video** — planned closed-beta workflow for short AI motion videos from product image, visual scenario and campaign/script context. The real motion provider will be added later.
+
+The Project Workspace contains:
+
+- Product brief and strategy context.
+- Media assets with usage roles.
+- Saved generations and result history.
+- Credit-aware workflow actions.
+- Supporting tools that feed the main workflows.
+
+Supporting tools are intentionally not positioned as equal fifth/sixth main workflows:
+
+- **AI Voiceover** creates reusable narration audio for Auto Video Editor, Auto Video Ads and future Motion AI Video.
+- **Video analysis** is the Video-to-Campaign path. It can create Product Content Kit from video and feed Auto Video Editor with recommended cuts, detected product moments, captions and narration text.
+- **Media Library** manages uploaded and generated assets used across workflows.
+
+Fashion Studio and Product Photo Studio remain later modules, not core closed-beta workflows.
+
 ## Core model
 
 ### Project as workspace/context
 
 A `Project` is the durable workspace for a product, campaign, asset set or creative idea. It stores the creator's brief, settings, attached assets and generated history.
 
-A project can begin from a specific tool route, such as Affiliate Campaign Generator or AI Voiceover, but the long-term product direction is that the project becomes the context hub for future actions.
+A project can begin from a specific workflow route, such as Product Content Kit or AI Voiceover, but the long-term product direction is that the project becomes the context hub for future actions.
 
 ### Tool as action/workflow
 
@@ -16,7 +41,7 @@ A `Tool` is a workflow that can run against a project. Tools may start a new pro
 
 Examples:
 
-- Affiliate Campaign Generator creates campaign context.
+- Product Content Kit creates reusable campaign/content context.
 - AI Voiceover can use project source text or a completed campaign generation.
 - Fashion Try-On can use model and garment media assets.
 - Motion AI Video can use product images, source videos or campaign context.
@@ -65,7 +90,7 @@ The v1 workspace model should support simple source relationships before a full 
 
 ```text
 Product brief
-→ Affiliate Campaign
+→ Product Content Kit
 → AI Voiceover
 → Video Ad / Motion Video / Avatar later
 ```
@@ -74,22 +99,22 @@ The current v1 implementation makes the Campaign → Voiceover step work in the 
 
 ## Product Content Kit input modes
 
-Product Content Kit is the Basic text/content workflow. It can start from:
+Product Content Kit is the primary text/content workflow. It can start from:
 
 - `brief_only`: creator-provided product/project brief only.
 - `image_assisted`: creator brief plus one product image attached to the project as safe metadata/context.
 
 Brief-only and image-assisted kits are useful for hooks, scripts, captions, CTA options, voiceover-ready narration and publishing prep. They are not primary sources for Auto Video Editor because they do not contain source video ranges, detected video moments or recommended cuts.
 
-If the creator wants raw product footage analyzed for edit decisions, the correct workflow is Video-to-Campaign Insight. Video-to-Campaign outputs use `campaign_input_mode=video_analysis`, include a source video asset id, and become Auto Video Editor eligible only when usable `recommended_cuts` or `edit_plan.timeline` data exists.
-## Video-to-Campaign and Auto Video Editor chain
+If the creator wants raw product footage analyzed for edit decisions, the correct path is **Analyze footage** / video analysis. Internally this still uses the Video-to-Campaign job, but user-facing UX should frame it as Product Content Kit from video and as preparation for Auto Video Editor. Video-analysis outputs use `campaign_input_mode=video_analysis`, include a source video asset id, and become Auto Video Editor eligible only when usable `recommended_cuts` or `edit_plan.timeline` data exists.
+## Video analysis and Auto Video Editor chain
 
 The next workspace chain is video-first:
 
 ```text
 Project workspace
 → upload raw product video
-→ Video-to-Campaign analysis/campaign
+→ Product Content Kit from video / video analysis
 → optional AI Voiceover
 → optional Auto Video Editor
 ```
@@ -103,18 +128,18 @@ raw video
 → Shotstack Auto Video Editor render for internal beta users
 ```
 
-Video-to-Campaign is an Advanced workflow. It analyzes a selected project video asset and saves structured campaign context, including `video_summary`, observed product features, detected product moments, recommended cuts, hooks, captions, an edit plan and `narration_voice_script`.
+Video-to-Campaign is now treated as the internal video-analysis path, not a fifth main beta workflow. It analyzes a selected project video asset and saves structured campaign context, including `video_summary`, observed product features, detected product moments, recommended cuts, hooks, captions, an edit plan and `narration_voice_script`.
 
 In default mode it uses the deterministic mock provider. In internal beta mode it can use Gemini by reading the private media asset server-side, uploading it to the provider file-input flow, and storing only safe metadata in the generation result. Private storage paths and raw provider file URIs should not be exposed to the frontend.
 
-Video-to-Campaign produces narration text, not audio. The narration script is reusable text for the separate AI Voiceover action, so voiceover remains an intentional additional step unless another workflow explicitly includes it.
+Video analysis produces narration text, not audio. The narration script is reusable text for the separate AI Voiceover action, so voiceover remains an intentional additional step unless another workflow explicitly includes it.
 
 Auto Video Editor is a Premium composite workflow. It creates an edit-ready vertical video plan by default and can render a real beta MP4 with Shotstack for eligible internal users when enabled by configuration. It has two source modes:
 
-- `ai_video_analysis`: reuse an eligible Video-to-Campaign Insight generation with source video id plus usable recommended cuts or edit-plan timeline data.
+- `ai_video_analysis`: reuse an eligible video-analysis generation with source video id plus usable recommended cuts or edit-plan timeline data.
 - `manual_edit`: use an uploaded/selected source video plus creator-selected settings to build a fallback timeline.
 
-Text-only and image-assisted Product Content Kit generations should not appear as AI-analyzed campaign sources because they do not contain source video cuts. Manual edit setup remains available when the creator has a source video but has not generated Video-to-Campaign Insight yet.
+Text-only and image-assisted Product Content Kit generations should not appear as AI-analyzed campaign sources because they do not contain source video cuts. Manual edit setup remains available when the creator has a source video but has not run Analyze footage yet.
 
 Auto Video Editor can also reuse an existing AI Voiceover generation or audio asset, or proceed with no voiceover. In mock mode it may still plan a new voiceover component. In real Shotstack mode, automatic new ElevenLabs generation is intentionally deferred: creators should generate a voiceover first, then select that existing audio in Auto Video Editor.
 
@@ -187,7 +212,7 @@ The Project Action Hub can appear in two contexts:
 
 ## Basic, Advanced and Premium relationship
 
-Basic workflows often create context for later Advanced or Premium workflows.
+Lightweight content workflows often create context for later media workflows.
 
 | Tier | Workspace role |
 | --- | --- |
@@ -256,7 +281,7 @@ The UI should stay contextual and mobile-first instead of forcing creators to ch
 Auto Video Editor builds a Shotstack timeline from several existing project signals rather than a new prompt-based provider step:
 
 1. Project brief and workspace settings provide product context, platform and CTA preferences.
-2. Video-to-Campaign Insight can provide video-analysis cuts, detected product moments, captions and CTA options.
+2. Video analysis can provide cuts, detected product moments, captions and CTA options.
 3. `edit_mode` chooses between AI video analysis reuse and manual edit fallback.
 4. Audio controls decide source audio volume, voiceover mix and voiceover-aware duration extension.
 5. Edit polish settings shape pacing: transition style, motion polish and clip diversity.
@@ -279,8 +304,8 @@ Implemented now:
 
 Shown but not deeply refactored yet:
 
-- Fashion Try-On is visible as a future/coming-soon Premium workflow. Legacy mock routes may remain for internal testing, but the active workspace flow should not present it as a core beta action.
-- Motion AI Video is visible as a future/coming-soon Premium workflow. Legacy mock routes may remain for internal testing, but the active workspace flow should not present it as a core beta action.
+- Fashion Studio is a later module. Legacy try-on routes may remain for internal testing, but the active workspace flow should not present it as a core beta action.
+- Motion AI Video is one of the four planned beta workflows, but the real motion provider remains future work. Legacy mock routes may remain for internal testing until the beta workflow is implemented.
 - Video ad assembly and Avatar Presenter remain coming-soon contextual actions.
 - Auto Video Editor defaults to mock edit plans, but Shotstack rendering can be enabled for eligible internal beta users. Completed renders are stored as private `MediaAsset` records with `usage_role=edited_video_result`.
 

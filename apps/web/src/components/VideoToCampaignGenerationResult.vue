@@ -194,7 +194,7 @@ function hasEditTimelineContent(item: VideoToCampaignEditPlanItem): boolean {
   <div class="space-y-5" data-testid="video-to-campaign-result">
     <section class="nusa-card-premium rounded-[2rem] p-5">
       <div class="flex flex-wrap items-center gap-2">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Video-to-Campaign</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Product Content Kit · Video analysis</p>
         <span
           v-if="providerBadge"
           class="rounded-full border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-[11px] font-semibold text-emerald-300"
@@ -202,7 +202,7 @@ function hasEditTimelineContent(item: VideoToCampaignEditPlanItem): boolean {
           {{ providerBadge }}
         </span>
       </div>
-      <h2 class="mt-3 text-2xl font-bold">Campaign from source video</h2>
+      <h2 class="mt-3 text-2xl font-bold">Product Content Kit from video</h2>
       <p class="mt-4 text-sm leading-7 text-neutral-200">{{ result.video_summary }}</p>
       <p class="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm leading-6 text-neutral-300">
         {{ result.campaign_angle }}

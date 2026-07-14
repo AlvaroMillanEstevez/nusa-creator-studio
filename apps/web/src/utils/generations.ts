@@ -11,21 +11,39 @@ import {
 
 const jobTypeLabels: Record<string, string> = {
   generate_affiliate_campaign: 'Product Content Kit',
-  generate_video_to_campaign: 'Video campaign',
-  generate_ai_voiceover: 'Voiceover',
-  generate_auto_video_edit: 'Auto edit',
-  generate_product_video_script: 'Product video script',
+  generate_video_to_campaign: 'Product Content Kit · Video analysis',
+  generate_ai_voiceover: 'AI Voiceover',
+  generate_auto_video_edit: 'Auto Video Editor',
+  generate_product_video_script: 'Product Content Kit · Script pack',
+  generate_auto_video_ad: 'Auto Video Ads',
+  generate_motion_ai_video: 'Motion AI Video',
 }
 
 export function generationJobTypeLabel(jobType: string): string {
   return jobTypeLabels[jobType] ?? 'Generation'
 }
 
+export function generationFriendlyLabel(generation: CreatorGeneration): string {
+  if (generation.job_type === 'generate_affiliate_campaign') {
+    const mode = campaignInputMode(generation)
+
+    if (mode === 'image_assisted') {
+      return 'Product Content Kit · Image assisted'
+    }
+
+    if (mode === 'video_analysis') {
+      return 'Product Content Kit · Video analysis'
+    }
+  }
+
+  return generationJobTypeLabel(generation.job_type)
+}
+
 export function generationDisplayName(
   generation: CreatorGeneration,
   project: CreatorProject | null = null,
 ): string {
-  const type = jobTypeLabels[generation.job_type] ?? 'Generation'
+  const type = generationFriendlyLabel(generation)
   const product = projectProductName(project) ?? project?.title ?? resultTitle(generationOutput(generation))
   const date = shortDate(generation.created_at)
   const duration = generationDurationLabel(generation)
@@ -64,6 +82,32 @@ function projectProductName(project: CreatorProject | null): string | null {
   }
 
   return cleanString(payload.product_name)
+}
+
+function campaignInputMode(generation: CreatorGeneration): string | null {
+  for (const payload of [generation.input_payload, generation.request_payload, generation.result_payload]) {
+    if (!isRecord(payload)) {
+      continue
+    }
+
+    const mode = payload.campaign_input_mode ?? payload.input_mode
+
+    if (typeof mode === 'string' && mode.trim() !== '') {
+      return mode.trim()
+    }
+
+    const nestedInput = payload.input_payload
+
+    if (isRecord(nestedInput)) {
+      const nestedMode = nestedInput.campaign_input_mode ?? nestedInput.input_mode
+
+      if (typeof nestedMode === 'string' && nestedMode.trim() !== '') {
+        return nestedMode.trim()
+      }
+    }
+  }
+
+  return null
 }
 
 function resultTitle(result: GenerationResult | null): string | null {

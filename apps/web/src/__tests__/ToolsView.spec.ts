@@ -247,7 +247,7 @@ describe('ToolsView', () => {
     vi.unstubAllGlobals()
   })
 
-  it('loads tools from the API and presents category sections instead of service tiers', async () => {
+  it('renders exactly the four closed-beta workflow cards', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -256,31 +256,21 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
-    const card = wrapper.get('[data-testid="tool-card-affiliate_campaign"]')
+    const workflowCards = wrapper.findAll('[data-workflow-card="main"]')
 
-    expect(wrapper.text()).toContain('What do you want to create today?')
-    expect(wrapper.text()).toContain('Campaign & Content')
-    expect(wrapper.text()).toContain('Voice')
-    expect(wrapper.text()).toContain('Video')
-    expect(wrapper.text()).toContain('Coming Soon / Roadmap')
-    expect(wrapper.find('[data-testid="tool-category-section-assets"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="tool-card-media_library"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="tool-tier-section-basic"]').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('Service tier')
-    expect(card.element.tagName).toBe('A')
-    expect(card.attributes('href')).toBe('/dashboard?tool=affiliate_campaign')
-    expect(card.text()).toContain('Product Content Kit')
-    expect(card.text()).not.toContain('Affiliate Campaign Generator')
-    expect(card.text()).toContain('Script pack')
-    expect(card.text()).not.toContain('Mock')
-    expect(card.text()).toContain('Open tool')
+    expect(wrapper.text()).toContain('Create from one product workspace')
+    expect(workflowCards).toHaveLength(4)
+    expect(wrapper.get('[data-testid="workflow-card-product_content_kit"]').text()).toContain('Product Content Kit')
+    expect(wrapper.get('[data-testid="workflow-card-auto_video_editor"]').text()).toContain('Auto Video Editor')
+    expect(wrapper.get('[data-testid="workflow-card-auto_video_ads"]').text()).toContain('Auto Video Ads')
+    expect(wrapper.get('[data-testid="workflow-card-motion_ai_video"]').text()).toContain('Motion AI Video')
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/tools',
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
   })
 
-  it('groups active beta tools and meaningful roadmap cards into product categories', async () => {
+  it('does not render supporting or legacy tools as main workflow cards', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -289,45 +279,72 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
-    const campaignSection = wrapper.get('[data-testid="tool-category-section-campaign_content"]')
-    const voiceSection = wrapper.get('[data-testid="tool-category-section-voice"]')
-    const videoSection = wrapper.get('[data-testid="tool-category-section-video"]')
+    const mainSection = wrapper.get('[data-testid="beta-workflow-section"]')
 
-    const roadmapSection = wrapper.get('[data-testid="tool-category-section-roadmap"]')
-
-    expect(campaignSection.text()).toContain('Product Content Kit')
-    expect(campaignSection.text()).toContain('Video-to-Campaign Insight')
-    expect(campaignSection.text()).not.toContain('Hook Generator')
-    expect(campaignSection.text()).not.toContain('Caption & Hashtag Pack')
-    expect(campaignSection.text()).not.toContain('Script Variations')
-    expect(voiceSection.text()).toContain('AI Voiceover')
-    expect(videoSection.text()).toContain('Auto Video Editor')
-    expect(wrapper.find('[data-testid="tool-category-section-assets"]').exists()).toBe(false)
-    expect(roadmapSection.text()).toContain('Fashion Studio')
-    expect(roadmapSection.text()).toContain('Product Photo Studio')
-    expect(roadmapSection.text()).toContain('AI Avatar Presenter')
-    expect(roadmapSection.text()).toContain('Motion AI Video')
-    expect(wrapper.find('[data-testid="tool-card-video_enhancer"]').exists()).toBe(false)
-  })
-
-  it('links active creative tools for authenticated users', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    const wrapper = await mountToolsView(fetchMock)
-
-    expect(wrapper.get('[data-testid="tool-card-video_to_campaign"]').attributes('href')).toBe('/dashboard?tool=video_to_campaign')
-    expect(wrapper.get('[data-testid="tool-card-video_to_campaign"]').text()).toContain('Video-to-Campaign Insight')
-    expect(wrapper.get('[data-testid="tool-card-auto_video_editor"]').attributes('href')).toBe('/dashboard?tool=auto_video_editor')
-    expect(wrapper.get('[data-testid="tool-card-ai_voiceover"]').attributes('href')).toBe('/dashboard?tool=ai_voiceover')
+    expect(wrapper.find('[data-testid="workflow-card-video_to_campaign"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workflow-card-media_library"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workflow-card-hook_generator"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workflow-card-caption_hashtag_pack"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workflow-card-script_variations"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="tool-card-video_to_campaign"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="tool-card-media_library"]').exists()).toBe(false)
+    expect(mainSection.text()).not.toContain('Video-to-Campaign Insight')
+    expect(mainSection.text()).not.toContain('Hook Generator')
+    expect(mainSection.text()).not.toContain('Caption & Hashtag Pack')
+    expect(mainSection.text()).not.toContain('Script Variations')
+    expect(mainSection.text()).not.toContain('Media Library')
+    expect(wrapper.text()).not.toContain('Basic')
+    expect(wrapper.text()).not.toContain('Advanced')
+    expect(wrapper.text()).not.toContain('Premium')
   })
 
-  it('sends guests through login with the intended destination', async () => {
+  it('frames Product Content Kit and Auto Video Editor with the right inputs and outputs', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+    const productKit = wrapper.get('[data-testid="workflow-card-product_content_kit"]')
+    const autoEditor = wrapper.get('[data-testid="workflow-card-auto_video_editor"]')
+
+    expect(productKit.text()).toContain('From brief, product image or product video')
+    expect(productKit.text()).toContain('Brief, Product image, Product video')
+    expect(productKit.text()).toContain('Hooks')
+    expect(autoEditor.text()).toContain('raw product footage')
+    expect(autoEditor.text()).toContain('organic creator video')
+    expect(autoEditor.text()).toContain('Video analysis')
+  })
+
+  it('links active workflows for authenticated users and keeps beta-next workflows disabled', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: tools }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const wrapper = await mountToolsView(fetchMock)
+    const productKit = wrapper.get('[data-testid="workflow-card-product_content_kit"]')
+    const autoEditor = wrapper.get('[data-testid="workflow-card-auto_video_editor"]')
+    const ads = wrapper.get('[data-testid="workflow-card-auto_video_ads"]')
+    const motion = wrapper.get('[data-testid="workflow-card-motion_ai_video"]')
+
+    expect(productKit.element.tagName).toBe('A')
+    expect(productKit.attributes('href')).toBe('/dashboard?tool=product_content_kit')
+    expect(autoEditor.element.tagName).toBe('A')
+    expect(autoEditor.attributes('href')).toBe('/dashboard?tool=auto_video_editor')
+    expect(ads.element.tagName).toBe('ARTICLE')
+    expect(ads.text()).toContain('Planned for closed beta')
+    expect(ads.find('a').exists()).toBe(false)
+    expect(motion.element.tagName).toBe('ARTICLE')
+    expect(motion.text()).toContain('Planned for closed beta')
+    expect(motion.find('a').exists()).toBe(false)
+  })
+
+  it('sends guests through login with the intended workflow destination', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -336,13 +353,13 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock, null)
+    const productKit = wrapper.get('[data-testid="workflow-card-product_content_kit"]')
 
-    expect(wrapper.get('[data-testid="tool-card-affiliate_campaign"]').attributes('href')).toBe('/login?redirect=/dashboard?tool=affiliate_campaign')
-    expect(wrapper.get('[data-testid="tool-card-affiliate_campaign"]').text()).toContain('Log in to use')
-    expect(wrapper.find('[data-testid="tool-card-media_library"]').exists()).toBe(false)
+    expect(productKit.attributes('href')).toBe('/login?redirect=/dashboard?tool=product_content_kit')
+    expect(productKit.text()).toContain('Log in to start')
   })
 
-  it('keeps roadmap tools non-clickable and hides disabled tools', async () => {
+  it('keeps the later roadmap small and separate from main workflows', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -351,17 +368,13 @@ describe('ToolsView', () => {
     )
 
     const wrapper = await mountToolsView(fetchMock)
+    const later = wrapper.get('[data-testid="later-workflow-section"]')
 
-    const fashion = wrapper.get('[data-testid="tool-card-fashion_try_on"]')
-    const motion = wrapper.get('[data-testid="tool-card-motion_ai_video"]')
-
-    expect(wrapper.find('[data-testid="tool-card-hook_generator"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="tool-card-caption_hashtag_pack"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="tool-card-script_variations"]').exists()).toBe(false)
-    expect(fashion.element.tagName).toBe('ARTICLE')
-    expect(fashion.find('a').exists()).toBe(false)
-    expect(motion.element.tagName).toBe('ARTICLE')
-    expect(wrapper.find('[data-testid="tool-card-hidden_tool"]').exists()).toBe(false)
+    expect(later.text()).toContain('Fashion Studio')
+    expect(later.text()).toContain('Product Photo Studio')
+    expect(later.text()).toContain('Brand Kit')
+    expect(later.text()).toContain('Content Calendar')
+    expect(later.text()).not.toContain('Product Content Kit')
   })
 
   it('shows a friendly retry state when the catalog cannot load', async () => {

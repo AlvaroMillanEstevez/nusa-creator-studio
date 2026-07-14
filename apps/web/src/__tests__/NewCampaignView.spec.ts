@@ -59,11 +59,11 @@ describe('NewCampaignView', () => {
     const { wrapper } = await mountView(fetchMock)
 
     expect(wrapper.text()).toContain('Brief only')
-    expect(wrapper.text()).toContain('Generate content from your product/project brief.')
+    expect(wrapper.text()).toContain('Best when you already know the product, audience and angle.')
     expect(wrapper.text()).toContain('Product image')
-    expect(wrapper.text()).toContain('Use one product photo in the workspace to improve visual positioning, hooks and captions.')
-    expect(wrapper.text()).toContain('For raw product footage and recommended cuts, use Video-to-Campaign Insight.')
-    expect(wrapper.text()).toContain('Text/image kits are great for captions, scripts, voiceover and publishing, but they do not include video cut data.')
+    expect(wrapper.text()).toContain('Use a product photo to improve context and positioning.')
+    expect(wrapper.text()).toContain('Product video path: analyze product footage')
+    expect(wrapper.text()).toContain('Video analysis results still save into this workspace and can feed Auto Video Editor.')
   })
 
   it('creates a brief-only Product Content Kit by default', async () => {

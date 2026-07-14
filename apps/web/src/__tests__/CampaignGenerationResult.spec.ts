@@ -155,8 +155,8 @@ describe('CampaignGenerationResult', () => {
     const { wrapper } = await mountCampaignResult()
 
     expect(wrapper.text()).toContain('Honest mini camera campaign')
-    expect(wrapper.get('[data-testid="campaign-workflow-notice"]').text()).toContain('Use this kit for captions, scripts, voiceover and publishing.')
-    expect(wrapper.get('[data-testid="campaign-workflow-notice"]').text()).toContain('generate a Video-to-Campaign Insight or use Manual edit setup')
+    expect(wrapper.get('[data-testid="campaign-workflow-notice"]').text()).toContain('Use this kit for scripts, captions, voiceover and publishing.')
+    expect(wrapper.get('[data-testid="campaign-workflow-notice"]').text()).toContain('Product Content Kit from video / Analyze footage')
     expect(wrapper.text()).toContain('¿Quieres crear contenido rápido?')
     expect(wrapper.text()).toContain('Narration voice')
     expect(wrapper.text()).toContain('Edit the narration before generating voiceover')

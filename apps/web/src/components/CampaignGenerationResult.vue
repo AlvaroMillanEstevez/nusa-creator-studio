@@ -77,7 +77,7 @@ const workflowNotice = computed(() => {
     return 'This campaign includes video analysis and can be used in Auto Video Editor.'
   }
 
-  return 'Use this kit for captions, scripts, voiceover and publishing. To create an edited video from raw footage, generate a Video-to-Campaign Insight or use Manual edit setup.'
+  return 'Use this kit for scripts, captions, voiceover and publishing. For raw product footage, use Product Content Kit from video / Analyze footage so the result can feed Auto Video Editor.'
 })
 const hasProviderMetadata = computed(
   () => providerMetadata.value !== null && Object.keys(providerMetadata.value).length > 0,

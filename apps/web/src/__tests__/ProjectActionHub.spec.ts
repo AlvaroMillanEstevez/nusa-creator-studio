@@ -279,6 +279,7 @@ async function mountHub(
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/pricing', component: { template: '<div />' } },
+      { path: '/media', component: { template: '<div />' } },
       { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
@@ -324,24 +325,31 @@ describe('ProjectActionHub', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows active beta workflow credit and access badges without roadmap clutter', async () => {
+  it('separates main beta workflows from supporting tools without tier language', async () => {
     const { wrapper } = await mountHub()
     const text = wrapper.text()
 
+    expect(text).toContain('Main workflows')
+    expect(text).toContain('Supporting tools')
     expect(text).not.toContain('Basic workflow')
     expect(text).not.toContain('Advanced workflow')
     expect(text).not.toContain('Premium workflow')
     expect(text).toContain('1 credit')
     expect(text).toContain('2 credits')
     expect(text).toContain('Included in your plan')
-    expect(text).toContain('Generate video insight')
-    expect(text).toContain('Configure Auto Video Editor')
-    expect(text).not.toContain('Coming soon')
+    expect(wrapper.get('[data-testid="project-action-generate_campaign"]').text()).toContain('Product Content Kit')
+    expect(wrapper.get('[data-testid="project-action-generate_auto_video_edit"]').text()).toContain('Auto Video Editor')
+    expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Auto Video Ads')
+    expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Coming soon')
+    expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Motion AI Video')
+    expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Coming soon')
+    expect(wrapper.get('[data-testid="project-action-generate_video_to_campaign"]').text()).toContain('Analyze product footage')
+    expect(wrapper.get('[data-testid="project-action-generate_voiceover_from_script"]').text()).toContain('Create voiceover')
+    expect(wrapper.get('[data-testid="project-support-media-library"]').text()).toContain('Manage media assets')
     expect(wrapper.find('[data-testid="project-action-start_fashion_try_on"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="project-action-start_motion_video"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="project-action-avatar_presenter"]').exists()).toBe(false)
     expect(text).not.toContain('Upload a clear model/person reference image in the launcher.')
     expect(text).not.toContain('Upload a clear garment/product reference image in the launcher.')
-    expect(text).not.toContain('Upload or choose a product image for the motion video source.')
   })
 
   it('runs the direct campaign action and emits the new generation', async () => {
@@ -363,12 +371,13 @@ describe('ProjectActionHub', () => {
     expect(wrapper.emitted('generated')?.[0]).toEqual([campaignResponse])
   })
 
-  it('does not render premium roadmap actions in the focused workspace hub', async () => {
+  it('keeps later modules out while showing closed-beta placeholders', async () => {
     const { wrapper } = await mountHub()
 
     expect(wrapper.find('[data-testid="project-action-start_fashion_try_on"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="project-action-start_motion_video"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="project-action-avatar_presenter"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="project-action-create_video_ad"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="project-action-start_motion_video"]').exists()).toBe(true)
   })
   it('routes voiceover actions to the dedicated setup page with selected source context', async () => {
     const { wrapper, fetchMock, router } = await mountHub(
@@ -433,7 +442,7 @@ describe('ProjectActionHub', () => {
 
 
 
-  it('routes video workflow actions to dedicated setup pages', async () => {
+  it('routes supporting video analysis and Auto Video Editor actions to dedicated setup pages', async () => {
     const { wrapper, router } = await mountHub()
 
     await wrapper

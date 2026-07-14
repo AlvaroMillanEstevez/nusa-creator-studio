@@ -3,34 +3,41 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import { betaWorkflows, laterWorkflowKeys, type BetaWorkflowDefinition } from '@/config/workflows'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getCreatorTools } from '@/services/tools'
 import { useAuthStore } from '@/stores/auth'
-import type { CreatorTool, ToolOutputType, ToolStatus } from '@/types/tool'
-import { formatLabel } from '@/utils/formatters'
+import type { CreatorTool, ToolStatus } from '@/types/tool'
 
-interface StudioToolCard {
-  key: string
-  title: string
-  short_description: string
-  long_description: string | null
-  category: string
-  output_type: ToolOutputType | null
-  status: ToolStatus
-  route: string | null
-  credit_cost: number
-  credit_cost_label: string | null
-  badge_label: string | null
-  sort_order: number
-  source: 'api' | 'static'
-}
+type WorkflowCardStatus = ToolStatus | 'beta_next'
 
-interface StudioToolSection {
+interface BetaWorkflowCard {
   key: string
   title: string
   description: string
-  tools: StudioToolCard[]
+  longDescription: string
+  category: string
+  status: WorkflowCardStatus
+  canStart: boolean
+  destination: RouteLocationRaw | null
+  creditCostLabel: string
+  badgeLabel: string
+  recommendedInputs: string[]
+  outputs: string[]
+}
+
+interface LaterWorkflowCard {
+  key: string
+  title: string
+}
+
+interface WorkflowToolData {
+  category: string
+  status: ToolStatus
+  credit_cost: number
+  credit_cost_label: string | null
+  badge_label: string | null
 }
 
 const tools = ref<CreatorTool[]>([])
@@ -43,137 +50,66 @@ const toolsByKey = computed(() =>
   new Map(visibleTools.value.map((tool) => [tool.key, tool])),
 )
 
-const groupedToolSections = computed<StudioToolSection[]>(() => [
-  {
-    key: 'campaign_content',
-    title: t('tools.categories.campaignContent.title'),
-    description: t('tools.categories.campaignContent.description'),
-    tools: compactTools([
-      cardFromApi('affiliate_campaign', {
-        title: t('tools.productContentKit.title'),
-        short_description: t('tools.productContentKit.description'),
-      }),
-      cardFromApi('video_to_campaign', {
-        title: t('tools.videoToCampaignInsight.title'),
-        short_description: t('tools.videoToCampaignInsight.description'),
-      }),
+const workflowCards = computed<BetaWorkflowCard[]>(() =>
+  betaWorkflows.map((workflow) => workflowCard(workflow)),
+)
 
-    ]),
-  },
-  {
-    key: 'voice',
-    title: t('tools.categories.voice.title'),
-    description: t('tools.categories.voice.description'),
-    tools: compactTools([
-      cardFromApi('ai_voiceover'),
-    ]),
-  },
-  {
-    key: 'video',
-    title: t('tools.categories.video.title'),
-    description: t('tools.categories.video.description'),
-    tools: compactTools([
-      cardFromApi('auto_video_editor'),
-    ]),
-  },
-
-  {
-    key: 'roadmap',
-    title: t('tools.categories.roadmap.title'),
-    description: t('tools.categories.roadmap.description'),
-    tools: compactTools([
-      cardFromApi('fashion_try_on', { title: t('tools.roadmapCards.fashionStudio') }),
-      comingSoonCard('product_photo_studio', t('tools.roadmapCards.productPhotoStudio'), 'image', 52),
-      comingSoonCard('product_ad_templates', t('tools.roadmapCards.productAdTemplates'), 'mixed_media', 53),
-      cardFromApi('ai_avatar_presenter', { title: t('tools.roadmapCards.aiAvatarPresenter') }),
-      cardFromApi('motion_ai_video', { title: t('tools.roadmapCards.motionAiVideo') }),
-      comingSoonCard('brand_kit', t('tools.roadmapCards.brandKit'), 'mixed_media', 56),
-      comingSoonCard('content_calendar', t('tools.roadmapCards.contentCalendar'), 'text_insight', 57),
-    ]),
-  },
-])
-
-function compactTools(candidates: Array<StudioToolCard | null>): StudioToolCard[] {
-  return candidates.filter((tool): tool is StudioToolCard => tool !== null)
-}
-
-function cardFromApi(
-  key: string,
-  overrides: Partial<Pick<StudioToolCard, 'title' | 'short_description' | 'long_description'>> = {},
-): StudioToolCard | null {
-  const tool = toolsByKey.value.get(key)
-
-  if (!tool) {
-    return null
-  }
-
-  return {
-    key: tool.key,
-    title: overrides.title ?? tool.title,
-    short_description: overrides.short_description ?? tool.short_description,
-    long_description: overrides.long_description ?? tool.long_description,
-    category: tool.category,
-    output_type: tool.output_type,
-    status: tool.status,
-    route: tool.route,
-    credit_cost: tool.credit_cost,
-    credit_cost_label: tool.credit_cost_label,
-    badge_label: tool.badge_label,
-    sort_order: tool.sort_order,
-    source: 'api',
-  }
-}
-
-function staticCard(tool: Omit<StudioToolCard, 'source' | 'long_description'> & { long_description?: string | null }): StudioToolCard {
-  return {
-    ...tool,
-    long_description: tool.long_description ?? null,
-    source: 'static',
-  }
-}
-
-function comingSoonCard(
-  key: string,
-  title: string,
-  outputType: ToolOutputType | null,
-  sortOrder: number,
-): StudioToolCard {
-  return staticCard({
+const laterWorkflowCards = computed<LaterWorkflowCard[]>(() =>
+  laterWorkflowKeys.map((key) => ({
     key,
-    title,
-    short_description: t('tools.roadmapCards.comingSoonDescription'),
-    category: 'roadmap',
-    output_type: outputType,
-    status: 'coming_soon',
-    route: null,
-    credit_cost: 0,
-    credit_cost_label: t('tools.creditCostComingSoon'),
-    badge_label: t('common.comingSoon'),
-    sort_order: sortOrder,
-  })
+    title: t('workflows.later.' + key),
+  })),
+)
+
+function workflowCard(workflow: BetaWorkflowDefinition): BetaWorkflowCard {
+  const tool = workflow.sourceToolKey === null ? null : toolsByKey.value.get(workflow.sourceToolKey)
+  const toolData = toolDataFor(tool)
+  const isBetaNext = workflow.status === 'beta_next'
+  const status = isBetaNext ? 'beta_next' : toolData.status
+  const canStart = workflow.status === 'available' && toolData.status === 'available'
+  const targetPath = '/dashboard?tool=' + encodeURIComponent(workflow.dashboardToolKey)
+
+  return {
+    key: workflow.key,
+    title: t('workflows.' + workflow.key + '.title'),
+    description: t('workflows.' + workflow.key + '.shortDescription'),
+    longDescription: t('workflows.' + workflow.key + '.longDescription'),
+    category: t('workflows.categories.' + workflow.categoryKey),
+    status,
+    canStart,
+    destination: canStart
+      ? auth.isAuthenticated
+        ? targetPath
+        : { path: '/login', query: { redirect: targetPath } }
+      : null,
+    creditCostLabel: isBetaNext
+      ? t('workflows.creditPlanned')
+      : toolData.credit_cost_label ?? (toolData.credit_cost > 0 ? t('workflows.fromCredits', { credits: toolData.credit_cost }) : t('tools.creditCostComingSoon')),
+    badgeLabel: isBetaNext
+      ? t('workflows.plannedClosedBeta')
+      : toolData.badge_label ?? t('common.available'),
+    recommendedInputs: workflow.recommendedInputKeys.map((key) => t('workflows.inputs.' + key)),
+    outputs: workflow.outputKeys.map((key) => t('workflows.outputItems.' + key)),
+  }
 }
 
-function toolDestination(tool: StudioToolCard): RouteLocationRaw {
-  const targetPath = tool.source === 'api'
-    ? '/dashboard?tool=' + encodeURIComponent(tool.key)
-    : tool.route ?? '/tools'
-
-  return auth.isAuthenticated
-    ? targetPath
-    : { path: '/login', query: { redirect: targetPath } }
+function toolDataFor(tool: CreatorTool | null | undefined): WorkflowToolData {
+  return {
+    category: tool?.category ?? 'workflow',
+    status: tool?.status ?? 'coming_soon',
+    credit_cost: tool?.credit_cost ?? 0,
+    credit_cost_label: tool?.credit_cost_label ?? null,
+    badge_label: tool?.badge_label ?? null,
+  }
 }
 
-function isActionable(tool: StudioToolCard): boolean {
-  return tool.status === 'available' && tool.route !== null
-}
-
-function outputTypeLabel(outputType: ToolOutputType | null): string | null {
-  return outputType ? t('tools.outputTypes.' + outputType) : null
-}
-
-function statusClasses(status: StudioToolCard['status']): string {
+function statusClasses(status: WorkflowCardStatus): string {
   if (status === 'available') {
     return 'border-emerald-800 bg-emerald-950 text-emerald-300'
+  }
+
+  if (status === 'beta_next') {
+    return 'border-violet-800 bg-violet-950 text-violet-200'
   }
 
   if (status === 'maintenance') {
@@ -181,6 +117,22 @@ function statusClasses(status: StudioToolCard['status']): string {
   }
 
   return 'border-neutral-700 bg-neutral-800 text-neutral-300'
+}
+
+function statusLabel(card: BetaWorkflowCard): string {
+  if (card.status === 'beta_next') {
+    return t('workflows.comingNext')
+  }
+
+  if (card.status === 'available') {
+    return t('common.available')
+  }
+
+  if (card.status === 'maintenance') {
+    return t('tools.inMaintenance')
+  }
+
+  return t('common.comingSoon')
 }
 
 async function loadTools(): Promise<void> {
@@ -219,9 +171,9 @@ onMounted(() => {
 
       <div v-if="isLoading" class="mt-10 space-y-4" :aria-label="t('tools.loading')">
         <div
-          v-for="index in 3"
+          v-for="index in 4"
           :key="index"
-          class="h-52 animate-pulse rounded-[2rem] border border-slate-800/70 bg-slate-900/60"
+          class="h-56 animate-pulse rounded-[2rem] border border-slate-800/70 bg-slate-900/60"
         />
       </div>
 
@@ -242,67 +194,62 @@ onMounted(() => {
       </div>
 
       <template v-else>
-        <section
-          v-for="section in groupedToolSections"
-          :key="section.key"
-          :data-testid="'tool-category-section-' + section.key"
-          class="mt-10"
-        >
+        <section class="mt-10" data-testid="beta-workflow-section">
           <div class="max-w-3xl">
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-              {{ t('tools.workflowCategory') }}
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
+              {{ t('workflows.mainWorkflows') }}
             </p>
-            <h2 class="mt-1 text-2xl font-semibold">{{ section.title }}</h2>
+            <h2 class="mt-2 text-2xl font-semibold">{{ t('workflows.toolsTitle') }}</h2>
             <p class="mt-3 text-sm leading-6 text-neutral-400">
-              {{ section.description }}
+              {{ t('workflows.toolsBody') }}
             </p>
           </div>
 
-          <div v-if="section.tools.length" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <template v-for="tool in section.tools" :key="tool.key">
+          <div class="mt-6 grid gap-4 md:grid-cols-2">
+            <template v-for="workflow in workflowCards" :key="workflow.key">
               <RouterLink
-                v-if="isActionable(tool)"
-                :to="toolDestination(tool)"
-                :data-testid="'tool-card-' + tool.key"
+                v-if="workflow.canStart && workflow.destination"
+                :to="workflow.destination"
+                :data-testid="'workflow-card-' + workflow.key"
+                data-workflow-card="main"
                 class="nusa-card-interactive nusa-focus-ring group block rounded-[2rem] p-5 transition"
               >
                 <div class="flex items-start justify-between gap-4">
                   <div class="min-w-0">
                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-400">
-                      {{ formatLabel(tool.category) }}
+                      {{ workflow.category }}
                     </p>
-                    <h3 class="mt-2 break-words text-xl font-semibold">{{ tool.title }}</h3>
+                    <h3 class="mt-2 break-words text-xl font-semibold">{{ workflow.title }}</h3>
                   </div>
                   <span class="nusa-badge shrink-0 rounded-full px-3 py-1 text-xs font-bold">
-                    {{ tool.badge_label ?? t('common.available') }}
-                  </span>
-                </div>
-
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <span
-                    v-if="outputTypeLabel(tool.output_type)"
-                    class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300"
-                  >
-                    {{ outputTypeLabel(tool.output_type) }}
-                  </span>
-                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
-                    {{ tool.credit_cost_label ?? tool.credit_cost + ' credits' }}
+                    {{ workflow.badgeLabel }}
                   </span>
                 </div>
 
                 <p class="mt-4 text-sm leading-6 text-neutral-300">
-                  {{ tool.short_description }}
+                  {{ workflow.description }}
                 </p>
-                <p v-if="tool.long_description" class="mt-3 text-sm leading-6 text-neutral-500">
-                  {{ tool.long_description }}
+                <p class="mt-3 text-sm leading-6 text-neutral-500">
+                  {{ workflow.longDescription }}
                 </p>
+
+                <div class="mt-5 grid gap-3 text-xs sm:grid-cols-2">
+                  <div class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+                    <p class="font-semibold text-neutral-300">{{ t('workflows.recommendedInputs') }}</p>
+                    <p class="mt-1 leading-5 text-neutral-500">{{ workflow.recommendedInputs.join(', ') }}</p>
+                  </div>
+                  <div class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+                    <p class="font-semibold text-neutral-300">{{ t('workflows.outputsLabel') }}</p>
+                    <p class="mt-1 leading-5 text-neutral-500">{{ workflow.outputs.join(', ') }}</p>
+                  </div>
+                </div>
 
                 <div class="mt-5 flex items-center justify-between border-t border-neutral-800 pt-4">
                   <span class="text-xs font-medium text-neutral-400">
-                    {{ tool.status === 'available' ? t('tools.ready') : formatLabel(tool.status) }}
+                    {{ workflow.creditCostLabel }}
                   </span>
                   <span class="text-sm font-semibold text-emerald-300">
-                    {{ auth.isAuthenticated ? t('tools.openTool') : t('tools.loginToUse') }}
+                    {{ auth.isAuthenticated ? t('tools.startWithWorkflow') : t('tools.loginToStart') }}
                     <span aria-hidden="true">&rarr;</span>
                   </span>
                 </div>
@@ -310,46 +257,65 @@ onMounted(() => {
 
               <article
                 v-else
-                :data-testid="'tool-card-' + tool.key"
+                :data-testid="'workflow-card-' + workflow.key"
+                data-workflow-card="main"
                 aria-disabled="true"
-                class="nusa-card-soft rounded-[2rem] p-5 opacity-80"
+                class="nusa-card-soft rounded-[2rem] p-5 opacity-85"
               >
                 <div class="flex items-start justify-between gap-4">
                   <div class="min-w-0">
                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                      {{ formatLabel(tool.category) }}
+                      {{ workflow.category }}
                     </p>
-                    <h3 class="mt-2 break-words text-lg font-semibold text-neutral-200">{{ tool.title }}</h3>
+                    <h3 class="mt-2 break-words text-xl font-semibold text-neutral-200">{{ workflow.title }}</h3>
                   </div>
                   <span
                     class="shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold"
-                    :class="statusClasses(tool.status)"
+                    :class="statusClasses(workflow.status)"
                   >
-                    {{ tool.badge_label ?? formatLabel(tool.status) }}
+                    {{ statusLabel(workflow) }}
                   </span>
                 </div>
 
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <span
-                    v-if="outputTypeLabel(tool.output_type)"
-                    class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300"
-                  >
-                    {{ outputTypeLabel(tool.output_type) }}
-                  </span>
-                  <span class="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
-                    {{ tool.credit_cost_label ?? t('tools.creditCostComingSoon') }}
-                  </span>
+                <p class="mt-4 text-sm leading-6 text-neutral-400">{{ workflow.description }}</p>
+                <p class="mt-3 text-sm leading-6 text-neutral-500">{{ workflow.longDescription }}</p>
+
+                <div class="mt-5 grid gap-3 text-xs sm:grid-cols-2">
+                  <div class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+                    <p class="font-semibold text-neutral-300">{{ t('workflows.recommendedInputs') }}</p>
+                    <p class="mt-1 leading-5 text-neutral-500">{{ workflow.recommendedInputs.join(', ') }}</p>
+                  </div>
+                  <div class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+                    <p class="font-semibold text-neutral-300">{{ t('workflows.outputsLabel') }}</p>
+                    <p class="mt-1 leading-5 text-neutral-500">{{ workflow.outputs.join(', ') }}</p>
+                  </div>
                 </div>
 
-                <p class="mt-3 text-sm leading-6 text-neutral-400">{{ tool.short_description }}</p>
-                <p v-if="tool.status === 'maintenance'" class="mt-4 text-sm leading-6 text-amber-200">
-                  {{ t('tools.maintenanceBody') }}
-                </p>
-                <p v-else class="mt-4 text-xs font-medium text-neutral-600">
-                  {{ tool.status === 'coming_soon' ? t('tools.comingSoon') : formatLabel(tool.status) }}
-                </p>
+                <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-neutral-800 pt-4 text-xs text-neutral-500">
+                  <span>{{ workflow.creditCostLabel }}</span>
+                  <span aria-hidden="true">&bull;</span>
+                  <span>{{ t('workflows.plannedClosedBeta') }}</span>
+                </div>
               </article>
             </template>
+          </div>
+        </section>
+
+        <section class="mt-10 rounded-[2rem] border border-neutral-800 bg-neutral-950/50 p-5" data-testid="later-workflow-section">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+            {{ t('workflows.laterTitle') }}
+          </p>
+          <p class="mt-2 text-sm leading-6 text-neutral-500">
+            {{ t('workflows.laterBody') }}
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span
+              v-for="workflow in laterWorkflowCards"
+              :key="workflow.key"
+              class="rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-xs font-semibold text-neutral-400"
+            >
+              {{ workflow.title }}
+            </span>
           </div>
         </section>
       </template>

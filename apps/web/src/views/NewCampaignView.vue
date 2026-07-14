@@ -107,7 +107,7 @@ async function submitCampaign(): Promise<void> {
               <input v-model="inputMode" class="mt-1 accent-emerald-400" type="radio" value="brief_only" />
               <span>
                 <span class="block font-semibold text-neutral-100">Brief only</span>
-                <span class="mt-1 block text-xs leading-5 text-neutral-500">Generate content from your product/project brief.</span>
+                <span class="mt-1 block text-xs leading-5 text-neutral-500">Best when you already know the product, audience and angle.</span>
               </span>
             </label>
             <label
@@ -117,12 +117,12 @@ async function submitCampaign(): Promise<void> {
               <input v-model="inputMode" class="mt-1 accent-emerald-400" type="radio" value="image_assisted" />
               <span>
                 <span class="block font-semibold text-neutral-100">Product image</span>
-                <span class="mt-1 block text-xs leading-5 text-neutral-500">Use one product photo in the workspace to improve visual positioning, hooks and captions.</span>
+                <span class="mt-1 block text-xs leading-5 text-neutral-500">Use a product photo to improve context and positioning.</span>
               </span>
             </label>
           </div>
           <p class="mt-3 rounded-2xl border border-sky-900/60 bg-sky-950/20 p-3 text-xs leading-5 text-sky-100/80">
-            For raw product footage and recommended cuts, use Video-to-Campaign Insight. Text/image kits are great for captions, scripts, voiceover and publishing, but they do not include video cut data.
+            Product video path: analyze product footage for content ideas and editing recommendations. Video analysis results still save into this workspace and can feed Auto Video Editor.
           </p>
         </fieldset>
         <div>

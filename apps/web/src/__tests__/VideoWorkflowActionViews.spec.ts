@@ -383,7 +383,7 @@ describe('video workflow action views', () => {
     expect(wrapper.text()).toContain('Rendering your video. This can take a few minutes depending on video length and provider processing time.')
     expect(wrapper.text()).toContain('Total credits: 2')
     expect(wrapper.get('[data-testid="auto-video-cta-input"]').element).toHaveProperty('value', 'Check the details.')
-    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Video campaign · Pocket Light')
+    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Product Content Kit · Video analysis · Pocket Light')
     expect(wrapper.get('[data-testid="auto-video-voiceover-select"]').text()).toContain('Voiceover · Pocket Light · 20s')
     const durationSelect = wrapper.get<HTMLSelectElement>('[data-testid="auto-video-duration-select"]')
 
@@ -507,8 +507,8 @@ describe('video workflow action views', () => {
     )
 
     expect(wrapper.text()).toContain('Use AI video analysis')
-    expect(wrapper.text()).toContain('This campaign was created from text or images, so it does not include video cuts.')
-    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Video campaign · Pocket Light')
+    expect(wrapper.text()).toContain('This content kit was created from text or images, so it does not include video cuts.')
+    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Product Content Kit · Video analysis · Pocket Light')
     expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).not.toContain('Image-assisted content kit')
   })
 
@@ -525,7 +525,7 @@ describe('video workflow action views', () => {
 
     expect(manualMode?.element.checked).toBe(true)
     expect(wrapper.find('[data-testid="auto-video-analysis-select"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('For best results, generate a Video-to-Campaign Insight first.')
+    expect(wrapper.text()).toContain('For best results, run Analyze footage first.')
     expect(wrapper.get('[data-testid="auto-video-manual-source-select"]').text()).toContain('raw-product-demo.mp4')
 
     await wrapper.get('form').trigger('submit')
