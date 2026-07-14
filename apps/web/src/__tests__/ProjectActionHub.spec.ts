@@ -192,7 +192,8 @@ const baseActions: ProjectActionsResponse = {
         },
       ],
       missing_requirements_count: 2,
-    }),    action({
+    }),
+    action({
       key: 'start_motion_video',
       title: 'Generate Motion AI Video',
       description: 'Use project visuals for motion video.',
@@ -219,16 +220,19 @@ const baseActions: ProjectActionsResponse = {
     }),
     action({
       key: 'create_video_ad',
-      title: 'Create video ad',
-      description: 'Use campaign context later.',
+      title: 'Auto Video Ads',
+      description: 'Create a paid ad creative plan.',
       service_tier: 'premium',
-      output_type: 'video',
-      status: 'coming_soon',
-      action_mode: 'coming_soon',
-      credit_cost: null,
-      primary_cta: { label: 'Coming soon', route: null, action: null },
-      required_source: 'source_generation',
-      tool_status: null,
+      output_type: 'ad_plan',
+      status: 'configure',
+      action_mode: 'configure',
+      credit_cost: 2,
+      primary_cta: { label: 'Configure ad plan', route: null, action: 'configure_auto_video_ad' },
+      required_source: 'media_asset',
+      action_endpoint: '/api/v1/projects/42/generate-auto-video-ad',
+      tool_key: 'auto_video_ads',
+      tool_status: 'available',
+      reason: 'Ready to create an ad plan from project visuals.',
     }),
     action({
       key: 'avatar_presenter',
@@ -284,6 +288,7 @@ async function mountHub(
       { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/auto-video-ads', name: 'project-auto-video-ads-action', component: { template: '<div />' } },
     ],
   })
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
@@ -340,7 +345,7 @@ describe('ProjectActionHub', () => {
     expect(wrapper.get('[data-testid="project-action-generate_campaign"]').text()).toContain('Product Content Kit')
     expect(wrapper.get('[data-testid="project-action-generate_auto_video_edit"]').text()).toContain('Auto Video Editor')
     expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Auto Video Ads')
-    expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Coming soon')
+    expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Generate Ad Plan')
     expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Motion AI Video')
     expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Coming soon')
     expect(wrapper.get('[data-testid="project-action-generate_video_to_campaign"]').text()).toContain('Analyze product footage')
@@ -377,6 +382,7 @@ describe('ProjectActionHub', () => {
     expect(wrapper.find('[data-testid="project-action-start_fashion_try_on"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="project-action-avatar_presenter"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="project-action-create_video_ad"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Generate Ad Plan')
     expect(wrapper.find('[data-testid="project-action-start_motion_video"]').exists()).toBe(true)
   })
   it('routes voiceover actions to the dedicated setup page with selected source context', async () => {
@@ -464,6 +470,18 @@ describe('ProjectActionHub', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('project-auto-video-editor-action')
+    expect(router.currentRoute.value.params.projectId).toBe('42')
+
+    await router.push('/')
+    await flushPromises()
+
+    await wrapper
+      .get('[data-testid="project-action-create_video_ad"]')
+      .find('button')
+      .trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('project-auto-video-ads-action')
     expect(router.currentRoute.value.params.projectId).toBe('42')
     expect(wrapper.text()).toContain('Can reuse existing video campaign analysis.')
   })

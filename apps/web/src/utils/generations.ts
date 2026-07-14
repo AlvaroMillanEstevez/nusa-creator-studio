@@ -3,6 +3,7 @@ import {
   generationOutput,
   isAiVoiceoverResult,
   isAutoVideoEditorResult,
+  isAutoVideoAdResult,
   isVideoToCampaignResult,
   type CreatorGeneration,
   type CreatorProject,
@@ -33,6 +34,22 @@ export function generationFriendlyLabel(generation: CreatorGeneration): string {
 
     if (mode === 'video_analysis') {
       return 'Product Content Kit · Video analysis'
+    }
+  }
+
+  if (generation.job_type === 'generate_auto_video_ad') {
+    const visualSourceType = autoVideoAdVisualSourceType(generation)
+
+    if (visualSourceType === 'image') {
+      return 'Auto Video Ads · Image ad'
+    }
+
+    if (visualSourceType === 'video') {
+      return 'Auto Video Ads · Video ad'
+    }
+
+    if (visualSourceType === 'hybrid') {
+      return 'Auto Video Ads · Hybrid ad'
     }
   }
 
@@ -69,6 +86,10 @@ export function generationDurationLabel(generation: CreatorGeneration): string |
 
   if (isAutoVideoEditorResult(output)) {
     return secondsLabel(output.render_settings.actual_duration_seconds ?? output.render_settings.target_duration_seconds)
+  }
+
+  if (isAutoVideoAdResult(output)) {
+    return secondsLabel(output.ad_summary.duration)
   }
 
   return null
@@ -110,6 +131,23 @@ function campaignInputMode(generation: CreatorGeneration): string | null {
   return null
 }
 
+
+function autoVideoAdVisualSourceType(generation: CreatorGeneration): string | null {
+  for (const payload of [generation.output_payload, generation.result_payload, generation.input_payload, generation.request_payload]) {
+    if (!isRecord(payload)) {
+      continue
+    }
+
+    const metadata = payload.metadata
+    const value = isRecord(metadata) ? metadata.visual_source_type : payload.visual_source_type
+
+    if (typeof value === 'string' && value.trim() !== '') {
+      return value.trim()
+    }
+  }
+
+  return null
+}
 function resultTitle(result: GenerationResult | null): string | null {
   if (isAiVoiceoverResult(result)) {
     return cleanString(result.voiceover_title)
@@ -121,6 +159,10 @@ function resultTitle(result: GenerationResult | null): string | null {
 
   if (isAutoVideoEditorResult(result)) {
     return cleanString(result.source_summary)
+  }
+
+  if (isAutoVideoAdResult(result)) {
+    return cleanString(result.ad_summary.creative_angle)
   }
 
   return null

@@ -39,6 +39,7 @@ export default {
       voiceover: 'Voiceover',
       fashionTryOn: 'Prueba de moda',
       motionVideo: 'Motion video',
+      autoVideoAdsAction: 'Auto Video Ads',
     },
   },
   nav: {
@@ -134,8 +135,8 @@ export default {
     },
     auto_video_ads: {
       title: 'Auto Video Ads',
-      shortDescription: 'Genera creativos de anuncios con hook, beneficios, overlays promocionales, CTA y end card.',
-      longDescription: 'Planeado para anuncios de Facebook, Instagram y TikTok. Este placeholder beta todavía no genera anuncios.',
+      shortDescription: 'Genera planes creativos de anuncios pagados desde contenido de campaña y activos de producto.',
+      longDescription: 'Flujo mock beta para planes de anuncios sociales con imagen, video o híbridos. El render MP4 final vendrá después.'
     },
     motion_ai_video: {
       title: 'Motion AI Video',
@@ -166,6 +167,7 @@ export default {
       overlays: 'Overlays',
       end_card: 'End card',
       paid_ad_creative: 'Creativo de anuncio',
+      storyboard: 'Storyboard',
       promo_overlays: 'Overlays promocionales',
       ai_motion_video: 'Video motion AI',
       visual_plan: 'Plan visual',
@@ -284,6 +286,7 @@ export default {
     setupTryOn: 'Setup Try-On',
     generateVideoCampaign: 'Generar campa?a de v?deo',
     configureAutoVideoEditor: 'Configurar Auto Video Editor',
+    generateAdPlan: 'Generar Plan de Anuncio',
     configureMotionVideo: 'Configurar Motion Video',
     continueFromProjectContext: 'Inicia o continúa acciones desde el contexto de este proyecto.',
     narrationScript: 'Voz de narración',
@@ -331,11 +334,11 @@ export default {
       },
       create_video_ad: {
         title: 'Auto Video Ads',
-        description: 'Usa el contexto de esta campaña para un futuro workflow de ensamblaje de video ad.',
+        description: 'Crea un plan creativo de anuncio pagado con contenido de campaña, activos de producto, overlays, CTA y end card.',
       },
       start_video_ad: {
         title: 'Auto Video Ads',
-        description: 'Usa el contexto de esta campaña para un futuro workflow de ensamblaje de video ad.',
+        description: 'Crea un plan creativo de anuncio pagado con contenido de campaña, activos de producto, overlays, CTA y end card.',
       },
       start_fashion_try_on: {
         title: 'Iniciar Fashion Try-On',

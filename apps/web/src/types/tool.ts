@@ -9,6 +9,7 @@ export type ToolOutputType =
   | 'video'
   | 'avatar'
   | 'mixed_media'
+  | 'ad_plan'
 export type ToolImplementationStage = 'mock' | 'beta' | 'real_provider' | 'future'
 
 export interface CreatorTool {

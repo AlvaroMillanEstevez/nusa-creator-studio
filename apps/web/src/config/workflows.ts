@@ -45,13 +45,13 @@ export const betaWorkflows: BetaWorkflowDefinition[] = [
   },
   {
     key: 'auto_video_ads',
-    status: 'beta_next',
-    sourceToolKey: null,
+    status: 'available',
+    sourceToolKey: 'auto_video_ads',
     dashboardToolKey: 'auto_video_ads',
     projectActionKey: 'create_video_ad',
     categoryKey: 'paid_ads',
-    recommendedInputKeys: ['product_kit', 'raw_footage', 'cta'],
-    outputKeys: ['paid_ad_creative', 'promo_overlays', 'cta', 'end_card'],
+    recommendedInputKeys: ['product_kit', 'product_image', 'raw_footage', 'cta'],
+    outputKeys: ['paid_ad_creative', 'storyboard', 'promo_overlays', 'cta', 'end_card'],
     iconKey: 'ads',
   },
   {

@@ -54,6 +54,7 @@ class CreatorTool extends Model
         'video',
         'avatar',
         'mixed_media',
+        'ad_plan',
     ];
 
     public const IMPLEMENTATION_STAGES = [
@@ -72,6 +73,7 @@ class CreatorTool extends Model
         'fashion_try_on' => '/fashion-try-on/new',
         'motion_ai_video' => '/motion-video/new',
         'auto_video_editor' => '/dashboard?tool=auto_video_editor',
+        'auto_video_ads' => '/dashboard?tool=auto_video_ads',
     ];
 
     public function getRouteKeyName(): string

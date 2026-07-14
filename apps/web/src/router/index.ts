@@ -166,6 +166,12 @@ const router = createRouter({
       meta: { requiresAuth: true, titleKey: 'metadata.titles.autoVideoEditorAction' },
     },
     {
+      path: '/projects/:projectId/actions/auto-video-ads',
+      name: 'project-auto-video-ads-action',
+      component: () => import('../views/AutoVideoAdsActionView.vue'),
+      meta: { requiresAuth: true, titleKey: 'metadata.titles.autoVideoAdsAction' },
+    },
+    {
       path: '/projects/:projectId/actions/voiceover',
       name: 'project-voiceover-action',
       component: () => import('../views/VoiceoverActionView.vue'),

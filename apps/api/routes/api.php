@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CreatorToolController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\GenerateAiVoiceoverController;
+use App\Http\Controllers\Api\V1\GenerateAutoVideoAdController;
 use App\Http\Controllers\Api\V1\GenerateAutoVideoEditController;
 use App\Http\Controllers\Api\V1\GenerateCampaignController;
 use App\Http\Controllers\Api\V1\GenerateFashionTryOnController;
@@ -118,6 +119,10 @@ Route::prefix('v1')->group(function () {
             'projects/{project}/generate-auto-video-edit',
             GenerateAutoVideoEditController::class,
         )->name('projects.generate-auto-video-edit');
+        Route::post(
+            'projects/{project}/generate-auto-video-ad',
+            GenerateAutoVideoAdController::class,
+        )->name('projects.generate-auto-video-ad');
         Route::post(
             'projects/{project}/generate-product-video-script',
             GenerateProductVideoScriptController::class,

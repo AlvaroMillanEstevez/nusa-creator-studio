@@ -31,7 +31,7 @@ class CreatorToolSeeder extends Seeder
         $this->applyTaxonomyDefaults($creatorTool, $tool);
         $this->applyMetadataDefaults($creatorTool, $tool);
 
-        if (in_array($tool['key'], ['ai_voiceover', 'fashion_try_on', 'motion_ai_video'], true)) {
+        if (in_array($tool['key'], ['ai_voiceover', 'fashion_try_on', 'motion_ai_video', 'auto_video_ads'], true)) {
             $this->refreshLegacyLaunchCopy($creatorTool, $tool);
         }
 
@@ -134,6 +134,10 @@ class CreatorToolSeeder extends Seeder
             'motion_ai_video' => [
                 'short_description' => ['Create motion-led video concepts from product or creator assets.'],
                 'long_description' => ['Turn product and creator assets into concise vertical-video concepts with clear motion direction.'],
+            ],
+            'auto_video_ads' => [
+                'short_description' => ['Plan paid video ad creatives from project content and assets.'],
+                'long_description' => ['Future premium workflow for paid social video ads.'],
             ],
             default => ['short_description' => [], 'long_description' => []],
         };
@@ -311,6 +315,27 @@ class CreatorToolSeeder extends Seeder
                 'sort_order' => 65,
                 'metadata' => [
                     'service_note' => 'Composite mock workflow. Effective cost may include reused or newly generated video analysis and voiceover planning.',
+                ],
+            ],
+            [
+                'key' => 'auto_video_ads',
+                'title' => 'Auto Video Ads',
+                'short_description' => 'Create paid ad creative plans with hook, benefits, overlays, CTA and end card from your campaign and product assets.',
+                'long_description' => 'Turn campaign content, product images and source videos into a structured paid social ad plan ready for a future renderer.',
+                'category' => 'paid_ads',
+                'service_tier' => 'premium',
+                'output_type' => 'ad_plan',
+                'implementation_stage' => 'mock',
+                'status' => 'available',
+                'route' => '/dashboard?tool=auto_video_ads',
+                'credit_cost' => 2,
+                'credit_cost_label' => '2 credits',
+                'badge_label' => 'Mock beta',
+                'is_recommended' => false,
+                'is_visible' => true,
+                'sort_order' => 67,
+                'metadata' => [
+                    'service_note' => 'Mock beta workflow for paid ad creative plans. Final Shotstack rendering will be added later.',
                 ],
             ],
             [

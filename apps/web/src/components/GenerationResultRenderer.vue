@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 
 import AiVoiceoverGenerationResult from '@/components/AiVoiceoverGenerationResult.vue'
 import AutoVideoEditorGenerationResult from '@/components/AutoVideoEditorGenerationResult.vue'
+import AutoVideoAdGenerationResult from '@/components/AutoVideoAdGenerationResult.vue'
 import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
 import FashionTryOnGenerationResult from '@/components/FashionTryOnGenerationResult.vue'
 import MotionVideoGenerationResult from '@/components/MotionVideoGenerationResult.vue'
@@ -15,6 +16,7 @@ import {
   generationOutput,
   isAiVoiceoverResult,
   isAutoVideoEditorResult,
+  isAutoVideoAdResult,
   isCampaignGenerationResult,
   isFashionTryOnResult,
   isMotionVideoResult,
@@ -79,6 +81,11 @@ const autoVideoEditorResult = computed(() =>
     ? result.value
     : null,
 )
+const autoVideoAdResult = computed(() =>
+  props.generation?.job_type === 'generate_auto_video_ad' && isAutoVideoAdResult(result.value)
+    ? result.value
+    : null,
+)
 const hasSupportedResult = computed(
   () =>
     campaignResult.value !== null ||
@@ -88,7 +95,8 @@ const hasSupportedResult = computed(
     fashionTryOnResult.value !== null ||
     motionVideoResult.value !== null ||
     videoToCampaignResult.value !== null ||
-    autoVideoEditorResult.value !== null,
+    autoVideoEditorResult.value !== null ||
+    autoVideoAdResult.value !== null,
 )
 const isQueued = computed(
   () => props.generation?.status === 'queued' || props.generation?.status === 'pending',
@@ -111,6 +119,9 @@ const retryRoute = computed(() => {
 
   if (props.generation?.job_type === 'generate_auto_video_edit') {
     return `/projects/${String(id)}/actions/auto-video-editor`
+  }
+  if (props.generation?.job_type === 'generate_auto_video_ad') {
+    return `/projects/${String(id)}/actions/auto-video-ads`
   }
 
   return `/projects/${String(id)}`
@@ -272,5 +283,6 @@ const failedDescription = computed(() =>
       :result="autoVideoEditorResult"
       :generation-id="generation.id"
     />
+    <AutoVideoAdGenerationResult v-else-if="autoVideoAdResult" :result="autoVideoAdResult" />
   </div>
 </template>

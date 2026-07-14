@@ -146,6 +146,23 @@ const tools: CreatorTool[] = [
     sort_order: 37,
   },
   {
+    key: 'auto_video_ads',
+    title: 'Auto Video Ads',
+    short_description: 'Create paid ad creative plans.',
+    long_description: 'Generate paid ad creative plans from campaign content and product assets.',
+    category: 'paid_ads',
+    service_tier: 'premium',
+    output_type: 'ad_plan',
+    implementation_stage: 'mock',
+    status: 'available',
+    route: '/dashboard?tool=auto_video_ads',
+    credit_cost: 2,
+    credit_cost_label: '2 credits',
+    badge_label: 'Mock beta',
+    is_recommended: false,
+    sort_order: 38,
+  },
+  {
     key: 'future_tool',
     title: 'Future studio tool',
     short_description: 'Coming later.',
@@ -318,7 +335,7 @@ describe('ToolsView', () => {
     expect(autoEditor.text()).toContain('Video analysis')
   })
 
-  it('links active workflows for authenticated users and keeps beta-next workflows disabled', async () => {
+  it('links active workflows for authenticated users and keeps Motion AI Video disabled', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -336,9 +353,9 @@ describe('ToolsView', () => {
     expect(productKit.attributes('href')).toBe('/dashboard?tool=product_content_kit')
     expect(autoEditor.element.tagName).toBe('A')
     expect(autoEditor.attributes('href')).toBe('/dashboard?tool=auto_video_editor')
-    expect(ads.element.tagName).toBe('ARTICLE')
-    expect(ads.text()).toContain('Planned for closed beta')
-    expect(ads.find('a').exists()).toBe(false)
+    expect(ads.element.tagName).toBe('A')
+    expect(ads.attributes('href')).toBe('/dashboard?tool=auto_video_ads')
+    expect(ads.text()).toContain('Mock beta')
     expect(motion.element.tagName).toBe('ARTICLE')
     expect(motion.text()).toContain('Planned for closed beta')
     expect(motion.find('a').exists()).toBe(false)

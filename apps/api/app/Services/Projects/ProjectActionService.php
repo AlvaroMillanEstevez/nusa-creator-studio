@@ -30,6 +30,7 @@ class ProjectActionService
                 'ai_voiceover',
                 'video_to_campaign',
                 'auto_video_editor',
+                'auto_video_ads',
                 'fashion_try_on',
                 'motion_ai_video',
             ])
@@ -41,7 +42,7 @@ class ProjectActionService
             $this->voiceoverFromScriptAction($project, $user, $tools->get('ai_voiceover')),
             $this->videoToCampaignAction($project, $user, $tools->get('video_to_campaign')),
             $this->autoVideoEditorAction($project, $user, $tools->get('auto_video_editor')),
-            $this->videoAdAction($user),
+            $this->videoAdAction($project, $user, $tools->get('auto_video_ads')),
             $this->fashionTryOnAction($project, $user, $tools->get('fashion_try_on')),
             $this->motionVideoAction($project, $user, $tools->get('motion_ai_video')),
             $this->avatarPresenterAction($user),
@@ -285,22 +286,75 @@ class ProjectActionService
     }
 
     /** @return array<string, mixed> */
-    private function videoAdAction(User $user): array
+    private function videoAdAction(Project $project, User $user, ?CreatorTool $tool): array
     {
+        $hasProductImage = $this->hasAnyAssetRole($project, [
+            'product_image',
+            'brand_reference',
+            'general',
+        ], 'image');
+        $hasSourceVideo = $this->hasAnyAssetRole($project, [
+            'source_video',
+            'raw_product_video',
+            'campaign_source_video',
+            'video_reference',
+            'general',
+        ], 'video');
+        $campaignSources = $this->completedGenerations($project, 'generate_affiliate_campaign')
+            ->merge($this->completedGenerations($project, 'generate_video_to_campaign'));
+        $voiceoverSources = $this->completedGenerations($project, 'generate_ai_voiceover');
+        $hasCampaignSource = $campaignSources->isNotEmpty();
+
+        $requirements = [
+            $this->requirement(
+                type: 'media_asset',
+                key: 'product_image_or_source_video',
+                label: 'Product image or source video',
+                satisfied: $hasProductImage || $hasSourceVideo,
+                helpText: 'Choose a product image, source video, or both for the ad plan.',
+                suggestedUsageRole: 'product_image',
+            ),
+            $this->requirement(
+                type: 'source_generation',
+                key: 'campaign_generation',
+                label: 'Product Content Kit',
+                satisfied: $hasCampaignSource,
+                helpText: 'Optional but recommended: use a Product Content Kit or video analysis as the campaign source.',
+            ),
+        ];
+
         return $this->action(
             user: $user,
             key: 'create_video_ad',
-            title: 'Create video ad',
-            description: 'Use project context to assemble a video ad workflow later.',
+            title: 'Auto Video Ads',
+            description: 'Create a paid ad creative plan from campaign content, product assets, overlays, CTA and end card.',
             serviceTier: 'premium',
-            outputType: 'video',
-            tool: null,
-            status: 'coming_soon',
-            actionMode: 'coming_soon',
-            primaryLabel: 'Coming soon',
-            requirements: [],
-            reason: 'Video ad assembly is planned for a later workflow.',
-            creditCost: null,
+            outputType: 'ad_plan',
+            tool: $tool,
+            status: 'configure',
+            actionMode: 'configure',
+            primaryLabel: 'Configure ad plan',
+            primaryAction: 'configure_auto_video_ad',
+            requirements: $requirements,
+            recommendedSources: array_merge(
+                $this->recommendedSources($campaignSources),
+                $this->recommendedSources($voiceoverSources),
+            ),
+            recommendedAssets: $this->recommendedAssets($project, [
+                'product_image',
+                'brand_reference',
+                'campaign_source_video',
+                'raw_product_video',
+                'source_video',
+                'video_reference',
+                'general',
+            ]),
+            missingRequirementsCount: ($hasProductImage || $hasSourceVideo) ? 0 : 1,
+            reason: ($hasProductImage || $hasSourceVideo)
+                ? 'Ready to create an ad plan from project visuals.'
+                : 'Choose a product image or source video in setup.',
+            actionEndpoint: "/api/v1/projects/{$project->id}/generate-auto-video-ad",
+            creditCost: $tool?->credit_cost,
         );
     }
 

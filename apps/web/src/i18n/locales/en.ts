@@ -33,6 +33,7 @@ export default {
       voiceover: 'Voiceover',
       videoToCampaignAction: 'Video-to-Campaign',
       autoVideoEditorAction: 'Auto Video Editor',
+      autoVideoAdsAction: 'Auto Video Ads',
       voiceoverAction: 'Create voiceover',
       fashionTryOn: 'Fashion try-on',
       motionVideo: 'Motion video',
@@ -244,8 +245,8 @@ export default {
     },
     auto_video_ads: {
       title: 'Auto Video Ads',
-      shortDescription: 'Generate paid ad creatives with hook, benefits, promo overlays, CTA and end card.',
-      longDescription: 'Planned for platforms like Facebook, Instagram and TikTok ads. This beta placeholder does not generate ads yet.',
+      shortDescription: 'Generate paid ad creative plans from campaign content and product assets.',
+      longDescription: 'Mock beta workflow for image, video or hybrid paid social ad plans. Final MP4 rendering comes next.'
     },
     motion_ai_video: {
       title: 'Motion AI Video',
@@ -276,6 +277,7 @@ export default {
       overlays: 'Overlays',
       end_card: 'End card',
       paid_ad_creative: 'Paid ad creative',
+      storyboard: 'Storyboard',
       promo_overlays: 'Promo overlays',
       ai_motion_video: 'AI motion video',
       visual_plan: 'Visual plan',
@@ -716,6 +718,7 @@ export default {
     setupTryOn: 'Setup Try-On',
     generateVideoCampaign: 'Generate video insight',
     configureAutoVideoEditor: 'Configure Auto Video Editor',
+    generateAdPlan: 'Generate Ad Plan',
     configureMotionVideo: 'Configure Motion Video',
     continueFromProjectContext: 'Start one of the active beta workflows from this shared project context.',
     narrationScript: 'Narration script',
@@ -762,11 +765,11 @@ export default {
       },
       create_video_ad: {
         title: 'Auto Video Ads',
-        description: 'Create paid ad creatives with hook, benefits, promo overlays, CTA and end card. Planned for closed beta.',
+        description: 'Create a paid ad creative plan from campaign content, product assets, overlays, CTA and end card.',
       },
       start_video_ad: {
         title: 'Auto Video Ads',
-        description: 'Create paid ad creatives with hook, benefits, promo overlays, CTA and end card. Planned for closed beta.',
+        description: 'Create a paid ad creative plan from campaign content, product assets, overlays, CTA and end card.',
       },
       start_fashion_try_on: {
         title: 'Start Fashion Try-On',

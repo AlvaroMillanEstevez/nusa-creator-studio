@@ -19,7 +19,7 @@ class CreatorToolApiTest extends TestCase
         $this->seed(CreatorToolSeeder::class);
         $this->seed(CreatorToolSeeder::class);
 
-        $this->assertDatabaseCount('creator_tools', 11);
+        $this->assertDatabaseCount('creator_tools', 12);
     }
 
     public function test_seeded_existing_tools_have_service_tier_output_type_and_stage(): void
@@ -66,6 +66,13 @@ class CreatorToolApiTest extends TestCase
             'service_tier' => 'premium',
             'output_type' => 'video',
             'implementation_stage' => 'beta',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'auto_video_ads',
+            'service_tier' => 'premium',
+            'output_type' => 'ad_plan',
+            'implementation_stage' => 'mock',
+            'status' => 'available',
         ]);
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'motion_ai_video',
@@ -139,12 +146,17 @@ class CreatorToolApiTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonCount(11, 'data');
+            ->assertJsonCount(12, 'data');
 
         $tool = collect($response->json('data'))->firstWhere('key', 'ai_voiceover');
 
         $this->assertSame('disabled', $tool['status']);
         $this->assertFalse($tool['is_visible']);
+
+        $autoVideoAds = collect($response->json('data'))->firstWhere('key', 'auto_video_ads');
+
+        $this->assertSame('available', $autoVideoAds['status']);
+        $this->assertSame('ad_plan', $autoVideoAds['output_type']);
     }
 
     public function test_admin_can_update_tool_management_fields_without_changing_key(): void

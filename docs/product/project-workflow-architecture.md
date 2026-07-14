@@ -8,7 +8,7 @@ The closed beta should be organized around four main user-facing workflows insid
 
 1. **Product Content Kit** — creates campaign angles, hooks, scripts, captions, hashtags, CTA options and publishing notes from a brief, product image or product video analysis.
 2. **Auto Video Editor** — turns real/raw product footage into an organic creator/social video using AI video analysis or manual edit setup.
-3. **Auto Video Ads** — planned closed-beta workflow for paid ad creatives with hook, benefits, promo overlays, CTA and end card. It should reuse Product Content Kit output, project assets, voiceover and Shotstack timeline logic later.
+3. **Auto Video Ads** — available mock-beta workflow for paid ad creative plans with hook, benefits, promo overlays, CTA and end card. It reuses Product Content Kit output, project assets and optional voiceover context, while final Shotstack MP4 rendering remains a later phase.
 4. **Motion AI Video** — planned closed-beta workflow for short AI motion videos from product image, visual scenario and campaign/script context. The real motion provider will be added later.
 
 The Project Workspace contains:
@@ -92,7 +92,7 @@ The v1 workspace model should support simple source relationships before a full 
 Product brief
 → Product Content Kit
 → AI Voiceover
-→ Video Ad / Motion Video / Avatar later
+→ Auto Video Ads / Auto Video Editor / Motion Video later
 ```
 
 The current v1 implementation makes the Campaign → Voiceover step work in the same project. The user should not need to manually copy/paste campaign copy into a separate isolated voiceover tool.
@@ -107,6 +107,7 @@ Product Content Kit is the primary text/content workflow. It can start from:
 Brief-only and image-assisted kits are useful for hooks, scripts, captions, CTA options, voiceover-ready narration and publishing prep. They are not primary sources for Auto Video Editor because they do not contain source video ranges, detected video moments or recommended cuts.
 
 If the creator wants raw product footage analyzed for edit decisions, the correct path is **Analyze footage** / video analysis. Internally this still uses the Video-to-Campaign job, but user-facing UX should frame it as Product Content Kit from video and as preparation for Auto Video Editor. Video-analysis outputs use `campaign_input_mode=video_analysis`, include a source video asset id, and become Auto Video Editor eligible only when usable `recommended_cuts` or `edit_plan.timeline` data exists.
+
 ## Video analysis and Auto Video Editor chain
 
 The next workspace chain is video-first:
@@ -142,6 +143,35 @@ Auto Video Editor is a Premium composite workflow. It creates an edit-ready vert
 Text-only and image-assisted Product Content Kit generations should not appear as AI-analyzed campaign sources because they do not contain source video cuts. Manual edit setup remains available when the creator has a source video but has not run Analyze footage yet.
 
 Auto Video Editor can also reuse an existing AI Voiceover generation or audio asset, or proceed with no voiceover. In mock mode it may still plan a new voiceover component. In real Shotstack mode, automatic new ElevenLabs generation is intentionally deferred: creators should generate a voiceover first, then select that existing audio in Auto Video Editor.
+
+## Auto Video Ads mock workflow
+
+Auto Video Ads is now an available Premium mock-beta workflow. It creates a structured paid social ad plan from one project workspace instead of a disconnected ad tool.
+
+Input sources:
+
+- A product image, a source video, or both. At least one visual asset is required.
+- Optional Product Content Kit, video-analysis or product-to-video generation context.
+- Optional AI Voiceover generation context.
+- Ad setup options such as platform, format, goal, target duration, tone, visual style, hook style, primary CTA and verified offer text.
+
+The backend endpoint is `POST /api/v1/projects/{project}/generate-auto-video-ad`. It charges 2 internal platform credits, creates a queued `Generation` with job type `generate_auto_video_ad`, and completes asynchronously through the deterministic mock provider.
+
+Current mock output is a plan only. It includes:
+
+- `ad_summary`
+- `hook_options`
+- `ad_script`
+- `storyboard`
+- `overlay_plan`
+- `caption_variants`
+- `hashtags`
+- `cta_options`
+- `compliance_notes`
+- `render_plan`
+- `metadata`
+
+It must not create a fake MP4, fake render URL or generated video `MediaAsset`. The result UI should clearly say that final MP4 rendering comes next. Future real rendering can reuse the same source-selection and output schema with Shotstack or another renderer, but provider URLs and private storage paths should remain hidden from the frontend.
 
 Shotstack renders require temporary provider-accessible URLs for private source video and optional voiceover audio. These URLs use opaque expiring tokens and do not expose raw storage paths. In local development, a public HTTPS tunnel such as ngrok or cloudflared is required because Shotstack cannot fetch private `localhost` URLs.
 

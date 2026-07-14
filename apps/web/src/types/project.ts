@@ -248,6 +248,54 @@ export const autoVideoEndScreenOptions = [
   { value: 'product_hold_cta', label: 'Product hold + CTA' },
 ] as const
 
+
+export const autoVideoAdFormatOptions = [
+  { value: 'vertical_9_16', label: 'Vertical 9:16' },
+  { value: 'square_1_1', label: 'Square 1:1' },
+  { value: 'portrait_4_5', label: 'Portrait 4:5' },
+] as const
+
+export const autoVideoAdPlatformOptions = [
+  { value: 'facebook_ads', label: 'Facebook Ads' },
+  { value: 'instagram_ads', label: 'Instagram Ads' },
+  { value: 'tiktok_ads', label: 'TikTok Ads' },
+  { value: 'reels_ads', label: 'Reels Ads' },
+  { value: 'general_paid_social', label: 'General paid social' },
+] as const
+
+export const autoVideoAdGoalOptions = [
+  { value: 'sales', label: 'Sales' },
+  { value: 'traffic', label: 'Traffic' },
+  { value: 'awareness', label: 'Awareness' },
+  { value: 'product_demo', label: 'Product demo' },
+  { value: 'lead_generation', label: 'Lead generation' },
+] as const
+
+export const autoVideoAdDurationOptions = [10, 15, 20, 30] as const
+
+export const autoVideoAdToneOptions = [
+  { value: 'clean', label: 'Clean' },
+  { value: 'ugc', label: 'UGC' },
+  { value: 'premium', label: 'Premium' },
+  { value: 'energetic', label: 'Energetic' },
+  { value: 'direct_response', label: 'Direct response' },
+] as const
+
+export const autoVideoAdVisualStyleOptions = [
+  { value: 'clean_product', label: 'Clean product' },
+  { value: 'ugc_ad', label: 'UGC ad' },
+  { value: 'bold_promo', label: 'Bold promo' },
+  { value: 'premium_brand', label: 'Premium brand' },
+  { value: 'problem_solution', label: 'Problem / solution' },
+] as const
+
+export const autoVideoAdHookStyleOptions = [
+  { value: 'curiosity', label: 'Curiosity' },
+  { value: 'pain_point', label: 'Pain point' },
+  { value: 'benefit_first', label: 'Benefit first' },
+  { value: 'demo_first', label: 'Demo first' },
+  { value: 'offer_first', label: 'Offer first' },
+] as const
 export type CampaignLanguage = (typeof campaignLanguageOptions)[number]['value']
 export type CampaignTone = (typeof campaignToneOptions)[number]['value']
 export type VideoEnhancerStyle = (typeof videoEnhancerStyleOptions)[number]['value']
@@ -282,6 +330,13 @@ export type AutoVideoTransitionStyle = (typeof autoVideoTransitionStyleOptions)[
 export type AutoVideoMotionPolish = (typeof autoVideoMotionPolishOptions)[number]['value']
 export type AutoVideoClipDiversity = (typeof autoVideoClipDiversityOptions)[number]['value']
 export type AutoVideoEndScreen = (typeof autoVideoEndScreenOptions)[number]['value']
+export type AutoVideoAdFormat = (typeof autoVideoAdFormatOptions)[number]['value']
+export type AutoVideoAdPlatform = (typeof autoVideoAdPlatformOptions)[number]['value']
+export type AutoVideoAdGoal = (typeof autoVideoAdGoalOptions)[number]['value']
+export type AutoVideoAdDuration = (typeof autoVideoAdDurationOptions)[number]
+export type AutoVideoAdTone = (typeof autoVideoAdToneOptions)[number]['value']
+export type AutoVideoAdVisualStyle = (typeof autoVideoAdVisualStyleOptions)[number]['value']
+export type AutoVideoAdHookStyle = (typeof autoVideoAdHookStyleOptions)[number]['value']
 export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionPlatform | WorkspacePlatform
 
 export type ProjectType =
@@ -509,6 +564,26 @@ export interface GenerateAutoVideoEditPayload {
   notes?: string | null
 }
 
+
+export interface GenerateAutoVideoAdPayload {
+  ad_format: AutoVideoAdFormat | string
+  platform: AutoVideoAdPlatform | string
+  ad_goal: AutoVideoAdGoal | string
+  product_image_asset_id?: number | null
+  source_video_asset_id?: number | null
+  campaign_generation_id?: number | null
+  voiceover_generation_id?: number | null
+  target_duration_seconds?: AutoVideoAdDuration | number | null
+  primary_cta?: string | null
+  offer_text?: string | null
+  landing_page_context?: string | null
+  audience_override?: string | null
+  tone?: AutoVideoAdTone | string | null
+  visual_style?: AutoVideoAdVisualStyle | string | null
+  hook_style?: AutoVideoAdHookStyle | string | null
+  include_voiceover_script?: boolean
+  include_caption_variants?: boolean
+}
 export interface FashionTryOnFormPayload {
   title: string
   product_name: string | null
@@ -1205,6 +1280,102 @@ export interface AutoVideoEditorResult {
   provider_metadata?: CampaignProviderMetadata & Record<string, unknown>
 }
 
+
+export interface AutoVideoAdSummary {
+  platform: string
+  format: string
+  duration: number
+  ad_goal: string
+  visual_source_type: 'image' | 'video' | 'hybrid' | string
+  creative_angle: string
+  target_audience: string
+  main_cta: string
+}
+
+export interface AutoVideoAdHookOption {
+  text: string
+  style: string
+  why_it_works: string
+}
+
+export interface AutoVideoAdScript {
+  opening_hook: string
+  problem_or_context: string
+  product_benefit_sequence: string[]
+  proof_or_demo_line: string
+  CTA: string
+  voiceover_ready_script: string
+}
+
+export interface AutoVideoAdStoryboardScene {
+  scene_number: number
+  start_seconds: number
+  end_seconds: number
+  visual_direction: string
+  overlay_text: string
+  narration_line: string
+  asset_role: 'product_image' | 'product_video' | 'campaign_text' | 'end_card' | string
+  transition_note: string
+}
+
+export interface AutoVideoAdOverlayItem {
+  text: string
+  placement: string
+  timing: string
+  style: string
+  purpose: string
+}
+
+export interface AutoVideoAdCaptionVariants {
+  short_caption: string
+  direct_response_caption: string
+  soft_sell_caption: string
+}
+
+export interface AutoVideoAdRenderPlan {
+  renderer: string
+  render_ready: boolean
+  missing_items: string[]
+  recommended_assets: string[]
+  timeline_strategy: string
+  overlay_style: string
+  end_card_strategy: string
+}
+
+export interface AutoVideoAdMetadata {
+  generation_type: 'auto_video_ad' | string
+  provider: 'mock' | string
+  visual_source_type: 'image' | 'video' | 'hybrid' | string
+  campaign_generation_id: number | null
+  product_image_asset_id: number | null
+  source_video_asset_id: number | null
+  voiceover_generation_id: number | null
+  target_duration_seconds: number
+  ad_format: string
+  platform: string
+  ad_goal: string
+  tone: string
+  visual_style: string
+  hook_style: string
+  render_available: boolean
+  shotstack_render_pending: boolean
+  voiceover_ready?: boolean
+  campaign_source_used?: boolean
+}
+
+export interface AutoVideoAdResult {
+  ad_summary: AutoVideoAdSummary
+  hook_options: AutoVideoAdHookOption[]
+  ad_script: AutoVideoAdScript
+  storyboard: AutoVideoAdStoryboardScene[]
+  overlay_plan: AutoVideoAdOverlayItem[]
+  caption_variants: AutoVideoAdCaptionVariants
+  hashtags: string[]
+  cta_options: string[]
+  compliance_notes: string[]
+  render_plan: AutoVideoAdRenderPlan
+  metadata: AutoVideoAdMetadata
+}
 export interface MotionVideoReference {
   id: number
   usage_role: string | null
@@ -1269,6 +1440,7 @@ export type GenerationResult =
   | MotionVideoResult
   | VideoToCampaignResult
   | AutoVideoEditorResult
+  | AutoVideoAdResult
 
 export interface Generation<TResult = GenerationResult> {
   id: number
@@ -1310,6 +1482,7 @@ export type FashionTryOnGenerationResponse = GenerationResponse<FashionTryOnResu
 export type MotionVideoGenerationResponse = GenerationResponse<MotionVideoResult>
 export type VideoToCampaignGenerationResponse = GenerationResponse<VideoToCampaignResult>
 export type AutoVideoEditorGenerationResponse = GenerationResponse<AutoVideoEditorResult>
+export type AutoVideoAdGenerationResponse = GenerationResponse<AutoVideoAdResult>
 
 export interface PaginatedResponse<T> {
   data: T[]
@@ -1362,6 +1535,12 @@ export function isVideoToCampaignResult(
   return result !== null && 'video_summary' in result && 'narration_voice_script' in result
 }
 
+
+export function isAutoVideoAdResult(
+  result: GenerationResult | null,
+): result is AutoVideoAdResult {
+  return result !== null && 'ad_summary' in result && 'storyboard' in result && 'render_plan' in result
+}
 export function isAutoVideoEditorResult(
   result: GenerationResult | null,
 ): result is AutoVideoEditorResult {

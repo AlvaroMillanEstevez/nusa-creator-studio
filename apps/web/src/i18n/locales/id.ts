@@ -39,6 +39,7 @@ export default {
       voiceover: 'Voiceover',
       videoToCampaignAction: 'Video-to-Campaign',
       autoVideoEditorAction: 'Auto Video Editor',
+      autoVideoAdsAction: 'Auto Video Ads',
       voiceoverAction: 'Buat voiceover',
       fashionTryOn: 'Fashion try-on',
       motionVideo: 'Motion video',
@@ -173,8 +174,8 @@ export default {
     },
     auto_video_ads: {
       title: 'Auto Video Ads',
-      shortDescription: 'Buat kreatif iklan dengan hook, benefit, overlay promo, CTA dan end card.',
-      longDescription: 'Direncanakan untuk iklan Facebook, Instagram dan TikTok. Placeholder beta ini belum membuat iklan.',
+      shortDescription: 'Buat rencana kreatif iklan berbayar dari konten kampanye dan aset produk.',
+      longDescription: 'Workflow mock beta untuk rencana iklan sosial berbasis gambar, video, atau hybrid. Rendering MP4 final menyusul.'
     },
     motion_ai_video: {
       title: 'Motion AI Video',
@@ -205,6 +206,7 @@ export default {
       overlays: 'Overlay',
       end_card: 'End card',
       paid_ad_creative: 'Kreatif iklan',
+      storyboard: 'Storyboard',
       promo_overlays: 'Overlay promo',
       ai_motion_video: 'Video motion AI',
       visual_plan: 'Rencana visual',
@@ -330,6 +332,7 @@ export default {
     setupTryOn: 'Setup Try-On',
     generateVideoCampaign: 'Buat campaign video',
     configureAutoVideoEditor: 'Atur Auto Video Editor',
+    generateAdPlan: 'Buat Rencana Iklan',
     configureMotionVideo: 'Konfigurasi Motion Video',
     continueFromProjectContext: 'Mulai atau lanjutkan aksi dari konteks project ini.',
     narrationScript: 'Suara narasi',
@@ -377,11 +380,11 @@ export default {
       },
       create_video_ad: {
         title: 'Auto Video Ads',
-        description: 'Buat kreatif iklan berbayar dengan hook, benefit, overlay promo, CTA dan end card. Direncanakan untuk closed beta.',
+        description: 'Buat rencana kreatif iklan berbayar dari konten kampanye, aset produk, overlay, CTA, dan end card.',
       },
       start_video_ad: {
         title: 'Auto Video Ads',
-        description: 'Buat kreatif iklan berbayar dengan hook, benefit, overlay promo, CTA dan end card. Direncanakan untuk closed beta.',
+        description: 'Buat rencana kreatif iklan berbayar dari konten kampanye, aset produk, overlay, CTA, dan end card.',
       },
       start_fashion_try_on: {
         title: 'Mulai Fashion Try-On',

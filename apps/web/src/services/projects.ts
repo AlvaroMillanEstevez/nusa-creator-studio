@@ -4,6 +4,7 @@ import type {
   AiVoiceoverGenerationResponse,
   AiVoiceoverProject,
   AutoVideoEditorGenerationResponse,
+  AutoVideoAdGenerationResponse,
   CampaignFormPayload,
   CampaignGenerationResponse,
   CampaignProject,
@@ -14,6 +15,7 @@ import type {
   CreatorGeneration,
   GenerateAiVoiceoverPayload,
   GenerateAutoVideoEditPayload,
+  GenerateAutoVideoAdPayload,
   GenerateVideoToCampaignPayload,
   FashionTryOnFormPayload,
   FashionTryOnGenerationResponse,
@@ -242,6 +244,15 @@ export function generateAutoVideoEdit(
 ): Promise<AutoVideoEditorGenerationResponse> {
   return apiPost<AutoVideoEditorGenerationResponse, GenerateAutoVideoEditPayload>(
     '/projects/' + projectId + '/generate-auto-video-edit',
+    payload,
+  )
+}
+export function generateAutoVideoAd(
+  projectId: number | string,
+  payload: GenerateAutoVideoAdPayload,
+): Promise<AutoVideoAdGenerationResponse> {
+  return apiPost<AutoVideoAdGenerationResponse, GenerateAutoVideoAdPayload>(
+    '/projects/' + projectId + '/generate-auto-video-ad',
     payload,
   )
 }

@@ -406,6 +406,10 @@ function isAutoVideoEditorAction(action: ProjectAction): boolean {
   return action.key === 'generate_auto_video_edit'
 }
 
+function isAutoVideoAdsAction(action: ProjectAction): boolean {
+  return action.key === 'create_video_ad' || action.key === 'start_video_ad'
+}
+
 function isComingSoon(action: ProjectAction): boolean {
   return action.status === 'coming_soon' || action.action_mode === 'coming_soon'
 }
@@ -554,6 +558,10 @@ function actionButtonLabel(action: ProjectAction): string {
     return t('projectActions.configureAutoVideoEditor')
   }
 
+  if (isAutoVideoAdsAction(action)) {
+    return t('projectActions.generateAdPlan')
+  }
+
   return action.primary_cta?.label ?? t('projectActions.configureAction')
 }
 
@@ -576,6 +584,13 @@ function videoToCampaignActionRoute() {
 function autoVideoEditorActionRoute() {
   return {
     name: 'project-auto-video-editor-action',
+    params: { projectId: String(props.projectId) },
+  }
+}
+
+function autoVideoAdsActionRoute() {
+  return {
+    name: 'project-auto-video-ads-action',
     params: { projectId: String(props.projectId) },
   }
 }
@@ -670,6 +685,11 @@ async function handleAction(action: ProjectAction): Promise<void> {
 
   if (isAutoVideoEditorAction(action)) {
     await router.push(autoVideoEditorActionRoute())
+    return
+  }
+
+  if (isAutoVideoAdsAction(action)) {
+    await router.push(autoVideoAdsActionRoute())
     return
   }
 
