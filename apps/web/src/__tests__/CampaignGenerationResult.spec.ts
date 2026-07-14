@@ -57,10 +57,17 @@ const structuredResult: CampaignGenerationResultPayload = {
   cta_options: ['Review the product details before deciding.'],
   compliance_notes: ['Do not imply guaranteed results.'],
   usage_notes: ['Use real product footage.'],
+  campaign_input_mode: 'image_assisted',
+  has_source_video: false,
+  source_image_asset_id: 90,
+  has_edit_plan: false,
+  auto_video_editor_eligible: false,
   provider_metadata: {
     provider: 'openai',
     model: 'gpt-5.4-nano',
     estimated_cost_usd: 0.0002,
+    campaign_input_mode: 'image_assisted',
+    auto_video_editor_eligible: false,
   },
 }
 
@@ -148,6 +155,8 @@ describe('CampaignGenerationResult', () => {
     const { wrapper } = await mountCampaignResult()
 
     expect(wrapper.text()).toContain('Honest mini camera campaign')
+    expect(wrapper.get('[data-testid="campaign-workflow-notice"]').text()).toContain('Use this kit for captions, scripts, voiceover and publishing.')
+    expect(wrapper.get('[data-testid="campaign-workflow-notice"]').text()).toContain('generate a Video-to-Campaign Insight or use Manual edit setup')
     expect(wrapper.text()).toContain('¿Quieres crear contenido rápido?')
     expect(wrapper.text()).toContain('Narration voice')
     expect(wrapper.text()).toContain('Edit the narration before generating voiceover')
@@ -168,6 +177,26 @@ describe('CampaignGenerationResult', () => {
     expect(wrapper.text()).toContain('Copied')
   })
 
+
+  it('shows Auto Video Editor eligibility copy for video-analysis campaign results', async () => {
+    const { wrapper } = await mountCampaignResult({
+      result: {
+        ...structuredResult,
+        campaign_input_mode: 'video_analysis',
+        has_source_video: true,
+        source_video_asset_id: 88,
+        has_edit_plan: true,
+        auto_video_editor_eligible: true,
+        provider_metadata: {
+          provider: 'gemini',
+          campaign_input_mode: 'video_analysis',
+          auto_video_editor_eligible: true,
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="campaign-workflow-notice"]').text()).toContain('This campaign includes video analysis and can be used in Auto Video Editor.')
+  })
   it('routes narration voiceover CTA to the dedicated setup page with return context', async () => {
     const { wrapper, router } = await mountCampaignResult({
       projectId: 77,

@@ -555,6 +555,17 @@ class ShotstackAutoVideoEditorProviderTest extends TestCase
                     ['timestamp' => '0-3s', 'reason' => 'Strong opening shot.'],
                 ],
                 'cta_options' => ['Check the product details.'],
+                'campaign_input_mode' => 'video_analysis',
+                'has_source_video' => true,
+                'has_edit_plan' => true,
+                'auto_video_editor_eligible' => true,
+                'provider_metadata' => [
+                    'provider' => 'gemini',
+                    'campaign_input_mode' => 'video_analysis',
+                    'has_source_video' => true,
+                    'has_edit_plan' => true,
+                    'auto_video_editor_eligible' => true,
+                ],
             ],
         ]);
     }

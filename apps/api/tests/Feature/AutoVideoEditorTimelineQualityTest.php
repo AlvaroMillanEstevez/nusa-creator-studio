@@ -354,6 +354,78 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
         $this->assertFalse($timeline['timeline_summary']['captions_overlapping']);
     }
 
+    public function test_source_audio_controls_set_shotstack_mix_and_metadata(): void
+    {
+        $muted = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: 'https://assets.nusa.test/voiceover.mp3',
+            input: [
+                'creative_brief' => [
+                    'target_duration_seconds' => 15,
+                    'voiceover_duration_seconds' => 14.0,
+                    'effective_target_duration_seconds' => 15,
+                    'selected_cta' => 'Check details.',
+                    'source_audio_mode' => 'mute_source',
+                    'voiceover_mix' => 'voiceover_dominant',
+                    'transition_style' => 'soft_fades',
+                    'motion_polish' => 'product_focus',
+                    'clip_diversity' => 'more_unique_shots',
+                    'end_screen' => 'simple_cta',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 4, 'caption' => 'Opening reveal', 'product_visibility' => 'high', 'stability' => 'high'],
+                        ['start_seconds' => 8, 'end_seconds' => 12, 'caption' => 'Button press demo', 'product_visibility' => 'high', 'stability' => 'high'],
+                    ],
+                ],
+            ],
+        );
+
+        $videoTrack = collect($muted['edit']['timeline']['tracks'])
+            ->first(fn (array $track): bool => data_get($track, 'clips.0.asset.type') === 'video');
+        $voiceoverTrack = collect($muted['edit']['timeline']['tracks'])
+            ->first(fn (array $track): bool => data_get($track, 'clips.0.asset.type') === 'audio');
+
+        $this->assertSame(0.0, $videoTrack['clips'][0]['asset']['volume']);
+        $this->assertSame(1.0, $voiceoverTrack['clips'][0]['asset']['volume']);
+        $this->assertSame('fade', $videoTrack['clips'][0]['transition']['in']);
+        $this->assertSame('mute_source', $muted['render_settings']['source_audio_mode']);
+        $this->assertTrue($muted['render_settings']['original_audio_muted']);
+        $this->assertSame('voiceover_dominant', $muted['render_settings']['voiceover_mix']);
+        $this->assertSame('soft_fades', $muted['render_settings']['transition_style']);
+        $this->assertSame('product_focus', $muted['render_settings']['motion_polish']);
+        $this->assertSame('more_unique_shots', $muted['render_settings']['clip_diversity']);
+        $this->assertSame('simple_cta', $muted['render_settings']['end_screen']);
+        $this->assertSame($muted['render_settings']['source_audio_mode'], $muted['timeline_summary']['source_audio_mode']);
+        $this->assertStringContainsString('advanced AI denoise is not applied', implode(' ', $muted['audio_mix_plan']['mix_notes']));
+    }
+
+    public function test_product_sound_focus_keeps_source_audio_subtle(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: null,
+            input: [
+                'creative_brief' => [
+                    'target_duration_seconds' => 15,
+                    'effective_target_duration_seconds' => 15,
+                    'selected_cta' => 'Check details.',
+                    'source_audio_mode' => 'product_sounds',
+                    'voiceover_mix' => 'balanced',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 4, 'caption' => 'Button click demo', 'instruction' => 'Show button press and handling sounds'],
+                    ],
+                ],
+            ],
+        );
+
+        $videoTrack = collect($timeline['edit']['timeline']['tracks'])
+            ->first(fn (array $track): bool => data_get($track, 'clips.0.asset.type') === 'video');
+
+        $this->assertSame(0.18, $videoTrack['clips'][0]['asset']['volume']);
+        $this->assertSame('product_sounds', $timeline['render_settings']['source_audio_mode']);
+        $this->assertFalse($timeline['render_settings']['original_audio_muted']);
+        $this->assertSame('subtle_product_sounds_under_voiceover', $timeline['render_settings']['audio_cleanup_strategy']);
+    }
+
     public function test_creative_brief_uses_context_cta_and_voiceover_duration(): void
     {
         $brief = app(AutoVideoEditorCreativeBriefBuilder::class)->build([

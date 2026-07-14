@@ -204,6 +204,9 @@ class ShotstackAutoVideoEditorProvider implements AutoVideoEditorProvider
         $costBreakdown = is_array($input['cost_breakdown'] ?? null) ? $input['cost_breakdown'] : [];
         $renderSettings = is_array($timeline['render_settings'] ?? null) ? $timeline['render_settings'] : [];
         $timelineSummary = is_array($timeline['timeline_summary'] ?? null) ? $timeline['timeline_summary'] : [];
+        $editMode = is_string($input['edit_mode'] ?? null) ? $input['edit_mode'] : 'manual_edit';
+        $aiVideoAnalysisUsed = (bool) ($input['ai_video_analysis_used'] ?? $editMode === 'ai_video_analysis');
+        $fallbackTimeline = (bool) ($input['fallback_timeline'] ?? $editMode === 'manual_edit');
         $estimatedCost = config('auto_video_editor.shotstack.estimated_provider_cost_usd');
         $estimatedCost = is_numeric($estimatedCost) ? (float) $estimatedCost : null;
 
@@ -211,7 +214,7 @@ class ShotstackAutoVideoEditorProvider implements AutoVideoEditorProvider
             'source_summary' => $this->sourceSummary($input, $sourceVideo),
             'selected_video_analysis_reference' => $analysisGenerationId !== null
                 ? ['type' => 'video_to_campaign_generation', 'generation_id' => $analysisGenerationId, 'note' => 'Video campaign analysis reused for Shotstack render']
-                : ['type' => 'raw_video_asset', 'media_asset_id' => $sourceVideo->getKey(), 'note' => 'Raw source video used for Shotstack render'],
+                : ['type' => 'manual_source_video', 'media_asset_id' => $sourceVideo->getKey(), 'note' => 'Manual source video used for Shotstack render'],
             'selected_voiceover_reference' => $voiceoverAsset instanceof MediaAsset
                 ? [
                     'type' => $voiceoverGenerationId !== null ? 'voiceover_generation' : 'voiceover_audio_asset',
@@ -286,6 +289,19 @@ class ShotstackAutoVideoEditorProvider implements AutoVideoEditorProvider
                 'caption_safe_area_applied' => $renderSettings['caption_safe_area_applied'] ?? null,
                 'caption_max_lines' => $renderSettings['caption_max_lines'] ?? null,
                 'caption_warnings' => $renderSettings['caption_warnings'] ?? [],
+                'edit_mode' => $editMode,
+                'ai_video_analysis_used' => $aiVideoAnalysisUsed,
+                'fallback_timeline' => $fallbackTimeline,
+                'source_audio_mode' => $renderSettings['source_audio_mode'] ?? null,
+                'source_audio_volume' => $renderSettings['source_audio_volume'] ?? null,
+                'voiceover_mix' => $renderSettings['voiceover_mix'] ?? null,
+                'voiceover_volume' => $renderSettings['voiceover_volume'] ?? null,
+                'audio_cleanup_strategy' => $renderSettings['audio_cleanup_strategy'] ?? null,
+                'original_audio_muted' => $renderSettings['original_audio_muted'] ?? null,
+                'transition_style' => $renderSettings['transition_style'] ?? null,
+                'motion_polish' => $renderSettings['motion_polish'] ?? null,
+                'clip_diversity' => $renderSettings['clip_diversity'] ?? null,
+                'end_screen' => $renderSettings['end_screen'] ?? null,
                 'final_video_asset_id' => $finalVideo->getKey(),
                 'provider_latency_ms' => $providerLatencyMs,
                 'render_time_ms' => $completion['render_time_ms'] ?? null,

@@ -33,7 +33,7 @@ class MockAffiliateCampaignProvider implements CampaignGenerationProvider
             default => $this->english($product, $description, $audience, $tone),
         };
 
-        return $this->resultFromLegacy($legacy);
+        return $this->resultFromLegacy($legacy, $data->input);
     }
 
     /**
@@ -243,8 +243,9 @@ class MockAffiliateCampaignProvider implements CampaignGenerationProvider
 
     /**
      * @param  array<string, mixed>  $legacy
+     * @param  array<string, mixed>  $input
      */
-    private function resultFromLegacy(array $legacy): CampaignGenerationResultData
+    private function resultFromLegacy(array $legacy, array $input): CampaignGenerationResultData
     {
         /** @var array<string, mixed> $script */
         $script = is_array($legacy['script'] ?? null) ? $legacy['script'] : [];
@@ -261,6 +262,17 @@ class MockAffiliateCampaignProvider implements CampaignGenerationProvider
             $legacyScenes,
         )));
         $legacyHooks = array_values(is_array($legacy['hooks'] ?? null) ? $legacy['hooks'] : []);
+        $campaignInputMode = is_string($input['campaign_input_mode'] ?? null) ? $input['campaign_input_mode'] : 'brief_only';
+        $imageAssisted = $campaignInputMode === 'image_assisted';
+        $usageNotes = array_values(is_array($legacy['notes'] ?? null) ? $legacy['notes'] : []);
+
+        if ($imageAssisted) {
+            $usageNotes[] = 'Image-assisted context was included from product image metadata. This mock does not perform deep visual recognition yet.';
+        }
+
+        $usageNotes[] = $campaignInputMode === 'video_analysis'
+            ? 'This campaign includes video analysis and can be used in Auto Video Editor.'
+            : 'Use this kit for captions, scripts, voiceover and publishing. To create an edited video from raw footage, generate a Video-to-Campaign Insight or use Manual edit setup.';
         $hooks = array_values(array_map(
             fn (mixed $hook, int $index): array => [
                 'label' => 'Hook '.($index + 1),
@@ -296,9 +308,15 @@ class MockAffiliateCampaignProvider implements CampaignGenerationProvider
                 'Verify product details and affiliate disclosure requirements before publishing.',
                 'Avoid claims that are not supported by real product evidence.',
             ],
-            usageNotes: array_values(is_array($legacy['notes'] ?? null) ? $legacy['notes'] : []),
+            usageNotes: $usageNotes,
             metadata: [
                 'mode' => 'deterministic_mock',
+                'campaign_input_mode' => $campaignInputMode,
+                'has_source_video' => (bool) ($input['has_source_video'] ?? false),
+                'source_video_asset_id' => $input['source_video_asset_id'] ?? null,
+                'source_image_asset_id' => $input['source_image_asset_id'] ?? null,
+                'has_edit_plan' => (bool) ($input['has_edit_plan'] ?? false),
+                'auto_video_editor_eligible' => (bool) ($input['auto_video_editor_eligible'] ?? false),
             ],
         );
     }

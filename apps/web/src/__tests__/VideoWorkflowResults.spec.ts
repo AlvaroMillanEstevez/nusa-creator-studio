@@ -300,7 +300,7 @@ describe('video workflow result rendering', () => {
           job_type: 'generate_auto_video_edit',
           result_payload: {
             source_summary: 'Use raw-product-demo.mp4 as source footage.',
-            selected_video_analysis_reference: { type: 'raw_video_asset', media_asset_id: 88, note: 'Includes video campaign analysis' },
+            selected_video_analysis_reference: { type: 'manual_source_video', media_asset_id: 88, note: 'Manual source video used with fallback timeline' },
             selected_voiceover_reference: { type: 'none', note: 'No voiceover included' },
             edit_decision_list: [{ order: 1, timestamp: '0-2s', decision: 'Open on product.', reason: 'Fast hook.' }],
             timeline: [{ timestamp: '0-3s', layer: 'video', instruction: 'Hook shot.', text_overlay: 'Meet product' }],
@@ -318,17 +318,36 @@ describe('video workflow result rendering', () => {
             audio_mix_plan: {
               include_voiceover: false,
               voiceover_reference: { type: 'none', note: 'No voiceover included' },
+              source_audio_mode: 'low_source',
+              source_audio_volume: 0.14,
+              voiceover_mix: 'voiceover_dominant',
+              voiceover_volume: 0,
+              audio_cleanup_strategy: 'low_source_audio_mix',
+              original_audio_muted: false,
               music_direction: 'Use licensed music.',
               mix_notes: ['Keep music low.'],
             },
             voiceover_script: null,
             render_settings: {
+              edit_mode: 'manual_edit',
+              ai_video_analysis_used: false,
+              fallback_timeline: true,
               platform: 'tiktok',
               format: 'vertical_9_16',
               target_duration_seconds: 30,
               editing_style: 'ugc_natural',
               pacing: 'medium',
               caption_style: 'clean_subtitles',
+              source_audio_mode: 'low_source',
+              source_audio_volume: 0.14,
+              voiceover_mix: 'voiceover_dominant',
+              voiceover_volume: 0,
+              audio_cleanup_strategy: 'low_source_audio_mix',
+              original_audio_muted: false,
+              transition_style: 'clean_cuts',
+              motion_polish: 'subtle_zoom',
+              clip_diversity: 'balanced',
+              end_screen: 'product_hold_cta',
             },
             final_video_placeholder: {
               status: 'placeholder',
@@ -338,13 +357,13 @@ describe('video workflow result rendering', () => {
             cost_breakdown: {
               base_editor_cost: 2,
               base_editor_note: 'Auto Video Editor mock planning workflow',
-              video_analysis_cost: 2,
-              video_analysis_note: 'Includes video campaign analysis',
+              video_analysis_cost: 0,
+              video_analysis_note: 'Manual edit setup uses fallback timeline',
               voiceover_cost: 0,
               voiceover_note: 'No voiceover included',
               render_cost_placeholder: 0,
               render_note: 'Mock render',
-              total_credits: 4,
+              total_credits: 2,
             },
             compliance_notes: ['Use owned assets.'],
             usage_notes: ['Plan only.'],
@@ -358,6 +377,20 @@ describe('video workflow result rendering', () => {
     expect(wrapper.text()).toContain('Mock edit plan only. Real rendering will be connected later.')
     expect(wrapper.text()).toContain('Total internal credits')
     expect(wrapper.get('[data-testid="auto-video-timeline-clips"]').text()).toContain('Timeline / clips used')
+    const audioEditSummary = wrapper.get('[data-testid="auto-video-audio-edit-summary"]').text()
+
+    expect(audioEditSummary).toContain('Edit mode')
+    expect(audioEditSummary).toContain('Manual Edit')
+    expect(audioEditSummary).toContain('AI analysis used')
+    expect(audioEditSummary).toContain('No')
+    expect(audioEditSummary).toContain('Fallback timeline')
+    expect(audioEditSummary).toContain('Yes')
+    expect(audioEditSummary).toContain('Source audio')
+    expect(audioEditSummary).toContain('Low Source')
+    expect(audioEditSummary).toContain('Transition style')
+    expect(audioEditSummary).toContain('Clean Cuts')
+    expect(audioEditSummary).toContain('Motion polish')
+    expect(audioEditSummary).toContain('Subtle Zoom')
     expect(wrapper.text()).not.toContain('Edit decision list')
     expect(wrapper.text()).not.toContain('Clip sequence')
     expect(wrapper.text()).not.toContain('Transition plan')
@@ -408,11 +441,20 @@ describe('video workflow result rendering', () => {
             transition_plan: ['Use clean cuts.'],
             audio_mix_plan: {
               include_voiceover: true,
+              source_audio_mode: 'mute_source',
+              source_audio_volume: 0,
+              voiceover_mix: 'voiceover_dominant',
+              voiceover_volume: 1,
+              audio_cleanup_strategy: 'clean_voiceover_source_muted',
+              original_audio_muted: true,
               music_direction: 'No music added.',
               mix_notes: ['Voiceover is placed on a dedicated audio track.'],
             },
             voiceover_script: null,
             render_settings: {
+              edit_mode: 'ai_video_analysis',
+              ai_video_analysis_used: true,
+              fallback_timeline: false,
               provider: 'shotstack',
               platform: 'tiktok',
               format: 'vertical_9_16',
@@ -431,12 +473,25 @@ describe('video workflow result rendering', () => {
               caption_schedule: [{ start: 0.6, length: 2.2, text: 'Meet product', type: 'hook' }],
               captions_overlapping: false,
               caption_visual_strategy: 'shadow_text_light_caption',
+              source_audio_mode: 'mute_source',
+              source_audio_volume: 0,
+              voiceover_mix: 'voiceover_dominant',
+              voiceover_volume: 1,
+              audio_cleanup_strategy: 'clean_voiceover_source_muted',
+              original_audio_muted: true,
+              transition_style: 'premium_smooth',
+              motion_polish: 'product_focus',
+              clip_diversity: 'more_unique_shots',
+              end_screen: 'simple_cta',
               repeated_clip_count: 2,
               post_voiceover_visual_strategy: 'showcase_with_repeated_fallback',
               resolution: '720x1280',
               aspect_ratio: '9:16',
             },
             timeline_summary: {
+              edit_mode: 'ai_video_analysis',
+              ai_video_analysis_used: true,
+              fallback_timeline: false,
               selected_clip_count: 4,
               final_duration_seconds: 21,
               requested_target_duration_seconds: 15,
@@ -448,6 +503,16 @@ describe('video workflow result rendering', () => {
               caption_count: 4,
               captions_overlapping: false,
               caption_visual_strategy: 'shadow_text_light_caption',
+              source_audio_mode: 'mute_source',
+              source_audio_volume: 0,
+              voiceover_mix: 'voiceover_dominant',
+              voiceover_volume: 1,
+              audio_cleanup_strategy: 'clean_voiceover_source_muted',
+              original_audio_muted: true,
+              transition_style: 'premium_smooth',
+              motion_polish: 'product_focus',
+              clip_diversity: 'more_unique_shots',
+              end_screen: 'simple_cta',
               repeated_clip_count: 2,
               post_voiceover_visual_strategy: 'showcase_with_repeated_fallback',
               cta_used: 'Review details before buying.',
@@ -501,6 +566,19 @@ describe('video workflow result rendering', () => {
     expect(summary).toContain('Yes')
     expect(summary).toContain('Captions used')
     expect(summary).toContain('CTA used')
+    const shotstackAudioEditSummary = wrapper.get('[data-testid="auto-video-audio-edit-summary"]').text()
+
+    expect(shotstackAudioEditSummary).toContain('AI Video Analysis')
+    expect(shotstackAudioEditSummary).toContain('AI analysis used')
+    expect(shotstackAudioEditSummary).toContain('Yes')
+    expect(shotstackAudioEditSummary).toContain('Fallback timeline')
+    expect(shotstackAudioEditSummary).toContain('No')
+    expect(shotstackAudioEditSummary).toContain('Mute Source')
+    expect(shotstackAudioEditSummary).toContain('Voiceover Dominant')
+    expect(shotstackAudioEditSummary).toContain('Premium Smooth')
+    expect(shotstackAudioEditSummary).toContain('Product Focus')
+    expect(shotstackAudioEditSummary).toContain('More Unique Shots')
+    expect(shotstackAudioEditSummary).toContain('Simple Cta')
     expect(wrapper.get('[data-testid="auto-video-post-voiceover-summary"]').text()).toContain('Extra time after voiceover used for product showcase / CTA visuals.')
     expect(wrapper.get('[data-testid="auto-video-repeat-warning"]').text()).toContain('Repeated 2 clips')
     expect(wrapper.text()).not.toContain('[object Object]')
@@ -558,6 +636,9 @@ describe('video workflow result rendering', () => {
             },
             voiceover_script: null,
             render_settings: {
+              edit_mode: 'ai_video_analysis',
+              ai_video_analysis_used: true,
+              fallback_timeline: false,
               provider: 'shotstack',
               platform: 'tiktok',
               format: 'vertical_9_16',
@@ -565,6 +646,16 @@ describe('video workflow result rendering', () => {
               editing_style: 'ugc_natural',
               pacing: 'medium',
               caption_style: 'clean_subtitles',
+              source_audio_mode: 'low_source',
+              source_audio_volume: 0.14,
+              voiceover_mix: 'voiceover_dominant',
+              voiceover_volume: 0,
+              audio_cleanup_strategy: 'low_source_audio_mix',
+              original_audio_muted: false,
+              transition_style: 'clean_cuts',
+              motion_polish: 'subtle_zoom',
+              clip_diversity: 'balanced',
+              end_screen: 'product_hold_cta',
             },
             final_video_placeholder: {
               status: 'rendered',

@@ -86,15 +86,25 @@ const videoCampaignGeneration: CreatorGeneration = {
       editing_rhythm: 'medium',
       editing_style: 'ugc_natural',
       source_video_name: 'raw-product-demo.mp4',
-      timeline: [],
+      timeline: [{ start_seconds: 0, end_seconds: 3, instruction: 'Open on the clearest product shot.', caption: 'Pocket light demo' }],
     },
     detected_product_moments: [],
     scene_observations: [],
-    recommended_cuts: [],
+    recommended_cuts: [{ start_seconds: 0, end_seconds: 3, reason: 'Open with product clarity.', visual_reason: 'The product is centered.' }],
     compliance_notes: [],
     usage_notes: [],
     source_video_asset_id: 88,
-    provider_metadata: { provider: 'mock' },
+    campaign_input_mode: 'video_analysis',
+    has_source_video: true,
+    has_edit_plan: true,
+    auto_video_editor_eligible: true,
+    provider_metadata: {
+      provider: 'mock',
+      campaign_input_mode: 'video_analysis',
+      has_source_video: true,
+      has_edit_plan: true,
+      auto_video_editor_eligible: true,
+    },
   },
   started_at: '2026-07-08T02:00:00.000000Z',
   finished_at: '2026-07-08T02:00:00.000000Z',
@@ -147,18 +157,60 @@ const alternateVideoCampaignGeneration: CreatorGeneration = {
       platform: 'tiktok',
       target_duration_seconds: 30,
       source_video_name: 'raw-product-demo.mp4',
-      timeline: [],
+      timeline: [{ start_seconds: 0, end_seconds: 3, instruction: 'Open on the clearest product shot.', caption: 'Pocket light demo' }],
     },
     detected_product_moments: [],
     scene_observations: [],
-    recommended_cuts: [],
+    recommended_cuts: [{ start_seconds: 0, end_seconds: 3, reason: 'Open with product clarity.', visual_reason: 'The product is centered.' }],
     compliance_notes: [],
     usage_notes: [],
     source_video_asset_id: 88,
-    provider_metadata: { provider: 'mock' },
+    campaign_input_mode: 'video_analysis',
+    has_source_video: true,
+    has_edit_plan: true,
+    auto_video_editor_eligible: true,
+    provider_metadata: {
+      provider: 'mock',
+      campaign_input_mode: 'video_analysis',
+      has_source_video: true,
+      has_edit_plan: true,
+      auto_video_editor_eligible: true,
+    },
   },
 }
 
+const imageCampaignGeneration: CreatorGeneration = {
+  ...videoCampaignGeneration,
+  id: 33,
+  job_type: 'generate_affiliate_campaign',
+  credits_charged: 1,
+  created_at: '2026-07-10T02:00:00.000000Z',
+  result_payload: {
+    campaign_title: 'Image-assisted content kit',
+    product_angle: 'A useful product positioning kit.',
+    target_audience_summary: 'Creators who need caption and script ideas.',
+    hooks: ['Use this product image for content positioning.'],
+    main_script: { duration_seconds: 30, voiceover_script: 'Show the product honestly.', on_screen_text: [], scenes: [] },
+    voiceover_ready_script: 'Show the product honestly.',
+    scene_breakdown: [],
+    captions: ['Image-assisted caption idea.'],
+    hashtags: ['#CreatorTools'],
+    cta_options: ['Check the product details.'],
+    compliance_notes: [],
+    usage_notes: [],
+    campaign_input_mode: 'image_assisted',
+    has_source_video: false,
+    source_video_asset_id: null,
+    source_image_asset_id: 90,
+    has_edit_plan: false,
+    auto_video_editor_eligible: false,
+    provider_metadata: {
+      provider: 'mock',
+      campaign_input_mode: 'image_assisted',
+      auto_video_editor_eligible: false,
+    },
+  },
+}
 function action(overrides: Partial<ProjectAction> & Pick<ProjectAction, 'key'>): ProjectAction {
   return {
     title: 'Action',
@@ -315,9 +367,15 @@ describe('video workflow action views', () => {
     expect(wrapper.text()).toContain('Auto Video Editor')
     expect(wrapper.text()).toContain('← Back to workspace')
     expect(wrapper.text()).not.toContain('? Back to workspace')
-    expect(wrapper.text()).toContain('Reuse Video-to-Campaign analysis')
+    expect(wrapper.text()).toContain('Use AI video analysis')
+    expect(wrapper.text()).toContain('Manual edit setup')
     expect(wrapper.text()).toContain('Reuse saved voiceover generation')
     expect(wrapper.text()).toContain('Cost breakdown')
+    expect(wrapper.text()).toContain('Audio cleanup')
+    expect(wrapper.text()).toContain('Mute original video audio')
+    expect(wrapper.text()).toContain('Beta cleanup controls volume and mixing. Advanced AI denoise will come later.')
+    expect(wrapper.text()).toContain('Edit polish')
+    expect(wrapper.text()).toContain('Snappy social cuts')
     expect(wrapper.text()).toContain('Rendering your video. This can take a few minutes depending on video length and provider processing time.')
     expect(wrapper.text()).toContain('Total credits: 2')
     expect(wrapper.get('[data-testid="auto-video-cta-input"]').element).toHaveProperty('value', 'Check the details.')
@@ -327,6 +385,14 @@ describe('video workflow action views', () => {
 
     expect(durationSelect.element.value).toBe('15')
     expect(durationSelect.text()).toContain('15s · extends to 20s')
+
+    const sourceAudioModes = wrapper.findAll<HTMLInputElement>('[data-testid="auto-video-source-audio-mode"]')
+    const muteSource = sourceAudioModes.find((input) => input.element.value === 'mute_source')
+    const lowSource = sourceAudioModes.find((input) => input.element.value === 'low_source')
+
+    expect(muteSource?.element.checked).toBe(true)
+    expect(lowSource?.element.checked).toBe(false)
+    expect(wrapper.get<HTMLSelectElement>('[data-testid="auto-video-voiceover-mix-select"]').element.value).toBe('voiceover_dominant')
 
     const syncHelp = wrapper.get('[data-testid="auto-video-voiceover-sync-help"]').text()
 
@@ -347,6 +413,15 @@ describe('video workflow action views', () => {
   it('submits Auto Video Editor and navigates directly to the generation result', async () => {
     const { wrapper, fetchMock, router } = await mountView(AutoVideoEditorActionView, '/projects/42/actions/auto-video-editor', [sourceVideo, voiceoverAudio])
 
+    await wrapper.findAll<HTMLInputElement>('[data-testid="auto-video-source-audio-mode"]')
+      .find((input) => input.element.value === 'product_sounds')
+      ?.setValue(true)
+    await wrapper.get('[data-testid="auto-video-voiceover-mix-select"]').setValue('balanced')
+    await wrapper.get('[data-testid="auto-video-transition-style-select"]').setValue('premium_smooth')
+    await wrapper.get('[data-testid="auto-video-motion-polish-select"]').setValue('dynamic_crop')
+    await wrapper.get('[data-testid="auto-video-clip-diversity-select"]').setValue('more_unique_shots')
+    await wrapper.get('[data-testid="auto-video-end-screen-select"]').setValue('simple_cta')
+
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     await flushPromises()
@@ -354,9 +429,18 @@ describe('video workflow action views', () => {
     const call = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/projects/42/generate-auto-video-edit'))
     const body = JSON.parse(String(call?.[1]?.body)) as Record<string, unknown>
 
+    expect(body.edit_mode).toBe('ai_video_analysis')
+    expect(body.source_video_to_campaign_generation_id).toBe(31)
+    expect(body.source_video_asset_id).toBeNull()
     expect(body.target_duration_seconds).toBe(20)
     expect(body.requested_target_duration_seconds).toBe(15)
     expect(body.effective_target_duration_seconds).toBe(20)
+    expect(body.source_audio_mode).toBe('product_sounds')
+    expect(body.voiceover_mix).toBe('balanced')
+    expect(body.transition_style).toBe('premium_smooth')
+    expect(body.motion_polish).toBe('dynamic_crop')
+    expect(body.clip_diversity).toBe('more_unique_shots')
+    expect(body.end_screen).toBe('simple_cta')
     expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/102')
     expect(wrapper.find('[data-testid="auto-video-editor-success"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Edit plan saved')
@@ -386,6 +470,63 @@ describe('video workflow action views', () => {
     }
   })
 
+  it('only lists eligible video-analysis generations in Auto Video Editor AI mode', async () => {
+    const { wrapper } = await mountView(
+      AutoVideoEditorActionView,
+      '/projects/42/actions/auto-video-editor',
+      [sourceVideo, voiceoverAudio],
+      [voiceoverGeneration, imageCampaignGeneration, videoCampaignGeneration],
+    )
+
+    expect(wrapper.text()).toContain('Use AI video analysis')
+    expect(wrapper.text()).toContain('This campaign was created from text or images, so it does not include video cuts.')
+    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Video campaign · Pocket Light')
+    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).not.toContain('Image-assisted content kit')
+  })
+
+  it('defaults to manual edit mode when no eligible video analysis exists and submits the manual source video', async () => {
+    const { wrapper, fetchMock, router } = await mountView(
+      AutoVideoEditorActionView,
+      '/projects/42/actions/auto-video-editor',
+      [sourceVideo, voiceoverAudio],
+      [voiceoverGeneration, imageCampaignGeneration],
+    )
+
+    const sourceModes = wrapper.findAll<HTMLInputElement>('[data-testid="auto-video-source-mode"]')
+    const manualMode = sourceModes.find((input) => input.element.value === 'manual_edit')
+
+    expect(manualMode?.element.checked).toBe(true)
+    expect(wrapper.find('[data-testid="auto-video-analysis-select"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('For best results, generate a Video-to-Campaign Insight first.')
+    expect(wrapper.get('[data-testid="auto-video-manual-source-select"]').text()).toContain('raw-product-demo.mp4')
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await flushPromises()
+
+    const call = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/projects/42/generate-auto-video-edit'))
+    const body = JSON.parse(String(call?.[1]?.body)) as Record<string, unknown>
+
+    expect(body.edit_mode).toBe('manual_edit')
+    expect(body.source_video_asset_id).toBe(88)
+    expect(body.source_video_to_campaign_generation_id).toBeNull()
+    expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/102')
+  })
+
+  it('requires a source video in manual edit mode', async () => {
+    const { wrapper, fetchMock } = await mountView(
+      AutoVideoEditorActionView,
+      '/projects/42/actions/auto-video-editor',
+      [],
+      [voiceoverGeneration, imageCampaignGeneration],
+    )
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Select or upload a source video first.')
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/projects/42/generate-auto-video-edit'))).toBe(false)
+  })
   it('does not overwrite a manually edited Auto Video Editor CTA when switching analysis', async () => {
     const { wrapper } = await mountView(
       AutoVideoEditorActionView,

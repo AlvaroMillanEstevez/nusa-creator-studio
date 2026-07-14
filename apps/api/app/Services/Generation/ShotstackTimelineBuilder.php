@@ -3,6 +3,7 @@
 namespace App\Services\Generation;
 
 use App\Support\AutoVideoCaptionStyle;
+use App\Support\AutoVideoEditSettings;
 use Illuminate\Support\Str;
 
 class ShotstackTimelineBuilder
@@ -31,6 +32,29 @@ class ShotstackTimelineBuilder
         $analysis = $this->analysisPayload($input);
         $cta = $this->stringValue($brief['selected_cta'] ?? null, $this->firstString($analysis['cta_options'] ?? null) ?? 'Review the product details before buying.');
         $sourceDuration = $this->sourceDuration($input, $brief);
+        $hasVoiceover = $voiceoverUrl !== null;
+        $sourceAudioMode = AutoVideoEditSettings::sourceAudioMode($brief['source_audio_mode'] ?? $input['source_audio_mode'] ?? null, $hasVoiceover);
+        $voiceoverMix = AutoVideoEditSettings::voiceoverMix($brief['voiceover_mix'] ?? $input['voiceover_mix'] ?? null);
+        $editingStyle = $this->stringValue($brief['editing_style'] ?? $input['editing_style'] ?? null, 'ugc_natural');
+        $transitionStyle = AutoVideoEditSettings::transitionStyle($brief['transition_style'] ?? $input['transition_style'] ?? null, $editingStyle);
+        $motionPolish = AutoVideoEditSettings::motionPolish($brief['motion_polish'] ?? $input['motion_polish'] ?? null);
+        $clipDiversity = AutoVideoEditSettings::clipDiversity($brief['clip_diversity'] ?? $input['clip_diversity'] ?? null);
+        $endScreen = AutoVideoEditSettings::endScreen($brief['end_screen'] ?? $input['end_screen'] ?? null, $cta !== '');
+        $editMode = $this->stringValue($brief['edit_mode'] ?? $input['edit_mode'] ?? null, 'manual_edit');
+        $aiVideoAnalysisUsed = (bool) ($brief['ai_video_analysis_used'] ?? $input['ai_video_analysis_used'] ?? $editMode === 'ai_video_analysis');
+        $fallbackTimeline = (bool) ($brief['fallback_timeline'] ?? $input['fallback_timeline'] ?? $editMode === 'manual_edit');
+        $audioMix = AutoVideoEditSettings::audioMix($sourceAudioMode, $voiceoverMix, $hasVoiceover);
+        $editSettings = [
+            'source_audio_mode' => $sourceAudioMode,
+            'voiceover_mix' => $voiceoverMix,
+            'transition_style' => $transitionStyle,
+            'motion_polish' => $motionPolish,
+            'clip_diversity' => $clipDiversity,
+            'end_screen' => $endScreen,
+            'edit_mode' => $editMode,
+            'ai_video_analysis_used' => $aiVideoAnalysisUsed,
+            'fallback_timeline' => $fallbackTimeline,
+        ] + $audioMix;
         $invalidClipRangesDiscarded = 0;
         $candidateClipCount = 0;
         $uniqueCandidateClipCount = 0;
@@ -46,15 +70,16 @@ class ShotstackTimelineBuilder
             $candidateClipCount,
             $uniqueCandidateClipCount,
             $fallbackEvenSegmentsAdded,
+            $editSettings,
         );
-        $timelineItems = $this->timelineItems($clips, $analysis, $input, $brief, $cta);
+        $timelineItems = $this->timelineItems($clips, $analysis, $input, $brief, $cta, $editSettings);
         $warnings = $this->qualityWarnings($brief);
         $durationSyncStrategy = $voiceoverUrl === null ? 'no_voiceover_target_duration' : 'voiceover_matched';
         $voiceoverDuration = $this->numberValue($brief['voiceover_duration_seconds'] ?? null, 0.0);
 
         if ($voiceoverUrl !== null && $voiceoverDuration > 0) {
             $requiredDuration = max($targetDuration, $voiceoverDuration + 0.5);
-            $timelineItems = $this->extendTimelineForDuration($timelineItems, $requiredDuration, $cta, $durationSyncStrategy, $warnings, $repeatedClipCount, $repeatedClipReason);
+            $timelineItems = $this->extendTimelineForDuration($timelineItems, $requiredDuration, $cta, $durationSyncStrategy, $warnings, $repeatedClipCount, $repeatedClipReason, $editSettings);
         }
 
         $totalDuration = $this->totalDuration($timelineItems);
@@ -121,13 +146,26 @@ class ShotstackTimelineBuilder
             'diverse_source_segments_used' => $diverseSourceSegmentsUsed,
             'invalid_clip_ranges_discarded' => $invalidClipRangesDiscarded,
             'source_duration_seconds' => $sourceDuration,
+            'source_audio_mode' => $sourceAudioMode,
+            'source_audio_volume' => $audioMix['source_audio_volume'],
+            'voiceover_mix' => $voiceoverMix,
+            'voiceover_volume' => $audioMix['voiceover_volume'],
+            'audio_cleanup_strategy' => $audioMix['audio_cleanup_strategy'],
+            'original_audio_muted' => $audioMix['original_audio_muted'],
+            'transition_style' => $transitionStyle,
+            'motion_polish' => $motionPolish,
+            'clip_diversity' => $clipDiversity,
+            'end_screen' => $endScreen,
+            'edit_mode' => $editMode,
+            'ai_video_analysis_used' => $aiVideoAnalysisUsed,
+            'fallback_timeline' => $fallbackTimeline,
             'source' => $this->timelineSource($analysis),
             'timeline_quality_warnings' => array_values(array_unique(array_merge($warnings, $captionWarnings))),
         ] + $outputMetadata;
 
         $tracks = [
             ['clips' => $captionClips],
-            ['clips' => $this->videoClips($sourceVideoUrl, $timelineItems)],
+            ['clips' => $this->videoClips($sourceVideoUrl, $timelineItems, $audioMix, $editSettings)],
         ];
 
         if ($voiceoverUrl !== null) {
@@ -136,7 +174,7 @@ class ShotstackTimelineBuilder
                     'asset' => [
                         'type' => 'audio',
                         'src' => $voiceoverUrl,
-                        'volume' => 1,
+                        'volume' => $audioMix['voiceover_volume'],
                     ],
                     'start' => 0,
                     'length' => $totalDuration,
@@ -194,10 +232,14 @@ class ShotstackTimelineBuilder
             ],
             'audio_mix_plan' => [
                 'include_voiceover' => $voiceoverUrl !== null,
+                'source_audio_mode' => $sourceAudioMode,
+                'source_audio_volume' => $audioMix['source_audio_volume'],
+                'voiceover_mix' => $voiceoverMix,
+                'voiceover_volume' => $audioMix['voiceover_volume'],
+                'audio_cleanup_strategy' => $audioMix['audio_cleanup_strategy'],
+                'original_audio_muted' => $audioMix['original_audio_muted'],
                 'music_direction' => $this->stringValue($input['music_direction'] ?? null, 'No music track added by Shotstack beta render.'),
-                'mix_notes' => $voiceoverUrl !== null
-                    ? ['Voiceover is placed on a dedicated audio track.', 'Source video audio is lowered to avoid competing with narration.', 'Video duration is matched to the selected voiceover when duration data is available.']
-                    : ['Source video audio is kept at a moderate level.', 'Add licensed music manually if needed.'],
+                'mix_notes' => $this->audioMixNotes($sourceAudioMode, $voiceoverMix, $voiceoverUrl !== null),
             ],
             'render_settings' => [
                 'provider' => 'shotstack',
@@ -214,6 +256,19 @@ class ShotstackTimelineBuilder
                 'editing_style' => $this->stringValue($input['editing_style'] ?? null, 'ugc_natural'),
                 'pacing' => $this->stringValue($input['pacing'] ?? null, 'medium'),
                 'caption_style' => $captionStyle,
+                'source_audio_mode' => $sourceAudioMode,
+                'source_audio_volume' => $audioMix['source_audio_volume'],
+                'voiceover_mix' => $voiceoverMix,
+                'voiceover_volume' => $audioMix['voiceover_volume'],
+                'audio_cleanup_strategy' => $audioMix['audio_cleanup_strategy'],
+                'original_audio_muted' => $audioMix['original_audio_muted'],
+                'transition_style' => $transitionStyle,
+                'motion_polish' => $motionPolish,
+                'clip_diversity' => $clipDiversity,
+                'end_screen' => $endScreen,
+                'edit_mode' => $editMode,
+                'ai_video_analysis_used' => $aiVideoAnalysisUsed,
+                'fallback_timeline' => $fallbackTimeline,
                 'resolution' => '720x1280',
                 'aspect_ratio' => '9:16',
                 'output_aspect_ratio' => $outputMetadata['output_aspect_ratio'],
@@ -311,6 +366,7 @@ class ShotstackTimelineBuilder
         int &$candidateClipCount,
         int &$uniqueCandidateClipCount,
         int &$fallbackEvenSegmentsAdded,
+        array $editSettings,
     ): array {
         $groups = [
             ['items' => $brief['preferred_cuts'] ?? null, 'source' => 'creative_brief.preferred_cuts'],
@@ -355,7 +411,7 @@ class ShotstackTimelineBuilder
             return [$fallback];
         }
 
-        return $this->selectDiverseCuts($candidates, $targetDuration, $sourceDuration);
+        return $this->selectDiverseCuts($candidates, $targetDuration, $sourceDuration, $editSettings);
     }
 
     /**
@@ -391,13 +447,13 @@ class ShotstackTimelineBuilder
      * @param  array<int, array<string, mixed>>  $candidates
      * @return array<int, array<string, mixed>>
      */
-    private function selectDiverseCuts(array $candidates, int $targetDuration, ?float $sourceDuration): array
+    private function selectDiverseCuts(array $candidates, int $targetDuration, ?float $sourceDuration, array $editSettings): array
     {
-        usort($candidates, fn (array $a, array $b): int => $this->clipScore($b, $sourceDuration) <=> $this->clipScore($a, $sourceDuration));
+        usort($candidates, fn (array $a, array $b): int => $this->clipScore($b, $sourceDuration, $editSettings) <=> $this->clipScore($a, $sourceDuration, $editSettings));
 
         $selected = [];
         $total = 0.0;
-        $maxClips = $sourceDuration !== null && $sourceDuration > 30 ? 6 : 5;
+        $maxClips = $this->maxClipCount($sourceDuration, $editSettings);
 
         foreach ($candidates as $candidate) {
             if (count($selected) >= $maxClips) {
@@ -642,15 +698,17 @@ class ShotstackTimelineBuilder
      * @param  array<string, mixed>  $brief
      * @return array<int, array<string, mixed>>
      */
-    private function timelineItems(array $clips, array $analysis, array $input, array $brief, string $cta): array
+    private function timelineItems(array $clips, array $analysis, array $input, array $brief, string $cta, array $editSettings): array
     {
         $start = 0.0;
         $lastIndex = max(0, count($clips) - 1);
         $alternates = $this->captionAlternates($analysis, $brief, $cta);
 
-        return array_map(function (array $clip, int $index) use (&$start, $cta, $lastIndex, $alternates): array {
+        $showEndScreen = ($editSettings['end_screen'] ?? AutoVideoEditSettings::END_SCREEN_PRODUCT_HOLD_CTA) !== AutoVideoEditSettings::END_SCREEN_NONE;
+
+        return array_map(function (array $clip, int $index) use (&$start, $cta, $lastIndex, $alternates, $showEndScreen): array {
             $duration = (float) $clip['duration_seconds'];
-            $text = $index === $lastIndex
+            $text = $index === $lastIndex && $showEndScreen
                 ? $cta
                 : ($clip['text_overlay'] ?: ($alternates[$index] ?? ($index === 0 ? 'Start with the product' : $cta)));
             $item = [
@@ -664,7 +722,7 @@ class ShotstackTimelineBuilder
                 'duration_seconds' => round($duration, 2),
                 'source_start_seconds' => $clip['source_start_seconds'],
                 'source_end_seconds' => $clip['source_end_seconds'],
-                'layer' => $index === $lastIndex ? 'cta' : 'video',
+                'layer' => $index === $lastIndex && $showEndScreen ? 'cta' : 'video',
                 'instruction' => $index === 0
                     ? 'Open with the clearest product-focused hook shot.'
                     : ($clip['instruction'] ?? 'Use this source video moment.'),
@@ -688,7 +746,7 @@ class ShotstackTimelineBuilder
      * @param  array<int, string>  $warnings
      * @return array<int, array<string, mixed>>
      */
-    private function extendTimelineForDuration(array $items, float $requiredDuration, string $cta, string &$strategy, array &$warnings, int &$repeatedClipCount, ?string &$repeatedClipReason): array
+    private function extendTimelineForDuration(array $items, float $requiredDuration, string $cta, string &$strategy, array &$warnings, int &$repeatedClipCount, ?string &$repeatedClipReason, array $editSettings): array
     {
         $total = $this->totalDuration($items);
 
@@ -704,11 +762,12 @@ class ShotstackTimelineBuilder
             'text_overlay' => 'Product detail',
         ];
         $usedRepeat = false;
+        $showEndScreen = ($editSettings['end_screen'] ?? AutoVideoEditSettings::END_SCREEN_PRODUCT_HOLD_CTA) !== AutoVideoEditSettings::END_SCREEN_NONE;
 
         while ($total < $requiredDuration - 0.1 && count($items) < 10) {
             $remaining = round($requiredDuration - $total, 2);
             $duration = min(max($remaining, 1.0), $remaining > 4.0 ? 4.0 : $remaining);
-            $isFinal = $remaining <= 4.0;
+            $isFinal = $remaining <= 4.0 && $showEndScreen;
             $sourceStart = (float) ($best['source_start_seconds'] ?? 0.0);
             $sourceEnd = (float) ($best['source_end_seconds'] ?? ($sourceStart + max(0.5, $duration)));
             $items[] = [
@@ -747,14 +806,14 @@ class ShotstackTimelineBuilder
      * @param  array<int, array<string, mixed>>  $items
      * @return array<int, array<string, mixed>>
      */
-    private function videoClips(string $sourceVideoUrl, array $items): array
+    private function videoClips(string $sourceVideoUrl, array $items, array $audioMix, array $editSettings): array
     {
         return array_map(fn (array $item): array => [
             'asset' => [
                 'type' => 'video',
                 'src' => $sourceVideoUrl,
                 'trim' => (float) $item['source_start_seconds'],
-                'volume' => 0.25,
+                'volume' => $audioMix['source_audio_volume'],
                 'transcode' => true,
             ],
             'start' => (float) $item['start_seconds'],
@@ -765,10 +824,7 @@ class ShotstackTimelineBuilder
                 'x' => 0,
                 'y' => 0,
             ],
-            'transition' => [
-                'in' => 'none',
-                'out' => 'none',
-            ],
+            'transition' => $this->transitionForShotstack((string) ($editSettings['transition_style'] ?? AutoVideoEditSettings::TRANSITION_CLEAN_CUTS)),
         ], $items);
     }
 
@@ -1262,7 +1318,7 @@ class ShotstackTimelineBuilder
     }
 
     /** @param array<string, mixed> $clip */
-    private function clipScore(array $clip, ?float $sourceDuration): int
+    private function clipScore(array $clip, ?float $sourceDuration, array $editSettings): int
     {
         $score = 0;
 
@@ -1290,12 +1346,105 @@ class ShotstackTimelineBuilder
             $score -= 20;
         }
 
+        $transitionStyle = (string) ($editSettings['transition_style'] ?? AutoVideoEditSettings::TRANSITION_CLEAN_CUTS);
+        $clipDiversity = (string) ($editSettings['clip_diversity'] ?? AutoVideoEditSettings::CLIP_DIVERSITY_BALANCED);
+        $motionPolish = (string) ($editSettings['motion_polish'] ?? AutoVideoEditSettings::MOTION_SUBTLE_ZOOM);
+        $sourceAudioMode = (string) ($editSettings['source_audio_mode'] ?? AutoVideoEditSettings::SOURCE_AUDIO_LOW);
+
+        if ($transitionStyle === AutoVideoEditSettings::TRANSITION_SNAPPY_SOCIAL) {
+            $score += $duration <= 4.5 ? 8 : -6;
+        }
+
+        if ($clipDiversity === AutoVideoEditSettings::CLIP_DIVERSITY_CONCISE) {
+            $score += strtolower((string) ($clip['priority'] ?? 'medium')) === 'high' ? 8 : -4;
+            $score += $duration > 5.5 ? -8 : 0;
+        }
+
+        if ($motionPolish === AutoVideoEditSettings::MOTION_PRODUCT_FOCUS) {
+            $score += $this->qualityScore($clip['product_visibility'] ?? null, 14, 6, -16);
+            $score += $this->clipContainsAnyCue($clip, ['close', 'detail', 'texture', 'product', 'hero']) ? 8 : 0;
+        }
+
+        if ($sourceAudioMode === AutoVideoEditSettings::SOURCE_AUDIO_PRODUCT_SOUNDS) {
+            $score += $this->clipContainsAnyCue($clip, ['click', 'button', 'press', 'hold', 'holding', 'handling', 'demo', 'use', 'interaction']) ? 20 : -6;
+        }
+
         if ($sourceDuration !== null && $sourceDuration > 0) {
             $position = ((float) ($clip['source_start_seconds'] ?? 0.0)) / $sourceDuration;
-            $score += (int) round(min(12, max(0, $position * 12)));
+            $score += (int) round(min($clipDiversity === AutoVideoEditSettings::CLIP_DIVERSITY_MORE_UNIQUE ? 22 : 12, max(0, $position * ($clipDiversity === AutoVideoEditSettings::CLIP_DIVERSITY_MORE_UNIQUE ? 22 : 12))));
         }
 
         return $score;
+    }
+
+    /** @param array<string, mixed> $editSettings */
+    private function maxClipCount(?float $sourceDuration, array $editSettings): int
+    {
+        $base = $sourceDuration !== null && $sourceDuration > 30 ? 6 : 5;
+        $transitionStyle = (string) ($editSettings['transition_style'] ?? AutoVideoEditSettings::TRANSITION_CLEAN_CUTS);
+
+        return match ($editSettings['clip_diversity'] ?? AutoVideoEditSettings::CLIP_DIVERSITY_BALANCED) {
+            AutoVideoEditSettings::CLIP_DIVERSITY_MORE_UNIQUE => min(8, $base + 2),
+            AutoVideoEditSettings::CLIP_DIVERSITY_CONCISE => max(3, $base - 2),
+            default => $transitionStyle === AutoVideoEditSettings::TRANSITION_SNAPPY_SOCIAL ? min(7, $base + 1) : $base,
+        };
+    }
+
+    /** @return array{in: string, out: string} */
+    private function transitionForShotstack(string $style): array
+    {
+        return match ($style) {
+            AutoVideoEditSettings::TRANSITION_SOFT_FADES, AutoVideoEditSettings::TRANSITION_PREMIUM_SMOOTH => ['in' => 'fade', 'out' => 'fade'],
+            default => ['in' => 'none', 'out' => 'none'],
+        };
+    }
+
+    /** @return array<int, string> */
+    private function audioMixNotes(string $sourceAudioMode, string $voiceoverMix, bool $hasVoiceover): array
+    {
+        if ($sourceAudioMode === AutoVideoEditSettings::SOURCE_AUDIO_MUTE) {
+            return $hasVoiceover
+                ? ['Original camera audio is muted for a clean voiceover-focused export.', 'No music track is added in this beta render.', 'Beta cleanup controls volume and mixing; advanced AI denoise is not applied yet.']
+                : ['Original camera audio is muted.', 'No music track is added in this beta render.', 'Beta cleanup controls volume and mixing; advanced AI denoise is not applied yet.'];
+        }
+
+        $notes = match ($sourceAudioMode) {
+            AutoVideoEditSettings::SOURCE_AUDIO_PRODUCT_SOUNDS => ['Original video audio is kept very subtle for useful product handling sounds.'],
+            AutoVideoEditSettings::SOURCE_AUDIO_KEEP => ['Original video audio is kept, with volume reduced when voiceover is present.'],
+            default => ['Original video audio is kept low so it does not compete with the main message.'],
+        };
+
+        if ($hasVoiceover) {
+            $notes[] = match ($voiceoverMix) {
+                AutoVideoEditSettings::VOICEOVER_MIX_BALANCED => 'Voiceover remains clear while allowing a little source ambience.',
+                AutoVideoEditSettings::VOICEOVER_MIX_SOFT_BACKGROUND => 'Voiceover is slightly softer, with low source ambience underneath.',
+                default => 'Voiceover is dominant in the mix.',
+            };
+        }
+
+        $notes[] = 'Beta cleanup controls volume and mixing; advanced AI denoise is not applied yet.';
+
+        return $notes;
+    }
+
+    /** @param array<string, mixed> $clip */
+    private function clipContainsAnyCue(array $clip, array $terms): bool
+    {
+        $haystack = strtolower(implode(' ', array_filter([
+            $clip['instruction'] ?? null,
+            $clip['text_overlay'] ?? null,
+            $clip['purpose'] ?? null,
+            $clip['visual_reason'] ?? null,
+            $clip['source'] ?? null,
+        ], fn (mixed $value): bool => is_string($value) && trim($value) !== '')));
+
+        foreach ($terms as $term) {
+            if (str_contains($haystack, $term)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function qualityScore(mixed $value, int $high, int $medium, int $low): int

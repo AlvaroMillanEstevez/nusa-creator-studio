@@ -3,6 +3,7 @@
 namespace App\Services\Generation;
 
 use App\Support\AutoVideoCaptionStyle;
+use App\Support\AutoVideoEditSettings;
 use Illuminate\Support\Str;
 
 class AutoVideoEditorCreativeBriefBuilder
@@ -28,6 +29,14 @@ class AutoVideoEditorCreativeBriefBuilder
         );
         $voiceoverDuration = $this->voiceoverDuration($input);
         $cta = $this->selectedCta($input, $analysis);
+        $hasVoiceover = (bool) ($input['include_voiceover'] ?? false);
+        $sourceAudioMode = AutoVideoEditSettings::sourceAudioMode($input['source_audio_mode'] ?? null, $hasVoiceover);
+        $voiceoverMix = AutoVideoEditSettings::voiceoverMix($input['voiceover_mix'] ?? null);
+        $editingStyle = $this->string($input['editing_style'] ?? null, 'ugc_natural');
+        $transitionStyle = AutoVideoEditSettings::transitionStyle($input['transition_style'] ?? null, $editingStyle);
+        $motionPolish = AutoVideoEditSettings::motionPolish($input['motion_polish'] ?? null);
+        $clipDiversity = AutoVideoEditSettings::clipDiversity($input['clip_diversity'] ?? null);
+        $endScreen = AutoVideoEditSettings::endScreen($input['end_screen'] ?? null, $cta !== '');
         $warnings = [];
 
         if (($input['include_voiceover'] ?? false) && $voiceoverDuration === null) {
@@ -39,6 +48,9 @@ class AutoVideoEditorCreativeBriefBuilder
             : max($requestedTarget, $clientEffectiveTarget);
 
         return [
+            'edit_mode' => $this->string($input['edit_mode'] ?? null, 'manual_edit'),
+            'ai_video_analysis_used' => (bool) ($input['ai_video_analysis_used'] ?? false),
+            'fallback_timeline' => (bool) ($input['fallback_timeline'] ?? true),
             'platform' => $this->string($input['platform'] ?? null, 'tiktok'),
             'aspect_ratio' => '9:16',
             'target_duration_seconds' => $requestedTarget,
@@ -46,7 +58,13 @@ class AutoVideoEditorCreativeBriefBuilder
             'effective_target_duration_seconds' => max(8, min(60, $effectiveTarget)),
             'selected_cta' => $cta,
             'caption_style' => AutoVideoCaptionStyle::normalize($input['caption_style'] ?? null),
-            'editing_style' => $this->string($input['editing_style'] ?? null, 'ugc_natural'),
+            'source_audio_mode' => $sourceAudioMode,
+            'voiceover_mix' => $voiceoverMix,
+            'transition_style' => $transitionStyle,
+            'motion_polish' => $motionPolish,
+            'clip_diversity' => $clipDiversity,
+            'end_screen' => $endScreen,
+            'editing_style' => $editingStyle,
             'pacing' => $this->string($input['pacing'] ?? null, 'medium'),
             'music_direction' => $this->nullableString($input['music_direction'] ?? null),
             'notes' => $this->nullableString($input['notes'] ?? null),
@@ -61,7 +79,7 @@ class AutoVideoEditorCreativeBriefBuilder
             'preferred_cuts' => $this->cuts($this->cutCandidates($analysis)),
             'fallback_cuts' => $this->cuts($analysis['recommended_cuts'] ?? null),
             'final_screen' => [
-                'type' => 'cta_overlay',
+                'type' => $endScreen === AutoVideoEditSettings::END_SCREEN_NONE ? 'none' : 'cta_overlay',
                 'text' => $cta,
                 'hold_seconds' => 2.5,
             ],

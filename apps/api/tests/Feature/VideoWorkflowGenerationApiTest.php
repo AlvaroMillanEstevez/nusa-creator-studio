@@ -77,7 +77,11 @@ class VideoWorkflowGenerationApiTest extends TestCase
         $this->assertArrayHasKey('narration_voice_script', $generation->output_payload);
         $this->assertArrayHasKey('edit_plan', $generation->output_payload);
         $this->assertSame($sourceVideo->id, $generation->output_payload['source_video_asset_id']);
-        $this->assertStringContainsString('v?deo', $generation->output_payload['video_summary']);
+        $this->assertSame('video_analysis', $generation->output_payload['campaign_input_mode']);
+        $this->assertTrue($generation->output_payload['has_source_video']);
+        $this->assertTrue($generation->output_payload['has_edit_plan']);
+        $this->assertTrue($generation->output_payload['auto_video_editor_eligible']);
+        $this->assertStringContainsString('vídeo', $generation->output_payload['video_summary']);
 
         $transaction = CreditTransaction::query()->where('generation_id', $generationId)->firstOrFail();
         $this->assertSame(CreditTransactionType::Usage, $transaction->type);
@@ -133,6 +137,20 @@ class VideoWorkflowGenerationApiTest extends TestCase
                 'video_summary' => 'Reusable video campaign summary.',
                 'narration_voice_script' => 'Reusable narration script.',
                 'source_video_asset_id' => $sourceVideo->id,
+                'recommended_cuts' => [[
+                    'start_seconds' => 0,
+                    'end_seconds' => 3,
+                    'reason' => 'Open on product.',
+                ]],
+                'edit_plan' => ['timeline' => [[
+                    'start_seconds' => 0,
+                    'end_seconds' => 3,
+                    'instruction' => 'Open on product.',
+                ]]],
+                'campaign_input_mode' => 'video_analysis',
+                'has_source_video' => true,
+                'has_edit_plan' => true,
+                'auto_video_editor_eligible' => true,
             ],
         ]);
         $voiceover = Generation::factory()->for($user)->for($project)->create([
@@ -147,6 +165,7 @@ class VideoWorkflowGenerationApiTest extends TestCase
 
         $generationId = $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'ai_video_analysis',
                 'source_video_to_campaign_generation_id' => $analysis->id,
                 'include_voiceover' => true,
                 'voiceover_generation_id' => $voiceover->id,
@@ -160,6 +179,11 @@ class VideoWorkflowGenerationApiTest extends TestCase
             ->assertJsonPath('data.input_payload.cost_breakdown.video_analysis_cost', 0)
             ->assertJsonPath('data.input_payload.cost_breakdown.voiceover_cost', 0)
             ->assertJsonPath('data.input_payload.cost_breakdown.total_credits', 2)
+            ->assertJsonPath('data.input_payload.edit_mode', 'ai_video_analysis')
+            ->assertJsonPath('data.input_payload.ai_video_analysis_used', true)
+            ->assertJsonPath('data.input_payload.fallback_timeline', false)
+            ->assertJsonPath('data.input_payload.source_audio_mode', 'mute_source')
+            ->assertJsonPath('data.input_payload.voiceover_mix', 'voiceover_dominant')
             ->assertJsonPath('meta.credits_balance', 8)
             ->json('data.id');
 
@@ -181,25 +205,26 @@ class VideoWorkflowGenerationApiTest extends TestCase
         $this->assertSame('Existing voiceover reused', $generation->output_payload['cost_breakdown']['voiceover_note']);
     }
 
-    public function test_auto_video_editor_from_raw_video_can_charge_composite_cost_and_blocks_insufficient_credits(): void
+    public function test_auto_video_editor_manual_edit_blocks_insufficient_credits(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 4, 'plan_key' => 'creator']);
+        $user = User::factory()->create(['credits_balance' => 2, 'plan_key' => 'creator']);
         $project = $this->workspaceProject($user);
         $sourceVideo = $this->videoAsset($user, $project, 'source_video');
 
         $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'manual_edit',
                 'source_video_asset_id' => $sourceVideo->id,
                 'include_voiceover' => true,
             ])
             ->assertPaymentRequired()
             ->assertJsonPath('code', 'insufficient_credits')
-            ->assertJsonPath('available_credits', 4)
-            ->assertJsonPath('required_credits', 5);
+            ->assertJsonPath('available_credits', 2)
+            ->assertJsonPath('required_credits', 3);
 
         Queue::assertNothingPushed();
-        $this->assertSame(4, $user->refresh()->credits_balance);
+        $this->assertSame(2, $user->refresh()->credits_balance);
         $this->assertDatabaseCount('generations', 0);
         $this->assertDatabaseCount('credit_transactions', 0);
     }
@@ -213,16 +238,21 @@ class VideoWorkflowGenerationApiTest extends TestCase
 
         $generationId = $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'manual_edit',
                 'source_video_asset_id' => $sourceVideo->id,
                 'include_voiceover' => false,
                 'caption_style' => 'bold_keywords',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.credits_charged', 4)
-            ->assertJsonPath('data.input_payload.cost_breakdown.video_analysis_cost', 2)
+            ->assertJsonPath('data.credits_charged', 2)
+            ->assertJsonPath('data.input_payload.edit_mode', 'manual_edit')
+            ->assertJsonPath('data.input_payload.fallback_timeline', true)
+            ->assertJsonPath('data.input_payload.ai_video_analysis_used', false)
+            ->assertJsonPath('data.input_payload.cost_breakdown.video_analysis_cost', 0)
             ->assertJsonPath('data.input_payload.cost_breakdown.voiceover_cost', 0)
-            ->assertJsonPath('data.input_payload.cost_breakdown.total_credits', 4)
-            ->assertJsonPath('meta.credits_balance', 6)
+            ->assertJsonPath('data.input_payload.cost_breakdown.total_credits', 2)
+            ->assertJsonPath('data.input_payload.source_audio_mode', 'low_source')
+            ->assertJsonPath('meta.credits_balance', 8)
             ->json('data.id');
 
         app()->call([new GenerateAutoVideoEditJob($generationId), 'handle']);
@@ -232,6 +262,60 @@ class VideoWorkflowGenerationApiTest extends TestCase
             ->assertJsonPath('data.output_payload.final_video_placeholder.status', 'placeholder')
             ->assertJsonPath('data.output_payload.final_video_placeholder.message', 'Mock edit plan only. Real rendering will be connected later.')
             ->assertJsonPath('data.output_payload.cost_breakdown.voiceover_note', 'No voiceover included');
+    }
+
+    public function test_auto_video_editor_rejects_non_video_campaign_generation_in_ai_analysis_mode(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $this->videoAsset($user, $project, 'source_video');
+        $textCampaign = Generation::factory()->for($user)->for($project)->create([
+            'job_type' => 'generate_affiliate_campaign',
+            'provider' => 'mock',
+            'status' => Generation::STATUS_COMPLETED,
+            'output_payload' => [
+                'campaign_title' => 'Brief-only kit',
+                'campaign_input_mode' => 'brief_only',
+                'auto_video_editor_eligible' => false,
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'ai_video_analysis',
+                'source_video_to_campaign_generation_id' => $textCampaign->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('source_video_to_campaign_generation_id')
+            ->assertJsonFragment([
+                'Selected campaign does not include video analysis data. Choose a Video-to-Campaign Insight or use Manual edit setup.',
+            ]);
+
+        Queue::assertNothingPushed();
+        $this->assertDatabaseMissing('generations', [
+            'job_type' => 'generate_auto_video_edit',
+        ]);
+    }
+
+    public function test_auto_video_editor_rejects_manual_edit_without_source_video(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'manual_edit',
+                'include_voiceover' => false,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('source_video_asset_id');
+
+        Queue::assertNothingPushed();
+        $this->assertDatabaseMissing('generations', [
+            'job_type' => 'generate_auto_video_edit',
+        ]);
     }
 
     public function test_auto_video_editor_accepts_and_normalizes_caption_styles(): void
@@ -260,6 +344,7 @@ class VideoWorkflowGenerationApiTest extends TestCase
 
         foreach ($cases as $inputStyle => $expectedStyle) {
             $payload = [
+                'edit_mode' => 'manual_edit',
                 'source_video_asset_id' => $sourceVideo->id,
                 'include_voiceover' => false,
             ];
@@ -285,12 +370,97 @@ class VideoWorkflowGenerationApiTest extends TestCase
 
         $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'manual_edit',
                 'source_video_asset_id' => $sourceVideo->id,
                 'include_voiceover' => false,
                 'caption_style' => 'chaotic_glitter_captions',
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('caption_style');
+    }
+
+    public function test_auto_video_editor_accepts_all_source_audio_modes(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 100, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $sourceVideo = $this->videoAsset($user, $project, 'raw_product_video');
+
+        foreach (['mute_source', 'low_source', 'keep_source', 'product_sounds'] as $mode) {
+            $this->actingAs($user)
+                ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                    'source_video_asset_id' => $sourceVideo->id,
+                    'include_voiceover' => false,
+                    'source_audio_mode' => $mode,
+                ])
+                ->assertCreated()
+                ->assertJsonPath('data.input_payload.source_audio_mode', $mode)
+                ->assertJsonPath('data.input_payload.creative_brief.source_audio_mode', $mode);
+        }
+    }
+
+    public function test_auto_video_editor_accepts_audio_cleanup_and_edit_polish_settings(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 100, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $sourceVideo = $this->videoAsset($user, $project, 'raw_product_video');
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'manual_edit',
+                'source_video_asset_id' => $sourceVideo->id,
+                'include_voiceover' => false,
+                'source_audio_mode' => 'product_sounds',
+                'voiceover_mix' => 'balanced',
+                'transition_style' => 'snappy_social',
+                'motion_polish' => 'product_focus',
+                'clip_diversity' => 'more_unique_shots',
+                'end_screen' => 'simple_cta',
+                'cta' => 'Check the product details.',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.input_payload.source_audio_mode', 'product_sounds')
+            ->assertJsonPath('data.input_payload.voiceover_mix', 'balanced')
+            ->assertJsonPath('data.input_payload.transition_style', 'snappy_social')
+            ->assertJsonPath('data.input_payload.motion_polish', 'product_focus')
+            ->assertJsonPath('data.input_payload.clip_diversity', 'more_unique_shots')
+            ->assertJsonPath('data.input_payload.end_screen', 'simple_cta')
+            ->assertJsonPath('data.input_payload.creative_brief.source_audio_mode', 'product_sounds')
+            ->assertJsonPath('data.input_payload.creative_brief.transition_style', 'snappy_social')
+            ->assertJsonPath('data.input_payload.creative_brief.motion_polish', 'product_focus')
+            ->assertJsonPath('data.input_payload.creative_brief.clip_diversity', 'more_unique_shots')
+            ->assertJsonPath('data.input_payload.creative_brief.end_screen', 'simple_cta');
+    }
+
+    public function test_auto_video_editor_rejects_invalid_audio_cleanup_and_edit_polish_settings(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $sourceVideo = $this->videoAsset($user, $project, 'raw_product_video');
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'manual_edit',
+                'source_video_asset_id' => $sourceVideo->id,
+                'include_voiceover' => false,
+                'source_audio_mode' => 'ai_denoise_magic',
+                'voiceover_mix' => 'too_loud',
+                'transition_style' => 'star_wipe',
+                'motion_polish' => 'chaotic_spin',
+                'clip_diversity' => 'repeat_everything',
+                'end_screen' => 'fake_checkout',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'source_audio_mode',
+                'voiceover_mix',
+                'transition_style',
+                'motion_polish',
+                'clip_diversity',
+                'end_screen',
+            ]);
     }
 
     public function test_project_actions_include_new_video_workflows_with_reusable_hints(): void
@@ -302,8 +472,22 @@ class VideoWorkflowGenerationApiTest extends TestCase
             'job_type' => 'generate_video_to_campaign',
             'status' => Generation::STATUS_COMPLETED,
             'output_payload' => [
-                'edit_plan' => ['title' => 'Reusable edit plan'],
+                'source_video_asset_id' => 999,
+                'recommended_cuts' => [[
+                    'start_seconds' => 0,
+                    'end_seconds' => 3,
+                    'reason' => 'Open on product.',
+                ]],
+                'edit_plan' => ['title' => 'Reusable edit plan', 'timeline' => [[
+                    'start_seconds' => 0,
+                    'end_seconds' => 3,
+                    'instruction' => 'Open on product.',
+                ]]],
                 'narration_voice_script' => 'Reusable narration.',
+                'campaign_input_mode' => 'video_analysis',
+                'has_source_video' => true,
+                'has_edit_plan' => true,
+                'auto_video_editor_eligible' => true,
             ],
         ]);
 

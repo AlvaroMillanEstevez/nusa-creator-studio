@@ -5,6 +5,7 @@ namespace App\Services\Generation;
 use App\Contracts\VideoToCampaignProvider;
 use App\Exceptions\VideoToCampaign\VideoToCampaignProviderException;
 use App\Models\MediaAsset;
+use App\Support\CampaignWorkflowMetadata;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use JsonException;
@@ -40,6 +41,7 @@ class GeminiVideoToCampaignProvider implements VideoToCampaignProvider
         $decoded = $this->decodeOutput($analysis['response']);
         $warnings = $decoded['warnings'];
         $normalized = $this->normalizedOutput($decoded['output'], $asset, $input, $warnings);
+        $workflowMetadata = CampaignWorkflowMetadata::forVideoAnalysis($normalized, (int) $asset->getKey());
         $warnings = array_values(array_slice(array_unique($warnings), 0, 20));
         $usage = $this->tokenUsage($analysis['response']);
         $estimatedCost = $this->estimateCost($usage);
@@ -58,10 +60,11 @@ class GeminiVideoToCampaignProvider implements VideoToCampaignProvider
             ]);
         }
 
-        return array_merge($normalized, [
+        return array_merge($normalized, $workflowMetadata, [
             'source_video_asset_id' => $asset->getKey(),
             'provider_metadata' => [
                 'provider' => 'gemini',
+                ...$workflowMetadata,
                 'model' => $finalModel,
                 'requested_model' => $requestedModel,
                 'final_model' => $finalModel,

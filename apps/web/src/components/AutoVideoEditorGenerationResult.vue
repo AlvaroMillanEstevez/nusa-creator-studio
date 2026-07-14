@@ -119,6 +119,23 @@ const captionsUsed = computed(() => {
       return true
     })
 })
+const audioEditSummaryItems = computed(() => {
+  const settings = renderSettings.value
+  const summary = timelineSummary.value
+  const audio = result.value.audio_mix_plan
+
+  return [
+    { label: 'Edit mode', value: editModeValue(settings?.edit_mode ?? summary?.edit_mode) },
+    { label: 'AI analysis used', value: booleanValue(firstBoolean(settings?.ai_video_analysis_used, summary?.ai_video_analysis_used)) },
+    { label: 'Fallback timeline', value: booleanValue(firstBoolean(settings?.fallback_timeline, summary?.fallback_timeline)) },
+    { label: 'Source audio', value: formattedValue(settings?.source_audio_mode ?? summary?.source_audio_mode ?? audio.source_audio_mode) },
+    { label: 'Voiceover mix', value: formattedValue(settings?.voiceover_mix ?? summary?.voiceover_mix ?? audio.voiceover_mix) },
+    { label: 'Transition style', value: formattedValue(settings?.transition_style ?? summary?.transition_style) },
+    { label: 'Motion polish', value: formattedValue(settings?.motion_polish ?? summary?.motion_polish) },
+    { label: 'Clip diversity', value: formattedValue(settings?.clip_diversity ?? summary?.clip_diversity) },
+    { label: 'End screen', value: formattedValue(settings?.end_screen ?? summary?.end_screen) },
+  ].filter((item): item is { label: string, value: string } => item.value !== null && item.value !== '')
+})
 const providerSummaryItems = computed(() => {
   const settings = renderSettings.value
   const summary = timelineSummary.value
@@ -168,6 +185,20 @@ function textValue(value: string | null | undefined): string | null {
 
 function formattedValue(value: string | null | undefined): string | null {
   const text = textValue(value)
+
+  return text === null ? null : formatLabel(text)
+}
+
+function editModeValue(value: string | null | undefined): string | null {
+  const text = textValue(value)
+
+  if (text === 'ai_video_analysis') {
+    return 'AI Video Analysis'
+  }
+
+  if (text === 'manual_edit') {
+    return 'Manual Edit'
+  }
 
   return text === null ? null : formatLabel(text)
 }
@@ -355,6 +386,16 @@ onBeforeUnmount(() => {
       <ul v-if="timelineSummary?.timeline_quality_warnings?.length" class="mt-4 space-y-2 text-sm leading-6 text-amber-100/80">
         <li v-for="warning in timelineSummary.timeline_quality_warnings" :key="warning">• {{ warning }}</li>
       </ul>
+    </section>
+
+    <section v-if="audioEditSummaryItems.length" class="nusa-card-premium rounded-[2rem] p-5" data-testid="auto-video-audio-edit-summary">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Audio / edit settings</p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <article v-for="item in audioEditSummaryItems" :key="item.label" class="rounded-2xl bg-neutral-950/70 p-3">
+          <p class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ item.label }}</p>
+          <p class="mt-1 text-sm font-semibold text-neutral-100">{{ item.value }}</p>
+        </article>
+      </div>
     </section>
 
     <section class="nusa-card-premium rounded-[2rem] p-5">

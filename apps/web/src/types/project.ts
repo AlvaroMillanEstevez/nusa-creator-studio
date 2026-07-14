@@ -201,6 +201,45 @@ export const autoVideoCaptionStyleOptions = [
 
 export const autoVideoDurationOptions = [15, 30, 45, 60] as const
 
+export const autoVideoSourceAudioModeOptions = [
+  { value: 'mute_source', label: 'Mute original video audio', description: 'Remove raw camera audio for a cleaner result.' },
+  { value: 'low_source', label: 'Keep original audio quietly', description: 'Keep a little natural sound under the voiceover.' },
+  { value: 'keep_source', label: 'Keep original audio', description: 'Keep the original video audio.' },
+  { value: 'product_sounds', label: 'Product sound focus', description: 'Keep useful product sounds like clicks or handling, but keep them subtle.' },
+] as const
+
+export const autoVideoVoiceoverMixOptions = [
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'voiceover_dominant', label: 'Voiceover dominant' },
+  { value: 'soft_background', label: 'Soft background' },
+] as const
+
+export const autoVideoTransitionStyleOptions = [
+  { value: 'clean_cuts', label: 'Clean cuts' },
+  { value: 'soft_fades', label: 'Soft fades' },
+  { value: 'snappy_social', label: 'Snappy social cuts' },
+  { value: 'premium_smooth', label: 'Premium smooth' },
+] as const
+
+export const autoVideoMotionPolishOptions = [
+  { value: 'none', label: 'None' },
+  { value: 'subtle_zoom', label: 'Subtle zoom' },
+  { value: 'product_focus', label: 'Product focus' },
+  { value: 'dynamic_crop', label: 'Dynamic crop' },
+] as const
+
+export const autoVideoClipDiversityOptions = [
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'more_unique_shots', label: 'Use more unique shots' },
+  { value: 'concise', label: 'Keep concise' },
+] as const
+
+export const autoVideoEndScreenOptions = [
+  { value: 'none', label: 'No end screen' },
+  { value: 'simple_cta', label: 'Simple CTA end screen' },
+  { value: 'product_hold_cta', label: 'Product hold + CTA' },
+] as const
+
 export type CampaignLanguage = (typeof campaignLanguageOptions)[number]['value']
 export type CampaignTone = (typeof campaignToneOptions)[number]['value']
 export type VideoEnhancerStyle = (typeof videoEnhancerStyleOptions)[number]['value']
@@ -228,6 +267,12 @@ export type AutoVideoEditingStyle = (typeof autoVideoEditingStyleOptions)[number
 export type AutoVideoPacing = (typeof autoVideoPacingOptions)[number]['value']
 export type AutoVideoCaptionStyle = (typeof autoVideoCaptionStyleOptions)[number]['value']
 export type AutoVideoDuration = (typeof autoVideoDurationOptions)[number]
+export type AutoVideoSourceAudioMode = (typeof autoVideoSourceAudioModeOptions)[number]['value']
+export type AutoVideoVoiceoverMix = (typeof autoVideoVoiceoverMixOptions)[number]['value']
+export type AutoVideoTransitionStyle = (typeof autoVideoTransitionStyleOptions)[number]['value']
+export type AutoVideoMotionPolish = (typeof autoVideoMotionPolishOptions)[number]['value']
+export type AutoVideoClipDiversity = (typeof autoVideoClipDiversityOptions)[number]['value']
+export type AutoVideoEndScreen = (typeof autoVideoEndScreenOptions)[number]['value']
 export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionPlatform | WorkspacePlatform
 
 export type ProjectType =
@@ -349,6 +394,7 @@ export interface WorkspaceFormPayload {
   notes: string | null
 }
 export interface CampaignFormPayload {
+  campaign_input_mode?: CampaignInputMode | string | null
   product_name: string
   product_description: string
   target_audience: string
@@ -425,7 +471,10 @@ export interface GenerateVideoToCampaignPayload {
   notes?: string | null
 }
 
+export type AutoVideoEditMode = 'ai_video_analysis' | 'manual_edit'
+
 export interface GenerateAutoVideoEditPayload {
+  edit_mode?: AutoVideoEditMode | string | null
   source_video_asset_id?: number | null
   source_video_to_campaign_generation_id?: number | null
   voiceover_generation_id?: number | null
@@ -436,6 +485,12 @@ export interface GenerateAutoVideoEditPayload {
   editing_style?: AutoVideoEditingStyle | string | null
   pacing?: AutoVideoPacing | string | null
   caption_style?: AutoVideoCaptionStyle | string | null
+  source_audio_mode?: AutoVideoSourceAudioMode | string | null
+  voiceover_mix?: AutoVideoVoiceoverMix | string | null
+  transition_style?: AutoVideoTransitionStyle | string | null
+  motion_polish?: AutoVideoMotionPolish | string | null
+  clip_diversity?: AutoVideoClipDiversity | string | null
+  end_screen?: AutoVideoEndScreen | string | null
   target_duration_seconds?: AutoVideoDuration | number | null
   requested_target_duration_seconds?: AutoVideoDuration | number | null
   effective_target_duration_seconds?: AutoVideoDuration | number | null
@@ -553,7 +608,18 @@ export interface CampaignMainScript {
   scenes: CampaignScriptScene[]
 }
 
-export interface CampaignProviderMetadata {
+export type CampaignInputMode = 'brief_only' | 'image_assisted' | 'video_analysis'
+
+export interface CampaignWorkflowMetadata {
+  campaign_input_mode?: CampaignInputMode | string | null
+  has_source_video?: boolean | null
+  source_video_asset_id?: number | null
+  source_image_asset_id?: number | null
+  has_edit_plan?: boolean | null
+  auto_video_editor_eligible?: boolean | null
+}
+
+export interface CampaignProviderMetadata extends CampaignWorkflowMetadata {
   provider?: string
   model?: string | null
   token_usage?: {
@@ -566,7 +632,7 @@ export interface CampaignProviderMetadata {
   mode?: string | null
 }
 
-export interface CampaignGenerationResult {
+export interface CampaignGenerationResult extends CampaignWorkflowMetadata {
   campaign_title?: string
   product_angle?: string
   target_audience_summary?: string
@@ -803,7 +869,7 @@ export interface VideoToCampaignEditPlan {
   source_video_name?: string
 }
 
-export interface VideoToCampaignResult {
+export interface VideoToCampaignResult extends CampaignWorkflowMetadata {
   video_summary: string
   observed_product_features?: VideoToCampaignFeature[]
   detected_product_moments: VideoToCampaignMoment[]
@@ -908,11 +974,20 @@ export interface AutoVideoEditorCaptionsPlan {
 export interface AutoVideoEditorAudioMixPlan {
   include_voiceover: boolean
   voiceover_reference?: AutoVideoEditorReference
+  source_audio_mode?: string | null
+  source_audio_volume?: number | null
+  voiceover_mix?: string | null
+  voiceover_volume?: number | null
+  audio_cleanup_strategy?: string | null
+  original_audio_muted?: boolean | null
   music_direction: string
   mix_notes: string[]
 }
 
 export interface AutoVideoEditorRenderSettings {
+  edit_mode?: AutoVideoEditMode | string | null
+  ai_video_analysis_used?: boolean | null
+  fallback_timeline?: boolean | null
   platform: string
   format: string
   target_duration_seconds: number
@@ -926,6 +1001,16 @@ export interface AutoVideoEditorRenderSettings {
   editing_style: string
   pacing: string
   caption_style: string
+  source_audio_mode?: string | null
+  source_audio_volume?: number | null
+  voiceover_mix?: string | null
+  voiceover_volume?: number | null
+  audio_cleanup_strategy?: string | null
+  original_audio_muted?: boolean | null
+  transition_style?: string | null
+  motion_polish?: string | null
+  clip_diversity?: string | null
+  end_screen?: string | null
   provider?: string
   resolution?: string
   aspect_ratio?: string
@@ -961,6 +1046,9 @@ export interface AutoVideoEditorRenderSettings {
 }
 
 export interface AutoVideoEditorTimelineSummary {
+  edit_mode?: AutoVideoEditMode | string | null
+  ai_video_analysis_used?: boolean | null
+  fallback_timeline?: boolean | null
   selected_clip_count?: number | null
   final_duration_seconds?: number | null
   duration_seconds?: number | null
@@ -977,6 +1065,16 @@ export interface AutoVideoEditorTimelineSummary {
   final_caption_count?: number
   cta_caption_start_seconds?: number | null
   caption_style?: string | null
+  source_audio_mode?: string | null
+  source_audio_volume?: number | null
+  voiceover_mix?: string | null
+  voiceover_volume?: number | null
+  audio_cleanup_strategy?: string | null
+  original_audio_muted?: boolean | null
+  transition_style?: string | null
+  motion_polish?: string | null
+  clip_diversity?: string | null
+  end_screen?: string | null
   caption_visual_strategy?: string | null
   caption_warnings?: string[]
   source_clip_ranges_used?: string[]

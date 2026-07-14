@@ -7,6 +7,7 @@ use App\Models\Generation;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\AiVoiceoverSourceResolver;
+use App\Support\CampaignWorkflowMetadata;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 
@@ -206,7 +207,8 @@ class ProjectActionService
     /** @return array<string, mixed> */
     private function autoVideoEditorAction(Project $project, User $user, ?CreatorTool $tool): array
     {
-        $videoCampaignSources = $this->completedGenerations($project, 'generate_video_to_campaign');
+        $videoCampaignSources = $this->completedGenerations($project, 'generate_video_to_campaign')
+            ->filter(fn (Generation $generation): bool => CampaignWorkflowMetadata::isAutoVideoEditorEligible($generation->output_payload ?? []));
         $hasReusableAnalysis = $videoCampaignSources->isNotEmpty();
         $hasSourceVideo = $this->hasAnyAssetRole($project, [
             'source_video',
@@ -276,7 +278,7 @@ class ProjectActionService
             missingRequirementsCount: ($hasReusableAnalysis || $hasSourceVideo) ? 0 : 1,
             reason: $hasReusableAnalysis
                 ? 'Can reuse existing video campaign analysis.'
-                : ($hasSourceVideo ? 'Can include video campaign analysis from a raw source video.' : 'Choose a video analysis or raw product video in setup.'),
+                : ($hasSourceVideo ? 'Manual edit setup is available from a raw source video.' : 'Choose a Video-to-Campaign Insight or raw product video in setup.'),
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-auto-video-edit",
             creditCost: $tool?->credit_cost,
         );

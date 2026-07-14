@@ -4,6 +4,7 @@ namespace App\Services\Generation;
 
 use App\Contracts\AutoVideoEditorProvider;
 use App\Support\AutoVideoCaptionStyle;
+use App\Support\AutoVideoEditSettings;
 use Illuminate\Support\Str;
 
 class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
@@ -26,13 +27,23 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
         $cta = $this->value($input, 'cta', 'Review the product details before buying.', 240);
         $music = $this->value($input, 'music_direction', 'Use light, creator-friendly background music if licensed.', 300);
         $includeVoiceover = (bool) ($input['include_voiceover'] ?? false);
+        $sourceAudioMode = AutoVideoEditSettings::sourceAudioMode($input['source_audio_mode'] ?? null, $includeVoiceover);
+        $voiceoverMix = AutoVideoEditSettings::voiceoverMix($input['voiceover_mix'] ?? null);
+        $transitionStyle = AutoVideoEditSettings::transitionStyle($input['transition_style'] ?? null, $input['editing_style'] ?? null);
+        $motionPolish = AutoVideoEditSettings::motionPolish($input['motion_polish'] ?? null);
+        $clipDiversity = AutoVideoEditSettings::clipDiversity($input['clip_diversity'] ?? null);
+        $endScreen = AutoVideoEditSettings::endScreen($input['end_screen'] ?? null, trim($cta) !== '');
+        $audioMix = AutoVideoEditSettings::audioMix($sourceAudioMode, $voiceoverMix, $includeVoiceover);
+        $editMode = $this->value($input, 'edit_mode', 'manual_edit', 80);
+        $fallbackTimeline = (bool) ($input['fallback_timeline'] ?? $editMode === 'manual_edit');
+        $aiVideoAnalysisUsed = (bool) ($input['ai_video_analysis_used'] ?? $editMode === 'ai_video_analysis');
         $analysisGenerationId = $this->intValue($input, 'source_video_to_campaign_generation_id', 0);
         $voiceoverGenerationId = $this->intValue($input, 'voiceover_generation_id', 0);
         $voiceoverAudioAssetId = $this->intValue($input, 'voiceover_audio_asset_id', 0);
         $sourceVideoAssetId = $this->intValue($input, 'source_video_asset_id', 0);
         $analysisReference = $analysisGenerationId > 0
             ? ['type' => 'video_to_campaign_generation', 'generation_id' => $analysisGenerationId, 'note' => 'Video campaign analysis reused']
-            : ['type' => 'raw_video_asset', 'media_asset_id' => $sourceVideoAssetId ?: null, 'note' => 'Includes video campaign analysis'];
+            : ['type' => 'manual_source_video', 'media_asset_id' => $sourceVideoAssetId ?: null, 'note' => 'Manual source video used with fallback timeline'];
         $voiceoverReference = $this->voiceoverReference($includeVoiceover, $voiceoverGenerationId, $voiceoverAudioAssetId);
         $costBreakdown = is_array($input['cost_breakdown'] ?? null) ? $input['cost_breakdown'] : [];
         $sourceSummary = $this->sourceSummary($input, $product);
@@ -75,10 +86,14 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
             'audio_mix_plan' => [
                 'include_voiceover' => $includeVoiceover,
                 'voiceover_reference' => $voiceoverReference,
+                'source_audio_mode' => $sourceAudioMode,
+                'source_audio_volume' => $audioMix['source_audio_volume'],
+                'voiceover_mix' => $voiceoverMix,
+                'voiceover_volume' => $audioMix['voiceover_volume'],
+                'audio_cleanup_strategy' => $audioMix['audio_cleanup_strategy'],
+                'original_audio_muted' => $audioMix['original_audio_muted'],
                 'music_direction' => $music,
-                'mix_notes' => $includeVoiceover
-                    ? ['Keep voiceover above music.', 'Duck music during key product facts.', 'Leave a short pause before the CTA.']
-                    : ['Use captions as the primary message.', 'Keep music licensed and low enough for optional spoken audio later.'],
+                'mix_notes' => $this->audioMixNotes($sourceAudioMode, $voiceoverMix, $includeVoiceover),
             ],
             'voiceover_script' => $includeVoiceover
                 ? $this->voiceoverScript($product, $sourceSummary, $cta)
@@ -90,6 +105,34 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
                 'editing_style' => $style,
                 'pacing' => $pacing,
                 'caption_style' => $captionStyle,
+                'source_audio_mode' => $sourceAudioMode,
+                'source_audio_volume' => $audioMix['source_audio_volume'],
+                'voiceover_mix' => $voiceoverMix,
+                'voiceover_volume' => $audioMix['voiceover_volume'],
+                'audio_cleanup_strategy' => $audioMix['audio_cleanup_strategy'],
+                'original_audio_muted' => $audioMix['original_audio_muted'],
+                'transition_style' => $transitionStyle,
+                'motion_polish' => $motionPolish,
+                'clip_diversity' => $clipDiversity,
+                'end_screen' => $endScreen,
+                'edit_mode' => $editMode,
+                'ai_video_analysis_used' => $aiVideoAnalysisUsed,
+                'fallback_timeline' => $fallbackTimeline,
+            ],
+            'timeline_summary' => [
+                'source_audio_mode' => $sourceAudioMode,
+                'source_audio_volume' => $audioMix['source_audio_volume'],
+                'voiceover_mix' => $voiceoverMix,
+                'voiceover_volume' => $audioMix['voiceover_volume'],
+                'audio_cleanup_strategy' => $audioMix['audio_cleanup_strategy'],
+                'original_audio_muted' => $audioMix['original_audio_muted'],
+                'transition_style' => $transitionStyle,
+                'motion_polish' => $motionPolish,
+                'clip_diversity' => $clipDiversity,
+                'end_screen' => $endScreen,
+                'edit_mode' => $editMode,
+                'ai_video_analysis_used' => $aiVideoAnalysisUsed,
+                'fallback_timeline' => $fallbackTimeline,
             ],
             'final_video_placeholder' => [
                 'status' => 'placeholder',
@@ -104,17 +147,60 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
             ],
             'usage_notes' => [
                 'This is an edit-ready plan, not a rendered video file.',
+                $editMode === 'manual_edit'
+                    ? 'Manual edit setup used a fallback timeline from the selected source video and settings.'
+                    : 'The selected video analysis and voiceover references remain traceable in this project.',
                 'Use this output to guide a real editor or a future rendering provider integration.',
-                'The selected analysis and voiceover references remain traceable in this project.',
             ],
             'provider_metadata' => [
                 'provider' => 'mock',
                 'mode' => 'deterministic_auto_video_edit_plan',
                 'real_rendering' => false,
+                'source_audio_mode' => $sourceAudioMode,
+                'source_audio_volume' => $audioMix['source_audio_volume'],
+                'voiceover_mix' => $voiceoverMix,
+                'voiceover_volume' => $audioMix['voiceover_volume'],
+                'audio_cleanup_strategy' => $audioMix['audio_cleanup_strategy'],
+                'original_audio_muted' => $audioMix['original_audio_muted'],
+                'transition_style' => $transitionStyle,
+                'motion_polish' => $motionPolish,
+                'clip_diversity' => $clipDiversity,
+                'end_screen' => $endScreen,
+                'edit_mode' => $editMode,
+                'ai_video_analysis_used' => $aiVideoAnalysisUsed,
+                'fallback_timeline' => $fallbackTimeline,
                 'source_video_asset_id' => $sourceVideoAssetId ?: null,
                 'source_video_to_campaign_generation_id' => $analysisGenerationId ?: null,
             ],
         ];
+    }
+
+    /** @return array<int, string> */
+    private function audioMixNotes(string $sourceAudioMode, string $voiceoverMix, bool $includeVoiceover): array
+    {
+        if ($sourceAudioMode === AutoVideoEditSettings::SOURCE_AUDIO_MUTE) {
+            return $includeVoiceover
+                ? ['Original camera audio is muted for a cleaner voiceover-focused mock plan.', 'Beta cleanup controls volume and mixing; advanced AI denoise will come later.']
+                : ['Original camera audio is muted in the mock plan.', 'Beta cleanup controls volume and mixing; advanced AI denoise will come later.'];
+        }
+
+        $notes = match ($sourceAudioMode) {
+            AutoVideoEditSettings::SOURCE_AUDIO_PRODUCT_SOUNDS => ['Keep useful product handling sounds subtle under the main message.'],
+            AutoVideoEditSettings::SOURCE_AUDIO_KEEP => ['Keep the original source audio, reducing it if voiceover is present.'],
+            default => ['Keep original source audio low so it does not overpower the edit.'],
+        };
+
+        if ($includeVoiceover) {
+            $notes[] = match ($voiceoverMix) {
+                AutoVideoEditSettings::VOICEOVER_MIX_BALANCED => 'Use a balanced voiceover/source mix.',
+                AutoVideoEditSettings::VOICEOVER_MIX_SOFT_BACKGROUND => 'Use a softer voiceover with low source ambience.',
+                default => 'Keep the voiceover dominant and clear.',
+            };
+        }
+
+        $notes[] = 'No music generation or TikTok music selection is included in this beta step.';
+
+        return $notes;
     }
 
     /** @return array<string, mixed> */

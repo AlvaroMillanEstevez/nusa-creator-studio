@@ -12,11 +12,13 @@ import {
 } from '@/types/project'
 
 type FormErrors = Partial<Record<keyof CampaignFormPayload, string>>
+type ContentKitInputMode = 'brief_only' | 'image_assisted'
 
 const router = useRouter()
 const isSubmitting = ref(false)
 const submitError = ref('')
 const fieldErrors = ref<FormErrors>({})
+const inputMode = ref<ContentKitInputMode>('brief_only')
 
 const form = reactive<CampaignFormPayload>({
   product_name: '',
@@ -59,6 +61,7 @@ async function submitCampaign(): Promise<void> {
 
   try {
     const project = await createCampaignProject({
+      campaign_input_mode: inputMode.value,
       product_name: form.product_name.trim(),
       product_description: form.product_description.trim(),
       target_audience: form.target_audience.trim(),
@@ -94,6 +97,34 @@ async function submitCampaign(): Promise<void> {
       </section>
 
       <form class="nusa-form-card mt-8 space-y-7 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitCampaign">
+        <fieldset>
+          <legend class="nusa-label">Input mode</legend>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            <label
+              class="nusa-choice flex cursor-pointer items-start gap-3 text-left"
+              :class="inputMode === 'brief_only' ? 'nusa-choice-active' : 'nusa-choice-idle'"
+            >
+              <input v-model="inputMode" class="mt-1 accent-emerald-400" type="radio" value="brief_only" />
+              <span>
+                <span class="block font-semibold text-neutral-100">Brief only</span>
+                <span class="mt-1 block text-xs leading-5 text-neutral-500">Generate content from your product/project brief.</span>
+              </span>
+            </label>
+            <label
+              class="nusa-choice flex cursor-pointer items-start gap-3 text-left"
+              :class="inputMode === 'image_assisted' ? 'nusa-choice-active' : 'nusa-choice-idle'"
+            >
+              <input v-model="inputMode" class="mt-1 accent-emerald-400" type="radio" value="image_assisted" />
+              <span>
+                <span class="block font-semibold text-neutral-100">Product image</span>
+                <span class="mt-1 block text-xs leading-5 text-neutral-500">Use one product photo in the workspace to improve visual positioning, hooks and captions.</span>
+              </span>
+            </label>
+          </div>
+          <p class="mt-3 rounded-2xl border border-sky-900/60 bg-sky-950/20 p-3 text-xs leading-5 text-sky-100/80">
+            For raw product footage and recommended cuts, use Video-to-Campaign Insight. Text/image kits are great for captions, scripts, voiceover and publishing, but they do not include video cut data.
+          </p>
+        </fieldset>
         <div>
           <label for="product-name" class="nusa-label">
             Product name

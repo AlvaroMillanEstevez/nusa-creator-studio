@@ -9,6 +9,8 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\ToolAvailabilityService;
 use App\Support\AutoVideoCaptionStyle;
+use App\Support\AutoVideoEditSettings;
+use App\Support\CampaignWorkflowMetadata;
 use Illuminate\Validation\ValidationException;
 
 class AutoVideoEditorGenerationService
@@ -25,10 +27,19 @@ class AutoVideoEditorGenerationService
      */
     public function generate(Project $project, User $user, array $options = []): Generation
     {
-        $analysisGeneration = $this->sourceVideoCampaignGeneration($project, $user, $options);
+        $editMode = $this->editMode($options);
+        $analysisGeneration = $editMode === 'ai_video_analysis'
+            ? $this->sourceVideoCampaignGeneration($project, $user, $options)
+            : null;
         $sourceVideo = $analysisGeneration instanceof Generation
             ? $this->sourceVideoFromAnalysis($analysisGeneration, $project, $user)
-            : $this->sourceVideoAsset($project, $user, $options);
+            : $this->sourceVideoAsset($project, $user, $options, requireExplicit: $editMode === 'manual_edit');
+
+        if (! $sourceVideo instanceof MediaAsset) {
+            throw ValidationException::withMessages([
+                'source_video_to_campaign_generation_id' => 'Selected campaign does not include video analysis data. Choose a Video-to-Campaign Insight or use Manual edit setup.',
+            ]);
+        }
         $voiceoverGeneration = $this->voiceoverGeneration($project, $user, $options);
         $voiceoverAudioAsset = $this->voiceoverAudioAsset($project, $user, $options);
         $includeVoiceover = (bool) ($options['include_voiceover'] ?? false);
@@ -42,6 +53,7 @@ class AutoVideoEditorGenerationService
         }
 
         $costBreakdown = $this->costBreakdown(
+            editMode: $editMode,
             hasVideoAnalysis: $analysisGeneration instanceof Generation,
             includeVoiceover: $includeVoiceover,
             hasExistingVoiceover: $hasExistingVoiceover,
@@ -59,6 +71,7 @@ class AutoVideoEditorGenerationService
                 project: $project,
                 sourceVideo: $sourceVideo,
                 analysisGeneration: $analysisGeneration,
+                editMode: $editMode,
                 voiceoverGeneration: $voiceoverGeneration,
                 voiceoverAudioAsset: $voiceoverAudioAsset,
                 includeVoiceover: $includeVoiceover,
@@ -70,28 +83,41 @@ class AutoVideoEditorGenerationService
     }
 
     /** @param array<string, mixed> $options */
-    private function sourceVideoCampaignGeneration(Project $project, User $user, array $options): ?Generation
+    private function sourceVideoCampaignGeneration(Project $project, User $user, array $options): Generation
     {
         $id = $options['source_video_to_campaign_generation_id'] ?? null;
 
         if ($id === null || $id === '') {
-            return null;
+            throw ValidationException::withMessages([
+                'source_video_to_campaign_generation_id' => 'Choose a Video-to-Campaign Insight or use Manual edit setup.',
+            ]);
         }
 
         $generation = $user->generations()
             ->whereKey((int) $id)
             ->where('project_id', $project->getKey())
-            ->where('job_type', 'generate_video_to_campaign')
             ->where('status', Generation::STATUS_COMPLETED)
             ->first();
 
-        if ($generation instanceof Generation) {
-            return $generation;
+        if (! $generation instanceof Generation) {
+            throw ValidationException::withMessages([
+                'source_video_to_campaign_generation_id' => 'The selected video campaign analysis is unavailable for this project.',
+            ]);
         }
 
-        throw ValidationException::withMessages([
-            'source_video_to_campaign_generation_id' => 'The selected video campaign analysis is unavailable for this project.',
-        ]);
+        $output = is_array($generation->output_payload) ? $generation->output_payload : [];
+        $providerMetadata = is_array($output['provider_metadata'] ?? null) ? $output['provider_metadata'] : [];
+        $mode = $output['campaign_input_mode'] ?? $providerMetadata['campaign_input_mode'] ?? null;
+        $isVideoAnalysis = $generation->job_type === 'generate_video_to_campaign'
+            || $mode === CampaignWorkflowMetadata::MODE_VIDEO_ANALYSIS;
+
+        if (! $isVideoAnalysis || ! CampaignWorkflowMetadata::isAutoVideoEditorEligible($output)) {
+            throw ValidationException::withMessages([
+                'source_video_to_campaign_generation_id' => 'Selected campaign does not include video analysis data. Choose a Video-to-Campaign Insight or use Manual edit setup.',
+            ]);
+        }
+
+        return $generation;
     }
 
     private function sourceVideoFromAnalysis(Generation $generation, Project $project, User $user): ?MediaAsset
@@ -114,7 +140,7 @@ class AutoVideoEditorGenerationService
     }
 
     /** @param array<string, mixed> $options */
-    private function sourceVideoAsset(Project $project, User $user, array $options): MediaAsset
+    private function sourceVideoAsset(Project $project, User $user, array $options, bool $requireExplicit = false): MediaAsset
     {
         $sourceVideoId = $options['source_video_asset_id'] ?? null;
 
@@ -131,6 +157,12 @@ class AutoVideoEditorGenerationService
 
             throw ValidationException::withMessages([
                 'source_video_asset_id' => 'The selected source video is unavailable for this project.',
+            ]);
+        }
+
+        if ($requireExplicit) {
+            throw ValidationException::withMessages([
+                'source_video_asset_id' => 'Manual edit setup requires a source video.',
             ]);
         }
 
@@ -223,10 +255,10 @@ class AutoVideoEditorGenerationService
     /**
      * @return array<string, mixed>
      */
-    private function costBreakdown(bool $hasVideoAnalysis, bool $includeVoiceover, bool $hasExistingVoiceover, string $provider): array
+    private function costBreakdown(string $editMode, bool $hasVideoAnalysis, bool $includeVoiceover, bool $hasExistingVoiceover, string $provider): array
     {
         $baseEditorCost = $this->tools->creditCost('auto_video_editor');
-        $videoAnalysisCost = $hasVideoAnalysis ? 0 : $this->tools->creditCost('video_to_campaign');
+        $videoAnalysisCost = 0;
         $voiceoverCost = $includeVoiceover && ! $hasExistingVoiceover
             ? $this->tools->creditCost('ai_voiceover')
             : 0;
@@ -236,9 +268,9 @@ class AutoVideoEditorGenerationService
             'base_editor_cost' => $baseEditorCost,
             'base_editor_note' => $provider === 'shotstack' ? 'Auto Video Editor beta render workflow' : 'Auto Video Editor mock planning workflow',
             'video_analysis_cost' => $videoAnalysisCost,
-            'video_analysis_note' => $hasVideoAnalysis
+            'video_analysis_note' => $editMode === 'ai_video_analysis' && $hasVideoAnalysis
                 ? 'Video campaign analysis reused'
-                : 'Includes video campaign analysis',
+                : 'Manual edit setup uses fallback timeline',
             'voiceover_cost' => $voiceoverCost,
             'voiceover_note' => ! $includeVoiceover
                 ? 'No voiceover included'
@@ -258,6 +290,7 @@ class AutoVideoEditorGenerationService
         Project $project,
         ?MediaAsset $sourceVideo,
         ?Generation $analysisGeneration,
+        string $editMode,
         ?Generation $voiceoverGeneration,
         ?MediaAsset $voiceoverAudioAsset,
         bool $includeVoiceover,
@@ -276,10 +309,22 @@ class AutoVideoEditorGenerationService
                 ?? $this->intOption($options, 'target_duration_seconds')
                 ?? $requestedTargetDuration,
         );
+        $editingStyle = $this->stringOption($options, 'editing_style') ?? 'ugc_natural';
+        $captionStyle = AutoVideoCaptionStyle::normalize($this->stringOption($options, 'caption_style'));
+        $cta = $this->stringOption($options, 'cta');
+        $sourceAudioMode = AutoVideoEditSettings::sourceAudioMode($this->stringOption($options, 'source_audio_mode'), $includeVoiceover);
+        $voiceoverMix = AutoVideoEditSettings::voiceoverMix($this->stringOption($options, 'voiceover_mix'));
+        $transitionStyle = AutoVideoEditSettings::transitionStyle($this->stringOption($options, 'transition_style'), $editingStyle);
+        $motionPolish = AutoVideoEditSettings::motionPolish($this->stringOption($options, 'motion_polish'));
+        $clipDiversity = AutoVideoEditSettings::clipDiversity($this->stringOption($options, 'clip_diversity'));
+        $endScreen = AutoVideoEditSettings::endScreen($this->stringOption($options, 'end_screen'), $cta !== null);
 
         $payload = array_merge($projectInput, [
             'project_title' => $project->title,
             'project_type' => $project->type,
+            'edit_mode' => $editMode,
+            'ai_video_analysis_used' => $editMode === 'ai_video_analysis' && $analysisGeneration instanceof Generation,
+            'fallback_timeline' => $editMode === 'manual_edit',
             'source_video_asset_id' => $sourceVideo?->getKey(),
             'source_video_asset' => $sourceVideo instanceof MediaAsset ? $this->assetSummary($sourceVideo) : null,
             'source_video_to_campaign_generation_id' => $analysisGeneration?->getKey(),
@@ -291,13 +336,19 @@ class AutoVideoEditorGenerationService
             'include_voiceover' => $includeVoiceover,
             'platform' => $this->stringOption($options, 'platform') ?? $this->stringOption($settings, 'platform') ?? 'tiktok',
             'format' => $this->stringOption($options, 'format') ?? $this->stringOption($settings, 'format') ?? 'vertical_9_16',
-            'editing_style' => $this->stringOption($options, 'editing_style') ?? 'ugc_natural',
+            'editing_style' => $editingStyle,
             'pacing' => $this->stringOption($options, 'pacing') ?? 'medium',
-            'caption_style' => AutoVideoCaptionStyle::normalize($this->stringOption($options, 'caption_style')),
+            'caption_style' => $captionStyle,
+            'source_audio_mode' => $sourceAudioMode,
+            'voiceover_mix' => $voiceoverMix,
+            'transition_style' => $transitionStyle,
+            'motion_polish' => $motionPolish,
+            'clip_diversity' => $clipDiversity,
+            'end_screen' => $endScreen,
             'requested_target_duration_seconds' => $requestedTargetDuration,
             'effective_target_duration_seconds' => $effectiveTargetDuration,
             'target_duration_seconds' => $requestedTargetDuration,
-            'cta' => $this->stringOption($options, 'cta'),
+            'cta' => $cta,
             'music_direction' => $this->stringOption($options, 'music_direction'),
             'notes' => $this->stringOption($options, 'notes'),
             'cost_breakdown' => $costBreakdown,
@@ -306,6 +357,21 @@ class AutoVideoEditorGenerationService
         $payload['creative_brief'] = $this->creativeBriefs->build($payload);
 
         return $payload;
+    }
+
+    /** @param array<string, mixed> $options */
+    private function editMode(array $options): string
+    {
+        $mode = $this->stringOption($options, 'edit_mode');
+
+        if ($mode === 'ai_video_analysis' || $mode === 'manual_edit') {
+            return $mode;
+        }
+
+        return ($options['source_video_to_campaign_generation_id'] ?? null) !== null
+            && ($options['source_video_to_campaign_generation_id'] ?? '') !== ''
+                ? 'ai_video_analysis'
+                : 'manual_edit';
     }
 
     /** @param array<string, mixed> $input */

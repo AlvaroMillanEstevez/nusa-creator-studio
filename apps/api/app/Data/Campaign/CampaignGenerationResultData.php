@@ -2,6 +2,8 @@
 
 namespace App\Data\Campaign;
 
+use App\Support\CampaignWorkflowMetadata;
+
 class CampaignGenerationResultData
 {
     /**
@@ -47,6 +49,7 @@ class CampaignGenerationResultData
         $scenes = $this->normalizedScenes();
         $firstCaption = $this->captions[0] ?? '';
         $firstCta = $this->ctaOptions[0] ?? '';
+        $workflowMetadata = $this->workflowMetadata();
 
         return [
             'campaign_title' => $this->campaignTitle,
@@ -71,8 +74,10 @@ class CampaignGenerationResultData
                 'model' => $this->providerModel,
                 'token_usage' => $this->tokenUsage,
                 'estimated_cost_usd' => $this->estimatedCostUsd,
+                ...$workflowMetadata,
                 ...$this->metadata,
             ], fn (mixed $value): bool => $value !== null),
+            ...$workflowMetadata,
 
             // Backward-compatible aliases used by the first campaign renderer.
             'script' => [
@@ -88,6 +93,21 @@ class CampaignGenerationResultData
             'caption' => $firstCaption,
             'cta' => $firstCta,
             'notes' => $this->usageNotes,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function workflowMetadata(): array
+    {
+        return [
+            'campaign_input_mode' => $this->metadata['campaign_input_mode'] ?? CampaignWorkflowMetadata::MODE_BRIEF_ONLY,
+            'has_source_video' => $this->metadata['has_source_video'] ?? false,
+            'source_video_asset_id' => $this->metadata['source_video_asset_id'] ?? null,
+            'source_image_asset_id' => $this->metadata['source_image_asset_id'] ?? null,
+            'has_edit_plan' => $this->metadata['has_edit_plan'] ?? false,
+            'auto_video_editor_eligible' => $this->metadata['auto_video_editor_eligible'] ?? false,
         ];
     }
 

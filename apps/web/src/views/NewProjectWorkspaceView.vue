@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import SearchableCombobox from '@/components/SearchableCombobox.vue'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { createWorkspaceProject } from '@/services/projects'
@@ -21,6 +22,35 @@ const router = useRouter()
 const isSubmitting = ref(false)
 const submitError = ref('')
 const fieldErrors = ref<FormErrors>({})
+const productCategoryOptions = [
+  'Beauty & skincare',
+  'Fashion',
+  'Accessories',
+  'Jewelry',
+  'Home & living',
+  'Kitchen appliance',
+  'Home appliance',
+  'Gaming accessory',
+  'Tech gadget',
+  'Smartphone accessory',
+  'Desk setup',
+  'Fitness',
+  'Health & wellness',
+  'Food & beverage',
+  'Coffee & drinks',
+  'Baby & kids',
+  'Pet product',
+  'Travel accessory',
+  'Outdoor gear',
+  'Car accessory',
+  'Digital product',
+  'Online course',
+  'Software / app',
+  'Creator tool',
+  'Handmade product',
+  'Local brand',
+  'Other',
+]
 
 const form = reactive<WorkspaceFormPayload & { title: string }>({
   title: '',
@@ -188,31 +218,13 @@ async function submitWorkspace(): Promise<void> {
 
             <div>
               <label for="product-category" class="nusa-label">{{ t('projectWorkspace.productCategory') }}</label>
-              <input
+              <SearchableCombobox
                 id="product-category"
                 v-model="form.product_category"
                 name="product_category"
-                type="text"
-                autocomplete="off"
-                list="product-category-suggestions"
+                :options="productCategoryOptions"
                 :placeholder="t('projectWorkspace.productCategoryPlaceholder')"
-                :aria-invalid="Boolean(fieldErrors.product_category)"
-                :aria-describedby="fieldErrors.product_category ? 'product-category-error' : undefined"
-                class="nusa-input mt-2"
               />
-              <datalist id="product-category-suggestions">
-                <option value="Beauty & skincare" />
-                <option value="Fashion" />
-                <option value="Accessories" />
-                <option value="Home & living" />
-                <option value="Kitchen appliance" />
-                <option value="Gaming accessory" />
-                <option value="Tech gadget" />
-                <option value="Fitness" />
-                <option value="Food & beverage" />
-                <option value="Digital product" />
-                <option value="Other" />
-              </datalist>
               <p class="mt-2 text-xs leading-5 text-neutral-500">
                 {{ t('projectWorkspace.productCategoryHelp') }}
               </p>

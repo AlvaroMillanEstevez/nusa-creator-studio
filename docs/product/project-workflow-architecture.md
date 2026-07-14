@@ -72,6 +72,16 @@ Product brief
 
 The current v1 implementation makes the Campaign → Voiceover step work in the same project. The user should not need to manually copy/paste campaign copy into a separate isolated voiceover tool.
 
+## Product Content Kit input modes
+
+Product Content Kit is the Basic text/content workflow. It can start from:
+
+- `brief_only`: creator-provided product/project brief only.
+- `image_assisted`: creator brief plus one product image attached to the project as safe metadata/context.
+
+Brief-only and image-assisted kits are useful for hooks, scripts, captions, CTA options, voiceover-ready narration and publishing prep. They are not primary sources for Auto Video Editor because they do not contain source video ranges, detected video moments or recommended cuts.
+
+If the creator wants raw product footage analyzed for edit decisions, the correct workflow is Video-to-Campaign Insight. Video-to-Campaign outputs use `campaign_input_mode=video_analysis`, include a source video asset id, and become Auto Video Editor eligible only when usable `recommended_cuts` or `edit_plan.timeline` data exists.
 ## Video-to-Campaign and Auto Video Editor chain
 
 The next workspace chain is video-first:
@@ -99,12 +109,14 @@ In default mode it uses the deterministic mock provider. In internal beta mode i
 
 Video-to-Campaign produces narration text, not audio. The narration script is reusable text for the separate AI Voiceover action, so voiceover remains an intentional additional step unless another workflow explicitly includes it.
 
-Auto Video Editor is a Premium composite workflow. It creates an edit-ready vertical video plan by default and can render a real beta MP4 with Shotstack for eligible internal users when enabled by configuration. It can start from either:
+Auto Video Editor is a Premium composite workflow. It creates an edit-ready vertical video plan by default and can render a real beta MP4 with Shotstack for eligible internal users when enabled by configuration. It has two source modes:
 
-- an existing `generate_video_to_campaign` generation, or
-- a raw/source video asset that needs video analysis inside the composite flow.
+- `ai_video_analysis`: reuse an eligible Video-to-Campaign Insight generation with source video id plus usable recommended cuts or edit-plan timeline data.
+- `manual_edit`: use an uploaded/selected source video plus creator-selected settings to build a fallback timeline.
 
-It can also reuse an existing AI Voiceover generation or audio asset, or proceed with no voiceover. In mock mode it may still plan a new voiceover component. In real Shotstack mode, automatic new ElevenLabs generation is intentionally deferred: creators should generate a voiceover first, then select that existing audio in Auto Video Editor.
+Text-only and image-assisted Product Content Kit generations should not appear as AI-analyzed campaign sources because they do not contain source video cuts. Manual edit setup remains available when the creator has a source video but has not generated Video-to-Campaign Insight yet.
+
+Auto Video Editor can also reuse an existing AI Voiceover generation or audio asset, or proceed with no voiceover. In mock mode it may still plan a new voiceover component. In real Shotstack mode, automatic new ElevenLabs generation is intentionally deferred: creators should generate a voiceover first, then select that existing audio in Auto Video Editor.
 
 Shotstack renders require temporary provider-accessible URLs for private source video and optional voiceover audio. These URLs use opaque expiring tokens and do not expose raw storage paths. In local development, a public HTTPS tunnel such as ngrok or cloudflared is required because Shotstack cannot fetch private `localhost` URLs.
 
@@ -115,7 +127,7 @@ Auto Video Editor should make prior work visible in its credit breakdown:
 | Existing project context | Auto editor behavior |
 | --- | --- |
 | Completed Video-to-Campaign result selected | Video analysis is reused, so no additional video-analysis credit is added. |
-| Raw video selected without saved analysis | The composite cost includes the Video-to-Campaign analysis component. |
+| Manual edit selected with raw/source video | Uses fallback timeline logic; no Video-to-Campaign analysis credit is added because no new analysis is run. |
 | Existing voiceover generation or audio asset selected | Voiceover is reused, so no additional voiceover credit is added. |
 | Include voiceover with no existing voiceover selected | The composite cost includes the AI Voiceover component. |
 | No voiceover selected | Voiceover cost stays zero. |
@@ -128,12 +140,15 @@ The real beta chain now carries more context from each step into the next render
 
 - Gemini Video-to-Campaign prompts ask for render-friendly edit plans with 3-5 practical cuts, short caption-safe copy, narration duration guidance, CTA options and concrete visual reasons.
 - Auto Video Editor builds a normalized creative brief from user settings, selected Video-to-Campaign output, selected voiceover/audio metadata and project context.
+- Auto Video Editor render settings include source audio mode, voiceover mix, transition style, motion polish, clip diversity and end screen behavior.
+- Source audio controls are volume/mix controls only: mute source, keep source low, keep source, or product-sound focus. Advanced AI denoise is deferred.
 - Shotstack timeline generation is voiceover-aware: when voiceover duration is known or estimated, the final timeline should be at least as long as the narration plus a small ending buffer.
 - Short source footage can be extended with repeated product moments and a CTA/end-card beat instead of ending on black or cutting off audio.
+- Shotstack timeline metadata should store source audio volume, voiceover volume, audio cleanup strategy and whether original audio was muted.
 - Captions should stay in a conservative vertical safe area, use 1-2 short lines and avoid oversized text blocks.
 - The Auto Video Editor form can reuse prior campaign CTA/options and voiceover duration hints, while avoiding overwriting fields the creator has already edited.
 
-This is still a beta clean-cut renderer, not a full nonlinear editor. Advanced effects, licensed music selection, beat syncing, object-aware reframing and multi-scene creative direction remain later work.
+This is still a beta clean-cut renderer, not a full nonlinear editor. Advanced effects, licensed music selection, TikTok music selection, beat syncing, object-aware reframing and multi-scene creative direction remain later work.
 
 
 ## Honest separation of generated content and UI actions
@@ -243,7 +258,7 @@ Implemented now:
 - Project detail page can show a Project Action Hub.
 - Campaign/Product-to-video generations with usable scripts can become the source for a same-project AI Voiceover generation.
 - Video-to-Campaign can analyze project video assets with mock output by default or Gemini for internal beta users, then save reusable narration text plus an edit plan.
-- Auto Video Editor can reuse Video-to-Campaign analysis and existing voiceover/audio to avoid double-charging those components.
+- Auto Video Editor can reuse eligible Video-to-Campaign analysis or run manual edit setup with a source video and fallback timeline logic.
 - Generated voiceover audio remains attached to the same project as a private `MediaAsset` when real ElevenLabs output is used.
 
 Shown but not deeply refactored yet:

@@ -70,6 +70,15 @@ const voiceoverScript = computed(() => {
   return scenes.value.map((scene) => scene.voiceover).filter(Boolean).join('\n')
 })
 const providerMetadata = computed(() => props.result.provider_metadata ?? null)
+const campaignInputMode = computed(() => props.result.campaign_input_mode ?? providerMetadata.value?.campaign_input_mode ?? 'brief_only')
+const autoVideoEditorEligible = computed(() => props.result.auto_video_editor_eligible === true || providerMetadata.value?.auto_video_editor_eligible === true)
+const workflowNotice = computed(() => {
+  if (campaignInputMode.value === 'video_analysis' && autoVideoEditorEligible.value) {
+    return 'This campaign includes video analysis and can be used in Auto Video Editor.'
+  }
+
+  return 'Use this kit for captions, scripts, voiceover and publishing. To create an edited video from raw footage, generate a Video-to-Campaign Insight or use Manual edit setup.'
+})
 const hasProviderMetadata = computed(
   () => providerMetadata.value !== null && Object.keys(providerMetadata.value).length > 0,
 )
@@ -176,6 +185,7 @@ watch(voiceoverScript, (next) => {
         {{ t('campaignResult.campaignPackage') }}
       </p>
       <h2 class="mt-2 text-2xl font-bold leading-tight">{{ campaignTitle }}</h2>
+      <p class="mt-5 rounded-2xl border border-sky-900/60 bg-sky-950/20 p-3 text-sm leading-6 text-sky-100/80" data-testid="campaign-workflow-notice">{{ workflowNotice }}</p>
       <div class="mt-5 space-y-4 text-sm leading-6 text-neutral-300">
         <p v-if="result.product_angle">
           <span class="font-semibold text-neutral-100">{{ t('campaignResult.productAngle') }}:</span>

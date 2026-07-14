@@ -6,6 +6,7 @@ use App\Enums\CreditTransactionType;
 use App\Jobs\GenerateAffiliateCampaignJob;
 use App\Models\CreditTransaction;
 use App\Models\Generation;
+use App\Models\MediaAsset;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\CampaignGenerationProcessor;
@@ -51,6 +52,10 @@ class CampaignGenerationApiTest extends TestCase
             ->assertJsonPath('data.provider', 'mock')
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.credits_charged', 1)
+            ->assertJsonPath('data.input_payload.campaign_input_mode', 'brief_only')
+            ->assertJsonPath('data.input_payload.auto_video_editor_eligible', false)
+            ->assertJsonPath('data.result_payload.campaign_input_mode', 'brief_only')
+            ->assertJsonPath('data.result_payload.auto_video_editor_eligible', false)
             ->assertJsonCount(5, 'data.result_payload.hooks')
             ->assertJsonCount(10, 'data.result_payload.hashtags')
             ->assertJsonStructure([
@@ -164,6 +169,34 @@ class CampaignGenerationApiTest extends TestCase
             ->assertJsonPath('data.job_type', 'generate_affiliate_campaign')
             ->assertJsonPath('data.provider', 'mock')
             ->assertJsonPath('meta.credits_balance', 1);
+    }
+
+    public function test_product_content_kit_can_be_image_assisted_without_auto_video_editor_eligibility(): void
+    {
+        $user = User::factory()->create(['credits_balance' => 2]);
+        $project = $this->affiliateProject($user);
+        $image = MediaAsset::factory()->for($user)->for($project)->create([
+            'type' => 'image',
+            'usage_role' => 'product_image',
+            'original_name' => 'product-photo.jpg',
+            'mime_type' => 'image/jpeg',
+        ]);
+        $project->update([
+            'input_payload' => array_merge($project->input_payload, [
+                'campaign_input_mode' => 'image_assisted',
+            ]),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-campaign")
+            ->assertCreated()
+            ->assertJsonPath('data.input_payload.campaign_input_mode', 'image_assisted')
+            ->assertJsonPath('data.input_payload.source_image_asset_id', $image->id)
+            ->assertJsonPath('data.result_payload.campaign_input_mode', 'image_assisted')
+            ->assertJsonPath('data.result_payload.source_image_asset_id', $image->id)
+            ->assertJsonPath('data.result_payload.auto_video_editor_eligible', false)
+            ->assertJsonPath('data.result_payload.has_source_video', false)
+            ->assertJsonPath('data.result_payload.has_edit_plan', false);
     }
 
     public function test_non_affiliate_projects_cannot_generate_campaign_content(): void

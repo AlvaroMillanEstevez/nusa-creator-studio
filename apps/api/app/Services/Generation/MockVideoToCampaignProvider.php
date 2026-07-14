@@ -3,6 +3,7 @@
 namespace App\Services\Generation;
 
 use App\Contracts\VideoToCampaignProvider;
+use App\Support\CampaignWorkflowMetadata;
 use Illuminate\Support\Str;
 
 class MockVideoToCampaignProvider implements VideoToCampaignProvider
@@ -52,7 +53,7 @@ class MockVideoToCampaignProvider implements VideoToCampaignProvider
                 ],
                 narration: "Mulai dari shot paling jelas: ini {$product}. Berdasarkan brief, produk ini dijelaskan sebagai {$description}. Tunjukkan konteks penggunaan secara nyata, lalu ajak penonton memeriksa detail produk sebelum membeli.",
                 captions: [
-                    "Footage mentah ? campaign {$platform} untuk {$product}.",
+                    "Footage mentah → campaign {$platform} untuk {$product}.",
                     'Hook, narasi, caption dan edit plan dari satu video produk.',
                     'Cek detail produk dan pastikan sesuai kebutuhanmu.',
                 ],
@@ -66,41 +67,41 @@ class MockVideoToCampaignProvider implements VideoToCampaignProvider
             'spanish' => $this->localized(
                 product: $product,
                 sourceVideoName: $sourceVideoName,
-                videoSummary: "El v?deo {$sourceVideoName} se trata como material bruto del producto {$product}. Este mock no analiza los frames reales; crea un plan de campa?a desde los metadatos, el brief y el contexto del creador.",
+                videoSummary: "El vídeo {$sourceVideoName} se trata como material bruto del producto {$product}. Este mock no analiza los frames reales; crea un plan de campaña desde los metadatos, el brief y el contexto del creador.",
                 moments: [
                     ['timestamp' => '0-3s', 'moment' => 'Mostrar el producto desde el inicio', 'campaign_use' => 'Usarlo como primer gancho visual.'],
-                    ['timestamp' => '3-8s', 'moment' => "Explicar el contexto: {$description}", 'campaign_use' => 'Convertirlo en una secci?n de problema-soluci?n o rese?a breve.'],
+                    ['timestamp' => '3-8s', 'moment' => "Explicar el contexto: {$description}", 'campaign_use' => 'Convertirlo en una sección de problema-solución o reseña breve.'],
                     ['timestamp' => '8-15s', 'moment' => "Conectar el valor con {$audience}", 'campaign_use' => 'Mantener las afirmaciones factuales y verificables.'],
                 ],
                 observations: [
-                    ['scene' => 'Apertura', 'observation' => 'Empieza con la toma m?s clara del producto.', 'confidence' => 'mock'],
-                    ['scene' => 'Desarrollo', 'observation' => "A?ade contexto del creador: {$context}.", 'confidence' => 'mock'],
+                    ['scene' => 'Apertura', 'observation' => 'Empieza con la toma más clara del producto.', 'confidence' => 'mock'],
+                    ['scene' => 'Desarrollo', 'observation' => "Añade contexto del creador: {$context}.", 'confidence' => 'mock'],
                     ['scene' => 'Cierre', 'observation' => 'Termina con un CTA sencillo sin promesas exageradas.', 'confidence' => 'mock'],
                 ],
                 cuts: [
                     ['timestamp' => '0-2s', 'cut' => 'Recorta la pausa inicial y abre con el producto.', 'reason' => 'La audiencia debe entender el producto en los primeros 2 segundos.'],
-                    ['timestamp' => '5-9s', 'cut' => 'Usa un close-up o el detalle m?s informativo.', 'reason' => 'El detalle visual hace que el guion sea concreto.'],
-                    ['timestamp' => '12-18s', 'cut' => 'Deja un encuadre limpio para el CTA.', 'reason' => 'El CTA debe leerse bien en m?vil.'],
+                    ['timestamp' => '5-9s', 'cut' => 'Usa un close-up o el detalle más informativo.', 'reason' => 'El detalle visual hace que el guion sea concreto.'],
+                    ['timestamp' => '12-18s', 'cut' => 'Deja un encuadre limpio para el CTA.', 'reason' => 'El CTA debe leerse bien en móvil.'],
                 ],
-                angle: "V?deo {$tone} para {$platform} que presenta {$product} de forma honesta para {$audience}.",
+                angle: "Vídeo {$tone} para {$platform} que presenta {$product} de forma honesta para {$audience}.",
                 hooks: [
-                    "?Tienes footage de producto? Convi?rtelo en una campa?a breve para {$product}.",
-                    "Muestra {$product} desde la toma m?s clara primero.",
-                    "Un v?deo bruto, tres mensajes clave para {$audience}.",
+                    "¿Tienes footage de producto? Conviértelo en una campaña breve para {$product}.",
+                    "Muestra {$product} desde la toma más clara primero.",
+                    "Un vídeo bruto, tres mensajes clave para {$audience}.",
                     "Haz que la audiencia entienda {$product} sin promesas exageradas.",
-                    'Usa este footage para gancho, narraci?n, caption y CTA.',
+                    'Usa este footage para gancho, narración, caption y CTA.',
                 ],
-                narration: "Empieza con la toma m?s clara: esto es {$product}. Seg?n el brief, se describe como {$description}. Muestra el contexto de uso de forma realista y despu?s invita a revisar los detalles del producto antes de comprar.",
+                narration: "Empieza con la toma más clara: esto es {$product}. Según el brief, se describe como {$description}. Muestra el contexto de uso de forma realista y después invita a revisar los detalles del producto antes de comprar.",
                 captions: [
-                    "Footage bruto ? campa?a {$platform} para {$product}.",
-                    'Gancho, narraci?n, caption y plan de edici?n desde un v?deo de producto.',
+                    "Footage bruto → campaña {$platform} para {$product}.",
+                    'Gancho, narración, caption y plan de edición desde un vídeo de producto.',
                     'Revisa los detalles y comprueba si encaja contigo.',
                 ],
-                hashtags: ['#VideoDeProducto', '#TikTokShop', '#CreadorAfiliado', '#ContenidoProducto', '#PlanDeEdici?n', '#IdeasDeCaption', '#CompraOnline', '#CreatorTools', '#ParaTi', '#NusaCreator'],
-                ctaOptions: ['Revisa los detalles del producto.', 'Comp?ralo con tus necesidades.', 'Guarda esta idea de campa?a.'],
-                editPlanTitle: "Plan de edici?n vertical para {$product}",
-                complianceNotes: ['Verifica que todas las afirmaciones coincidan con los detalles reales del producto.', 'A?ade disclosure de afiliaci?n si se usa como promoci?n.', 'No sugieras resultados que no aparezcan en el footage.'],
-                usageNotes: ['Este output es mock y todav?a no analiza los frames reales del v?deo.', '?salo como base para guion, voiceover, caption y Auto Video Editor.', 'Elige otro footage si el nombre del archivo o el contexto no encajan.'],
+                hashtags: ['#VideoDeProducto', '#TikTokShop', '#CreadorAfiliado', '#ContenidoProducto', '#PlanDeEdición', '#IdeasDeCaption', '#CompraOnline', '#CreatorTools', '#ParaTi', '#NusaCreator'],
+                ctaOptions: ['Revisa los detalles del producto.', 'Compáralo con tus necesidades.', 'Guarda esta idea de campaña.'],
+                editPlanTitle: "Plan de edición vertical para {$product}",
+                complianceNotes: ['Verifica que todas las afirmaciones coincidan con los detalles reales del producto.', 'Añade disclosure de afiliación si se usa como promoción.', 'No sugieras resultados que no aparezcan en el footage.'],
+                usageNotes: ['Este output es mock y todavía no analiza los frames reales del vídeo.', 'Úsalo como base para guion, voiceover, caption y Auto Video Editor.', 'Elige otro footage si el nombre del archivo o el contexto no encajan.'],
                 sourceVideoAssetId: $sourceVideoAssetId,
             ),
             default => $this->localized(
@@ -132,7 +133,7 @@ class MockVideoToCampaignProvider implements VideoToCampaignProvider
                 ],
                 narration: "Start with the clearest shot: this is {$product}. Based on the brief, it is described as {$description}. Show the usage context realistically, then invite viewers to review the product details before buying.",
                 captions: [
-                    "Raw footage ? {$platform} campaign for {$product}.",
+                    "Raw footage → {$platform} campaign for {$product}.",
                     'Hook, narration, caption and edit plan from one product video.',
                     'Review the details and see if it fits your needs.',
                 ],
@@ -176,7 +177,16 @@ class MockVideoToCampaignProvider implements VideoToCampaignProvider
         array $usageNotes,
         ?int $sourceVideoAssetId,
     ): array {
-        return [
+        $workflowMetadata = CampaignWorkflowMetadata::forVideoAnalysis([
+            'source_video_asset_id' => $sourceVideoAssetId,
+            'recommended_cuts' => $cuts,
+            'edit_plan' => ['timeline' => [[
+                'timestamp' => '0-3s',
+                'action' => 'Open with the strongest product visual and hook text.',
+            ]]],
+        ], $sourceVideoAssetId);
+
+        return array_merge([
             'video_summary' => $videoSummary,
             'detected_product_moments' => $moments,
             'scene_observations' => $observations,
@@ -204,12 +214,13 @@ class MockVideoToCampaignProvider implements VideoToCampaignProvider
             'source_video_asset_id' => $sourceVideoAssetId,
             'provider_metadata' => [
                 'provider' => 'mock',
+                ...$workflowMetadata,
                 'mode' => 'deterministic_video_to_campaign_plan',
                 'real_video_analysis' => false,
                 'source_video_name' => $sourceVideoName,
                 'product' => $product,
             ],
-        ];
+        ], $workflowMetadata);
     }
 
     /** @param array<string, mixed> $input */

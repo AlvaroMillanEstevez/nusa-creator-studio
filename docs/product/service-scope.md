@@ -140,28 +140,39 @@ Action cards should show service tier and credit cost before generation. Detaile
 
 | Tool | Service tier | Output type | Current implementation stage | Notes |
 | --- | --- | --- | --- | --- |
-| Affiliate Campaign Generator | Basic | Script pack | Mock + optional real provider | Low-cost campaign intelligence for scripts, hooks, captions, voiceover-ready copy and filming notes. OpenAI can be enabled for internal users only. |
+| Affiliate Campaign Generator / Product Content Kit | Basic | Script pack | Mock + optional real provider | Low-cost campaign intelligence for scripts, hooks, captions, voiceover-ready copy and filming notes. Supports brief-only and image-assisted context, but does not create video cuts/edit-plan data. OpenAI can be enabled for internal users only. |
 | Video Enhancer / Caption Pack | Advanced | Assisted media | Mock | Legacy-compatible mock edit/caption plan; future work should migrate toward the project workspace video workflows. |
 | Video-to-Campaign | Advanced | Campaign + edit plan | Beta real provider + mock fallback | Gemini can analyze selected project video assets for internal beta users; mock remains default. Saves reusable hooks, narration text, captions, recommended cuts and edit plan. It does not generate audio. |
 | Product-to-Video Script Pack | Advanced | Assisted media | Mock | Current script/storyboard; future real v1 can move from product image or URL to storyboard/prompt; future real v2 can move toward image-to-video. |
 | AI Voiceover | Advanced | Audio | Real provider + mock fallback | v1 can generate ElevenLabs audio for internal/eligible users and save it as a private MediaAsset; mock remains the default fallback. |
 | Fashion Try-On | Premium | Image | Future / coming soon | Future real provider should generate try-on images after safety, cost and UX controls are ready. |
-| Auto Video Editor | Premium | Video edit plan / rendered video | Beta real provider + mock fallback | Composite workflow that can reuse Video-to-Campaign analysis and existing voiceover/audio. Mock remains default; Shotstack can render a real private MP4 for eligible internal users when enabled. |
+| Auto Video Editor | Premium | Video edit plan / rendered video | Beta real provider + mock fallback | Composite workflow with AI video analysis mode for eligible Video-to-Campaign results and manual edit setup for source-video fallback timelines. Mock remains default; Shotstack can render a real private MP4 for eligible internal users when enabled. |
 | Motion AI Video | Premium | Video | Future / coming soon | Future real provider should generate video assets after cost controls and provider selection are ready. |
 | AI Avatar Presenter | Premium | Avatar | Future | Future avatar-led product presenter videos with voice. |
 | Custom AI Avatar | Premium | Avatar | Future | Future reusable avatar identity from person images, photo sets or descriptions. |
 | Avatar Voice Ads | Premium | Mixed media | Future | Future avatar-led product ads combining presenter, voiceover and scripts. |
 
 
+
+### Product Content Kit and video editing compatibility
+
+Product Content Kit can be brief-only or image-assisted. Both modes create useful text assets: hooks, scripts, captions, CTA options, publishing notes and voiceover-ready narration. They should not be treated as primary Auto Video Editor sources because they do not include source video ranges or recommended cuts.
+
+For the best Auto Video Editor result, users should first generate a Video-to-Campaign Insight from raw product footage. That creates `video_analysis` metadata with a source video and edit-plan/recommended-cut data.
+
+Manual edit setup is still valid when the creator has a source video but no Video-to-Campaign Insight yet. Manual setup uses fallback timeline logic based on the selected video, target duration, pacing, clip diversity, CTA, captions, voiceover duration and edit-polish settings. It should be labeled honestly as a fallback timeline, not as AI video analysis.
 ## Auto Video Editor beta scope and limitations
 
 Auto Video Editor is currently a beta clean-cut workflow. The goal is to make the real render useful and honest without implying it is a finished professional editor.
 
 Current beta behavior:
 
-- Reuses Video-to-Campaign analysis when selected, including CTA options, edit plan cuts and campaign angle.
+- Reuses Video-to-Campaign analysis when selected, including CTA options, edit plan cuts and campaign angle.`n- Supports manual edit setup with a selected source video and fallback timeline logic when no eligible Video-to-Campaign Insight exists.
 - Reuses existing voiceover generation/audio when selected.
 - Builds a structured creative brief from user settings such as editing style, pacing, caption style, CTA, music direction and target duration.
+- Supports source audio modes for mute, low source audio, keep source audio and product-sound focus.
+- Supports voiceover mix controls for balanced, voiceover-dominant and soft-background exports.
+- Supports lightweight edit-polish settings for transition style, motion polish, clip diversity and end screen behavior.
 - Extends the timeline to fit known or estimated voiceover duration so narration is not cut off.
 - Uses simple clean cuts, repeated product shots and CTA/end-card holds as safe fallback techniques.
 - Keeps captions short and inside a vertical safe area.
@@ -171,6 +182,8 @@ Known beta limitations:
 
 - Not a full professional video editor yet.
 - No automated beat sync or licensed music selection.
+- No music generation or TikTok music selection; TikTok native/commercial music is deferred to a later publishing workflow.
+- No advanced AI denoise yet. Beta cleanup controls volume and mixing only.
 - No object-aware crop/reframe decisions beyond basic vertical cover fitting.
 - No advanced transitions, motion graphics or scene reconstruction.
 - Source footage that is too short may still reuse product clips visibly.
@@ -243,7 +256,7 @@ Composite workflows can include multiple logical steps inside one action. Auto V
 | Component | When charged | When reused at zero additional credits |
 | --- | --- | --- |
 | Base editor planning | Always part of the Auto Video Editor workflow for normal users. | Internal/unlimited accounts follow existing zero-charge behavior. |
-| Video campaign analysis | Charged when starting from raw video without a saved Video-to-Campaign result. | Reused when the user selects a completed Video-to-Campaign generation. |
+| Video campaign analysis | Not charged inside Auto Video Editor unless a future composite analysis step is explicitly implemented. | Reused at zero additional credits when the user selects an eligible completed Video-to-Campaign generation. |
 | Voiceover | Charged when the user chooses to include a new AI voiceover. | Reused when the user selects an existing voiceover generation or audio asset; zero when no voiceover is selected. |
 | Shotstack render | Zero additional user-facing credits in the current beta. | Real provider cost is tracked as metadata when configured; provider-cost-based pricing is deferred. |
 
