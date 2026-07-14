@@ -15,6 +15,7 @@ import {
   autoVideoEditingStyleOptions,
   autoVideoEndScreenOptions,
   autoVideoMotionPolishOptions,
+  autoVideoOverlayStyleOptions,
   autoVideoPacingOptions,
   autoVideoSourceAudioModeOptions,
   autoVideoTransitionStyleOptions,
@@ -59,6 +60,7 @@ const transitionStyle = ref('clean_cuts')
 const motionPolish = ref('subtle_zoom')
 const clipDiversity = ref('balanced')
 const endScreen = ref('product_hold_cta')
+const overlayStyle = ref('minimal_clean')
 const durationSeconds = ref(30)
 const cta = ref('')
 const musicDirection = ref('')
@@ -71,6 +73,7 @@ const captionStyleTouched = ref(false)
 const sourceAudioModeTouched = ref(false)
 const transitionStyleTouched = ref(false)
 const endScreenTouched = ref(false)
+const overlayStyleTouched = ref(false)
 const durationTouched = ref(false)
 const isLoading = ref(true)
 const isUploading = ref(false)
@@ -136,6 +139,7 @@ const effectiveTargetDurationSeconds = computed(() => {
   return Math.max(durationSeconds.value, Math.ceil(voiceoverDuration))
 })
 const durationAdjustedForVoiceover = computed(() => effectiveTargetDurationSeconds.value > durationSeconds.value)
+const selectedOverlayStyleOption = computed(() => autoVideoOverlayStyleOptions.find((option) => option.value === overlayStyle.value) ?? autoVideoOverlayStyleOptions[0])
 const voiceoverSyncMessage = computed(() => {
   if (!includeVoiceover.value || activeVoiceoverDurationSeconds.value === null) {
     return ''
@@ -399,6 +403,10 @@ function applyAnalysisDefaults(): void {
     endScreen.value = cta.value.trim() === '' ? 'none' : 'product_hold_cta'
   }
 
+  if (!overlayStyleTouched.value) {
+    overlayStyle.value = Array.isArray(analysis.detected_product_moments) && analysis.detected_product_moments.length > 0 ? 'product_highlights' : 'minimal_clean'
+  }
+
   if (!durationTouched.value && typeof analysis.edit_plan.target_duration_seconds === 'number') {
     durationSeconds.value = durationOptionFor(analysis.edit_plan.target_duration_seconds)
   }
@@ -537,6 +545,7 @@ async function submit(): Promise<void> {
     motion_polish: motionPolish.value,
     clip_diversity: clipDiversity.value,
     end_screen: endScreen.value,
+    overlay_style: overlayStyle.value,
     target_duration_seconds: effectiveTargetDurationSeconds.value,
     requested_target_duration_seconds: durationSeconds.value,
     effective_target_duration_seconds: effectiveTargetDurationSeconds.value,
@@ -558,6 +567,16 @@ async function submit(): Promise<void> {
     isSubmitting.value = false
   }
 }
+
+watch(sourceMode, (mode) => {
+  if (!overlayStyleTouched.value && mode === 'manual_edit') {
+    overlayStyle.value = 'minimal_clean'
+  }
+
+  if (!overlayStyleTouched.value && mode === 'ai_video_analysis') {
+    applyAnalysisDefaults()
+  }
+})
 
 watch(selectedAnalysisId, () => {
   applyAnalysisDefaults()
@@ -747,6 +766,16 @@ onMounted(loadPage)
                 {{ voiceoverSyncMessage }}
               </p>
 
+              <div class="mt-5 rounded-[1.5rem] border border-neutral-800 bg-neutral-950/40 p-4" data-testid="auto-video-visual-style-section">
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Visual style</p>
+                <label class="mt-4 block">
+                  <span class="nusa-label">Overlay style</span>
+                  <select v-model="overlayStyle" class="nusa-select mt-2" data-testid="auto-video-overlay-style-select" @change="overlayStyleTouched = true">
+                    <option v-for="option in autoVideoOverlayStyleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                  </select>
+                </label>
+                <p class="mt-3 text-xs leading-5 text-neutral-500">{{ selectedOverlayStyleOption.description }}</p>
+              </div>
               <div class="mt-5 rounded-[1.5rem] border border-neutral-800 bg-neutral-950/40 p-4" data-testid="auto-video-edit-polish-section">
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ t('videoWorkflows.editPolish') }}</p>
                 <div class="mt-4 grid gap-4 sm:grid-cols-2">

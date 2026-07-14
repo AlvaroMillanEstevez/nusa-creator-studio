@@ -318,6 +318,10 @@ class AutoVideoEditorGenerationService
         $motionPolish = AutoVideoEditSettings::motionPolish($this->stringOption($options, 'motion_polish'));
         $clipDiversity = AutoVideoEditSettings::clipDiversity($this->stringOption($options, 'clip_diversity'));
         $endScreen = AutoVideoEditSettings::endScreen($this->stringOption($options, 'end_screen'), $cta !== null);
+        $hasProductMoments = $analysisGeneration instanceof Generation
+            && is_array($analysisGeneration->output_payload)
+            && ($analysisGeneration->output_payload['detected_product_moments'] ?? []) !== [];
+        $overlayStyle = AutoVideoEditSettings::overlayStyle($this->stringOption($options, 'overlay_style'), $editMode, $hasProductMoments);
 
         $payload = array_merge($projectInput, [
             'project_title' => $project->title,
@@ -345,6 +349,7 @@ class AutoVideoEditorGenerationService
             'motion_polish' => $motionPolish,
             'clip_diversity' => $clipDiversity,
             'end_screen' => $endScreen,
+            'overlay_style' => $overlayStyle,
             'requested_target_duration_seconds' => $requestedTargetDuration,
             'effective_target_duration_seconds' => $effectiveTargetDuration,
             'target_duration_seconds' => $requestedTargetDuration,

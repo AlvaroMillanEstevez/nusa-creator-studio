@@ -15,9 +15,11 @@ class GenerateAutoVideoEditRequest extends FormRequest
             || $this->filled('voiceover_generation_id')
             || $this->filled('voiceover_audio_asset_id');
         $hasCta = is_string($this->input('cta')) && trim((string) $this->input('cta')) !== '';
+        $editMode = $this->input('edit_mode') ?: ($this->filled('source_video_to_campaign_generation_id') ? 'ai_video_analysis' : 'manual_edit');
+        $hasProductMoments = $this->filled('source_video_to_campaign_generation_id');
 
         $this->merge([
-            'edit_mode' => $this->input('edit_mode') ?: ($this->filled('source_video_to_campaign_generation_id') ? 'ai_video_analysis' : 'manual_edit'),
+            'edit_mode' => $editMode,
             'caption_style' => AutoVideoCaptionStyle::normalize($this->input('caption_style')),
             'source_audio_mode' => AutoVideoEditSettings::sourceAudioMode($this->input('source_audio_mode'), $hasVoiceover),
             'voiceover_mix' => AutoVideoEditSettings::voiceoverMix($this->input('voiceover_mix')),
@@ -25,6 +27,7 @@ class GenerateAutoVideoEditRequest extends FormRequest
             'motion_polish' => AutoVideoEditSettings::motionPolish($this->input('motion_polish')),
             'clip_diversity' => AutoVideoEditSettings::clipDiversity($this->input('clip_diversity')),
             'end_screen' => AutoVideoEditSettings::endScreen($this->input('end_screen'), $hasCta),
+            'overlay_style' => AutoVideoEditSettings::overlayStyle($this->input('overlay_style'), $editMode, $hasProductMoments),
         ]);
     }
 
@@ -56,6 +59,7 @@ class GenerateAutoVideoEditRequest extends FormRequest
             'motion_polish' => ['sometimes', 'nullable', 'string', Rule::in(AutoVideoEditSettings::motionPolishOptions())],
             'clip_diversity' => ['sometimes', 'nullable', 'string', Rule::in(AutoVideoEditSettings::clipDiversityOptions())],
             'end_screen' => ['sometimes', 'nullable', 'string', Rule::in(AutoVideoEditSettings::endScreenOptions())],
+            'overlay_style' => ['sometimes', 'nullable', 'string', Rule::in(AutoVideoEditSettings::overlayStyles())],
             'target_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:120'],
             'requested_target_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:120'],
             'effective_target_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:120'],

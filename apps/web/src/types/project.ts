@@ -199,6 +199,14 @@ export const autoVideoCaptionStyleOptions = [
   { value: 'ugc_native', label: 'UGC native' },
 ] as const
 
+export const autoVideoOverlayStyleOptions = [
+  { value: 'minimal_clean', label: 'Minimal clean', description: 'Clean captions and a subtle CTA.' },
+  { value: 'ugc_native', label: 'UGC native', description: 'Native social style with light callouts.' },
+  { value: 'product_highlights', label: 'Product highlights', description: 'Highlight product benefits and visible features.' },
+  { value: 'promo_badges', label: 'Promo badges', description: 'Add simple promo-style badges and CTA moments.' },
+  { value: 'premium_brand', label: 'Premium brand', description: 'Cleaner brand-style overlays and end card.' },
+] as const
+
 export const autoVideoDurationOptions = [15, 30, 45, 60] as const
 
 export const autoVideoSourceAudioModeOptions = [
@@ -266,6 +274,7 @@ export type MotionPlatform = (typeof motionPlatformOptions)[number]['value']
 export type AutoVideoEditingStyle = (typeof autoVideoEditingStyleOptions)[number]['value']
 export type AutoVideoPacing = (typeof autoVideoPacingOptions)[number]['value']
 export type AutoVideoCaptionStyle = (typeof autoVideoCaptionStyleOptions)[number]['value']
+export type AutoVideoOverlayStyle = (typeof autoVideoOverlayStyleOptions)[number]['value']
 export type AutoVideoDuration = (typeof autoVideoDurationOptions)[number]
 export type AutoVideoSourceAudioMode = (typeof autoVideoSourceAudioModeOptions)[number]['value']
 export type AutoVideoVoiceoverMix = (typeof autoVideoVoiceoverMixOptions)[number]['value']
@@ -485,6 +494,7 @@ export interface GenerateAutoVideoEditPayload {
   editing_style?: AutoVideoEditingStyle | string | null
   pacing?: AutoVideoPacing | string | null
   caption_style?: AutoVideoCaptionStyle | string | null
+  overlay_style?: AutoVideoOverlayStyle | string | null
   source_audio_mode?: AutoVideoSourceAudioMode | string | null
   voiceover_mix?: AutoVideoVoiceoverMix | string | null
   transition_style?: AutoVideoTransitionStyle | string | null
@@ -942,6 +952,26 @@ export interface AutoVideoEditorCaptionScheduleItem {
   type: string
 }
 
+export interface AutoVideoEditorTimelineValidation {
+  valid: boolean
+  clips_checked: number
+  max_end_seconds: number
+  captions_overlap_prevented: boolean
+}
+
+export interface AutoVideoEditorEditRecipe {
+  edit_mode?: string | null
+  overlay_style?: string | null
+  transition_style?: string | null
+  motion_polish?: string | null
+  clip_diversity?: string | null
+  end_screen?: string | null
+  source_audio?: string | null
+  voiceover_mix?: string | null
+  captions_used?: number | null
+  overlays_used?: number | null
+  unique_clips_used?: number | null
+}
 export interface AutoVideoEditorCaptionsPlan {
   style: string
   safe_zone: string
@@ -1011,6 +1041,25 @@ export interface AutoVideoEditorRenderSettings {
   motion_polish?: string | null
   clip_diversity?: string | null
   end_screen?: string | null
+  overlay_style?: string | null
+  overlays_count?: number | null
+  decorative_overlays_count?: number | null
+  overlays_used?: string[]
+  compliance_sanitized_claims?: string[]
+  end_screen_type?: string | null
+  end_screen_duration?: number | null
+  end_screen_cta?: string | null
+  end_screen_source?: string | null
+  clip_strategy?: string | null
+  unique_source_ranges?: number | null
+  source_segments_used?: number | null
+  transition_style_applied?: string | null
+  motion_polish_applied?: string | null
+  transition_sfx_enabled?: boolean | null
+  sfx_strategy?: string | null
+  edit_recipe?: AutoVideoEditorEditRecipe | null
+  timeline_validation?: AutoVideoEditorTimelineValidation | null
+  timeline_validated?: boolean | null
   provider?: string
   resolution?: string
   aspect_ratio?: string
@@ -1075,6 +1124,25 @@ export interface AutoVideoEditorTimelineSummary {
   motion_polish?: string | null
   clip_diversity?: string | null
   end_screen?: string | null
+  overlay_style?: string | null
+  overlays_count?: number | null
+  decorative_overlays_count?: number | null
+  overlays_used?: string[]
+  compliance_sanitized_claims?: string[]
+  end_screen_type?: string | null
+  end_screen_duration?: number | null
+  end_screen_cta?: string | null
+  end_screen_source?: string | null
+  clip_strategy?: string | null
+  unique_source_ranges?: number | null
+  source_segments_used?: number | null
+  transition_style_applied?: string | null
+  motion_polish_applied?: string | null
+  transition_sfx_enabled?: boolean | null
+  sfx_strategy?: string | null
+  edit_recipe?: AutoVideoEditorEditRecipe | null
+  timeline_validation?: AutoVideoEditorTimelineValidation | null
+  timeline_validated?: boolean | null
   caption_visual_strategy?: string | null
   caption_warnings?: string[]
   source_clip_ranges_used?: string[]

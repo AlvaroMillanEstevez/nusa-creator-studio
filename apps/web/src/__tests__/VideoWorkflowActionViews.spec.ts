@@ -88,7 +88,7 @@ const videoCampaignGeneration: CreatorGeneration = {
       source_video_name: 'raw-product-demo.mp4',
       timeline: [{ start_seconds: 0, end_seconds: 3, instruction: 'Open on the clearest product shot.', caption: 'Pocket light demo' }],
     },
-    detected_product_moments: [],
+    detected_product_moments: [{ start_seconds: 1, end_seconds: 3, moment: 'Stable product close-up', product_visibility: 'high', stability: 'high', visual_quality: 'high', use_for_final_edit: true }],
     scene_observations: [],
     recommended_cuts: [{ start_seconds: 0, end_seconds: 3, reason: 'Open with product clarity.', visual_reason: 'The product is centered.' }],
     compliance_notes: [],
@@ -374,6 +374,10 @@ describe('video workflow action views', () => {
     expect(wrapper.text()).toContain('Audio cleanup')
     expect(wrapper.text()).toContain('Mute original video audio')
     expect(wrapper.text()).toContain('Beta cleanup controls volume and mixing. Advanced AI denoise will come later.')
+    expect(wrapper.text()).toContain('Visual style')
+    expect(wrapper.text()).toContain('Product highlights')
+    expect(wrapper.get<HTMLSelectElement>('[data-testid="auto-video-overlay-style-select"]').element.value).toBe('product_highlights')
+    expect(wrapper.text()).toContain('Highlight product benefits and visible features.')
     expect(wrapper.text()).toContain('Edit polish')
     expect(wrapper.text()).toContain('Snappy social cuts')
     expect(wrapper.text()).toContain('Rendering your video. This can take a few minutes depending on video length and provider processing time.')
@@ -421,6 +425,7 @@ describe('video workflow action views', () => {
     await wrapper.get('[data-testid="auto-video-motion-polish-select"]').setValue('dynamic_crop')
     await wrapper.get('[data-testid="auto-video-clip-diversity-select"]').setValue('more_unique_shots')
     await wrapper.get('[data-testid="auto-video-end-screen-select"]').setValue('simple_cta')
+    await wrapper.get('[data-testid="auto-video-overlay-style-select"]').setValue('premium_brand')
 
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -441,12 +446,35 @@ describe('video workflow action views', () => {
     expect(body.motion_polish).toBe('dynamic_crop')
     expect(body.clip_diversity).toBe('more_unique_shots')
     expect(body.end_screen).toBe('simple_cta')
+    expect(body.overlay_style).toBe('premium_brand')
     expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/102')
     expect(wrapper.find('[data-testid="auto-video-editor-success"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Edit plan saved')
     expect(wrapper.text()).not.toContain('View edit plan')
   })
 
+  it('sends canonical Auto Video Editor overlay style values', async () => {
+    const canonicalStyles = ['minimal_clean', 'ugc_native', 'product_highlights', 'promo_badges', 'premium_brand']
+
+    for (const style of canonicalStyles) {
+      const { wrapper, fetchMock } = await mountView(AutoVideoEditorActionView, '/projects/42/actions/auto-video-editor', [sourceVideo, voiceoverAudio])
+      const select = wrapper.get<HTMLSelectElement>('[data-testid="auto-video-overlay-style-select"]')
+
+      expect(select.findAll('option').map((option) => option.element.value)).toEqual(canonicalStyles)
+      expect(select.text()).toContain('Premium brand')
+
+      await select.setValue(style)
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+
+      const call = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/projects/42/generate-auto-video-edit'))
+      const body = JSON.parse(String(call?.[1]?.body)) as Record<string, unknown>
+
+      expect(body.overlay_style).toBe(style)
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    }
+  })
   it('sends canonical Auto Video Editor caption style values', async () => {
     const canonicalStyles = ['clean_subtitles', 'bold_hook', 'minimal', 'premium_clean', 'ugc_native']
 

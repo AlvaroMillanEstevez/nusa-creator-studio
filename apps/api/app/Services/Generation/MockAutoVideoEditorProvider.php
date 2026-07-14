@@ -35,6 +35,9 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
         $endScreen = AutoVideoEditSettings::endScreen($input['end_screen'] ?? null, trim($cta) !== '');
         $audioMix = AutoVideoEditSettings::audioMix($sourceAudioMode, $voiceoverMix, $includeVoiceover);
         $editMode = $this->value($input, 'edit_mode', 'manual_edit', 80);
+        $overlayStyle = AutoVideoEditSettings::overlayStyle($input['overlay_style'] ?? null, $editMode, $editMode === 'ai_video_analysis');
+        $overlaysCount = $overlayStyle === AutoVideoEditSettings::OVERLAY_MINIMAL_CLEAN ? ($endScreen === AutoVideoEditSettings::END_SCREEN_NONE ? 0 : 1) : 3;
+        $captionsCount = 3;
         $fallbackTimeline = (bool) ($input['fallback_timeline'] ?? $editMode === 'manual_edit');
         $aiVideoAnalysisUsed = (bool) ($input['ai_video_analysis_used'] ?? $editMode === 'ai_video_analysis');
         $analysisGenerationId = $this->intValue($input, 'source_video_to_campaign_generation_id', 0);
@@ -71,6 +74,7 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
             ],
             'captions_plan' => [
                 'style' => $captionStyle,
+                'caption_count' => $captionsCount,
                 'safe_zone' => 'Keep lower third clear of shopping buttons and affiliate badges.',
                 'sample_captions' => [
                     "Meet {$product}",
@@ -115,6 +119,24 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
                 'motion_polish' => $motionPolish,
                 'clip_diversity' => $clipDiversity,
                 'end_screen' => $endScreen,
+                'overlay_style' => $overlayStyle,
+                'overlays_count' => $overlaysCount,
+                'captions_count' => $captionsCount,
+                'end_screen_type' => $endScreen,
+                'clip_strategy' => $editMode.'_'.$clipDiversity.'_'.$transitionStyle,
+                'edit_recipe' => [
+                    'edit_mode' => $editMode,
+                    'overlay_style' => $overlayStyle,
+                    'transition_style' => $transitionStyle,
+                    'motion_polish' => $motionPolish,
+                    'clip_diversity' => $clipDiversity,
+                    'end_screen' => $endScreen,
+                    'source_audio' => $sourceAudioMode,
+                    'voiceover_mix' => $voiceoverMix,
+                    'captions_used' => $captionsCount,
+                    'overlays_used' => $overlaysCount,
+                    'unique_clips_used' => $editMode === 'manual_edit' ? 3 : 4,
+                ],
                 'edit_mode' => $editMode,
                 'ai_video_analysis_used' => $aiVideoAnalysisUsed,
                 'fallback_timeline' => $fallbackTimeline,
@@ -130,6 +152,24 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
                 'motion_polish' => $motionPolish,
                 'clip_diversity' => $clipDiversity,
                 'end_screen' => $endScreen,
+                'overlay_style' => $overlayStyle,
+                'overlays_count' => $overlaysCount,
+                'captions_count' => $captionsCount,
+                'end_screen_type' => $endScreen,
+                'clip_strategy' => $editMode.'_'.$clipDiversity.'_'.$transitionStyle,
+                'edit_recipe' => [
+                    'edit_mode' => $editMode,
+                    'overlay_style' => $overlayStyle,
+                    'transition_style' => $transitionStyle,
+                    'motion_polish' => $motionPolish,
+                    'clip_diversity' => $clipDiversity,
+                    'end_screen' => $endScreen,
+                    'source_audio' => $sourceAudioMode,
+                    'voiceover_mix' => $voiceoverMix,
+                    'captions_used' => $captionsCount,
+                    'overlays_used' => $overlaysCount,
+                    'unique_clips_used' => $editMode === 'manual_edit' ? 3 : 4,
+                ],
                 'edit_mode' => $editMode,
                 'ai_video_analysis_used' => $aiVideoAnalysisUsed,
                 'fallback_timeline' => $fallbackTimeline,
@@ -166,6 +206,24 @@ class MockAutoVideoEditorProvider implements AutoVideoEditorProvider
                 'motion_polish' => $motionPolish,
                 'clip_diversity' => $clipDiversity,
                 'end_screen' => $endScreen,
+                'overlay_style' => $overlayStyle,
+                'overlays_count' => $overlaysCount,
+                'captions_count' => $captionsCount,
+                'end_screen_type' => $endScreen,
+                'clip_strategy' => $editMode.'_'.$clipDiversity.'_'.$transitionStyle,
+                'edit_recipe' => [
+                    'edit_mode' => $editMode,
+                    'overlay_style' => $overlayStyle,
+                    'transition_style' => $transitionStyle,
+                    'motion_polish' => $motionPolish,
+                    'clip_diversity' => $clipDiversity,
+                    'end_screen' => $endScreen,
+                    'source_audio' => $sourceAudioMode,
+                    'voiceover_mix' => $voiceoverMix,
+                    'captions_used' => $captionsCount,
+                    'overlays_used' => $overlaysCount,
+                    'unique_clips_used' => $editMode === 'manual_edit' ? 3 : 4,
+                ],
                 'edit_mode' => $editMode,
                 'ai_video_analysis_used' => $aiVideoAnalysisUsed,
                 'fallback_timeline' => $fallbackTimeline,

@@ -5,6 +5,7 @@ namespace App\Services\Generation;
 use App\Support\AutoVideoCaptionStyle;
 use App\Support\AutoVideoEditSettings;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class ShotstackTimelineBuilder
 {
@@ -41,6 +42,7 @@ class ShotstackTimelineBuilder
         $clipDiversity = AutoVideoEditSettings::clipDiversity($brief['clip_diversity'] ?? $input['clip_diversity'] ?? null);
         $endScreen = AutoVideoEditSettings::endScreen($brief['end_screen'] ?? $input['end_screen'] ?? null, $cta !== '');
         $editMode = $this->stringValue($brief['edit_mode'] ?? $input['edit_mode'] ?? null, 'manual_edit');
+        $overlayStyle = AutoVideoEditSettings::overlayStyle($brief['overlay_style'] ?? $input['overlay_style'] ?? null, $editMode, $this->hasProductMoments($analysis, $brief));
         $aiVideoAnalysisUsed = (bool) ($brief['ai_video_analysis_used'] ?? $input['ai_video_analysis_used'] ?? $editMode === 'ai_video_analysis');
         $fallbackTimeline = (bool) ($brief['fallback_timeline'] ?? $input['fallback_timeline'] ?? $editMode === 'manual_edit');
         $audioMix = AutoVideoEditSettings::audioMix($sourceAudioMode, $voiceoverMix, $hasVoiceover);
@@ -51,6 +53,7 @@ class ShotstackTimelineBuilder
             'motion_polish' => $motionPolish,
             'clip_diversity' => $clipDiversity,
             'end_screen' => $endScreen,
+            'overlay_style' => $overlayStyle,
             'edit_mode' => $editMode,
             'ai_video_analysis_used' => $aiVideoAnalysisUsed,
             'fallback_timeline' => $fallbackTimeline,
@@ -106,7 +109,9 @@ class ShotstackTimelineBuilder
         }
 
         $captionWarnings = array_values(array_unique($captionWarnings));
-        $captionClips = $this->captionClips($captionSchedule, $captionStyle);
+        $captionClips = $this->captionClips($captionSchedule, $captionStyle, $overlayStyle);
+        $decorativeOverlayPlan = $this->buildOverlayClips($timelineItems, $analysis, $brief, $overlayStyle, $captionSchedule, $totalDuration);
+        $endScreenPlan = $this->buildEndScreenClips($timelineItems, $cta, $overlayStyle, $endScreen, $totalDuration);
         $outputMetadata = $this->outputMetadata();
         $sourceClipRangesUsed = $this->sourceClipRangesUsed($timelineItems);
         $diverseSourceSegmentsUsed = $this->diverseSourceSegmentsUsed($sourceClipRangesUsed, $repeatedClipCount);
@@ -128,12 +133,21 @@ class ShotstackTimelineBuilder
             'final_caption_count' => count($captionSchedule),
             'cta_caption_start_seconds' => $this->ctaCaptionStartSeconds($captionSchedule),
             'caption_style' => $captionStyle,
-            'caption_visual_strategy' => 'shadow_text_light_caption',
+            'caption_visual_strategy' => $this->captionVisualStrategy($overlayStyle),
             'deduped_caption_count' => $captionDedupeStats['deduped_caption_count'],
             'repeated_captions_removed' => $captionDedupeStats['repeated_captions_removed'],
             'caption_safe_area_applied' => true,
             'caption_max_lines' => self::CAPTION_MAX_LINES,
             'caption_warnings' => $captionWarnings,
+            'overlay_style' => $overlayStyle,
+            'overlays_count' => $decorativeOverlayPlan['overlays_count'] + $endScreenPlan['overlays_count'],
+            'decorative_overlays_count' => $decorativeOverlayPlan['overlays_count'],
+            'overlays_used' => array_values(array_merge($decorativeOverlayPlan['overlays_used'], $endScreenPlan['overlays_used'])),
+            'compliance_sanitized_claims' => $decorativeOverlayPlan['compliance_sanitized_claims'],
+            'end_screen_type' => $endScreenPlan['end_screen_type'],
+            'end_screen_duration' => $endScreenPlan['end_screen_duration'],
+            'end_screen_cta' => $endScreenPlan['end_screen_cta'],
+            'end_screen_source' => $endScreenPlan['end_screen_source'],
             'cta_used' => $cta,
             'source_clip_ranges_used' => $sourceClipRangesUsed,
             'candidate_clip_count' => $candidateClipCount,
@@ -156,6 +170,7 @@ class ShotstackTimelineBuilder
             'motion_polish' => $motionPolish,
             'clip_diversity' => $clipDiversity,
             'end_screen' => $endScreen,
+            'overlay_style' => $overlayStyle,
             'edit_mode' => $editMode,
             'ai_video_analysis_used' => $aiVideoAnalysisUsed,
             'fallback_timeline' => $fallbackTimeline,
@@ -163,24 +178,27 @@ class ShotstackTimelineBuilder
             'timeline_quality_warnings' => array_values(array_unique(array_merge($warnings, $captionWarnings))),
         ] + $outputMetadata;
 
-        $tracks = [
-            ['clips' => $captionClips],
-            ['clips' => $this->videoClips($sourceVideoUrl, $timelineItems, $audioMix, $editSettings)],
-        ];
-
-        if ($voiceoverUrl !== null) {
-            array_unshift($tracks, [
-                'clips' => [[
-                    'asset' => [
-                        'type' => 'audio',
-                        'src' => $voiceoverUrl,
-                        'volume' => $audioMix['voiceover_volume'],
-                    ],
-                    'start' => 0,
-                    'length' => $totalDuration,
-                ]],
-            ]);
-        }
+        $videoClips = $this->buildVideoClips($sourceVideoUrl, $timelineItems, $audioMix, $editSettings);
+        $audioClips = $this->buildAudioClips($voiceoverUrl, $audioMix, $totalDuration);
+        $tracks = $this->buildTracks(
+            videoClips: $videoClips,
+            audioClips: $audioClips,
+            captionClips: $captionClips,
+            overlayClips: $decorativeOverlayPlan['clips'],
+            endScreenClips: $endScreenPlan['clips'],
+        );
+        $timelineValidation = $this->validateTimelineBeforeSubmit($tracks, $totalDuration, $captionSchedule);
+        $editRecipe = $this->editRecipe($timelineSummary, $editSettings, $decorativeOverlayPlan, $endScreenPlan);
+        $timelineSummary['clip_strategy'] = $this->clipStrategy($editSettings);
+        $timelineSummary['unique_source_ranges'] = count($sourceClipRangesUsed);
+        $timelineSummary['source_segments_used'] = count($sourceClipRangesUsed);
+        $timelineSummary['transition_style_applied'] = $transitionStyle;
+        $timelineSummary['motion_polish_applied'] = $motionPolish;
+        $timelineSummary['transition_sfx_enabled'] = false;
+        $timelineSummary['sfx_strategy'] = 'none';
+        $timelineSummary['timeline_validation'] = $timelineValidation;
+        $timelineSummary['timeline_validated'] = true;
+        $timelineSummary['edit_recipe'] = $editRecipe;
 
         return [
             'edit' => [
@@ -202,7 +220,7 @@ class ShotstackTimelineBuilder
                 'captions_dropped_for_overlap' => $captionValidationStats['captions_dropped_for_overlap'],
                 'final_caption_count' => count($captionSchedule),
                 'cta_caption_start_seconds' => $this->ctaCaptionStartSeconds($captionSchedule),
-                'caption_visual_strategy' => 'shadow_text_light_caption',
+                'caption_visual_strategy' => $this->captionVisualStrategy($overlayStyle),
                 'deduped_caption_count' => $captionDedupeStats['deduped_caption_count'],
                 'repeated_captions_removed' => $captionDedupeStats['repeated_captions_removed'],
                 'caption_safe_area_applied' => true,
@@ -217,7 +235,7 @@ class ShotstackTimelineBuilder
                     'bottom_margin_percent' => 18,
                     'max_lines' => self::CAPTION_MAX_LINES,
                     'max_characters_per_line' => self::CAPTION_MAX_CHARS_PER_LINE,
-                    'font_size_pixels' => $this->captionStyleForShotstack($captionStyle)['font_size'],
+                    'font_size_pixels' => $this->captionStyleForShotstack($captionStyle, $overlayStyle)['font_size'],
                     'letter_spacing' => 0,
                 ],
                 'sample_captions' => array_values(array_map(
@@ -283,7 +301,7 @@ class ShotstackTimelineBuilder
                 'captions_dropped_for_overlap' => $captionValidationStats['captions_dropped_for_overlap'],
                 'final_caption_count' => count($captionSchedule),
                 'cta_caption_start_seconds' => $this->ctaCaptionStartSeconds($captionSchedule),
-                'caption_visual_strategy' => 'shadow_text_light_caption',
+                'caption_visual_strategy' => $this->captionVisualStrategy($overlayStyle),
                 'deduped_caption_count' => $captionDedupeStats['deduped_caption_count'],
                 'repeated_captions_removed' => $captionDedupeStats['repeated_captions_removed'],
                 'source_clip_ranges_used' => $sourceClipRangesUsed,
@@ -300,6 +318,25 @@ class ShotstackTimelineBuilder
                 'caption_safe_area_applied' => true,
                 'caption_max_lines' => self::CAPTION_MAX_LINES,
                 'caption_warnings' => $captionWarnings,
+                'overlay_style' => $overlayStyle,
+                'overlays_count' => $decorativeOverlayPlan['overlays_count'] + $endScreenPlan['overlays_count'],
+                'decorative_overlays_count' => $decorativeOverlayPlan['overlays_count'],
+                'overlays_used' => array_values(array_merge($decorativeOverlayPlan['overlays_used'], $endScreenPlan['overlays_used'])),
+                'compliance_sanitized_claims' => $decorativeOverlayPlan['compliance_sanitized_claims'],
+                'end_screen_type' => $endScreenPlan['end_screen_type'],
+                'end_screen_duration' => $endScreenPlan['end_screen_duration'],
+                'end_screen_cta' => $endScreenPlan['end_screen_cta'],
+                'end_screen_source' => $endScreenPlan['end_screen_source'],
+                'clip_strategy' => $this->clipStrategy($editSettings),
+                'unique_source_ranges' => count($sourceClipRangesUsed),
+                'source_segments_used' => count($sourceClipRangesUsed),
+                'transition_style_applied' => $transitionStyle,
+                'motion_polish_applied' => $motionPolish,
+                'transition_sfx_enabled' => false,
+                'sfx_strategy' => 'none',
+                'timeline_validation' => $timelineValidation,
+                'timeline_validated' => true,
+                'edit_recipe' => $editRecipe,
             ],
             'timeline_summary' => $timelineSummary,
             'creative_brief' => $brief,
@@ -497,7 +534,32 @@ class ShotstackTimelineBuilder
 
         usort($selected, fn (array $a, array $b): int => ((float) $a['source_start_seconds']) <=> ((float) $b['source_start_seconds']));
 
-        return $selected;
+        return $this->applyClipPacing($selected, $editSettings);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $clips
+     * @return array<int, array<string, mixed>>
+     */
+    private function applyClipPacing(array $clips, array $editSettings): array
+    {
+        $transitionStyle = (string) ($editSettings['transition_style'] ?? AutoVideoEditSettings::TRANSITION_CLEAN_CUTS);
+
+        return array_map(function (array $clip) use ($transitionStyle): array {
+            $duration = (float) ($clip['duration_seconds'] ?? 0.0);
+            $maxDuration = match ($transitionStyle) {
+                AutoVideoEditSettings::TRANSITION_SNAPPY_SOCIAL => 4.25,
+                AutoVideoEditSettings::TRANSITION_PREMIUM_SMOOTH => 6.5,
+                default => 8.0,
+            };
+            $duration = round(min($duration, $maxDuration), 2);
+            $start = (float) ($clip['source_start_seconds'] ?? 0.0);
+
+            $clip['duration_seconds'] = max(0.5, $duration);
+            $clip['source_end_seconds'] = round($start + $clip['duration_seconds'], 2);
+
+            return $clip;
+        }, $clips);
     }
 
     /** @return array<string, mixed> */
@@ -806,6 +868,65 @@ class ShotstackTimelineBuilder
      * @param  array<int, array<string, mixed>>  $items
      * @return array<int, array<string, mixed>>
      */
+    private function buildVideoClips(string $sourceVideoUrl, array $items, array $audioMix, array $editSettings): array
+    {
+        return $this->videoClips($sourceVideoUrl, $items, $audioMix, $editSettings);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function buildAudioClips(?string $voiceoverUrl, array $audioMix, float $totalDuration): array
+    {
+        if ($voiceoverUrl === null) {
+            return [];
+        }
+
+        return [[
+            'asset' => [
+                'type' => 'audio',
+                'src' => $voiceoverUrl,
+                'volume' => $audioMix['voiceover_volume'],
+            ],
+            'start' => 0,
+            'length' => $totalDuration,
+        ]];
+    }
+
+    /**
+     * Shotstack renders higher visual tracks above lower ones. Keep captions
+     * first, then CTA/end-screen overlays, then decorative overlays, then the
+     * base video track. Audio is separated from visual layering.
+     *
+     * @return array<int, array{clips: array<int, array<string, mixed>>}>
+     */
+    private function buildTracks(array $videoClips, array $audioClips, array $captionClips, array $overlayClips, array $endScreenClips): array
+    {
+        $tracks = [];
+
+        if ($audioClips !== []) {
+            $tracks[] = ['clips' => $audioClips];
+        }
+
+        if ($captionClips !== []) {
+            $tracks[] = ['clips' => $captionClips];
+        }
+
+        if ($endScreenClips !== []) {
+            $tracks[] = ['clips' => $endScreenClips];
+        }
+
+        if ($overlayClips !== []) {
+            $tracks[] = ['clips' => $overlayClips];
+        }
+
+        $tracks[] = ['clips' => $videoClips];
+
+        return $tracks;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array<string, mixed>>
+     */
     private function videoClips(string $sourceVideoUrl, array $items, array $audioMix, array $editSettings): array
     {
         return array_map(fn (array $item): array => [
@@ -826,6 +947,419 @@ class ShotstackTimelineBuilder
             ],
             'transition' => $this->transitionForShotstack((string) ($editSettings['transition_style'] ?? AutoVideoEditSettings::TRANSITION_CLEAN_CUTS)),
         ], $items);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @param  array<string, mixed>  $analysis
+     * @param  array<string, mixed>  $brief
+     * @param  array<int, array{start: float, length: float, text: string, type: string}>  $captionSchedule
+     * @return array{clips: array<int, array<string, mixed>>, overlays_count: int, overlays_used: array<int, string>, compliance_sanitized_claims: array<int, string>}
+     */
+    private function buildOverlayClips(array $items, array $analysis, array $brief, string $overlayStyle, array $captionSchedule, float $finalDuration): array
+    {
+        $sanitizedClaims = [];
+        $texts = $this->overlayTexts($analysis, $brief, $overlayStyle, $sanitizedClaims);
+        $limit = match ($overlayStyle) {
+            AutoVideoEditSettings::OVERLAY_UGC_NATIVE => 2,
+            AutoVideoEditSettings::OVERLAY_PRODUCT_HIGHLIGHTS => 3,
+            AutoVideoEditSettings::OVERLAY_PROMO_BADGES => 2,
+            AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND => 1,
+            default => 0,
+        };
+
+        if ($limit <= 0 || $texts === []) {
+            return [
+                'clips' => [],
+                'overlays_count' => 0,
+                'overlays_used' => [],
+                'compliance_sanitized_claims' => array_values(array_unique($sanitizedClaims)),
+            ];
+        }
+
+        $windows = $this->overlayWindows($items, $captionSchedule, $finalDuration, min($limit, count($texts)));
+        $clips = [];
+        $used = [];
+
+        foreach (array_slice($texts, 0, $limit) as $index => $text) {
+            $window = $windows[$index] ?? null;
+
+            if ($window === null) {
+                continue;
+            }
+
+            $position = $this->overlayPosition($overlayStyle, $index);
+            $clips[] = [
+                'asset' => [
+                    'type' => 'html',
+                    'html' => $this->overlayHtml($text, $overlayStyle),
+                    'css' => $this->overlayCss($overlayStyle),
+                    'width' => 430,
+                    'height' => 92,
+                ],
+                'start' => $window['start'],
+                'length' => $window['length'],
+                'position' => $position['position'],
+                'offset' => $position['offset'],
+            ];
+            $used[] = $text;
+        }
+
+        return [
+            'clips' => $clips,
+            'overlays_count' => count($clips),
+            'overlays_used' => $used,
+            'compliance_sanitized_claims' => array_values(array_unique($sanitizedClaims)),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array{clips: array<int, array<string, mixed>>, overlays_count: int, overlays_used: array<int, string>, end_screen_type: string, end_screen_duration: float|null, end_screen_cta: string|null, end_screen_source: string|null}
+     */
+    private function buildEndScreenClips(array $items, string $cta, string $overlayStyle, string $endScreen, float $finalDuration): array
+    {
+        if ($endScreen === AutoVideoEditSettings::END_SCREEN_NONE || trim($cta) === '' || $finalDuration <= 1.5) {
+            return [
+                'clips' => [],
+                'overlays_count' => 0,
+                'overlays_used' => [],
+                'end_screen_type' => AutoVideoEditSettings::END_SCREEN_NONE,
+                'end_screen_duration' => null,
+                'end_screen_cta' => null,
+                'end_screen_source' => null,
+            ];
+        }
+
+        $warnings = [];
+        $text = $this->truncateCaptionForOverlay($cta, $warnings);
+        $duration = round(min(3.0, max(1.6, $finalDuration * 0.16)), 2);
+        $start = round(max(0.0, $finalDuration - $duration - 0.15), 2);
+        $source = $endScreen === AutoVideoEditSettings::END_SCREEN_PRODUCT_HOLD_CTA
+            ? $this->bestFinalProductShotSource($items)
+            : 'final_cta_overlay';
+        $position = $overlayStyle === AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND
+            ? ['position' => 'center', 'offset' => ['x' => 0.0, 'y' => 0.04]]
+            : ['position' => 'center', 'offset' => ['x' => 0.0, 'y' => 0.08]];
+
+        return [
+            'clips' => [[
+                'asset' => [
+                    'type' => 'html',
+                    'html' => $this->endScreenHtml($text, $overlayStyle),
+                    'css' => $this->endScreenCss($overlayStyle),
+                    'width' => 560,
+                    'height' => 170,
+                ],
+                'start' => $start,
+                'length' => $duration,
+                'position' => $position['position'],
+                'offset' => $position['offset'],
+            ]],
+            'overlays_count' => 1,
+            'overlays_used' => ['end screen: '.$text],
+            'end_screen_type' => $endScreen,
+            'end_screen_duration' => $duration,
+            'end_screen_cta' => $text,
+            'end_screen_source' => $source,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     * @param  array<string, mixed>  $brief
+     * @param  array<int, string>  $sanitizedClaims
+     * @return array<int, string>
+     */
+    private function overlayTexts(array $analysis, array $brief, string $overlayStyle, array &$sanitizedClaims): array
+    {
+        $texts = [];
+        $push = function (mixed $value, bool $allowOffer = false) use (&$texts, &$sanitizedClaims): void {
+            $text = $this->safeOverlayText($value, $sanitizedClaims, $allowOffer);
+
+            if ($text === null || in_array(mb_strtolower($text), array_map('mb_strtolower', $texts), true)) {
+                return;
+            }
+
+            $texts[] = $text;
+        };
+
+        if ($overlayStyle === AutoVideoEditSettings::OVERLAY_MINIMAL_CLEAN) {
+            return [];
+        }
+
+        if ($overlayStyle === AutoVideoEditSettings::OVERLAY_UGC_NATIVE) {
+            $push('Quick demo');
+            $push('Worth checking');
+        }
+
+        if ($overlayStyle === AutoVideoEditSettings::OVERLAY_PRODUCT_HIGHLIGHTS) {
+            foreach ($this->featureOverlayValues($analysis, $brief) as $value) {
+                $push($value);
+            }
+
+            $push('Product detail');
+            $push('Quick demo');
+        }
+
+        if ($overlayStyle === AutoVideoEditSettings::OVERLAY_PROMO_BADGES) {
+            $cta = $this->stringValue($brief['selected_cta'] ?? null, $this->firstString($analysis['cta_options'] ?? null) ?? '');
+            $push($cta, allowOffer: true);
+            $push('Quick look');
+            $push('Check details');
+        }
+
+        if ($overlayStyle === AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND) {
+            $push('Details first');
+            $push('Clean product view');
+        }
+
+        return array_slice($texts, 0, 4);
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     * @param  array<string, mixed>  $brief
+     * @return array<int, mixed>
+     */
+    private function featureOverlayValues(array $analysis, array $brief): array
+    {
+        $values = [];
+
+        foreach ([$analysis['observed_product_features'] ?? null, $analysis['detected_product_moments'] ?? null, $analysis['recommended_cuts'] ?? null, $brief['preferred_cuts'] ?? null] as $group) {
+            if (! is_array($group)) {
+                continue;
+            }
+
+            foreach ($group as $item) {
+                if (is_string($item)) {
+                    $values[] = $item;
+                } elseif (is_array($item)) {
+                    $values[] = $item['feature']
+                        ?? $item['caption']
+                        ?? $item['caption_suggestion']
+                        ?? $item['title']
+                        ?? $item['moment']
+                        ?? $item['campaign_use']
+                        ?? $item['text_overlay']
+                        ?? null;
+                }
+            }
+        }
+
+        return $values;
+    }
+
+    /** @param array<int, string> $sanitizedClaims */
+    private function safeOverlayText(mixed $value, array &$sanitizedClaims, bool $allowOffer = false): ?string
+    {
+        $text = $this->normalizeCaptionText($value);
+
+        if ($text === '') {
+            return null;
+        }
+
+        $warnings = [];
+        $singleLine = str_replace("\n", ' ', $this->truncateCaptionForOverlay($text, $warnings));
+        $singleLine = trim((string) preg_replace('/\s+/u', ' ', $singleLine));
+
+        if ($this->looksLikeRiskyClaim($singleLine, $allowOffer)) {
+            $sanitizedClaims[] = $singleLine;
+
+            return null;
+        }
+
+        return Str::limit($singleLine, 38, '');
+    }
+
+    private function looksLikeRiskyClaim(string $text, bool $allowOffer): bool
+    {
+        $lower = mb_strtolower($text);
+        $risky = ['guaranteed', 'cure', 'medical', 'doctor', 'rated', '5-star', 'five-star', '#1', 'number one', 'best in the world'];
+
+        if (! $allowOffer) {
+            $risky = array_merge($risky, ['discount', 'limited', 'sale', 'free', 'lowest price', 'only today']);
+        }
+
+        foreach ($risky as $term) {
+            if (str_contains($lower, $term)) {
+                return true;
+            }
+        }
+
+        return preg_match('/(?:\$|rp\s?\d|\d+\s?%\s?off)/iu', $lower) === 1;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @param  array<int, array{start: float, length: float, text: string, type: string}>  $captionSchedule
+     * @return array<int, array{start: float, length: float}>
+     */
+    private function overlayWindows(array $items, array $captionSchedule, float $finalDuration, int $limit): array
+    {
+        $windows = [];
+
+        foreach ($items as $item) {
+            if (count($windows) >= $limit) {
+                break;
+            }
+
+            if (($item['source'] ?? null) === 'cta_end_card') {
+                continue;
+            }
+
+            $itemStart = $this->numberValue($item['timeline_start_seconds'] ?? $item['start_seconds'] ?? null, 0.0);
+            $itemEnd = $this->numberValue($item['timeline_end_seconds'] ?? null, $itemStart + $this->numberValue($item['duration_seconds'] ?? null, 0.0));
+            $length = round(min(2.0, max(1.2, ($itemEnd - $itemStart) - 0.4)), 2);
+
+            if ($length <= 0 || $itemEnd <= $itemStart) {
+                continue;
+            }
+
+            $window = $this->nonOverlappingWindow($itemStart + 0.35, $length, $itemEnd, $captionSchedule, $finalDuration);
+
+            if ($window !== null) {
+                $windows[] = $window;
+            }
+        }
+
+        return $windows;
+    }
+
+    /**
+     * @param  array<int, array{start: float, length: float, text: string, type: string}>  $captionSchedule
+     * @return array{start: float, length: float}|null
+     */
+    private function nonOverlappingWindow(float $preferredStart, float $length, float $maxEnd, array $captionSchedule, float $finalDuration): ?array
+    {
+        $latestStart = min($maxEnd, $finalDuration) - $length;
+        $candidates = [max(0.2, min($preferredStart, $latestStart))];
+
+        foreach ($captionSchedule as $caption) {
+            $captionEnd = (float) $caption['start'] + (float) $caption['length'];
+            $candidates[] = round($captionEnd + 0.15, 2);
+        }
+
+        foreach ($candidates as $candidateStart) {
+            $start = round(max(0.2, min($candidateStart, $latestStart)), 2);
+            $end = $start + $length;
+
+            if ($end > $maxEnd + 0.01 || $end > $finalDuration + 0.01) {
+                continue;
+            }
+
+            if (! $this->windowOverlapsCaptions($start, $end, $captionSchedule)) {
+                return ['start' => $start, 'length' => $length];
+            }
+        }
+
+        return null;
+    }
+
+    /** @param array<int, array{start: float, length: float, text: string, type: string}> $captionSchedule */
+    private function windowOverlapsCaptions(float $start, float $end, array $captionSchedule): bool
+    {
+        foreach ($captionSchedule as $caption) {
+            if (($caption['type'] ?? null) === 'cta') {
+                continue;
+            }
+
+            $captionStart = (float) $caption['start'];
+            $captionEnd = $captionStart + (float) $caption['length'];
+
+            if ($start < $captionEnd + 0.12 && $end > $captionStart - 0.12) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return array{position: string, offset: array{x: float, y: float}} */
+    private function overlayPosition(string $overlayStyle, int $index): array
+    {
+        return match ($overlayStyle) {
+            AutoVideoEditSettings::OVERLAY_PROMO_BADGES => ['position' => 'top', 'offset' => ['x' => 0.18, 'y' => 0.12]],
+            AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND => ['position' => 'top', 'offset' => ['x' => 0.0, 'y' => 0.14]],
+            default => ['position' => 'top', 'offset' => ['x' => $index % 2 === 0 ? -0.18 : 0.18, 'y' => 0.12]],
+        };
+    }
+
+    private function overlayHtml(string $text, string $overlayStyle): string
+    {
+        $label = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $class = 'overlay overlay-'.$overlayStyle;
+
+        return '<div class="'.$class.'">'.$label.'</div>';
+    }
+
+    private function overlayCss(string $overlayStyle): string
+    {
+        $accent = match ($overlayStyle) {
+            AutoVideoEditSettings::OVERLAY_PROMO_BADGES => '#fbbf24',
+            AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND => '#f8fafc',
+            AutoVideoEditSettings::OVERLAY_UGC_NATIVE => '#67e8f9',
+            default => '#34d399',
+        };
+        $background = $overlayStyle === AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND
+            ? 'rgba(2,6,23,0.42)'
+            : 'rgba(2,6,23,0.58)';
+
+        return 'html,body{margin:0;width:100%;height:100%;overflow:hidden;}'
+            .'body{display:flex;align-items:center;justify-content:center;font-family:Inter,Arial,sans-serif;}'
+            .'.overlay{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;max-width:360px;'
+            .'min-height:44px;padding:10px 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.18);'
+            .'background:'.$background.';color:#fff;font-size:24px;font-weight:760;line-height:1.05;text-align:center;'
+            .'text-shadow:0 3px 12px rgba(0,0,0,0.62);box-shadow:0 10px 28px rgba(0,0,0,0.20);}'
+            .'.overlay-product_highlights{color:'.$accent.';}'
+            .'.overlay-promo_badges{color:#111827;background:'.$accent.';text-shadow:none;border-color:rgba(255,255,255,0.28);}'
+            .'.overlay-premium_brand{font-weight:660;color:'.$accent.';background:'.$background.';}';
+    }
+
+    private function endScreenHtml(string $text, string $overlayStyle): string
+    {
+        $label = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $eyebrow = $overlayStyle === AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND ? 'Nusa edit' : 'Next step';
+
+        return '<div class="end-card"><span>'.$eyebrow.'</span><strong>'.$label.'</strong></div>';
+    }
+
+    private function endScreenCss(string $overlayStyle): string
+    {
+        $border = $overlayStyle === AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND ? 'rgba(255,255,255,0.28)' : 'rgba(52,211,153,0.32)';
+
+        return 'html,body{margin:0;width:100%;height:100%;overflow:hidden;}'
+            .'body{display:flex;align-items:center;justify-content:center;font-family:Inter,Arial,sans-serif;text-align:center;}'
+            .'.end-card{box-sizing:border-box;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;'
+            .'width:520px;min-height:142px;padding:20px 28px;border-radius:30px;border:1px solid '.$border.';'
+            .'background:linear-gradient(135deg,rgba(2,6,23,0.72),rgba(15,23,42,0.58));box-shadow:0 18px 48px rgba(0,0,0,0.32);}'
+            .'.end-card span{font-size:15px;font-weight:760;letter-spacing:0.18em;text-transform:uppercase;color:#34d399;}'
+            .'.end-card strong{max-width:440px;color:#fff;font-size:30px;font-weight:780;line-height:1.05;text-shadow:0 4px 16px rgba(0,0,0,0.72);}';
+    }
+
+    /** @param array<int, array<string, mixed>> $items */
+    private function bestFinalProductShotSource(array $items): ?string
+    {
+        $candidates = array_values(array_filter($items, fn (array $item): bool => ($item['source'] ?? null) !== 'cta_end_card'));
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, function (array $a, array $b): int {
+            $scoreA = $this->qualityScore($a['product_visibility'] ?? null, 12, 6, -8)
+                + $this->qualityScore($a['stability'] ?? null, 10, 5, -8)
+                + (int) round((float) ($a['source_start_seconds'] ?? 0.0) / 3);
+            $scoreB = $this->qualityScore($b['product_visibility'] ?? null, 12, 6, -8)
+                + $this->qualityScore($b['stability'] ?? null, 10, 5, -8)
+                + (int) round((float) ($b['source_start_seconds'] ?? 0.0) / 3);
+
+            return $scoreB <=> $scoreA;
+        });
+
+        $best = $candidates[0];
+
+        return $best['source_range'] ?? $this->timestamp((float) ($best['source_start_seconds'] ?? 0.0), (float) ($best['source_end_seconds'] ?? 0.0));
     }
 
     /**
@@ -1018,9 +1552,9 @@ class ShotstackTimelineBuilder
      * @param  array<int, array{start: float, length: float, text: string, type: string}>  $schedule
      * @return array<int, array<string, mixed>>
      */
-    private function captionClips(array $schedule, string $captionStyle): array
+    private function captionClips(array $schedule, string $captionStyle, string $overlayStyle): array
     {
-        $style = $this->captionStyleForShotstack($captionStyle);
+        $style = $this->captionStyleForShotstack($captionStyle, $overlayStyle);
 
         return array_values(array_map(function (array $item) use ($style): array {
             $position = $this->safeCaptionPosition($item);
@@ -1042,15 +1576,25 @@ class ShotstackTimelineBuilder
     }
 
     /** @return array{color: string, background: string, font_size: int, font_weight: int, shadow: string} */
-    private function captionStyleForShotstack(string $style): array
+    private function captionStyleForShotstack(string $style, ?string $overlayStyle = null): array
     {
-        return match ($style) {
+        $base = match ($style) {
             'bold_hook' => ['color' => '#ffffff', 'background' => 'rgba(0, 0, 0, 0)', 'font_size' => 34, 'font_weight' => 760, 'shadow' => '0 3px 14px rgba(0,0,0,0.82)'],
             'minimal' => ['color' => '#ffffff', 'background' => 'rgba(0, 0, 0, 0)', 'font_size' => 30, 'font_weight' => 620, 'shadow' => '0 3px 14px rgba(0,0,0,0.74)'],
             'premium_clean' => ['color' => '#f8fafc', 'background' => 'rgba(0, 0, 0, 0)', 'font_size' => 31, 'font_weight' => 660, 'shadow' => '0 3px 14px rgba(0,0,0,0.76)'],
             'ugc_native' => ['color' => '#ffffff', 'background' => 'rgba(0, 0, 0, 0)', 'font_size' => 33, 'font_weight' => 720, 'shadow' => '0 3px 14px rgba(0,0,0,0.80)'],
             default => ['color' => '#ffffff', 'background' => 'rgba(0, 0, 0, 0)', 'font_size' => 31, 'font_weight' => 660, 'shadow' => '0 3px 14px rgba(0,0,0,0.76)'],
         };
+
+        if ($overlayStyle === AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND) {
+            $base['font_size'] = min($base['font_size'], 30);
+            $base['font_weight'] = min($base['font_weight'], 680);
+            $base['color'] = '#f8fafc';
+        } elseif ($overlayStyle === AutoVideoEditSettings::OVERLAY_PROMO_BADGES) {
+            $base['font_weight'] = max($base['font_weight'], 720);
+        }
+
+        return $base;
     }
 
     /** @param array{color: string, background: string, font_size: int, font_weight: int, shadow: string} $style */
@@ -1713,6 +2257,119 @@ class ShotstackTimelineBuilder
         return count(array_unique($ranges));
     }
 
+    /**
+     * @param  array<int, array{clips: array<int, array<string, mixed>>}>  $tracks
+     * @param  array<int, array{start: float, length: float, text: string, type: string}>  $captionSchedule
+     * @return array{valid: bool, clips_checked: int, max_end_seconds: float, captions_overlap_prevented: bool}
+     */
+    private function validateTimelineBeforeSubmit(array $tracks, float $finalDuration, array $captionSchedule): array
+    {
+        if ($finalDuration <= 0 || is_nan($finalDuration) || is_infinite($finalDuration)) {
+            throw new InvalidArgumentException('Shotstack timeline final duration must be positive.');
+        }
+
+        $clipsChecked = 0;
+        $maxEnd = 0.0;
+
+        foreach ($tracks as $trackIndex => $track) {
+            foreach (($track['clips'] ?? []) as $clipIndex => $clip) {
+                $start = $this->numberValue($clip['start'] ?? null, -1.0);
+                $length = $this->numberValue($clip['length'] ?? null, -1.0);
+
+                if ($start < 0 || $length <= 0 || is_nan($start) || is_nan($length) || is_infinite($start) || is_infinite($length)) {
+                    throw new InvalidArgumentException("Invalid Shotstack clip timing at track {$trackIndex}, clip {$clipIndex}.");
+                }
+
+                if (($clip['asset']['type'] ?? null) === 'video') {
+                    $trim = $this->numberValue($clip['asset']['trim'] ?? null, 0.0);
+
+                    if ($trim < 0 || is_nan($trim) || is_infinite($trim)) {
+                        throw new InvalidArgumentException("Invalid Shotstack video trim at track {$trackIndex}, clip {$clipIndex}.");
+                    }
+                }
+
+                $end = $start + $length;
+
+                if ($end > $finalDuration + 0.25) {
+                    throw new InvalidArgumentException("Shotstack clip extends beyond final duration at track {$trackIndex}, clip {$clipIndex}.");
+                }
+
+                $clipsChecked++;
+                $maxEnd = max($maxEnd, $end);
+            }
+        }
+
+        if ($this->captionsOverlap($captionSchedule)) {
+            throw new InvalidArgumentException('Shotstack caption schedule contains overlapping captions.');
+        }
+
+        return [
+            'valid' => true,
+            'clips_checked' => $clipsChecked,
+            'max_end_seconds' => round($maxEnd, 2),
+            'captions_overlap_prevented' => true,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     * @param  array<string, mixed>  $editSettings
+     * @param  array<string, mixed>  $decorativeOverlayPlan
+     * @param  array<string, mixed>  $endScreenPlan
+     * @return array<string, mixed>
+     */
+    private function editRecipe(array $summary, array $editSettings, array $decorativeOverlayPlan, array $endScreenPlan): array
+    {
+        return [
+            'edit_mode' => $editSettings['edit_mode'] ?? null,
+            'overlay_style' => $editSettings['overlay_style'] ?? null,
+            'transition_style' => $editSettings['transition_style'] ?? null,
+            'motion_polish' => $editSettings['motion_polish'] ?? null,
+            'clip_diversity' => $editSettings['clip_diversity'] ?? null,
+            'end_screen' => $editSettings['end_screen'] ?? null,
+            'source_audio' => $editSettings['source_audio_mode'] ?? null,
+            'voiceover_mix' => $editSettings['voiceover_mix'] ?? null,
+            'captions_used' => $summary['final_caption_count'] ?? $summary['caption_count'] ?? null,
+            'overlays_used' => ($decorativeOverlayPlan['overlays_count'] ?? 0) + ($endScreenPlan['overlays_count'] ?? 0),
+            'unique_clips_used' => $summary['unique_source_ranges'] ?? count($summary['source_clip_ranges_used'] ?? []),
+        ];
+    }
+
+    private function captionVisualStrategy(string $overlayStyle): string
+    {
+        return match ($overlayStyle) {
+            AutoVideoEditSettings::OVERLAY_PREMIUM_BRAND => 'premium_shadow_text_clean_caption',
+            AutoVideoEditSettings::OVERLAY_PROMO_BADGES => 'compact_caption_with_promo_badge_layer',
+            AutoVideoEditSettings::OVERLAY_UGC_NATIVE => 'native_social_shadow_caption',
+            default => 'shadow_text_light_caption',
+        };
+    }
+
+    /** @param array<string, mixed> $editSettings */
+    private function clipStrategy(array $editSettings): string
+    {
+        return implode('_', array_filter([
+            $editSettings['edit_mode'] ?? 'manual_edit',
+            $editSettings['clip_diversity'] ?? AutoVideoEditSettings::CLIP_DIVERSITY_BALANCED,
+            $editSettings['transition_style'] ?? AutoVideoEditSettings::TRANSITION_CLEAN_CUTS,
+        ], fn (mixed $value): bool => is_string($value) && trim($value) !== ''));
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     * @param  array<string, mixed>  $brief
+     */
+    private function hasProductMoments(array $analysis, array $brief): bool
+    {
+        foreach ([$analysis['detected_product_moments'] ?? null, $analysis['recommended_cuts'] ?? null, data_get($analysis, 'edit_plan.timeline'), $brief['preferred_cuts'] ?? null] as $group) {
+            if (is_array($group) && $group !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function nullableString(mixed $value): ?string
     {
         return is_string($value) && trim($value) !== '' ? trim($value) : null;
@@ -1754,10 +2411,18 @@ class ShotstackTimelineBuilder
 
     private function timestamp(float $start, float $end): string
     {
-        return rtrim(rtrim((string) round($start, 1), '0'), '.')
-            .'-'
-            .rtrim(rtrim((string) round($end, 1), '0'), '.')
-            .'s';
+        return $this->timestampSecond($start).'-'.$this->timestampSecond($end).'s';
+    }
+
+    private function timestampSecond(float $value): string
+    {
+        $rounded = round($value, 1);
+
+        if (abs($rounded - round($rounded)) < 0.01) {
+            return (string) (int) round($rounded);
+        }
+
+        return rtrim(rtrim(number_format($rounded, 1, '.', ''), '0'), '.');
     }
 
     /** @param array<string, mixed> $analysis */

@@ -273,6 +273,19 @@ Public UI, docs and examples should label outputs clearly:
 
 Mock outputs must not be confused with real provider-backed AI media. Auto Video Editor mock results must clearly say they are edit plans only. Shotstack-rendered Auto Video Editor results should show the private video preview/download and remain labeled as beta real provider output. Future tools must remain visibly future/coming soon until they are truly available.
 
+
+## Auto Video Editor premium overlay beta scope
+
+Auto Video Editor now supports premium visual overlay styles in beta:
+
+- `minimal_clean` keeps the render clean with captions and an optional CTA/end screen only.
+- `ugc_native` adds a small number of native social callouts.
+- `product_highlights` uses safe product feature or visible-moment text from the project/video analysis context.
+- `promo_badges` uses simple promo-style text from the creator CTA/context without inventing discounts, prices, scarcity or ratings.
+- `premium_brand` keeps overlays sparse and polished, with a cleaner end card.
+
+These overlays are generated with safe text/HTML/title-style Shotstack layers and existing project/campaign context. There is no external sticker/emote asset library yet, no generated music or sound effects, and no TikTok native music integration. Future audio/SFX hooks may exist as metadata, but the beta render should not imply music or SFX assets are being added.
+
 ## Credit strategy by tier
 
 | Tier | Credit strategy | Notes |

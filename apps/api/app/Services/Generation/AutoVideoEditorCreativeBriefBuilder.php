@@ -37,6 +37,9 @@ class AutoVideoEditorCreativeBriefBuilder
         $motionPolish = AutoVideoEditSettings::motionPolish($input['motion_polish'] ?? null);
         $clipDiversity = AutoVideoEditSettings::clipDiversity($input['clip_diversity'] ?? null);
         $endScreen = AutoVideoEditSettings::endScreen($input['end_screen'] ?? null, $cta !== '');
+        $editMode = $this->string($input['edit_mode'] ?? null, 'manual_edit');
+        $cutCandidates = $this->cutCandidates($analysis);
+        $overlayStyle = AutoVideoEditSettings::overlayStyle($input['overlay_style'] ?? null, $editMode, $cutCandidates !== []);
         $warnings = [];
 
         if (($input['include_voiceover'] ?? false) && $voiceoverDuration === null) {
@@ -48,7 +51,7 @@ class AutoVideoEditorCreativeBriefBuilder
             : max($requestedTarget, $clientEffectiveTarget);
 
         return [
-            'edit_mode' => $this->string($input['edit_mode'] ?? null, 'manual_edit'),
+            'edit_mode' => $editMode,
             'ai_video_analysis_used' => (bool) ($input['ai_video_analysis_used'] ?? false),
             'fallback_timeline' => (bool) ($input['fallback_timeline'] ?? true),
             'platform' => $this->string($input['platform'] ?? null, 'tiktok'),
@@ -64,6 +67,7 @@ class AutoVideoEditorCreativeBriefBuilder
             'motion_polish' => $motionPolish,
             'clip_diversity' => $clipDiversity,
             'end_screen' => $endScreen,
+            'overlay_style' => $overlayStyle,
             'editing_style' => $editingStyle,
             'pacing' => $this->string($input['pacing'] ?? null, 'medium'),
             'music_direction' => $this->nullableString($input['music_direction'] ?? null),
@@ -76,7 +80,7 @@ class AutoVideoEditorCreativeBriefBuilder
                 'max_lines' => 2,
                 'max_characters_per_line' => 28,
             ],
-            'preferred_cuts' => $this->cuts($this->cutCandidates($analysis)),
+            'preferred_cuts' => $this->cuts($cutCandidates),
             'fallback_cuts' => $this->cuts($analysis['recommended_cuts'] ?? null),
             'final_screen' => [
                 'type' => $endScreen === AutoVideoEditSettings::END_SCREEN_NONE ? 'none' : 'cta_overlay',

@@ -250,6 +250,22 @@ Future project pages can expose action language such as:
 
 The UI should stay contextual and mobile-first instead of forcing creators to choose from a disconnected tool list every time.
 
+
+## Auto Video Editor timeline construction
+
+Auto Video Editor builds a Shotstack timeline from several existing project signals rather than a new prompt-based provider step:
+
+1. Project brief and workspace settings provide product context, platform and CTA preferences.
+2. Video-to-Campaign Insight can provide video-analysis cuts, detected product moments, captions and CTA options.
+3. `edit_mode` chooses between AI video analysis reuse and manual edit fallback.
+4. Audio controls decide source audio volume, voiceover mix and voiceover-aware duration extension.
+5. Edit polish settings shape pacing: transition style, motion polish and clip diversity.
+6. `overlay_style` chooses safe text/shape overlay behavior such as minimal clean, UGC native, product highlights, promo badges or premium brand.
+7. The Shotstack timeline builder assembles base video clips, optional voiceover audio, captions, CTA/end screen, decorative overlays and render metadata.
+8. A local validation pass checks non-negative timings, positive clip lengths, caption overlap prevention and final-duration bounds before the payload is submitted to Shotstack.
+
+The builder should keep source video ranges separate from final timeline ranges. It must not expose private storage paths or provider URLs in saved result payloads.
+
 ## Current v1 scope
 
 Implemented now:

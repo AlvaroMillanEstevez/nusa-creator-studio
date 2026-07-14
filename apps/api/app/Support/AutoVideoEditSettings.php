@@ -46,6 +46,16 @@ class AutoVideoEditSettings
 
     public const END_SCREEN_PRODUCT_HOLD_CTA = 'product_hold_cta';
 
+    public const OVERLAY_MINIMAL_CLEAN = 'minimal_clean';
+
+    public const OVERLAY_UGC_NATIVE = 'ugc_native';
+
+    public const OVERLAY_PRODUCT_HIGHLIGHTS = 'product_highlights';
+
+    public const OVERLAY_PROMO_BADGES = 'promo_badges';
+
+    public const OVERLAY_PREMIUM_BRAND = 'premium_brand';
+
     /** @return array<int, string> */
     public static function sourceAudioModes(): array
     {
@@ -106,6 +116,18 @@ class AutoVideoEditSettings
             self::END_SCREEN_NONE,
             self::END_SCREEN_SIMPLE_CTA,
             self::END_SCREEN_PRODUCT_HOLD_CTA,
+        ];
+    }
+
+    /** @return array<int, string> */
+    public static function overlayStyles(): array
+    {
+        return [
+            self::OVERLAY_MINIMAL_CLEAN,
+            self::OVERLAY_UGC_NATIVE,
+            self::OVERLAY_PRODUCT_HIGHLIGHTS,
+            self::OVERLAY_PROMO_BADGES,
+            self::OVERLAY_PREMIUM_BRAND,
         ];
     }
 
@@ -175,6 +197,19 @@ class AutoVideoEditSettings
         $value = trim($value);
 
         return in_array($value, self::endScreenOptions(), true) ? $value : $value;
+    }
+
+    public static function overlayStyle(mixed $value, string $editMode = 'manual_edit', bool $hasProductMoments = false): string
+    {
+        if (is_string($value) && trim($value) !== '') {
+            $value = trim($value);
+
+            return in_array($value, self::overlayStyles(), true) ? $value : $value;
+        }
+
+        return $editMode === 'ai_video_analysis' && $hasProductMoments
+            ? self::OVERLAY_PRODUCT_HIGHLIGHTS
+            : self::OVERLAY_MINIMAL_CLEAN;
     }
 
     /** @return array{source_audio_volume: float, voiceover_volume: float, original_audio_muted: bool, audio_cleanup_strategy: string} */

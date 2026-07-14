@@ -417,6 +417,7 @@ class VideoWorkflowGenerationApiTest extends TestCase
                 'motion_polish' => 'product_focus',
                 'clip_diversity' => 'more_unique_shots',
                 'end_screen' => 'simple_cta',
+                'overlay_style' => 'product_highlights',
                 'cta' => 'Check the product details.',
             ])
             ->assertCreated()
@@ -426,11 +427,76 @@ class VideoWorkflowGenerationApiTest extends TestCase
             ->assertJsonPath('data.input_payload.motion_polish', 'product_focus')
             ->assertJsonPath('data.input_payload.clip_diversity', 'more_unique_shots')
             ->assertJsonPath('data.input_payload.end_screen', 'simple_cta')
+            ->assertJsonPath('data.input_payload.overlay_style', 'product_highlights')
             ->assertJsonPath('data.input_payload.creative_brief.source_audio_mode', 'product_sounds')
             ->assertJsonPath('data.input_payload.creative_brief.transition_style', 'snappy_social')
             ->assertJsonPath('data.input_payload.creative_brief.motion_polish', 'product_focus')
             ->assertJsonPath('data.input_payload.creative_brief.clip_diversity', 'more_unique_shots')
-            ->assertJsonPath('data.input_payload.creative_brief.end_screen', 'simple_cta');
+            ->assertJsonPath('data.input_payload.creative_brief.end_screen', 'simple_cta')
+            ->assertJsonPath('data.input_payload.creative_brief.overlay_style', 'product_highlights');
+    }
+
+    public function test_auto_video_editor_accepts_all_overlay_styles(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 100, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $sourceVideo = $this->videoAsset($user, $project, 'raw_product_video');
+
+        foreach (['minimal_clean', 'ugc_native', 'product_highlights', 'promo_badges', 'premium_brand'] as $style) {
+            $this->actingAs($user)
+                ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                    'edit_mode' => 'manual_edit',
+                    'source_video_asset_id' => $sourceVideo->id,
+                    'include_voiceover' => false,
+                    'overlay_style' => $style,
+                ])
+                ->assertCreated()
+                ->assertJsonPath('data.input_payload.overlay_style', $style)
+                ->assertJsonPath('data.input_payload.creative_brief.overlay_style', $style);
+        }
+    }
+
+    public function test_auto_video_editor_defaults_overlay_style_by_edit_mode(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 100, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $sourceVideo = $this->videoAsset($user, $project, 'raw_product_video');
+        $analysis = Generation::factory()->for($user)->for($project)->create([
+            'job_type' => 'generate_video_to_campaign',
+            'provider' => 'mock',
+            'status' => Generation::STATUS_COMPLETED,
+            'input_payload' => ['source_video_asset_id' => $sourceVideo->id],
+            'output_payload' => [
+                'source_video_asset_id' => $sourceVideo->id,
+                'detected_product_moments' => [['start_seconds' => 0, 'end_seconds' => 3, 'moment' => 'Stable product close-up']],
+                'recommended_cuts' => [['start_seconds' => 0, 'end_seconds' => 3, 'reason' => 'Stable product close-up']],
+                'edit_plan' => ['timeline' => [['start_seconds' => 0, 'end_seconds' => 3, 'instruction' => 'Open on product.']]],
+                'campaign_input_mode' => 'video_analysis',
+                'has_source_video' => true,
+                'has_edit_plan' => true,
+                'auto_video_editor_eligible' => true,
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'manual_edit',
+                'source_video_asset_id' => $sourceVideo->id,
+                'include_voiceover' => false,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.input_payload.overlay_style', 'minimal_clean');
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-auto-video-edit", [
+                'edit_mode' => 'ai_video_analysis',
+                'source_video_to_campaign_generation_id' => $analysis->id,
+                'include_voiceover' => false,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.input_payload.overlay_style', 'product_highlights');
     }
 
     public function test_auto_video_editor_rejects_invalid_audio_cleanup_and_edit_polish_settings(): void
@@ -451,6 +517,7 @@ class VideoWorkflowGenerationApiTest extends TestCase
                 'motion_polish' => 'chaotic_spin',
                 'clip_diversity' => 'repeat_everything',
                 'end_screen' => 'fake_checkout',
+                'overlay_style' => 'fake_hype_stickers',
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors([
@@ -460,6 +527,7 @@ class VideoWorkflowGenerationApiTest extends TestCase
                 'motion_polish',
                 'clip_diversity',
                 'end_screen',
+                'overlay_style',
             ]);
     }
 

@@ -120,7 +120,9 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
         $this->assertSame('cover_crop_to_vertical', $timeline['render_settings']['source_fit_strategy']);
         $this->assertFalse($timeline['render_settings']['has_letterboxing_expected']);
 
-        $videoClip = $timeline['edit']['timeline']['tracks'][1]['clips'][0];
+        $videoTrack = collect($timeline['edit']['timeline']['tracks'])
+            ->first(fn (array $track): bool => data_get($track, 'clips.0.asset.type') === 'video');
+        $videoClip = $videoTrack['clips'][0];
         $this->assertSame('cover', $videoClip['fit']);
         $this->assertSame('center', $videoClip['position']);
     }
@@ -317,6 +319,209 @@ class AutoVideoEditorTimelineQualityTest extends TestCase
         $this->assertSame('diverse_product_showcase_and_cta', $timeline['timeline_summary']['post_voiceover_visual_strategy']);
         $this->assertGreaterThan(0, $timeline['timeline_summary']['source_segments_used_after_voiceover']);
         $this->assertTrue(collect($ranges)->contains(fn (string $range): bool => str_starts_with($range, '49')));
+    }
+
+    public function test_product_highlights_overlay_adds_safe_feature_overlays_and_validation_metadata(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: null,
+            input: [
+                'target_duration_seconds' => 20,
+                'source_video_to_campaign_summary' => [
+                    'observed_product_features' => [
+                        ['feature' => 'RGB lighting'],
+                        ['feature' => '50% off today'],
+                        ['feature' => 'Easy setup'],
+                    ],
+                    'cta_options' => ['Check the product details.'],
+                ],
+                'creative_brief' => [
+                    'target_duration_seconds' => 20,
+                    'effective_target_duration_seconds' => 20,
+                    'selected_cta' => 'Check the product details.',
+                    'overlay_style' => 'product_highlights',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 5, 'caption' => 'Opening reveal', 'product_visibility' => 'high', 'stability' => 'high'],
+                        ['start_seconds' => 6, 'end_seconds' => 11, 'caption' => 'Button demo', 'product_visibility' => 'high', 'stability' => 'high'],
+                        ['start_seconds' => 12, 'end_seconds' => 17, 'caption' => 'Hero detail', 'product_visibility' => 'high', 'stability' => 'high'],
+                    ],
+                ],
+            ],
+        );
+
+        $summary = $timeline['timeline_summary'];
+        $overlayClips = collect($timeline['edit']['timeline']['tracks'])
+            ->flatMap(fn (array $track): array => $track['clips'])
+            ->filter(fn (array $clip): bool => str_contains((string) data_get($clip, 'asset.html'), 'class="overlay'))
+            ->values();
+
+        $this->assertSame('product_highlights', $summary['overlay_style']);
+        $this->assertGreaterThan(0, $summary['decorative_overlays_count']);
+        $this->assertGreaterThan(0, $overlayClips->count());
+        $this->assertContains('50% off today', $summary['compliance_sanitized_claims']);
+        $this->assertSame('RGB lighting', $summary['overlays_used'][0]);
+        $this->assertTrue($summary['timeline_validation']['valid']);
+        $this->assertTrue($summary['timeline_validation']['captions_overlap_prevented']);
+        $this->assertSame(false, $summary['transition_sfx_enabled']);
+        $this->assertSame('none', $summary['sfx_strategy']);
+
+        $normalCaptions = array_values(array_filter($summary['caption_schedule'], fn (array $caption): bool => $caption['type'] !== 'cta'));
+        foreach ($overlayClips as $overlayClip) {
+            $overlayStart = (float) $overlayClip['start'];
+            $overlayEnd = $overlayStart + (float) $overlayClip['length'];
+
+            foreach ($normalCaptions as $caption) {
+                $captionStart = (float) $caption['start'];
+                $captionEnd = $captionStart + (float) $caption['length'];
+                $this->assertFalse($overlayStart < $captionEnd && $overlayEnd > $captionStart);
+            }
+        }
+    }
+
+    public function test_minimal_clean_has_no_decorative_overlays_except_cta_end_screen(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: null,
+            input: [
+                'creative_brief' => [
+                    'target_duration_seconds' => 15,
+                    'effective_target_duration_seconds' => 15,
+                    'selected_cta' => 'Check the product details.',
+                    'overlay_style' => 'minimal_clean',
+                    'end_screen' => 'simple_cta',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 5, 'caption' => 'Opening reveal'],
+                        ['start_seconds' => 6, 'end_seconds' => 11, 'caption' => 'Product detail'],
+                    ],
+                ],
+            ],
+        );
+
+        $html = json_encode($timeline['edit']['timeline']['tracks'], JSON_THROW_ON_ERROR);
+
+        $this->assertSame('minimal_clean', $timeline['timeline_summary']['overlay_style']);
+        $this->assertSame(0, $timeline['timeline_summary']['decorative_overlays_count']);
+        $this->assertSame(1, $timeline['timeline_summary']['overlays_count']);
+        $this->assertSame('simple_cta', $timeline['timeline_summary']['end_screen_type']);
+        $this->assertStringContainsString('end-card', $html);
+        $this->assertStringNotContainsString('class="overlay', $html);
+    }
+
+    public function test_end_screen_none_adds_no_end_card(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: null,
+            input: [
+                'creative_brief' => [
+                    'target_duration_seconds' => 15,
+                    'selected_cta' => 'Check the product details.',
+                    'overlay_style' => 'minimal_clean',
+                    'end_screen' => 'none',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 5, 'caption' => 'Opening reveal'],
+                    ],
+                ],
+            ],
+        );
+
+        $html = json_encode($timeline['edit']['timeline']['tracks'], JSON_THROW_ON_ERROR);
+
+        $this->assertSame('none', $timeline['timeline_summary']['end_screen_type']);
+        $this->assertSame(0, $timeline['timeline_summary']['overlays_count']);
+        $this->assertStringNotContainsString('end-card', $html);
+    }
+
+    public function test_promo_badges_do_not_invent_discount_when_offer_is_missing(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: null,
+            input: [
+                'creative_brief' => [
+                    'target_duration_seconds' => 16,
+                    'effective_target_duration_seconds' => 16,
+                    'selected_cta' => 'Check the product details.',
+                    'overlay_style' => 'promo_badges',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 5, 'caption' => 'Opening reveal'],
+                        ['start_seconds' => 6, 'end_seconds' => 11, 'caption' => 'Product detail'],
+                    ],
+                ],
+            ],
+        );
+
+        $usedText = mb_strtolower(implode(' ', $timeline['timeline_summary']['overlays_used']));
+
+        $this->assertSame('promo_badges', $timeline['timeline_summary']['overlay_style']);
+        $this->assertGreaterThan(0, $timeline['timeline_summary']['decorative_overlays_count']);
+        $this->assertStringNotContainsString('discount', $usedText);
+        $this->assertStringNotContainsString('% off', $usedText);
+        $this->assertStringNotContainsString('limited offer', $usedText);
+        $this->assertStringNotContainsString('only today', $usedText);
+    }
+
+    public function test_product_hold_cta_records_best_final_product_shot_source(): void
+    {
+        $timeline = app(ShotstackTimelineBuilder::class)->build(
+            sourceVideoUrl: 'https://assets.nusa.test/source.mp4',
+            voiceoverUrl: null,
+            input: [
+                'target_duration_seconds' => 18,
+                'creative_brief' => [
+                    'target_duration_seconds' => 18,
+                    'effective_target_duration_seconds' => 18,
+                    'selected_cta' => 'Review details before buying.',
+                    'overlay_style' => 'premium_brand',
+                    'end_screen' => 'product_hold_cta',
+                    'preferred_cuts' => [
+                        ['start_seconds' => 0, 'end_seconds' => 4, 'caption' => 'Opening reveal', 'product_visibility' => 'medium', 'stability' => 'medium'],
+                        ['start_seconds' => 10, 'end_seconds' => 14, 'caption' => 'Feature detail', 'product_visibility' => 'high', 'stability' => 'high'],
+                        ['start_seconds' => 20, 'end_seconds' => 24, 'caption' => 'Final hero shot', 'product_visibility' => 'high', 'stability' => 'high'],
+                    ],
+                ],
+            ],
+        );
+
+        $summary = $timeline['timeline_summary'];
+
+        $this->assertSame('product_hold_cta', $summary['end_screen_type']);
+        $this->assertNotNull($summary['end_screen_duration']);
+        $this->assertGreaterThan(0, $summary['end_screen_duration']);
+        $this->assertLessThanOrEqual($summary['final_duration_seconds'], $summary['end_screen_duration']);
+        $this->assertSame('20-24s', $summary['end_screen_source']);
+        $this->assertStringContainsString('Review details before', $summary['end_screen_cta']);
+        $this->assertStringContainsString('buying', $summary['end_screen_cta']);
+    }
+
+    public function test_snappy_social_uses_shorter_average_clip_duration(): void
+    {
+        $baseInput = [
+            'target_duration_seconds' => 24,
+            'creative_brief' => [
+                'target_duration_seconds' => 24,
+                'effective_target_duration_seconds' => 24,
+                'selected_cta' => 'Check details.',
+                'preferred_cuts' => [
+                    ['start_seconds' => 0, 'end_seconds' => 8, 'caption' => 'Opening reveal'],
+                    ['start_seconds' => 10, 'end_seconds' => 18, 'caption' => 'Feature demo'],
+                    ['start_seconds' => 20, 'end_seconds' => 28, 'caption' => 'Hero detail'],
+                ],
+            ],
+        ];
+
+        $clean = app(ShotstackTimelineBuilder::class)->build('https://assets.nusa.test/source.mp4', null, $baseInput);
+        $snappyInput = $baseInput;
+        $snappyInput['creative_brief']['transition_style'] = 'snappy_social';
+        $snappy = app(ShotstackTimelineBuilder::class)->build('https://assets.nusa.test/source.mp4', null, $snappyInput);
+
+        $cleanAverage = collect($clean['timeline'])->avg('duration_seconds');
+        $snappyAverage = collect($snappy['timeline'])->avg('duration_seconds');
+
+        $this->assertLessThan($cleanAverage, $snappyAverage);
+        $this->assertSame('snappy_social', $snappy['timeline_summary']['transition_style']);
     }
 
     public function test_repeated_captions_are_deduplicated_and_cta_only_appears_near_end(): void

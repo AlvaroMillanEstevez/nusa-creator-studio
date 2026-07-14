@@ -80,6 +80,8 @@ const postVoiceoverSummary = computed(() => {
 
   return null
 })
+const editRecipe = computed(() => timelineSummary.value?.edit_recipe ?? renderSettings.value?.edit_recipe ?? null)
+
 const repeatedClipWarning = computed(() => {
   const count = firstNumber(timelineSummary.value?.repeated_clip_count, renderSettings.value?.repeated_clip_count)
 
@@ -123,17 +125,22 @@ const audioEditSummaryItems = computed(() => {
   const settings = renderSettings.value
   const summary = timelineSummary.value
   const audio = result.value.audio_mix_plan
+  const recipe = editRecipe.value
 
   return [
-    { label: 'Edit mode', value: editModeValue(settings?.edit_mode ?? summary?.edit_mode) },
+    { label: 'Edit mode', value: editModeValue(settings?.edit_mode ?? summary?.edit_mode ?? recipe?.edit_mode) },
+    { label: 'Overlay style', value: formattedValue(settings?.overlay_style ?? summary?.overlay_style ?? recipe?.overlay_style) },
+    { label: 'Transition style', value: formattedValue(settings?.transition_style ?? summary?.transition_style ?? recipe?.transition_style) },
+    { label: 'Motion polish', value: formattedValue(settings?.motion_polish ?? summary?.motion_polish ?? recipe?.motion_polish) },
+    { label: 'Clip diversity', value: formattedValue(settings?.clip_diversity ?? summary?.clip_diversity ?? recipe?.clip_diversity) },
+    { label: 'End screen', value: formattedValue(settings?.end_screen ?? summary?.end_screen ?? recipe?.end_screen) },
+    { label: 'Source audio', value: formattedValue(settings?.source_audio_mode ?? summary?.source_audio_mode ?? recipe?.source_audio ?? audio.source_audio_mode) },
+    { label: 'Voiceover mix', value: formattedValue(settings?.voiceover_mix ?? summary?.voiceover_mix ?? recipe?.voiceover_mix ?? audio.voiceover_mix) },
+    { label: 'Captions used', value: numberValue(firstNumber(summary?.final_caption_count, settings?.final_caption_count, recipe?.captions_used)) },
+    { label: 'Overlays used', value: numberValue(firstNumber(summary?.overlays_count, settings?.overlays_count, recipe?.overlays_used)) },
+    { label: 'Unique clips used', value: numberValue(firstNumber(summary?.unique_source_ranges, settings?.unique_source_ranges, recipe?.unique_clips_used)) },
     { label: 'AI analysis used', value: booleanValue(firstBoolean(settings?.ai_video_analysis_used, summary?.ai_video_analysis_used)) },
     { label: 'Fallback timeline', value: booleanValue(firstBoolean(settings?.fallback_timeline, summary?.fallback_timeline)) },
-    { label: 'Source audio', value: formattedValue(settings?.source_audio_mode ?? summary?.source_audio_mode ?? audio.source_audio_mode) },
-    { label: 'Voiceover mix', value: formattedValue(settings?.voiceover_mix ?? summary?.voiceover_mix ?? audio.voiceover_mix) },
-    { label: 'Transition style', value: formattedValue(settings?.transition_style ?? summary?.transition_style) },
-    { label: 'Motion polish', value: formattedValue(settings?.motion_polish ?? summary?.motion_polish) },
-    { label: 'Clip diversity', value: formattedValue(settings?.clip_diversity ?? summary?.clip_diversity) },
-    { label: 'End screen', value: formattedValue(settings?.end_screen ?? summary?.end_screen) },
   ].filter((item): item is { label: string, value: string } => item.value !== null && item.value !== '')
 })
 const providerSummaryItems = computed(() => {
@@ -148,6 +155,8 @@ const providerSummaryItems = computed(() => {
     { label: 'Aspect ratio', value: textValue(settings?.aspect_ratio) },
     { label: 'Caption style', value: formattedValue(settings?.caption_style) },
     { label: 'Caption strategy', value: formattedValue(settings?.caption_visual_strategy ?? summary?.caption_visual_strategy) },
+    { label: 'Timeline validated', value: booleanValue(firstBoolean(settings?.timeline_validated, summary?.timeline_validated, settings?.timeline_validation?.valid, summary?.timeline_validation?.valid)) },
+    { label: 'SFX strategy', value: formattedValue(settings?.sfx_strategy ?? summary?.sfx_strategy) },
     { label: 'Source duration', value: secondsValue(firstNumber(summary?.source_duration_seconds, settings?.source_duration_seconds)) },
     { label: 'Diverse source segments', value: booleanValue(firstBoolean(summary?.diverse_source_segments_used, settings?.diverse_source_segments_used)) },
     { label: 'Repeated clips', value: numberValue(firstNumber(summary?.repeated_clip_count, settings?.repeated_clip_count)) },
@@ -389,7 +398,7 @@ onBeforeUnmount(() => {
     </section>
 
     <section v-if="audioEditSummaryItems.length" class="nusa-card-premium rounded-[2rem] p-5" data-testid="auto-video-audio-edit-summary">
-      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Audio / edit settings</p>
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Edit recipe</p>
       <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <article v-for="item in audioEditSummaryItems" :key="item.label" class="rounded-2xl bg-neutral-950/70 p-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ item.label }}</p>
