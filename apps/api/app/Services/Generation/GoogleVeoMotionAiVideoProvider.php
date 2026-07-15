@@ -42,6 +42,8 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
         $project = $this->project($input, $user);
         $productImage = $this->asset($input, $project, $user, 'product_image_asset_id', 'image', 'resolve_product_image');
         $scenarioImage = $this->optionalAsset($input, $project, $user, 'scenario_image_asset_id', 'image', 'resolve_scenario_image');
+        $imageMode = $this->imageMode();
+        $referenceImagesCount = $this->referenceImagesCount($imageMode);
         $context = [
             'provider' => 'google_veo',
             'workflow' => 'motion_ai_video',
@@ -49,10 +51,20 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'project_id' => $project->getKey(),
             'product_image_asset_id' => $productImage->getKey(),
             'scenario_image_asset_id' => $scenarioImage?->getKey(),
+            'image_input_mode' => $imageMode,
+            'reference_images_count' => $referenceImagesCount,
+            'product_image_mime' => $productImage->mime_type,
+            'product_image_size_bytes' => $productImage->size_bytes,
+            'scenario_image_included_as_reference' => false,
         ];
         $plan = $this->planner->generate($input);
         $prompt = $this->prompt->build($input, $plan, $productImage, $scenarioImage);
         $requestPayload = $this->requestPayload($prompt, $productImage, $scenarioImage, $input, $context);
+
+        Log::info('Submitting Google Veo Motion AI Video request.', $context + [
+            'stage' => 'submit',
+        ]);
+
         $submit = $this->client->submit($requestPayload, $context);
         $completion = $this->completion($submit, $context);
         $binary = $this->client->videoBinary($completion['video'], $context + ['stage' => 'download']);
@@ -82,7 +94,13 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
                     'aspect_ratio' => $this->aspectRatio($input),
                     'requested_aspect_ratio' => $this->requestedAspectRatio($input),
                     'provider_aspect_ratio' => $this->aspectRatio($input),
-                    'scenario_image_prompt_context_only' => $scenarioImage instanceof MediaAsset,
+                    'image_input_mode' => $this->imageMode(),
+                    'image_input_sent' => $this->imageInputSent(),
+                    'reference_images_count' => $this->referenceImagesCount($this->imageMode()),
+                    'product_image_sent_as_reference' => $this->productImageSentAsReference(),
+                    'scenario_image_sent_as_reference' => false,
+                    'scenario_image_used_as_prompt_context_only' => $this->scenarioImageUsedAsPromptContextOnly($scenarioImage),
+                    'scenario_image_prompt_context_only' => $this->scenarioImageUsedAsPromptContextOnly($scenarioImage),
                     'provider_render_status' => $completion['render_status'] ?? null,
                     'provider_latency_ms' => (int) round((microtime(true) - $startedAt) * 1000),
                     'estimated_provider_cost_usd' => $this->estimatedCost($input),
@@ -197,16 +215,33 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
      */
     private function requestPayload(array $prompt, MediaAsset $productImage, ?MediaAsset $scenarioImage, array $input, array $context): array
     {
+        $instance = [
+            'prompt' => $prompt['prompt'],
+        ];
+
+        if ($this->imageMode() === 'reference_images') {
+            $instance['referenceImages'] = $this->referenceImages($productImage, $context);
+        }
+
         return [
-            'instances' => [[
-                'prompt' => $prompt['prompt'],
-                'image' => $this->inlineImage($productImage, $context + ['stage' => 'read_product_image']),
-            ]],
+            'instances' => [$instance],
             'parameters' => [
                 'aspectRatio' => $this->aspectRatio($input),
                 'durationSeconds' => (string) $this->duration($input),
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<int, array<string, mixed>>
+     */
+    private function referenceImages(MediaAsset $productImage, array $context): array
+    {
+        return array_slice([[
+            'image' => $this->inlineImage($productImage, $context + ['stage' => 'read_product_image_reference']),
+            'referenceType' => 'asset',
+        ]], 0, 3);
     }
 
     /**
@@ -357,12 +392,19 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'visual_first_clip' => true,
             'product_image_asset_id' => $productImage->getKey(),
             'scenario_image_asset_id' => $scenarioImage?->getKey(),
-            'scenario_image_prompt_context_only' => $scenarioImage instanceof MediaAsset,
+            'image_input_mode' => $this->imageMode(),
+            'image_input_sent' => $this->imageInputSent(),
+            'reference_images_count' => $this->referenceImagesCount($this->imageMode()),
+            'product_image_sent_as_reference' => $this->productImageSentAsReference(),
+            'scenario_image_sent_as_reference' => false,
+            'scenario_image_used_as_prompt_context_only' => $this->scenarioImageUsedAsPromptContextOnly($scenarioImage),
+            'scenario_image_prompt_context_only' => $this->scenarioImageUsedAsPromptContextOnly($scenarioImage),
             'campaign_generation_id' => $this->nullableInt($input['campaign_generation_id'] ?? null),
             'voiceover_generation_id' => $this->nullableInt($input['voiceover_generation_id'] ?? null),
             'platform' => $input['platform'] ?? 'tiktok',
             'aspect_ratio' => $this->aspectRatio($input),
             'requested_aspect_ratio' => $this->requestedAspectRatio($input),
+            'provider_aspect_ratio' => $this->aspectRatio($input),
             'target_duration_seconds' => $this->duration($input),
             'requested_target_duration_seconds' => $this->requestedDuration($input),
             'provider_duration_seconds' => $this->duration($input),
@@ -384,9 +426,17 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'duration_normalized_for_provider' => $this->requestedDuration($input) !== $this->duration($input),
             'aspect_ratio_requested' => $this->requestedAspectRatio($input),
             'aspect_ratio_provider' => $this->aspectRatio($input),
+            'provider_aspect_ratio' => $this->aspectRatio($input),
+            'provider_duration_seconds' => $this->duration($input),
             'product_image_asset_id' => $productImage->getKey(),
             'scenario_image_asset_id' => $scenarioImage?->getKey(),
-            'scenario_image_prompt_context_only' => $scenarioImage instanceof MediaAsset,
+            'image_input_mode' => $this->imageMode(),
+            'image_input_sent' => $this->imageInputSent(),
+            'reference_images_count' => $this->referenceImagesCount($this->imageMode()),
+            'product_image_sent_as_reference' => $this->productImageSentAsReference(),
+            'scenario_image_sent_as_reference' => false,
+            'scenario_image_used_as_prompt_context_only' => $this->scenarioImageUsedAsPromptContextOnly($scenarioImage),
+            'scenario_image_prompt_context_only' => $this->scenarioImageUsedAsPromptContextOnly($scenarioImage),
             'campaign_generation_id' => $this->nullableInt($input['campaign_generation_id'] ?? null),
             'voiceover_generation_id' => $this->nullableInt($input['voiceover_generation_id'] ?? null),
             'final_video_asset_id' => $finalVideo->getKey(),
@@ -406,6 +456,33 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
     private function model(): string
     {
         return (string) config('motion_ai_video.google_veo.model', 'veo-3.1-generate-preview');
+    }
+
+    private function imageMode(): string
+    {
+        $mode = trim((string) config('motion_ai_video.google_veo.image_mode', 'reference_images'));
+
+        return in_array($mode, ['reference_images', 'text_only'], true) ? $mode : 'reference_images';
+    }
+
+    private function imageInputSent(): bool
+    {
+        return $this->imageMode() === 'reference_images';
+    }
+
+    private function productImageSentAsReference(): bool
+    {
+        return $this->imageMode() === 'reference_images';
+    }
+
+    private function referenceImagesCount(string $imageMode): int
+    {
+        return $imageMode === 'reference_images' ? 1 : 0;
+    }
+
+    private function scenarioImageUsedAsPromptContextOnly(?MediaAsset $scenarioImage): bool
+    {
+        return $scenarioImage instanceof MediaAsset;
     }
 
     /** @param array<string, mixed> $input */

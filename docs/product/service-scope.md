@@ -243,13 +243,15 @@ The real Google Veo beta integration should keep its provider request shape inte
 
 Current supported real-provider input shape:
 
-- One required product image as the primary image-to-video reference.
-- Product/campaign/voiceover/scenario context folded into the text prompt.
-- Scenario image is not sent as an additional raw provider field yet; it is tracked as prompt context only.
+- One required product image is sent as the first Veo `referenceImages` entry with `referenceType=asset` for product preservation.
+- Product/campaign/voiceover/scenario context is folded into the text prompt.
+- Scenario image is currently prompt-context only unless reference-image support is intentionally expanded and tested.
+- `GOOGLE_VEO_IMAGE_MODE=reference_images` is the default. `text_only` can be used as a safe fallback to omit image bytes and rely on prompt context only.
 - Provider aspect ratio is normalized to `9:16` or `16:9`, with unsupported app ratios falling back to `9:16`.
-- Provider duration is normalized to `8` seconds for the current Veo 3.1 image-to-video path while preserving requested vs provider duration in metadata.
+- Provider duration is normalized to `8` seconds for the current Veo 3.1 reference-image path while preserving requested vs provider duration in metadata.
+- Veo output is treated as a visual-first motion clip that can later be composed with Nusa voiceover, captions or final editing.
 
-Avoid sending unsupported experimental fields such as arbitrary metadata, audio disable flags, output format flags, camera-control objects, or scenario/reference images unless the exact REST shape is verified first. Provider download URIs, private storage paths and encoded media bytes must stay out of user-facing output and logs.
+Avoid sending unsupported experimental fields such as arbitrary metadata, audio disable flags, output format flags, camera-control objects, initial `image` payloads, or scenario/reference images beyond the verified product-reference shape unless the exact REST shape is verified first. Provider download URIs, private storage paths and encoded media bytes must stay out of user-facing output and logs.
 
 ## Future avatar workflows
 
