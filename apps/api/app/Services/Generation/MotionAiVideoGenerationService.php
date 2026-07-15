@@ -15,6 +15,7 @@ class MotionAiVideoGenerationService
     public function __construct(
         private readonly GenerationSubmissionService $submissions,
         private readonly ToolAvailabilityService $tools,
+        private readonly MotionAiVideoProviderManager $providers,
     ) {}
 
     /**
@@ -56,12 +57,16 @@ class MotionAiVideoGenerationService
             allowedJobTypes: ['generate_ai_voiceover'],
         );
 
+        $provider = $this->providers->selectedProviderForUser($user);
+
         return $this->submissions->submit(
             project: $project,
             user: $user,
             jobType: 'generate_motion_ai_video',
             creditCost: $this->tools->creditCost('motion_ai_video'),
-            creditReason: 'Mock Motion AI Video plan generation',
+            creditReason: $provider === 'google_veo'
+                ? 'Google Veo Motion AI Video generation'
+                : 'Mock Motion AI Video plan generation',
             dispatch: fn (int $generationId) => GenerateMotionAiVideoJob::dispatch($generationId),
             inputPayload: $this->inputPayload(
                 project: $project,
@@ -71,7 +76,7 @@ class MotionAiVideoGenerationService
                 voiceoverGeneration: $voiceoverGeneration,
                 options: $options,
             ),
-            provider: 'mock',
+            provider: $provider,
         );
     }
 
@@ -173,6 +178,7 @@ class MotionAiVideoGenerationService
             'voiceover_generation_summary' => $voiceoverGeneration?->output_payload,
             'script_source' => $scriptSource,
             'manual_script' => $this->stringOption($options, 'manual_script'),
+            'creative_notes' => $this->stringOption($options, 'creative_notes'),
             'platform' => $this->stringOption($options, 'platform') ?? $this->stringOption($settings, 'platform') ?? 'tiktok',
             'target_duration_seconds' => $this->intOption($options, 'target_duration_seconds') ?? 8,
             'visual_style' => $this->stringOption($options, 'visual_style') ?? 'realistic_product',

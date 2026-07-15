@@ -593,6 +593,7 @@ export interface GenerateMotionAiVideoPayload {
   target_duration_seconds?: MotionDuration | number | null
   script_source?: MotionAiVideoScriptSource | string | null
   manual_script?: string | null
+  creative_notes?: string | null
   visual_style?: MotionVisualStyle | string | null
   motion_style?: MotionStyle | string | null
   camera_direction?: string | null
@@ -1483,6 +1484,8 @@ export interface MotionAiVideoSummary {
   target_audience: string
   primary_cta: string
   render_available: boolean
+  visual_first_clip?: boolean
+  final_video_asset_id?: number | null
 }
 
 export interface MotionAiVideoPrompt {
@@ -1542,6 +1545,29 @@ export interface MotionAiVideoProviderReadiness {
   future_provider_inputs: string[]
 }
 
+export interface MotionAiVideoRenderedVideoAsset {
+  id: number
+  stream_url: string
+  download_url: string
+  original_name: string | null
+  mime_type: string | null
+  size_bytes: number | null
+}
+
+export interface MotionAiVideoProviderMetadata extends Record<string, unknown> {
+  provider?: string
+  workflow?: string
+  model?: string
+  mode?: string
+  visual_first_clip?: boolean
+  duration_requested_seconds?: number | null
+  aspect_ratio_requested?: string | null
+  final_video_asset_id?: number | null
+  response_status?: string | null
+  provider_latency_ms?: number | null
+  native_audio_ignored?: boolean | null
+}
+
 export interface MotionAiVideoMetadata {
   generation_type: 'motion_ai_video' | string
   provider: string
@@ -1556,6 +1582,12 @@ export interface MotionAiVideoMetadata {
   target_duration_seconds: number
   render_available: boolean
   real_provider_enabled: boolean
+  mode?: string | null
+  model?: string | null
+  visual_first_clip?: boolean
+  final_video_asset_id?: number | null
+  provider_render_status?: string | null
+  estimated_provider_cost_usd?: number | null
   [key: string]: unknown
 }
 
@@ -1569,6 +1601,11 @@ export interface MotionVideoResult {
   provider_readiness: MotionAiVideoProviderReadiness
   compliance_notes: string[]
   metadata: MotionAiVideoMetadata
+  rendered_video_asset?: MotionAiVideoRenderedVideoAsset
+  final_video_asset_id?: number | null
+  final_video_stream_url?: string | null
+  final_video_download_url?: string | null
+  provider_metadata?: MotionAiVideoProviderMetadata
 }
 export type GenerationResult =
   | CampaignGenerationResult

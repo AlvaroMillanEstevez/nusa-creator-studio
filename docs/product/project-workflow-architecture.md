@@ -9,7 +9,7 @@ The closed beta should be organized around four main user-facing workflows insid
 1. **Product Content Kit** — creates campaign angles, hooks, scripts, captions, hashtags, CTA options and publishing notes from a brief, product image or product video analysis.
 2. **Auto Video Editor** — turns real/raw product footage into an organic creator/social video using AI video analysis or manual edit setup.
 3. **Auto Video Ads** — available real-beta-capable workflow for paid ad creative with hook, benefits, promo overlays, CTA/end card and optional Shotstack MP4 render. It reuses Product Content Kit output, project assets and optional voiceover context. Mock mode remains the safe default.
-4. **Motion AI Video** — available mock-beta planning workflow for short AI motion-video concepts from product image, optional scenario/background image and campaign/script context. Real image-to-video provider integration comes later.
+4. **Motion AI Video** — available real-beta-capable workflow for visual-first image-to-video motion clips from product image, optional scenario/background image and campaign/script context. Mock mode remains the safe default; Google Veo can render a private MP4 for eligible internal users when enabled.
 
 The Project Workspace contains:
 
@@ -44,7 +44,7 @@ Examples:
 - Product Content Kit creates reusable campaign/content context.
 - AI Voiceover can use project source text or a completed campaign generation.
 - Fashion Try-On can use model and garment media assets.
-- Motion AI Video can use a product image, optional scenario/background image, campaign context, voiceover context or a manual script to create a structured image-to-video plan.
+- Motion AI Video can use a product image, optional scenario/background image, campaign context, voiceover context, manual script or creative notes to create a structured image-to-video plan in mock mode or a visual-first Google Veo motion clip when real mode is enabled.
 
 ### Generation as output
 
@@ -92,7 +92,7 @@ The v1 workspace model should support simple source relationships before a full 
 Product brief
 → Product Content Kit
 → AI Voiceove
-→ Auto Video Ads / Auto Video Editor / Motion AI Video plan
+→ Auto Video Ads / Auto Video Editor / Motion AI Video plan or visual motion clip
 ```
 
 The current v1 implementation makes the Campaign → Voiceover step work in the same project. The user should not need to manually copy/paste campaign copy into a separate isolated voiceover tool.
@@ -332,7 +332,7 @@ Implemented now:
 - Auto Video Editor can reuse eligible Video-to-Campaign analysis or run manual edit setup with a source video and fallback timeline logic.
 - Auto Video Ads can generate mock ad plans by default and Shotstack MP4 renders for eligible real-provider beta users.
 - Generated voiceover audio remains attached to the same project as a private `MediaAsset` when real ElevenLabs output is used.
-- Motion AI Video is now a mock-beta planning workflow. It creates structured image-to-video plans from a product image, optional scenario/background image and campaign/script context. It does not create fake MP4 assets or expose provider URLs; real provider integration is the next Motion phase.
+- Motion AI Video is now a real-beta-capable workflow with mock fallback. Mock mode creates structured image-to-video plans; Google Veo mode creates a visual-first private MP4 motion clip from product image, optional scenario/background image and campaign/script context. Provider URLs and private storage paths must not be exposed; final voiceover/music/caption compositing remains a later Motion phase.
 
 Shown but not deeply refactored yet:
 

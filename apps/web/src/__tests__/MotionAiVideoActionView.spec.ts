@@ -243,7 +243,7 @@ describe('MotionAiVideoActionView', () => {
     expect(wrapper.text()).toContain('Motion AI Video')
     expect(wrapper.text()).toContain('← Back to workspace')
     expect(wrapper.text()).toContain('Product image')
-    expect(wrapper.text()).toContain('Generate Motion Video Plan')
+    expect(wrapper.text()).toContain('Generate Motion Video')
     expect(wrapper.text()).toContain('Costs 3 credits')
   })
 
@@ -277,6 +277,7 @@ describe('MotionAiVideoActionView', () => {
     await wrapper.get('[data-testid="motion-visual-style-select"]').setValue('premium_brand')
     await wrapper.get('[data-testid="motion-style-select"]').setValue('product_orbit')
     await wrapper.get('[data-testid="motion-primary-cta-input"]').setValue('Shop the bottle')
+    await wrapper.get('[data-testid="motion-creative-notes"]').setValue('Make the clip premium and realistic.')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
@@ -288,6 +289,7 @@ describe('MotionAiVideoActionView', () => {
       platform: 'instagram_reels',
       target_duration_seconds: 10,
       script_source: 'campaign_script',
+      creative_notes: 'Make the clip premium and realistic.',
       visual_style: 'premium_brand',
       motion_style: 'product_orbit',
       aspect_ratio: 'vertical_9_16',

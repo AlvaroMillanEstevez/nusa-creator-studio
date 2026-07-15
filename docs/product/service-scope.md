@@ -11,7 +11,7 @@ The beta should focus on the workflows that create a practical social commerce p
 - AI Voiceover: Advanced audio generation with ElevenLabs available for eligible/internal users and mock fallback.
 - Auto Video Editor: Premium composite workflow with mock default and Shotstack real rendering available for internal beta users only.
 - Auto Video Ads: Premium ad-planning workflow with mock default and Shotstack real rendering available for internal beta users only.
-- Motion AI Video: Premium mock-beta planning workflow that creates structured image-to-video plans from product images and script context.
+- Motion AI Video: Premium real-beta-capable image-to-video workflow. Mock mode creates structured plans; Google Veo mode can create visual-first private MP4 motion clips for eligible internal users when enabled.
 
 Future premium workflows such as Fashion Try-On, avatar presenters and custom avatars should remain clearly labeled as coming soon/preview until real providers, safety rules and cost controls are ready.
 
@@ -149,7 +149,7 @@ Action cards should show service tier and credit cost before generation. Detaile
 | AI Voiceover | Advanced | Audio | Real provider + mock fallback | v1 can generate ElevenLabs audio for internal/eligible users and save it as a private MediaAsset; mock remains the default fallback. |
 | Fashion Try-On | Premium | Image | Future / coming soon | Future real provider should generate try-on images after safety, cost and UX controls are ready. |
 | Auto Video Editor | Premium | Video edit plan / rendered video | Beta real provider + mock fallback | Composite workflow with AI video analysis mode for eligible Video-to-Campaign results and manual edit setup for source-video fallback timelines. Mock remains default; Shotstack can render a real private MP4 for eligible internal users when enabled. |
-| Motion AI Video | Premium | Image-to-video plan | Mock beta | Creates a render-ready motion plan from product image, optional scenario/background and campaign/script context. Does not create fake MP4 assets; real provider selection comes after cost and safety review. |
+| Motion AI Video | Premium | Image-to-video motion clip | Real provider beta + mock fallback | Mock mode creates a render-ready motion plan. Google Veo mode can create a visual-first private MP4 motion clip for eligible internal users when enabled; final compositing with voiceover/music/captions remains future work. |
 | AI Avatar Presenter | Premium | Avatar | Future | Future avatar-led product presenter videos with voice. |
 | Custom AI Avatar | Premium | Avatar | Future | Future reusable avatar identity from person images, photo sets or descriptions. |
 | Avatar Voice Ads | Premium | Mixed media | Future | Future avatar-led product ads combining presenter, voiceover and scripts. |

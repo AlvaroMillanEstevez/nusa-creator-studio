@@ -42,6 +42,7 @@ const aspectRatio = ref('vertical_9_16')
 const targetDurationSeconds = ref(8)
 const scriptSource = ref<MotionAiVideoScriptSource>('project_brief')
 const manualScript = ref('')
+const creativeNotes = ref('')
 const visualStyle = ref('realistic_product')
 const motionStyle = ref('slow_push_in')
 const cameraDirection = ref('')
@@ -160,6 +161,7 @@ async function submit(): Promise<void> {
     target_duration_seconds: targetDurationSeconds.value,
     script_source: scriptSource.value,
     manual_script: scriptSource.value === 'manual_script' ? manualScript.value.trim() : null,
+    creative_notes: creativeNotes.value.trim() || null,
     visual_style: visualStyle.value,
     motion_style: motionStyle.value,
     camera_direction: cameraDirection.value.trim() || null,
@@ -222,10 +224,10 @@ onMounted(loadPage)
           <p class="mt-7 text-sm font-medium text-emerald-400">{{ project?.title }}</p>
           <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Motion AI Video</h1>
           <p class="mt-4 max-w-2xl text-sm leading-7 text-neutral-400">
-            Create a short AI motion-video concept from your product image, scenario and campaign script.
+            Create a short visual-first motion product clip from your product image, scenario and campaign context.
           </p>
           <p class="mt-4 rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100/80">
-            This beta step creates a render-ready motion plan. Real motion video rendering will be connected in the next phase.
+            Mock mode creates a render-ready plan. Real internal beta mode renders a base MP4 motion clip that can later be combined with voiceover, captions and final polish.
           </p>
         </header>
 
@@ -369,6 +371,11 @@ onMounted(loadPage)
               </label>
 
               <label class="mt-4 block">
+                <span class="nusa-label">Creative notes</span>
+                <textarea v-model="creativeNotes" rows="3" class="nusa-textarea mt-2" data-testid="motion-creative-notes" placeholder="Optional: describe the mood, product moment, or visual guidance for the clip." />
+              </label>
+
+              <label class="mt-4 block">
                 <span class="nusa-label">Negative prompt</span>
                 <textarea v-model="negativePrompt" rows="3" class="nusa-textarea mt-2" placeholder="Optional: warped product, fake logos, unreadable text..." />
               </label>
@@ -407,9 +414,9 @@ onMounted(loadPage)
 
             <div class="nusa-card-premium rounded-[2rem] p-5">
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Ready to plan</p>
-              <h2 class="mt-2 text-xl font-semibold">Generate Motion Video Plan</h2>
+              <h2 class="mt-2 text-xl font-semibold">Generate Motion Video</h2>
               <p class="mt-3 text-sm leading-6 text-neutral-400">
-                Costs {{ creditCost }} credits. This creates a render-ready motion plan, not a final MP4.
+                Costs {{ creditCost }} credits. Real provider mode creates a visual-first MP4 motion clip; mock mode creates a render-ready plan.
               </p>
               <p v-if="formError" role="alert" class="mt-4 rounded-2xl border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">
                 {{ formError }}
@@ -420,7 +427,7 @@ onMounted(loadPage)
                 data-testid="motion-submit"
                 class="mt-5 flex min-h-12 w-full items-center justify-center rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {{ isSubmitting ? 'Generating motion plan...' : 'Generate Motion Video Plan' }}
+                {{ isSubmitting ? 'Generating motion video...' : 'Generate Motion Video' }}
               </button>
             </div>
           </section>

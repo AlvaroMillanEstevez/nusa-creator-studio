@@ -3,6 +3,7 @@
 namespace App\Services\Generation;
 
 use App\Exceptions\AutoVideoEditor\AutoVideoEditorProviderException;
+use App\Exceptions\MotionAiVideo\MotionAiVideoProviderException;
 use App\Exceptions\VideoToCampaign\VideoToCampaignProviderException;
 use App\Models\Generation;
 use App\Services\Credits\CreditService;
@@ -59,7 +60,7 @@ class GenerationFailureService
      */
     private function safeFailurePayload(Generation $generation, ?Throwable $exception): ?array
     {
-        if (! $exception instanceof VideoToCampaignProviderException && ! $exception instanceof AutoVideoEditorProviderException) {
+        if (! $exception instanceof VideoToCampaignProviderException && ! $exception instanceof AutoVideoEditorProviderException && ! $exception instanceof MotionAiVideoProviderException) {
             return null;
         }
 

@@ -57,6 +57,7 @@ class GenerateMotionAiVideoRequest extends FormRequest
                 'project_brief',
             ])],
             'manual_script' => ['required_if:script_source,manual_script', 'nullable', 'string', 'max:4000'],
+            'creative_notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'visual_style' => ['sometimes', 'string', Rule::in([
                 'realistic_product',
                 'ugc_lifestyle',

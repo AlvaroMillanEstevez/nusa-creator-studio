@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 
 import MotionAiVideoGenerationResult from '@/components/MotionAiVideoGenerationResult.vue'
 import type { MotionVideoResult } from '@/types/project'
@@ -89,7 +89,60 @@ const result: MotionVideoResult = {
   },
 }
 
+const realResult: MotionVideoResult = {
+  ...result,
+  motion_summary: {
+    ...result.motion_summary,
+    render_available: true,
+    visual_first_clip: true,
+    final_video_asset_id: 777,
+  },
+  provider_readiness: {
+    provider: 'google_veo',
+    real_provider_required: false,
+    render_available: true,
+    recommended_provider_type: 'image_to_video',
+    future_provider_inputs: ['product_image', 'scenario_image', 'prompt', 'duration', 'aspect_ratio'],
+  },
+  metadata: {
+    ...result.metadata,
+    provider: 'google_veo',
+    mode: 'real',
+    model: 'veo-test',
+    render_available: true,
+    real_provider_enabled: true,
+    visual_first_clip: true,
+    final_video_asset_id: 777,
+    provider_render_status: 'done',
+  },
+  rendered_video_asset: {
+    id: 777,
+    stream_url: '/api/v1/media-assets/777/stream',
+    download_url: '/api/v1/media-assets/777/download',
+    original_name: 'motion-ai-video-777.mp4',
+    mime_type: 'video/mp4',
+    size_bytes: 24000,
+  },
+  final_video_asset_id: 777,
+  final_video_stream_url: '/api/v1/media-assets/777/stream',
+  final_video_download_url: '/api/v1/media-assets/777/download',
+  provider_metadata: {
+    provider: 'google_veo',
+    workflow: 'motion_ai_video',
+    model: 'veo-test',
+    mode: 'real',
+    visual_first_clip: true,
+    final_video_asset_id: 777,
+    response_status: 'done',
+    native_audio_ignored: true,
+  },
+}
+
 describe('MotionAiVideoGenerationResult', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('renders motion summary, prompt, scene plan and provider readiness without fake video controls', () => {
     const wrapper = mount(MotionAiVideoGenerationResult, {
       props: { result },
@@ -97,12 +150,42 @@ describe('MotionAiVideoGenerationResult', () => {
 
     expect(wrapper.text()).toContain('Motion AI Video')
     expect(wrapper.text()).toContain('Show the bottle in a fast creator desk routine.')
-    expect(wrapper.text()).toContain('Motion prompt')
+    expect(wrapper.text()).toContain('Creative direction')
     expect(wrapper.text()).toContain('Scene plan timeline')
     expect(wrapper.text()).toContain('Open on the product image.')
-    expect(wrapper.text()).toContain('Provider readiness')
-    expect(wrapper.text()).toContain('Real motion video rendering coming next')
-    expect(wrapper.text()).not.toContain('Download')
+    expect(wrapper.text()).toContain('Provider summary')
+    expect(wrapper.text()).toContain('Real motion video rendering is available only')
+    expect(wrapper.find('[data-testid="motion-final-preview"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Download MP4')
     expect(wrapper.text()).not.toContain('Generated video placeholder')
+  })
+
+  it('renders secure preview and download controls for real Google Veo output', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(new Blob(['mp4'], { type: 'video/mp4' }), {
+          status: 200,
+          headers: { 'Content-Type': 'video/mp4' },
+        }),
+      ),
+    )
+    vi.stubGlobal('URL', {
+      createObjectURL: vi.fn<(object: Blob) => string>(() => 'blob:motion-video'),
+      revokeObjectURL: vi.fn<(objectUrl: string) => void>(),
+    })
+
+    const wrapper = mount(MotionAiVideoGenerationResult, {
+      props: { result: realResult },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="motion-final-preview"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Visual-first MP4 ready')
+    expect(wrapper.text()).toContain('Download MP4')
+    expect(wrapper.text()).toContain('Google Veo')
+    expect(wrapper.text()).toContain('veo-test')
+    expect(wrapper.get('[data-testid="motion-video-player"]').attributes('src')).toBe('blob:motion-video')
+    expect(fetch).toHaveBeenCalled()
   })
 })
