@@ -108,7 +108,7 @@ class ProjectActionApiTest extends TestCase
             ->assertOk()
             ->json('data'));
 
-        foreach (['generate_campaign', 'generate_voiceover_from_script', 'generate_video_to_campaign', 'generate_auto_video_edit'] as $key) {
+        foreach (['generate_campaign', 'generate_voiceover_from_script', 'generate_video_to_campaign', 'generate_auto_video_edit', 'start_motion_video'] as $key) {
             $action = $this->action($actions, $key);
 
             $this->assertTrue($action['user_has_access'], "Expected {$key} to be accessible.");
@@ -116,7 +116,7 @@ class ProjectActionApiTest extends TestCase
             $this->assertSame('Internal/unlimited access', $action['access_label']);
         }
 
-        foreach (['start_fashion_try_on', 'start_motion_video'] as $key) {
+        foreach (['start_fashion_try_on'] as $key) {
             $action = $this->action($actions, $key);
 
             $this->assertSame('coming_soon', $action['status']);
@@ -172,7 +172,7 @@ class ProjectActionApiTest extends TestCase
         $this->assertSame($sourceGeneration->id, $voiceoverAction['recommended_sources'][0]['generation_id']);
     }
 
-    public function test_fashion_and_motion_actions_are_visible_as_coming_soon_with_requirements(): void
+    public function test_fashion_is_coming_soon_and_motion_is_configurable_with_requirements(): void
     {
         $user = User::factory()->subscriber()->create(['plan_key' => 'creator']);
         $project = $this->campaignProject($user);
@@ -190,11 +190,13 @@ class ProjectActionApiTest extends TestCase
         $this->assertSame(['model_reference', 'garment_reference'], array_column($fashionAction['requirements'], 'key'));
         $this->assertSame(2, $fashionAction['missing_requirements_count']);
 
-        $this->assertSame('coming_soon', $motionAction['status']);
-        $this->assertSame('coming_soon', $motionAction['action_mode']);
-        $this->assertSame('Coming soon', $motionAction['primary_cta']['label']);
+        $this->assertSame('configure', $motionAction['status']);
+        $this->assertSame('configure', $motionAction['action_mode']);
+        $this->assertSame('Configure Motion AI Video', $motionAction['primary_cta']['label']);
+        $this->assertSame("/projects/{$project->id}/actions/motion-ai-video", $motionAction['primary_cta']['route']);
+        $this->assertSame('/api/v1/projects/'.$project->id.'/generate-motion-ai-video', $motionAction['action_endpoint']);
         $this->assertSame(
-            ['product_image', 'source_video', 'background_reference', 'brand_reference'],
+            ['product_image', 'scenario_image', 'campaign_script'],
             array_column($motionAction['requirements'], 'key'),
         );
         $this->assertSame(1, $motionAction['missing_requirements_count']);
@@ -267,7 +269,7 @@ class ProjectActionApiTest extends TestCase
         $this->assertSame(0, $campaignAction['missing_requirements_count']);
         $this->assertSame('configure', $voiceoverAction['status']);
         $this->assertSame('Coming soon', $fashionAction['primary_cta']['label']);
-        $this->assertSame('Coming soon', $motionAction['primary_cta']['label']);
+        $this->assertSame('Configure Motion AI Video', $motionAction['primary_cta']['label']);
     }
 
     public function test_project_actions_are_owner_only(): void

@@ -71,7 +71,7 @@ class CreatorTool extends Model
         'product_to_video' => '/product-to-video/new',
         'ai_voiceover' => '/voiceover/new',
         'fashion_try_on' => '/fashion-try-on/new',
-        'motion_ai_video' => '/motion-video/new',
+        'motion_ai_video' => '/dashboard?tool=motion_ai_video',
         'auto_video_editor' => '/dashboard?tool=auto_video_editor',
         'auto_video_ads' => '/dashboard?tool=auto_video_ads',
     ];

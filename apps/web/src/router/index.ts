@@ -172,6 +172,12 @@ const router = createRouter({
       meta: { requiresAuth: true, titleKey: 'metadata.titles.autoVideoAdsAction' },
     },
     {
+      path: '/projects/:projectId/actions/motion-ai-video',
+      name: 'project-motion-ai-video-action',
+      component: () => import('../views/MotionAiVideoActionView.vue'),
+      meta: { requiresAuth: true, titleKey: 'metadata.titles.motionAiVideoAction' },
+    },
+    {
       path: '/projects/:projectId/actions/voiceover',
       name: 'project-voiceover-action',
       component: () => import('../views/VoiceoverActionView.vue'),

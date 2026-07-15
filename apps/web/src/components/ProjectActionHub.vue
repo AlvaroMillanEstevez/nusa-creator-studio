@@ -595,6 +595,13 @@ function autoVideoAdsActionRoute() {
   }
 }
 
+function motionAiVideoActionRoute() {
+  return {
+    name: 'project-motion-ai-video-action',
+    params: { projectId: String(props.projectId) },
+  }
+}
+
 function voiceoverActionRoute(action: ProjectAction) {
   const query: Record<string, string> = {}
   const sourceId = selectedVoiceoverSource.value?.generation_id ?? action.source_generation_id
@@ -690,6 +697,11 @@ async function handleAction(action: ProjectAction): Promise<void> {
 
   if (isAutoVideoAdsAction(action)) {
     await router.push(autoVideoAdsActionRoute())
+    return
+  }
+
+  if (isMotionAction(action)) {
+    await router.push(motionAiVideoActionRoute())
     return
   }
 

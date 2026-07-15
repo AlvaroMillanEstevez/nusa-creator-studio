@@ -56,7 +56,7 @@ export const betaWorkflows: BetaWorkflowDefinition[] = [
   },
   {
     key: 'motion_ai_video',
-    status: 'beta_next',
+    status: 'available',
     sourceToolKey: 'motion_ai_video',
     dashboardToolKey: 'motion_ai_video',
     projectActionKey: 'start_motion_video',

@@ -145,8 +145,8 @@ const motionVideoProject: MotionVideoProject = {
     product_name: 'Portable smoothie blender',
     product_description: 'A compact blender for quick creator product demos.',
     video_goal: 'product_showcase',
-    motion_style: 'smooth_camera',
-    visual_style: 'ecommerce_clean',
+    motion_style: 'slow_push_in',
+    visual_style: 'realistic_product',
     duration_seconds: 15,
     aspect_ratio: 'vertical_9_16',
     target_audience: 'TikTok affiliate creators',
@@ -231,15 +231,15 @@ const defaultActions: ProjectActionsResponse = {
     },
     {
       key: 'start_motion_video',
-      title: 'Generate Motion AI Video',
-      description: 'Use project visuals for motion video.',
+      title: 'Motion AI Video',
+      description: 'Create motion-video concepts from product images.',
       service_tier: 'premium',
       output_type: 'video',
-      status: 'needs_assets',
+      status: 'configure',
       required_source: 'media_asset',
       source_generation_id: null,
-      reason: 'Add a visual reference first.',
-      action_endpoint: '/api/v1/projects/42/generate-motion-video',
+      reason: 'Open setup to choose the product image, optional scenario and script source.',
+      action_endpoint: '/api/v1/projects/42/generate-motion-ai-video',
       tool_key: 'motion_ai_video',
       tool_status: 'available',
       credit_cost: 3,
@@ -696,65 +696,86 @@ describe('ProjectDetailView', () => {
           error_message: null,
           request_payload: null,
           result_payload: {
-            video_title: 'Portable blender motion video',
-            concept_summary: 'Prepare a 15-second motion video concept.',
-            selected_references: {
-              visual_references: [
-                {
-                  id: 4,
-                  usage_role: 'product_image',
-                  type: 'image',
-                  original_name: 'product.jpg',
-                  mime_type: 'image/jpeg',
-                  size_bytes: 1200,
-                  metadata: null,
-                },
-              ],
-              audio_tracks: [],
+            motion_summary: {
+              platform: 'tiktok',
+              aspect_ratio: 'vertical_9_16',
+              duration: 15,
+              visual_style: 'realistic_product',
+              motion_style: 'slow_push_in',
+              source_type: 'product_image_only',
+              creative_angle: 'Prepare a 15-second motion video concept.',
+              target_audience: 'TikTok affiliate creators',
+              primary_cta: 'See product details',
+              render_available: false,
             },
-            generated_video: {
-              status: 'placeholder',
-              message: 'Real AI video generation will be connected later.',
-              provider: 'mock',
+            generation_prompt: {
+              main_prompt: 'Vertical product video prompt.',
+              product_description: 'A compact blender for quick creator product demos.',
+              scene_description: 'Open with a close product shot.',
+              camera_motion: 'slow push-in',
+              lighting_style: 'soft studio lighting',
+              composition_notes: 'Keep the product clear.',
+              brand_safety_notes: 'Avoid fake claims.',
+              negative_prompt: 'exaggerated claims, warped product shape',
             },
             scene_plan: [
               {
-                timestamp: '0-2s',
-                scene_goal: 'Fast hook',
+                scene_number: 1,
+                start_seconds: 0,
+                end_seconds: 2,
                 visual_direction: 'Open on the product.',
-                motion_direction: 'Use smooth camera movement.',
-                on_screen_text: 'Meet the blender',
+                product_action: 'Keep the blender readable.',
+                camera_direction: 'Use smooth camera movement.',
+                overlay_or_caption: 'Meet the blender',
+                narration_line: 'Meet the blender.',
+                provider_prompt_hint: 'Product remains accurate.',
               },
             ],
-            motion_prompt: 'Vertical product video prompt.',
-            negative_prompt: 'exaggerated claims, warped product shape',
-            camera_motion_notes: ['Use smooth camera movement.'],
-            editing_plan: ['Start with a direct hook cut.'],
-            audio_sync_notes: ['No audio track is attached.'],
-            platform_usage_notes: ['Use this as a TikTok planning concept.'],
-            quality_checklist: ['Visual references are attached.'],
-            recommended_asset_improvements: ['Upload a clean product image.'],
-            compliance_notes: ['No real video is generated yet.'],
-            api_ready_payload_preview: {
+            script_plan: {
+              short_script: 'Meet the blender.',
+              voiceover_ready_script: 'Meet the blender in a quick product motion concept.',
+              caption_lines: ['Meet the blender'],
+              CTA_line: 'See product details',
+            },
+            motion_settings: {
+              visual_style: 'realistic_product',
+              motion_style: 'slow_push_in',
+              camera_direction: 'Use smooth camera movement.',
+              aspect_ratio: 'vertical_9_16',
+              target_duration_seconds: 15,
+              scenario_used: false,
+              voiceover_planned: true,
+            },
+            asset_plan: {
+              product_image_asset_id: 4,
+              scenario_image_asset_id: null,
+              campaign_generation_id: null,
+              voiceover_generation_id: null,
+              recommended_next_assets: ['Scenario image'],
+              missing_items: ['Optional scenario image'],
+            },
+            provider_readiness: {
               provider: 'mock',
-              duration_seconds: 15,
-              aspect_ratio: 'vertical 9 16',
-              prompt: 'Vertical product video prompt.',
-              negative_prompt: 'exaggerated claims, warped product shape',
-              references: {
-                visual_references: [
-                  {
-                    id: 4,
-                    usage_role: 'product_image',
-                    type: 'image',
-                    original_name: 'product.jpg',
-                    mime_type: 'image/jpeg',
-                    size_bytes: 1200,
-                    metadata: null,
-                  },
-                ],
-                audio_tracks: [],
-              },
+              real_provider_required: true,
+              render_available: false,
+              recommended_provider_type: 'image_to_video',
+              future_provider_inputs: ['product_image', 'scenario_image', 'prompt', 'duration', 'aspect_ratio'],
+            },
+            compliance_notes: ['No real video is generated yet.'],
+            metadata: {
+              generation_type: 'motion_ai_video',
+              provider: 'mock',
+              product_image_asset_id: 4,
+              scenario_image_asset_id: null,
+              campaign_generation_id: null,
+              voiceover_generation_id: null,
+              platform: 'tiktok',
+              aspect_ratio: 'vertical_9_16',
+              visual_style: 'realistic_product',
+              motion_style: 'slow_push_in',
+              target_duration_seconds: 15,
+              render_available: false,
+              real_provider_enabled: false,
             },
           },
           started_at: '2026-07-07T03:00:00.000000Z',
@@ -773,11 +794,14 @@ describe('ProjectDetailView', () => {
     expect(text).not.toContain(
       'Add a product image, source video, background reference or brand reference before generating.',
     )
-    expect(text).toContain('Generate another motion video mock')
-    expect(text).toContain('Motion video concept')
-    expect(text).toContain('Generated video placeholder')
+    expect(text).toContain('Create another motion plan')
+    expect(text).toContain('Motion AI Video')
+    expect(text).toContain('Motion prompt')
     expect(text).toContain('Vertical product video prompt.')
-    expect(text).toContain('API-ready payload preview')
+    expect(text).toContain('Provider readiness')
+    expect(text).toContain('Real motion video rendering coming next')
+    expect(text).not.toContain('Generated video placeholder')
+    expect(text).not.toContain('API-ready payload preview')
   })
 
   it('shows a friendly failed state for failed Motion AI Video generations', async () => {
@@ -814,7 +838,7 @@ describe('ProjectDetailView', () => {
     )
   })
 
-  it('calls the Motion AI Video generation endpoint and shows missing-asset errors', async () => {
+  it('routes Motion AI Video projects to the setup page instead of direct generation', async () => {
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [
@@ -824,23 +848,12 @@ describe('ProjectDetailView', () => {
         { path: '/login', component: { template: '<div />' } },
         { path: '/register', component: { template: '<div />' } },
         { path: '/projects/:id', component: ProjectDetailView },
+        { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
       ],
     })
-    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
       const url =
         typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-      const method = init?.method ?? 'GET'
-
-      if (url.endsWith('/projects/123/generate-motion-video') && method === 'POST') {
-        return Response.json(
-          {
-            message:
-              'Please upload at least one product image, source video, background reference or brand reference before generating a motion video.',
-            code: 'missing_visual_reference_asset',
-          },
-          { status: 422 },
-        )
-      }
 
       if (url.endsWith('/projects/123/actions')) return Response.json(defaultActions)
       if (url.endsWith('/projects/123/generations')) return Response.json(emptyHistory)
@@ -855,7 +868,7 @@ describe('ProjectDetailView', () => {
               long_description: null,
               category: 'ai_video',
               status: 'available',
-              route: '/motion-video/new',
+              route: '/dashboard?tool=motion_ai_video',
               credit_cost: 3,
               credit_cost_label: '3 credits',
               badge_label: 'New mock',
@@ -881,20 +894,16 @@ describe('ProjectDetailView', () => {
     await flushPromises()
 
     const button = wrapper.findAll('button').find((candidate) =>
-      candidate.text().includes('Generate motion video mock'),
+      candidate.text().includes('Configure Motion AI Video'),
     )
 
     expect(button).toBeTruthy()
     await button?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/projects/123/generate-motion-video'),
-      expect.objectContaining({ method: 'POST' }),
-    )
-    expect(wrapper.text()).toContain(
-      'Please upload at least one product image, source video, background reference or brand reference before generating a motion video.',
-    )
+    expect(router.currentRoute.value.name).toBe('project-motion-ai-video-action')
+    expect(router.currentRoute.value.params.projectId).toBe('123')
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/projects/123/generate-motion'))).toBe(false)
   })
   it('calls the Fashion Try-On generation endpoint and shows missing-asset errors', async () => {
     const router = createRouter({
@@ -906,6 +915,7 @@ describe('ProjectDetailView', () => {
         { path: '/login', component: { template: '<div />' } },
         { path: '/register', component: { template: '<div />' } },
         { path: '/projects/:id', component: ProjectDetailView },
+        { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
       ],
     })
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
@@ -988,6 +998,7 @@ describe('ProjectDetailView', () => {
         { path: '/login', component: { template: '<div />' } },
         { path: '/register', component: { template: '<div />' } },
         { path: '/projects/:id', component: ProjectDetailView },
+        { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
       ],
     })
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {

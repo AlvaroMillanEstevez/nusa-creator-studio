@@ -10,8 +10,10 @@ The beta should focus on the workflows that create a practical social commerce p
 - Video-to-Campaign: Advanced video analysis with Gemini available for internal beta users and mock fallback for everyone else.
 - AI Voiceover: Advanced audio generation with ElevenLabs available for eligible/internal users and mock fallback.
 - Auto Video Editor: Premium composite workflow with mock default and Shotstack real rendering available for internal beta users only.
+- Auto Video Ads: Premium ad-planning workflow with mock default and Shotstack real rendering available for internal beta users only.
+- Motion AI Video: Premium mock-beta planning workflow that creates structured image-to-video plans from product images and script context.
 
-Future premium workflows such as Fashion Try-On, Motion AI Video, avatar presenters and custom avatars should remain clearly labeled as coming soon/preview until real providers, safety rules and cost controls are ready.
+Future premium workflows such as Fashion Try-On, avatar presenters and custom avatars should remain clearly labeled as coming soon/preview until real providers, safety rules and cost controls are ready.
 
 ## Basic
 
@@ -147,7 +149,7 @@ Action cards should show service tier and credit cost before generation. Detaile
 | AI Voiceover | Advanced | Audio | Real provider + mock fallback | v1 can generate ElevenLabs audio for internal/eligible users and save it as a private MediaAsset; mock remains the default fallback. |
 | Fashion Try-On | Premium | Image | Future / coming soon | Future real provider should generate try-on images after safety, cost and UX controls are ready. |
 | Auto Video Editor | Premium | Video edit plan / rendered video | Beta real provider + mock fallback | Composite workflow with AI video analysis mode for eligible Video-to-Campaign results and manual edit setup for source-video fallback timelines. Mock remains default; Shotstack can render a real private MP4 for eligible internal users when enabled. |
-| Motion AI Video | Premium | Video | Future / coming soon | Future real provider should generate video assets after cost controls and provider selection are ready. |
+| Motion AI Video | Premium | Image-to-video plan | Mock beta | Creates a render-ready motion plan from product image, optional scenario/background and campaign/script context. Does not create fake MP4 assets; real provider selection comes after cost and safety review. |
 | AI Avatar Presenter | Premium | Avatar | Future | Future avatar-led product presenter videos with voice. |
 | Custom AI Avatar | Premium | Avatar | Future | Future reusable avatar identity from person images, photo sets or descriptions. |
 | Avatar Voice Ads | Premium | Mixed media | Future | Future avatar-led product ads combining presenter, voiceover and scripts. |

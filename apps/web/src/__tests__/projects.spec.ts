@@ -601,8 +601,8 @@ describe('project service', () => {
       product_name: 'Portable smoothie blender',
       product_description: 'A compact blender for quick creator product demos.',
       video_goal: 'product_showcase',
-      motion_style: 'smooth_camera',
-      visual_style: 'ecommerce_clean',
+      motion_style: 'slow_push_in',
+      visual_style: 'realistic_product',
       duration_seconds: 15,
       aspect_ratio: 'vertical_9_16',
       target_audience: 'TikTok affiliate creators',
@@ -667,34 +667,74 @@ describe('project service', () => {
         error_message: null,
         request_payload: null,
         result_payload: {
-          video_title: 'Portable blender motion video',
-          concept_summary: 'Prepare a motion video concept.',
-          selected_references: {
-            visual_references: [],
-            audio_tracks: [],
+          motion_summary: {
+            platform: 'tiktok',
+            aspect_ratio: 'vertical_9_16',
+            duration: 8,
+            visual_style: 'realistic_product',
+            motion_style: 'slow_push_in',
+            source_type: 'product_image_only',
+            creative_angle: 'Prepare a motion video concept.',
+            target_audience: 'Creators',
+            primary_cta: 'See product details',
+            render_available: false,
           },
-          generated_video: {
-            status: 'placeholder',
-            message: 'Real AI video generation will be connected later.',
-            provider: 'mock',
+          generation_prompt: {
+            main_prompt: 'Motion prompt',
+            product_description: 'Product description',
+            scene_description: 'Scene description',
+            camera_motion: 'slow push-in',
+            lighting_style: 'soft light',
+            composition_notes: 'Keep the product clear.',
+            brand_safety_notes: 'Avoid fake claims.',
+            negative_prompt: 'exaggerated claims',
           },
           scene_plan: [],
-          motion_prompt: 'Motion prompt',
-          negative_prompt: 'exaggerated claims',
-          camera_motion_notes: ['Use smooth movement.'],
-          editing_plan: ['Cut quickly.'],
-          audio_sync_notes: ['No audio attached.'],
-          platform_usage_notes: ['Use for TikTok planning.'],
-          quality_checklist: ['References are attached.'],
-          recommended_asset_improvements: ['Upload a product image.'],
-          compliance_notes: ['No real video generated yet.'],
-          api_ready_payload_preview: {
+          script_plan: {
+            short_script: 'Short script',
+            voiceover_ready_script: 'Voiceover script',
+            caption_lines: ['Caption'],
+            CTA_line: 'See product details',
+          },
+          motion_settings: {
+            visual_style: 'realistic_product',
+            motion_style: 'slow_push_in',
+            camera_direction: 'Slow push-in.',
+            aspect_ratio: 'vertical_9_16',
+            target_duration_seconds: 8,
+            scenario_used: false,
+            voiceover_planned: true,
+          },
+          asset_plan: {
+            product_image_asset_id: 90,
+            scenario_image_asset_id: null,
+            campaign_generation_id: null,
+            voiceover_generation_id: null,
+            recommended_next_assets: [],
+            missing_items: [],
+          },
+          provider_readiness: {
             provider: 'mock',
-            duration_seconds: 15,
-            aspect_ratio: 'vertical 9 16',
-            prompt: 'Motion prompt',
-            negative_prompt: 'exaggerated claims',
-            references: { visual_references: [], audio_tracks: [] },
+            real_provider_required: true,
+            render_available: false,
+            recommended_provider_type: 'image_to_video',
+            future_provider_inputs: ['product_image', 'prompt', 'duration', 'aspect_ratio'],
+          },
+          compliance_notes: ['No real video generated yet.'],
+          metadata: {
+            generation_type: 'motion_ai_video',
+            provider: 'mock',
+            product_image_asset_id: 90,
+            scenario_image_asset_id: null,
+            campaign_generation_id: null,
+            voiceover_generation_id: null,
+            platform: 'tiktok',
+            aspect_ratio: 'vertical_9_16',
+            visual_style: 'realistic_product',
+            motion_style: 'slow_push_in',
+            target_duration_seconds: 8,
+            render_available: false,
+            real_provider_enabled: false,
           },
         },
         started_at: '2026-07-07T00:00:00.000000Z',
@@ -713,10 +753,12 @@ describe('project service', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(generateMotionVideo(123)).resolves.toEqual(response)
+    const payload = { product_image_asset_id: 90, platform: 'tiktok' }
+
+    await expect(generateMotionVideo(123, payload)).resolves.toEqual(response)
     expect(fetchMock).toHaveBeenCalledWith(
-      API_BASE_URL + '/projects/123/generate-motion-video',
-      expect.objectContaining({ method: 'POST', body: '{}' }),
+      API_BASE_URL + '/projects/123/generate-motion-ai-video',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(payload) }),
     )
   })
 })

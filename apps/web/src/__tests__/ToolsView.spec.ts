@@ -114,17 +114,17 @@ const tools: CreatorTool[] = [
   {
     key: 'motion_ai_video',
     title: 'Motion AI Video',
-    short_description: 'Create motion-led concepts.',
-    long_description: 'Turn visual references into a structured motion video plan.',
+    short_description: 'Create motion-video concepts from product images, scenarios and campaign scripts.',
+    long_description: 'Mock beta workflow that creates render-ready image-to-video plans.',
     category: 'ai_video',
     service_tier: 'premium',
     output_type: 'video',
-    implementation_stage: 'future',
-    status: 'coming_soon',
-    route: '/motion-video/new',
+    implementation_stage: 'mock',
+    status: 'available',
+    route: '/dashboard?tool=motion_ai_video',
     credit_cost: 3,
-    credit_cost_label: '3 credits preview',
-    badge_label: 'Preview workflow',
+    credit_cost_label: '3 credits',
+    badge_label: 'Mock beta',
     is_recommended: false,
     sort_order: 38,
   },
@@ -170,8 +170,8 @@ const tools: CreatorTool[] = [
     category: 'future',
     service_tier: 'premium',
     output_type: 'avatar',
-    implementation_stage: 'future',
-    status: 'coming_soon',
+    implementation_stage: 'mock',
+    status: 'available',
     route: null,
     credit_cost: 0,
     credit_cost_label: 'Credit cost coming soon',
@@ -187,8 +187,8 @@ const tools: CreatorTool[] = [
     category: 'avatar',
     service_tier: 'premium',
     output_type: 'avatar',
-    implementation_stage: 'future',
-    status: 'coming_soon',
+    implementation_stage: 'mock',
+    status: 'available',
     route: null,
     credit_cost: 0,
     credit_cost_label: 'Credit cost coming soon',
@@ -335,7 +335,7 @@ describe('ToolsView', () => {
     expect(autoEditor.text()).toContain('Video analysis')
   })
 
-  it('links active workflows for authenticated users and keeps Motion AI Video disabled', async () => {
+  it('links active workflows for authenticated users including Motion AI Video', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ data: tools }), {
         status: 200,
@@ -356,9 +356,9 @@ describe('ToolsView', () => {
     expect(ads.element.tagName).toBe('A')
     expect(ads.attributes('href')).toBe('/dashboard?tool=auto_video_ads')
     expect(ads.text()).toContain('Mock beta')
-    expect(motion.element.tagName).toBe('ARTICLE')
-    expect(motion.text()).toContain('Planned for closed beta')
-    expect(motion.find('a').exists()).toBe(false)
+    expect(motion.element.tagName).toBe('A')
+    expect(motion.attributes('href')).toBe('/dashboard?tool=motion_ai_video')
+    expect(motion.text()).toContain('Mock beta')
   })
 
   it('sends guests through login with the intended workflow destination', async () => {

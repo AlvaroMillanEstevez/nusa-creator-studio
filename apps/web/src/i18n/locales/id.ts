@@ -40,6 +40,7 @@ export default {
       videoToCampaignAction: 'Video-to-Campaign',
       autoVideoEditorAction: 'Auto Video Editor',
       autoVideoAdsAction: 'Auto Video Ads',
+      motionAiVideoAction: 'Motion AI Video',
       voiceoverAction: 'Buat voiceover',
       fashionTryOn: 'Fashion try-on',
       motionVideo: 'Motion video',
@@ -179,8 +180,8 @@ export default {
     },
     motion_ai_video: {
       title: 'Motion AI Video',
-      shortDescription: 'Buat video motion AI pendek dari gambar produk, skenario visual dan skrip campaign.',
-      longDescription: 'Direncanakan untuk workflow image-to-motion. Provider motion asli akan ditambahkan nanti.',
+      shortDescription: 'Buat konsep motion-video dari gambar produk, skenario, dan skrip campaign.',
+      longDescription: 'Workflow mock beta yang membuat rencana image-to-video siap render. Rendering motion asli menyusul.',
     },
     inputs: {
       brief: 'Brief',
@@ -333,7 +334,7 @@ export default {
     generateVideoCampaign: 'Buat campaign video',
     configureAutoVideoEditor: 'Atur Auto Video Editor',
     generateAdPlan: 'Buat Rencana Iklan',
-    configureMotionVideo: 'Konfigurasi Motion Video',
+    configureMotionVideo: 'Konfigurasi Motion AI Video',
     continueFromProjectContext: 'Mulai atau lanjutkan aksi dari konteks project ini.',
     narrationScript: 'Suara narasi',
     narrationVoice: 'Suara narasi',

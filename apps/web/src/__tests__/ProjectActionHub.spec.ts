@@ -195,16 +195,16 @@ const baseActions: ProjectActionsResponse = {
     }),
     action({
       key: 'start_motion_video',
-      title: 'Generate Motion AI Video',
-      description: 'Use project visuals for motion video.',
+      title: 'Motion AI Video',
+      description: 'Create motion-video concepts from product images.',
       service_tier: 'premium',
       output_type: 'video',
-      status: 'coming_soon',
-      action_mode: 'coming_soon',
+      status: 'configure',
+      action_mode: 'configure',
       credit_cost: 3,
-      primary_cta: { label: 'Coming soon', route: null, action: null },
+      primary_cta: { label: 'Configure Motion AI Video', route: '/projects/42/actions/motion-ai-video', action: 'configure_motion_ai_video' },
       required_source: 'media_asset',
-      action_endpoint: '/api/v1/projects/42/generate-motion-video',
+      action_endpoint: '/api/v1/projects/42/generate-motion-ai-video',
       tool_key: 'motion_ai_video',
       requirements: [
         {
@@ -212,7 +212,7 @@ const baseActions: ProjectActionsResponse = {
           key: 'product_image',
           label: 'Product image',
           satisfied: false,
-          help_text: 'Upload or choose a product image for the motion video source.',
+          help_text: 'Upload or choose a clear product image for the motion video source.',
           suggested_usage_role: 'product_image',
         },
       ],
@@ -289,6 +289,7 @@ async function mountHub(
       { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/auto-video-ads', name: 'project-auto-video-ads-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
     ],
   })
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
@@ -347,7 +348,7 @@ describe('ProjectActionHub', () => {
     expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Auto Video Ads')
     expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Generate Ad Plan')
     expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Motion AI Video')
-    expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Coming soon')
+    expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Configure Motion AI Video')
     expect(wrapper.get('[data-testid="project-action-generate_video_to_campaign"]').text()).toContain('Analyze product footage')
     expect(wrapper.get('[data-testid="project-action-generate_voiceover_from_script"]').text()).toContain('Create voiceover')
     expect(wrapper.get('[data-testid="project-support-media-library"]').text()).toContain('Manage media assets')
@@ -376,7 +377,7 @@ describe('ProjectActionHub', () => {
     expect(wrapper.emitted('generated')?.[0]).toEqual([campaignResponse])
   })
 
-  it('keeps later modules out while showing closed-beta placeholders', async () => {
+  it('keeps later modules out while showing active beta workflows', async () => {
     const { wrapper } = await mountHub()
 
     expect(wrapper.find('[data-testid="project-action-start_fashion_try_on"]').exists()).toBe(false)
@@ -384,6 +385,19 @@ describe('ProjectActionHub', () => {
     expect(wrapper.find('[data-testid="project-action-create_video_ad"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Generate Ad Plan')
     expect(wrapper.find('[data-testid="project-action-start_motion_video"]').exists()).toBe(true)
+  })
+
+  it('routes Motion AI Video to the dedicated action setup page', async () => {
+    const { wrapper, router } = await mountHub()
+
+    await wrapper
+      .get('[data-testid="project-action-start_motion_video"]')
+      .find('button')
+      .trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('project-motion-ai-video-action')
+    expect(router.currentRoute.value.params.projectId).toBe('42')
   })
   it('routes voiceover actions to the dedicated setup page with selected source context', async () => {
     const { wrapper, fetchMock, router } = await mountHub(

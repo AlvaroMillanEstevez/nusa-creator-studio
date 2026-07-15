@@ -404,65 +404,57 @@ class ProjectActionService
     /** @return array<string, mixed> */
     private function motionVideoAction(Project $project, User $user, ?CreatorTool $tool): array
     {
+        $hasProductImage = $this->hasAssetRole($project, 'product_image', 'image')
+            || $project->mediaAssets->contains(fn ($asset): bool => $asset->type === 'image');
         $requirements = [
             $this->requirement(
                 type: 'media_asset',
                 key: 'product_image',
                 label: 'Product image',
-                satisfied: $this->hasAssetRole($project, 'product_image', 'image'),
-                helpText: 'Upload or choose a product image for the motion video source.',
+                satisfied: $hasProductImage,
+                helpText: 'Upload or choose a clear product image for the motion video source.',
                 suggestedUsageRole: 'product_image',
             ),
             $this->requirement(
                 type: 'media_asset',
-                key: 'source_video',
-                label: 'Source video',
-                satisfied: $this->hasAssetRole($project, 'source_video', 'video'),
-                helpText: 'Optionally use an existing source video as motion context.',
-                suggestedUsageRole: 'source_video',
-            ),
-            $this->requirement(
-                type: 'media_asset',
-                key: 'background_reference',
-                label: 'Background reference',
+                key: 'scenario_image',
+                label: 'Scenario image',
                 satisfied: $this->hasAssetRole($project, 'background_reference', 'image'),
-                helpText: 'Optionally add a background reference image.',
+                helpText: 'Optionally add a scenario or background image.',
                 suggestedUsageRole: 'background_reference',
             ),
             $this->requirement(
-                type: 'media_asset',
-                key: 'brand_reference',
-                label: 'Brand reference',
-                satisfied: $this->hasAssetRole($project, 'brand_reference', 'image'),
-                helpText: 'Optionally add a brand style reference image.',
-                suggestedUsageRole: 'brand_reference',
+                type: 'source_generation',
+                key: 'campaign_script',
+                label: 'Campaign script',
+                satisfied: $this->completedGenerations($project, 'generate_affiliate_campaign')->isNotEmpty()
+                    || $this->completedGenerations($project, 'generate_video_to_campaign')->isNotEmpty(),
+                helpText: 'Optionally use a Product Content Kit or video analysis generation as script context.',
             ),
         ];
-        $hasVisual = collect($requirements)->contains(fn (array $requirement): bool => $requirement['satisfied'] === true)
-            || $project->mediaAssets->contains(fn ($asset): bool => in_array($asset->type, ['image', 'video'], true));
 
         return $this->action(
             user: $user,
             key: 'start_motion_video',
-            title: 'Generate Motion AI Video',
-            description: 'Use product or visual references to generate a motion video plan.',
+            title: 'Motion AI Video',
+            description: 'Create motion-video concepts from product images, scenarios and campaign scripts.',
             serviceTier: 'premium',
             outputType: 'video',
             tool: $tool,
             status: 'configure',
             actionMode: 'configure',
-            primaryLabel: 'Configure Motion Video',
-            primaryAction: 'configure_motion_video',
+            primaryLabel: 'Configure Motion AI Video',
+            primaryAction: 'configure_motion_ai_video',
+            primaryRoute: "/projects/{$project->id}/actions/motion-ai-video",
             requirements: $requirements,
             recommendedAssets: $this->recommendedAssets($project, [
                 'product_image',
-                'source_video',
                 'background_reference',
                 'brand_reference',
             ]),
-            missingRequirementsCount: $hasVisual ? 0 : 1,
-            reason: 'Open setup to choose the visual references for motion video.',
-            actionEndpoint: "/api/v1/projects/{$project->id}/generate-motion-video",
+            missingRequirementsCount: $hasProductImage ? 0 : 1,
+            reason: 'Open setup to choose the product image, optional scenario and script source.',
+            actionEndpoint: "/api/v1/projects/{$project->id}/generate-motion-ai-video",
             creditCost: $tool?->credit_cost,
         );
     }

@@ -99,7 +99,11 @@ class CreatorToolSeeder extends Seeder
             $creatorTool->status = $tool['status'];
         }
 
-        if ($creatorTool->route === null) {
+        if ($tool['key'] === 'motion_ai_video' && $creatorTool->implementation_stage === 'future') {
+            $creatorTool->implementation_stage = $tool['implementation_stage'];
+        }
+
+        if ($creatorTool->route === null || ($tool['key'] === 'motion_ai_video' && $creatorTool->route === '/motion-video/new')) {
             $creatorTool->route = $tool['route'];
         }
 
@@ -132,8 +136,14 @@ class CreatorToolSeeder extends Seeder
                 'long_description' => ['Plan fashion-focused visual concepts that present products in realistic creator scenarios.'],
             ],
             'motion_ai_video' => [
-                'short_description' => ['Create motion-led video concepts from product or creator assets.'],
-                'long_description' => ['Turn product and creator assets into concise vertical-video concepts with clear motion direction.'],
+                'short_description' => [
+                    'Create motion-led video concepts from product or creator assets.',
+                    'Prepare short-form motion video concepts from product, image, video or brand references.',
+                ],
+                'long_description' => [
+                    'Turn product and creator assets into concise vertical-video concepts with clear motion direction.',
+                    'Turn project assets into a structured AI video generation plan for vertical creator content.',
+                ],
             ],
             'auto_video_ads' => [
                 'short_description' => ['Plan paid video ad creatives from project content and assets.'],
@@ -278,22 +288,22 @@ class CreatorToolSeeder extends Seeder
             [
                 'key' => 'motion_ai_video',
                 'title' => 'Motion AI Video',
-                'short_description' => 'Prepare short-form motion video concepts from product, image, video or brand references.',
-                'long_description' => 'Turn project assets into a structured AI video generation plan for vertical creator content.',
+                'short_description' => 'Create motion-video concepts from product images, scenarios and campaign scripts.',
+                'long_description' => 'Create a motion-video concept from a product image, scenario and campaign script.',
                 'category' => 'ai_video',
                 'service_tier' => 'premium',
                 'output_type' => 'video',
-                'implementation_stage' => 'future',
-                'status' => 'coming_soon',
-                'route' => '/motion-video/new',
+                'implementation_stage' => 'mock',
+                'status' => 'available',
+                'route' => '/dashboard?tool=motion_ai_video',
                 'credit_cost' => 3,
-                'credit_cost_label' => '3 credits preview',
-                'badge_label' => 'Preview workflow',
+                'credit_cost_label' => '3 credits',
+                'badge_label' => 'Mock beta',
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 60,
                 'metadata' => [
-                    'service_note' => 'Future real provider should generate video assets.',
+                    'service_note' => 'Mock beta planning workflow; future real provider should generate video assets.',
                 ],
             ],
             [

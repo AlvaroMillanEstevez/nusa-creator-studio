@@ -16,6 +16,7 @@ import type {
   GenerateAiVoiceoverPayload,
   GenerateAutoVideoEditPayload,
   GenerateAutoVideoAdPayload,
+  GenerateMotionAiVideoPayload,
   GenerateVideoToCampaignPayload,
   FashionTryOnFormPayload,
   FashionTryOnGenerationResponse,
@@ -286,10 +287,11 @@ export function generateFashionTryOn(
 
 export function generateMotionVideo(
   projectId: number | string,
+  payload: GenerateMotionAiVideoPayload,
 ): Promise<MotionVideoGenerationResponse> {
-  return apiPost<MotionVideoGenerationResponse, Record<string, never>>(
-    '/projects/' + projectId + '/generate-motion-video',
-    {},
+  return apiPost<MotionVideoGenerationResponse, GenerateMotionAiVideoPayload>(
+    '/projects/' + projectId + '/generate-motion-ai-video',
+    payload,
   )
 }
 export function getProjectGenerations(

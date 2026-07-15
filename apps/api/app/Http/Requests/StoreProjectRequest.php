@@ -62,19 +62,22 @@ class StoreProjectRequest extends FormRequest
     ];
 
     private const MOTION_STYLES = [
+        'slow_push_in', 'handheld_ugc', 'product_orbit', 'top_down_demo', 'lifestyle_reveal', 'before_after',
         'smooth_camera', 'dynamic_zoom', 'handheld_creator', 'cinematic_pan', 'product_spin', 'fast_cuts', 'slow_reveal',
     ];
 
     private const MOTION_VISUAL_STYLES = [
-        'realistic', 'premium_brand', 'ecommerce_clean', 'lifestyle', 'streetwear', 'cinematic', 'ugc_creator',
+        'realistic_product', 'ugc_lifestyle', 'premium_brand', 'clean_studio', 'cinematic', 'social_ad',
+        'realistic', 'ecommerce_clean', 'lifestyle', 'streetwear', 'ugc_creator',
     ];
 
-    private const MOTION_DURATIONS = [5, 10, 15, 30];
+    private const MOTION_DURATIONS = [5, 8, 10, 15, 30];
 
-    private const MOTION_ASPECT_RATIOS = ['vertical_9_16', 'square_1_1', 'horizontal_16_9'];
+    private const MOTION_ASPECT_RATIOS = ['vertical_9_16', 'square_1_1', 'portrait_4_5', 'horizontal_16_9'];
 
     private const MOTION_PLATFORMS = [
-        'tiktok', 'instagram_reels', 'youtube_shorts', 'shopee', 'tokopedia', 'lazada', 'generic_social',
+        'tiktok', 'instagram_reels', 'youtube_shorts', 'facebook_ads', 'instagram_ads', 'general_social',
+        'shopee', 'tokopedia', 'lazada', 'generic_social',
     ];
 
     private const MOTION_LANGUAGES = ['english', 'indonesian', 'spanish'];

@@ -2,15 +2,13 @@
 
 namespace App\Services\Generation;
 
-use App\Exceptions\MissingMotionAiVideoAssetsException;
 use App\Jobs\GenerateMotionAiVideoJob;
 use App\Models\Generation;
 use App\Models\MediaAsset;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\ToolAvailabilityService;
-use DomainException;
-use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 class MotionAiVideoGenerationService
 {
@@ -19,99 +17,176 @@ class MotionAiVideoGenerationService
         private readonly ToolAvailabilityService $tools,
     ) {}
 
-    public function generate(Project $project, User $user): Generation
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    public function generate(Project $project, User $user, array $options): Generation
     {
-        if ($project->type !== 'motion_ai_video') {
-            throw new DomainException('Only Motion AI Video projects can generate motion video mockups.');
-        }
-
-        $visualReferences = $this->visualReferenceAssets($project);
-
-        if ($visualReferences->isEmpty()) {
-            throw new MissingMotionAiVideoAssetsException;
-        }
+        $productImage = $this->requiredImageAsset(
+            project: $project,
+            user: $user,
+            id: $options['product_image_asset_id'] ?? null,
+            field: 'product_image_asset_id',
+            message: 'Choose a product image before generating a Motion AI Video plan.',
+        );
+        $scenarioImage = $this->optionalImageAsset(
+            project: $project,
+            user: $user,
+            id: $options['scenario_image_asset_id'] ?? null,
+            field: 'scenario_image_asset_id',
+            message: 'The selected scenario image is unavailable for this project.',
+        );
+        $campaignGeneration = $this->optionalGeneration(
+            project: $project,
+            user: $user,
+            id: $options['campaign_generation_id'] ?? null,
+            field: 'campaign_generation_id',
+            allowedJobTypes: [
+                'generate_affiliate_campaign',
+                'generate_video_to_campaign',
+                'generate_product_video_script',
+                'generate_auto_video_ad',
+            ],
+        );
+        $voiceoverGeneration = $this->optionalGeneration(
+            project: $project,
+            user: $user,
+            id: $options['voiceover_generation_id'] ?? null,
+            field: 'voiceover_generation_id',
+            allowedJobTypes: ['generate_ai_voiceover'],
+        );
 
         return $this->submissions->submit(
             project: $project,
             user: $user,
             jobType: 'generate_motion_ai_video',
             creditCost: $this->tools->creditCost('motion_ai_video'),
-            creditReason: 'Mock Motion AI Video generation',
+            creditReason: 'Mock Motion AI Video plan generation',
             dispatch: fn (int $generationId) => GenerateMotionAiVideoJob::dispatch($generationId),
-            inputPayload: $this->inputPayload($project, $visualReferences),
+            inputPayload: $this->inputPayload(
+                project: $project,
+                productImage: $productImage,
+                scenarioImage: $scenarioImage,
+                campaignGeneration: $campaignGeneration,
+                voiceoverGeneration: $voiceoverGeneration,
+                options: $options,
+            ),
+            provider: 'mock',
         );
     }
 
+    private function requiredImageAsset(Project $project, User $user, mixed $id, string $field, string $message): MediaAsset
+    {
+        if ($id === null || $id === '') {
+            throw ValidationException::withMessages([$field => $message]);
+        }
+
+        return $this->imageAsset($project, $user, $id, $field, $message);
+    }
+
+    private function optionalImageAsset(Project $project, User $user, mixed $id, string $field, string $message): ?MediaAsset
+    {
+        if ($id === null || $id === '') {
+            return null;
+        }
+
+        return $this->imageAsset($project, $user, $id, $field, $message);
+    }
+
+    private function imageAsset(Project $project, User $user, mixed $id, string $field, string $message): MediaAsset
+    {
+        $asset = $user->mediaAssets()
+            ->whereKey((int) $id)
+            ->where('type', 'image')
+            ->where(function ($query): void {
+                $query->whereNull('mime_type')
+                    ->orWhere('mime_type', '!=', 'image/svg+xml');
+            })
+            ->where(function ($query) use ($project): void {
+                $query->where('project_id', $project->getKey())
+                    ->orWhereNull('project_id');
+            })
+            ->first();
+
+        if ($asset instanceof MediaAsset) {
+            return $asset;
+        }
+
+        throw ValidationException::withMessages([$field => $message]);
+    }
+
     /**
-     * @return Collection<int, MediaAsset>
+     * @param  array<int, string>  $allowedJobTypes
      */
-    private function visualReferenceAssets(Project $project): Collection
+    private function optionalGeneration(Project $project, User $user, mixed $id, string $field, array $allowedJobTypes): ?Generation
     {
-        /** @var Collection<int, MediaAsset> $assets */
-        $assets = $project->mediaAssets()
-            ->whereIn('type', ['image', 'video'])
-            ->latest('created_at')
-            ->latest('id')
-            ->get()
-            ->filter(fn (MediaAsset $asset): bool => $this->isSafeVisualAsset($asset))
-            ->values();
+        if ($id === null || $id === '') {
+            return null;
+        }
 
-        $roleTagged = $assets
-            ->filter(fn (MediaAsset $asset): bool => $this->isMotionVideoReference($asset))
-            ->values();
+        $generation = $user->generations()
+            ->whereKey((int) $id)
+            ->where('project_id', $project->getKey())
+            ->whereIn('job_type', $allowedJobTypes)
+            ->where('status', Generation::STATUS_COMPLETED)
+            ->first();
 
-        return $roleTagged->isNotEmpty() ? $roleTagged : $assets;
-    }
+        if ($generation instanceof Generation) {
+            return $generation;
+        }
 
-    private function isSafeVisualAsset(MediaAsset $asset): bool
-    {
-        return in_array($asset->type, ['image', 'video'], true)
-            && $asset->mime_type !== 'image/svg+xml';
-    }
-
-    private function isMotionVideoReference(MediaAsset $asset): bool
-    {
-        return match ($asset->usage_role) {
-            'product_image', 'background_reference', 'brand_reference' => $asset->type === 'image',
-            'source_video' => $asset->type === 'video',
-            default => false,
-        };
+        throw ValidationException::withMessages([
+            $field => $field === 'campaign_generation_id'
+                ? 'The selected campaign source is unavailable for this project.'
+                : 'The selected voiceover is unavailable for this project.',
+        ]);
     }
 
     /**
-     * @param  Collection<int, MediaAsset>  $visualReferences
+     * @param  array<string, mixed>  $options
      * @return array<string, mixed>
      */
-    private function inputPayload(Project $project, Collection $visualReferences): array
-    {
-        $audioTracks = $project->mediaAssets()
-            ->where('usage_role', 'audio_track')
-            ->where('type', 'audio')
-            ->latest('created_at')
-            ->latest('id')
-            ->get();
+    private function inputPayload(
+        Project $project,
+        MediaAsset $productImage,
+        ?MediaAsset $scenarioImage,
+        ?Generation $campaignGeneration,
+        ?Generation $voiceoverGeneration,
+        array $options,
+    ): array {
+        $projectInput = is_array($project->input_payload) ? $project->input_payload : [];
+        $settings = is_array($project->settings) ? $project->settings : [];
+        $scriptSource = $this->stringOption($options, 'script_source')
+            ?? ($campaignGeneration instanceof Generation ? 'campaign_script' : 'project_brief');
 
-        return array_merge($project->input_payload ?? [], [
-            'assets' => [
-                'visual_references' => $visualReferences
-                    ->map(fn (MediaAsset $asset): array => $this->assetSummary($asset))
-                    ->values()
-                    ->all(),
-                'audio_tracks' => $audioTracks
-                    ->map(fn (MediaAsset $asset): array => $this->assetSummary($asset))
-                    ->values()
-                    ->all(),
-                'background_references' => $visualReferences
-                    ->filter(fn (MediaAsset $asset): bool => $asset->usage_role === 'background_reference')
-                    ->map(fn (MediaAsset $asset): array => $this->assetSummary($asset))
-                    ->values()
-                    ->all(),
-                'brand_references' => $visualReferences
-                    ->filter(fn (MediaAsset $asset): bool => $asset->usage_role === 'brand_reference')
-                    ->map(fn (MediaAsset $asset): array => $this->assetSummary($asset))
-                    ->values()
-                    ->all(),
-            ],
+        return array_merge($projectInput, [
+            'project_title' => $project->title,
+            'project_type' => $project->type,
+            'generation_type' => 'motion_ai_video',
+            'product_image_asset_id' => $productImage->getKey(),
+            'product_image_asset' => $this->assetSummary($productImage),
+            'scenario_image_asset_id' => $scenarioImage?->getKey(),
+            'scenario_image_asset' => $scenarioImage instanceof MediaAsset ? $this->assetSummary($scenarioImage) : null,
+            'campaign_generation_id' => $campaignGeneration?->getKey(),
+            'campaign_generation_summary' => $campaignGeneration?->output_payload,
+            'voiceover_generation_id' => $voiceoverGeneration?->getKey(),
+            'voiceover_generation_summary' => $voiceoverGeneration?->output_payload,
+            'script_source' => $scriptSource,
+            'manual_script' => $this->stringOption($options, 'manual_script'),
+            'platform' => $this->stringOption($options, 'platform') ?? $this->stringOption($settings, 'platform') ?? 'tiktok',
+            'target_duration_seconds' => $this->intOption($options, 'target_duration_seconds') ?? 8,
+            'visual_style' => $this->stringOption($options, 'visual_style') ?? 'realistic_product',
+            'motion_style' => $this->stringOption($options, 'motion_style') ?? 'slow_push_in',
+            'camera_direction' => $this->stringOption($options, 'camera_direction'),
+            'scene_description' => $this->stringOption($options, 'scene_description'),
+            'background_prompt' => $this->stringOption($options, 'background_prompt'),
+            'negative_prompt' => $this->stringOption($options, 'negative_prompt'),
+            'aspect_ratio' => $this->stringOption($options, 'aspect_ratio') ?? 'vertical_9_16',
+            'include_voiceover_plan' => (bool) ($options['include_voiceover_plan'] ?? true),
+            'include_caption_plan' => (bool) ($options['include_caption_plan'] ?? true),
+            'primary_cta' => $this->stringOption($options, 'primary_cta')
+                ?? $this->stringOption($projectInput, 'cta_preference')
+                ?? 'See product details',
         ]);
     }
 
@@ -122,12 +197,34 @@ class MotionAiVideoGenerationService
     {
         return [
             'id' => $asset->id,
-            'usage_role' => $asset->usage_role,
             'type' => $asset->type,
+            'usage_role' => $asset->usage_role,
             'original_name' => $asset->original_name,
             'mime_type' => $asset->mime_type,
             'size_bytes' => $asset->size_bytes,
             'metadata' => $asset->metadata,
         ];
+    }
+
+    /** @param array<string, mixed> $input */
+    private function stringOption(array $input, string $key): ?string
+    {
+        $value = $input[$key] ?? null;
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    /** @param array<string, mixed> $input */
+    private function intOption(array $input, string $key): ?int
+    {
+        $value = $input[$key] ?? null;
+
+        return is_numeric($value) ? (int) $value : null;
     }
 }

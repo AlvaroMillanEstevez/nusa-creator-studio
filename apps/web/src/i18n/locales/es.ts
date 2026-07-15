@@ -40,6 +40,7 @@ export default {
       fashionTryOn: 'Prueba de moda',
       motionVideo: 'Motion video',
       autoVideoAdsAction: 'Auto Video Ads',
+      motionAiVideoAction: 'Motion AI Video',
     },
   },
   nav: {
@@ -140,8 +141,8 @@ export default {
     },
     motion_ai_video: {
       title: 'Motion AI Video',
-      shortDescription: 'Crea videos motion AI cortos desde imágenes de producto, escenarios visuales y guiones de campaña.',
-      longDescription: 'Planeado para flujos image-to-motion. El proveedor real de motion se añadirá más adelante.',
+      shortDescription: 'Crea conceptos de motion video desde imágenes de producto, escenarios y guiones de campaña.',
+      longDescription: 'Flujo mock beta que crea planes image-to-video listos para render. El render real de motion vendrá después.',
     },
     inputs: {
       brief: 'Brief',
@@ -287,7 +288,7 @@ export default {
     generateVideoCampaign: 'Generar campa?a de v?deo',
     configureAutoVideoEditor: 'Configurar Auto Video Editor',
     generateAdPlan: 'Generar Plan de Anuncio',
-    configureMotionVideo: 'Configurar Motion Video',
+    configureMotionVideo: 'Configurar Motion AI Video',
     continueFromProjectContext: 'Inicia o continúa acciones desde el contexto de este proyecto.',
     narrationScript: 'Voz de narración',
     narrationVoice: 'Voz de narración',

@@ -7,7 +7,7 @@ import AutoVideoEditorGenerationResult from '@/components/AutoVideoEditorGenerat
 import AutoVideoAdGenerationResult from '@/components/AutoVideoAdGenerationResult.vue'
 import CampaignGenerationResult from '@/components/CampaignGenerationResult.vue'
 import FashionTryOnGenerationResult from '@/components/FashionTryOnGenerationResult.vue'
-import MotionVideoGenerationResult from '@/components/MotionVideoGenerationResult.vue'
+import MotionAiVideoGenerationResult from '@/components/MotionAiVideoGenerationResult.vue'
 import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
 import VideoToCampaignGenerationResult from '@/components/VideoToCampaignGenerationResult.vue'
@@ -122,6 +122,9 @@ const retryRoute = computed(() => {
   }
   if (props.generation?.job_type === 'generate_auto_video_ad') {
     return `/projects/${String(id)}/actions/auto-video-ads`
+  }
+  if (props.generation?.job_type === 'generate_motion_ai_video') {
+    return `/projects/${String(id)}/actions/motion-ai-video`
   }
 
   return `/projects/${String(id)}`
@@ -270,7 +273,7 @@ const failedDescription = computed(() =>
       :media-assets="mediaAssets"
     />
     <FashionTryOnGenerationResult v-else-if="fashionTryOnResult" :result="fashionTryOnResult" />
-    <MotionVideoGenerationResult v-else-if="motionVideoResult" :result="motionVideoResult" />
+    <MotionAiVideoGenerationResult v-else-if="motionVideoResult" :result="motionVideoResult" />
     <VideoToCampaignGenerationResult
       v-else-if="videoToCampaignResult"
       :result="videoToCampaignResult"

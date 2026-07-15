@@ -136,6 +136,10 @@ Route::prefix('v1')->group(function () {
             GenerateFashionTryOnController::class,
         )->name('projects.generate-fashion-try-on');
         Route::post(
+            'projects/{project}/generate-motion-ai-video',
+            GenerateMotionAiVideoController::class,
+        )->name('projects.generate-motion-ai-video');
+        Route::post(
             'projects/{project}/generate-motion-video',
             GenerateMotionAiVideoController::class,
         )->name('projects.generate-motion-video');

@@ -34,6 +34,7 @@ export default {
       videoToCampaignAction: 'Video-to-Campaign',
       autoVideoEditorAction: 'Auto Video Editor',
       autoVideoAdsAction: 'Auto Video Ads',
+      motionAiVideoAction: 'Motion AI Video',
       voiceoverAction: 'Create voiceover',
       fashionTryOn: 'Fashion try-on',
       motionVideo: 'Motion video',
@@ -250,8 +251,8 @@ export default {
     },
     motion_ai_video: {
       title: 'Motion AI Video',
-      shortDescription: 'Create short AI motion videos from product images, visual scenarios and campaign scripts.',
-      longDescription: 'Planned for image-to-motion workflows. The real motion provider will be added later.',
+      shortDescription: 'Create motion-video concepts from product images, scenarios and campaign scripts.',
+      longDescription: 'Mock beta workflow that creates render-ready image-to-video plans. Real motion rendering comes next.',
     },
     inputs: {
       brief: 'Brief',
@@ -719,7 +720,7 @@ export default {
     generateVideoCampaign: 'Generate video insight',
     configureAutoVideoEditor: 'Configure Auto Video Editor',
     generateAdPlan: 'Generate Ad Plan',
-    configureMotionVideo: 'Configure Motion Video',
+    configureMotionVideo: 'Configure Motion AI Video',
     continueFromProjectContext: 'Start one of the active beta workflows from this shared project context.',
     narrationScript: 'Narration script',
     actionLauncher: 'Action setup',
@@ -785,7 +786,7 @@ export default {
       },
       start_motion_video: {
         title: 'Motion AI Video',
-        description: 'Create short AI motion videos from product images, visual scenarios and campaign scripts. Planned for closed beta.',
+        description: 'Create motion-video concepts from product images, scenarios and campaign scripts. Mock beta planning workflow.',
       },
       avatar_presenter: {
         title: 'Avatar Presenter',

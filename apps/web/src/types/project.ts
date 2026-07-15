@@ -139,41 +139,38 @@ export const motionVideoGoalOptions = [
 ] as const
 
 export const motionStyleOptions = [
-  { value: 'smooth_camera', label: 'Smooth camera' },
-  { value: 'dynamic_zoom', label: 'Dynamic zoom' },
-  { value: 'handheld_creator', label: 'Handheld creator' },
-  { value: 'cinematic_pan', label: 'Cinematic pan' },
-  { value: 'product_spin', label: 'Product spin' },
-  { value: 'fast_cuts', label: 'Fast cuts' },
-  { value: 'slow_reveal', label: 'Slow reveal' },
+  { value: 'slow_push_in', label: 'Slow push-in' },
+  { value: 'handheld_ugc', label: 'Handheld UGC' },
+  { value: 'product_orbit', label: 'Product orbit' },
+  { value: 'top_down_demo', label: 'Top-down demo' },
+  { value: 'lifestyle_reveal', label: 'Lifestyle reveal' },
+  { value: 'before_after', label: 'Before / after' },
 ] as const
 
 export const motionVisualStyleOptions = [
-  { value: 'realistic', label: 'Realistic' },
+  { value: 'realistic_product', label: 'Realistic product' },
+  { value: 'ugc_lifestyle', label: 'UGC lifestyle' },
   { value: 'premium_brand', label: 'Premium brand' },
-  { value: 'ecommerce_clean', label: 'Ecommerce clean' },
-  { value: 'lifestyle', label: 'Lifestyle' },
-  { value: 'streetwear', label: 'Streetwear' },
+  { value: 'clean_studio', label: 'Clean studio' },
   { value: 'cinematic', label: 'Cinematic' },
-  { value: 'ugc_creator', label: 'UGC creator' },
+  { value: 'social_ad', label: 'Social ad' },
 ] as const
 
-export const motionDurationOptions = [5, 10, 15, 30] as const
+export const motionDurationOptions = [5, 8, 10, 15] as const
 
 export const motionAspectRatioOptions = [
   { value: 'vertical_9_16', label: 'Vertical 9:16' },
   { value: 'square_1_1', label: 'Square 1:1' },
-  { value: 'horizontal_16_9', label: 'Horizontal 16:9' },
+  { value: 'portrait_4_5', label: 'Portrait 4:5' },
 ] as const
 
 export const motionPlatformOptions = [
   { value: 'tiktok', label: 'TikTok' },
   { value: 'instagram_reels', label: 'Instagram Reels' },
   { value: 'youtube_shorts', label: 'YouTube Shorts' },
-  { value: 'shopee', label: 'Shopee' },
-  { value: 'tokopedia', label: 'Tokopedia' },
-  { value: 'lazada', label: 'Lazada' },
-  { value: 'generic_social', label: 'Generic social' },
+  { value: 'facebook_ads', label: 'Facebook Ads' },
+  { value: 'instagram_ads', label: 'Instagram Ads' },
+  { value: 'general_social', label: 'General social' },
 ] as const
 
 
@@ -318,7 +315,7 @@ export type MotionStyle = (typeof motionStyleOptions)[number]['value']
 export type MotionVisualStyle = (typeof motionVisualStyleOptions)[number]['value']
 export type MotionDuration = (typeof motionDurationOptions)[number]
 export type MotionAspectRatio = (typeof motionAspectRatioOptions)[number]['value']
-export type MotionPlatform = (typeof motionPlatformOptions)[number]['value']
+export type MotionVideoPlatform = (typeof motionPlatformOptions)[number]['value']
 export type AutoVideoEditingStyle = (typeof autoVideoEditingStyleOptions)[number]['value']
 export type AutoVideoPacing = (typeof autoVideoPacingOptions)[number]['value']
 export type AutoVideoCaptionStyle = (typeof autoVideoCaptionStyleOptions)[number]['value']
@@ -337,7 +334,7 @@ export type AutoVideoAdDuration = (typeof autoVideoAdDurationOptions)[number]
 export type AutoVideoAdTone = (typeof autoVideoAdToneOptions)[number]['value']
 export type AutoVideoAdVisualStyle = (typeof autoVideoAdVisualStyleOptions)[number]['value']
 export type AutoVideoAdHookStyle = (typeof autoVideoAdHookStyleOptions)[number]['value']
-export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionPlatform | WorkspacePlatform
+export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionVideoPlatform | WorkspacePlatform
 
 export type ProjectType =
   | 'workspace'
@@ -584,6 +581,29 @@ export interface GenerateAutoVideoAdPayload {
   include_voiceover_script?: boolean
   include_caption_variants?: boolean
 }
+
+export type MotionAiVideoScriptSource = 'campaign_script' | 'manual_script' | 'project_brief'
+
+export interface GenerateMotionAiVideoPayload {
+  product_image_asset_id: number | null
+  scenario_image_asset_id?: number | null
+  campaign_generation_id?: number | null
+  voiceover_generation_id?: number | null
+  platform?: MotionVideoPlatform | string | null
+  target_duration_seconds?: MotionDuration | number | null
+  script_source?: MotionAiVideoScriptSource | string | null
+  manual_script?: string | null
+  visual_style?: MotionVisualStyle | string | null
+  motion_style?: MotionStyle | string | null
+  camera_direction?: string | null
+  scene_description?: string | null
+  background_prompt?: string | null
+  negative_prompt?: string | null
+  aspect_ratio?: MotionAspectRatio | string | null
+  include_voiceover_plan?: boolean
+  include_caption_plan?: boolean
+  primary_cta?: string | null
+}
 export interface FashionTryOnFormPayload {
   title: string
   product_name: string | null
@@ -611,7 +631,7 @@ export interface MotionVideoFormPayload {
   duration_seconds: MotionDuration
   aspect_ratio: MotionAspectRatio
   target_audience: string | null
-  platform: MotionPlatform
+  platform: MotionVideoPlatform
   language: CampaignLanguage
   brand_notes?: string | null
   scene_notes: string | null
@@ -1452,60 +1472,103 @@ export interface AutoVideoAdResult {
   captions_plan?: AutoVideoAdCaptionScheduleItem[]
   provider_metadata?: AutoVideoAdProviderMetadata
 }
-export interface MotionVideoReference {
-  id: number
-  usage_role: string | null
-  type: string
-  original_name: string | null
-  mime_type: string | null
-  size_bytes: number | null
-  metadata: Record<string, unknown> | null
-}
-
-export interface MotionVideoSelectedReferences {
-  visual_references: MotionVideoReference[]
-  audio_tracks: MotionVideoReference[]
-}
-
-export interface MotionVideoGeneratedVideo {
-  status: 'placeholder'
-  message: string
-  provider: 'mock'
-}
-
-export interface MotionVideoScene {
-  timestamp: string
-  scene_goal: string
-  visual_direction: string
-  motion_direction: string
-  on_screen_text: string
-}
-
-export interface MotionVideoApiReadyPayloadPreview {
-  provider: 'mock'
-  duration_seconds: number
+export interface MotionAiVideoSummary {
+  platform: string
   aspect_ratio: string
-  prompt: string
+  duration: number
+  visual_style: string
+  motion_style: string
+  source_type: 'product_image_only' | 'product_image_with_scenario' | 'campaign_assisted' | 'voiceover_assisted' | string
+  creative_angle: string
+  target_audience: string
+  primary_cta: string
+  render_available: boolean
+}
+
+export interface MotionAiVideoPrompt {
+  main_prompt: string
+  product_description: string
+  scene_description: string
+  camera_motion: string
+  lighting_style: string
+  composition_notes: string
+  brand_safety_notes: string
   negative_prompt: string
-  references: MotionVideoSelectedReferences
+}
+
+export interface MotionAiVideoScene {
+  scene_number: number
+  start_seconds: number
+  end_seconds: number
+  visual_direction: string
+  product_action: string
+  camera_direction: string
+  overlay_or_caption: string
+  narration_line: string
+  provider_prompt_hint: string
+}
+
+export interface MotionAiVideoScriptPlan {
+  short_script: string
+  voiceover_ready_script: string
+  caption_lines: string[]
+  CTA_line: string
+}
+
+export interface MotionAiVideoSettings {
+  visual_style: string
+  motion_style: string
+  camera_direction: string
+  aspect_ratio: string
+  target_duration_seconds: number
+  scenario_used: boolean
+  voiceover_planned: boolean
+}
+
+export interface MotionAiVideoAssetPlan {
+  product_image_asset_id: number | null
+  scenario_image_asset_id: number | null
+  campaign_generation_id: number | null
+  voiceover_generation_id: number | null
+  recommended_next_assets: string[]
+  missing_items: string[]
+}
+
+export interface MotionAiVideoProviderReadiness {
+  provider: string
+  real_provider_required: boolean
+  render_available: boolean
+  recommended_provider_type: string
+  future_provider_inputs: string[]
+}
+
+export interface MotionAiVideoMetadata {
+  generation_type: 'motion_ai_video' | string
+  provider: string
+  product_image_asset_id: number | null
+  scenario_image_asset_id: number | null
+  campaign_generation_id: number | null
+  voiceover_generation_id: number | null
+  platform: string
+  aspect_ratio: string
+  visual_style: string
+  motion_style: string
+  target_duration_seconds: number
+  render_available: boolean
+  real_provider_enabled: boolean
+  [key: string]: unknown
 }
 
 export interface MotionVideoResult {
-  video_title: string
-  concept_summary: string
-  selected_references: MotionVideoSelectedReferences
-  generated_video: MotionVideoGeneratedVideo
-  scene_plan: MotionVideoScene[]
-  motion_prompt: string
-  negative_prompt: string
-  camera_motion_notes: string[]
-  editing_plan: string[]
-  audio_sync_notes: string[]
-  platform_usage_notes: string[]
-  quality_checklist: string[]
-  recommended_asset_improvements: string[]
+  motion_summary: MotionAiVideoSummary
+  generation_prompt: MotionAiVideoPrompt
+  scene_plan: MotionAiVideoScene[]
+  script_plan: MotionAiVideoScriptPlan
+  motion_settings: MotionAiVideoSettings
+  asset_plan: MotionAiVideoAssetPlan
+  provider_readiness: MotionAiVideoProviderReadiness
   compliance_notes: string[]
-  api_ready_payload_preview: MotionVideoApiReadyPayloadPreview
+  metadata: MotionAiVideoMetadata
 }
 export type GenerationResult =
   | CampaignGenerationResult
@@ -1601,7 +1664,7 @@ export function isFashionTryOnResult(
 export function isMotionVideoResult(
   result: GenerationResult | null,
 ): result is MotionVideoResult {
-  return result !== null && 'video_title' in result && 'generated_video' in result
+  return result !== null && 'motion_summary' in result && 'provider_readiness' in result
 }
 
 

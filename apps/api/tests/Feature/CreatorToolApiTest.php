@@ -78,8 +78,10 @@ class CreatorToolApiTest extends TestCase
             'key' => 'motion_ai_video',
             'service_tier' => 'premium',
             'output_type' => 'video',
-            'implementation_stage' => 'future',
-            'status' => 'coming_soon',
+            'implementation_stage' => 'mock',
+            'status' => 'available',
+            'credit_cost' => 3,
+            'badge_label' => 'Mock beta',
         ]);
     }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AffiliateCampaignBrief from '@/components/AffiliateCampaignBrief.vue'
 import AiVoiceoverBrief from '@/components/AiVoiceoverBrief.vue'
@@ -21,7 +21,6 @@ import {
   generateAiVoiceover,
   generateCampaignProject,
   generateFashionTryOn,
-  generateMotionVideo,
   generateProductVideoScript,
   generateVideoEnhancerProject,
   getCreatorProject,
@@ -37,6 +36,7 @@ const POLL_INTERVAL_MS = 2_000
 const QUEUE_HINT_AFTER_POLLS = 3
 
 const route = useRoute()
+const router = useRouter()
 const project = ref<CreatorProject | null>(null)
 const generation = ref<CreatorGeneration | null>(null)
 const generationHistory = ref<CreatorGeneration[]>([])
@@ -90,7 +90,7 @@ const actionRefreshKey = computed(() => {
 })
 const emptyHistoryCopy = computed(() => {
   if (project.value?.type === 'motion_ai_video') {
-    return 'No saved generations yet. Generate your first motion video mock to create a scene plan, motion prompt, editing notes and provider-ready payload preview.'
+    return 'No saved generations yet. Configure Motion AI Video to create a scene plan, motion prompt, script plan and provider readiness notes.'
   }
 
   if (project.value?.type === 'fashion_try_on') {
@@ -313,9 +313,9 @@ async function generateContent(): Promise<void> {
     let creditsBalance: number
 
     if (project.value.type === 'motion_ai_video') {
-      const response = await generateMotionVideo(projectId)
-      generated = response.data
-      creditsBalance = response.meta.credits_balance
+      isGenerating.value = false
+      await router.push('/projects/' + projectId + '/actions/motion-ai-video')
+      return
     } else if (project.value.type === 'fashion_try_on') {
       const response = await generateFashionTryOn(projectId)
       generated = response.data

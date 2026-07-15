@@ -60,9 +60,9 @@ describe('MotionVideoCreateView', () => {
       .get('textarea[name="product_description"]')
       .setValue('A compact blender for quick creator product demos.')
     await wrapper.get('select[name="video_goal"]').setValue('affiliate_ad')
-    await wrapper.get('select[name="motion_style"]').setValue('dynamic_zoom')
+    await wrapper.get('select[name="motion_style"]').setValue('product_orbit')
     await wrapper.get('select[name="visual_style"]').setValue('premium_brand')
-    await wrapper.get('select[name="duration_seconds"]').setValue('30')
+    await wrapper.get('select[name="duration_seconds"]').setValue('10')
     await wrapper.get('select[name="aspect_ratio"]').setValue('square_1_1')
     await wrapper.get('textarea[name="target_audience"]').setValue('TikTok affiliate creators')
     await wrapper.get('select[name="platform"]').setValue('instagram_reels')
@@ -92,9 +92,9 @@ describe('MotionVideoCreateView', () => {
         product_name: 'Portable smoothie blender',
         product_description: 'A compact blender for quick creator product demos.',
         video_goal: 'affiliate_ad',
-        motion_style: 'dynamic_zoom',
+        motion_style: 'product_orbit',
         visual_style: 'premium_brand',
-        duration_seconds: 30,
+        duration_seconds: 10,
         aspect_ratio: 'square_1_1',
         target_audience: 'TikTok affiliate creators',
         platform: 'instagram_reels',

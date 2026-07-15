@@ -53,6 +53,24 @@ export function generationFriendlyLabel(generation: CreatorGeneration): string {
     }
   }
 
+  if (generation.job_type === 'generate_motion_ai_video') {
+    const sourceType = motionAiVideoSourceType(generation)
+
+    if (sourceType === 'product_image_with_scenario') {
+      return 'Motion AI Video · Scenario assisted'
+    }
+
+    if (sourceType === 'campaign_assisted') {
+      return 'Motion AI Video · Campaign assisted'
+    }
+
+    if (sourceType === 'voiceover_assisted') {
+      return 'Motion AI Video · Voiceover assisted'
+    }
+
+    return 'Motion AI Video · Product image'
+  }
+
   return generationJobTypeLabel(generation.job_type)
 }
 
@@ -131,6 +149,28 @@ function campaignInputMode(generation: CreatorGeneration): string | null {
   return null
 }
 
+
+function motionAiVideoSourceType(generation: CreatorGeneration): string | null {
+  for (const payload of [generation.output_payload, generation.result_payload, generation.input_payload, generation.request_payload]) {
+    if (!isRecord(payload)) {
+      continue
+    }
+
+    const summary = payload.motion_summary
+    const metadata = payload.metadata
+    const value = isRecord(summary)
+      ? summary.source_type
+      : isRecord(metadata)
+        ? metadata.source_type
+        : payload.source_type
+
+    if (typeof value === 'string' && value.trim() !== '') {
+      return value.trim()
+    }
+  }
+
+  return null
+}
 
 function autoVideoAdVisualSourceType(generation: CreatorGeneration): string | null {
   for (const payload of [generation.output_payload, generation.result_payload, generation.input_payload, generation.request_payload]) {

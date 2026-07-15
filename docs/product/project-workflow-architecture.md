@@ -9,7 +9,7 @@ The closed beta should be organized around four main user-facing workflows insid
 1. **Product Content Kit** — creates campaign angles, hooks, scripts, captions, hashtags, CTA options and publishing notes from a brief, product image or product video analysis.
 2. **Auto Video Editor** — turns real/raw product footage into an organic creator/social video using AI video analysis or manual edit setup.
 3. **Auto Video Ads** — available real-beta-capable workflow for paid ad creative with hook, benefits, promo overlays, CTA/end card and optional Shotstack MP4 render. It reuses Product Content Kit output, project assets and optional voiceover context. Mock mode remains the safe default.
-4. **Motion AI Video** — planned closed-beta workflow for short AI motion videos from product image, visual scenario and campaign/script context. The real motion provider will be added later.
+4. **Motion AI Video** — available mock-beta planning workflow for short AI motion-video concepts from product image, optional scenario/background image and campaign/script context. Real image-to-video provider integration comes later.
 
 The Project Workspace contains:
 
@@ -44,7 +44,7 @@ Examples:
 - Product Content Kit creates reusable campaign/content context.
 - AI Voiceover can use project source text or a completed campaign generation.
 - Fashion Try-On can use model and garment media assets.
-- Motion AI Video can use product images, source videos or campaign context.
+- Motion AI Video can use a product image, optional scenario/background image, campaign context, voiceover context or a manual script to create a structured image-to-video plan.
 
 ### Generation as output
 
@@ -91,8 +91,8 @@ The v1 workspace model should support simple source relationships before a full 
 ```text
 Product brief
 → Product Content Kit
-→ AI Voiceover
-→ Auto Video Ads / Auto Video Editor / Motion Video later
+→ AI Voiceove
+→ Auto Video Ads / Auto Video Editor / Motion AI Video plan
 ```
 
 The current v1 implementation makes the Campaign → Voiceover step work in the same project. The user should not need to manually copy/paste campaign copy into a separate isolated voiceover tool.
@@ -116,8 +116,8 @@ The next workspace chain is video-first:
 Project workspace
 → upload raw product video
 → Product Content Kit from video / video analysis
-→ optional AI Voiceover
-→ optional Auto Video Editor
+→ optional AI Voiceove
+→ optional Auto Video Edito
 ```
 
 The real beta chain is:
@@ -274,7 +274,7 @@ Core fields:
 Card copy should stay positive:
 
 - `direct`: “Generate campaign”, “Generate another campaign version”, “Create voiceover”.
-- `configure`: “Generate campaign from video”, “Open Auto Video Editor”, “Setup Try-On”, “Configure Motion Video”, “Create voiceover”.
+- `configure`: “Generate campaign from video”, “Open Auto Video Editor”, “Configure ad plan”, “Configure Motion AI Video”, “Setup Try-On”, “Create voiceover”.
 - `upgrade`: “Upgrade subscription”.
 - `coming_soon`: “Coming soon”.
 
@@ -330,13 +330,14 @@ Implemented now:
 - Campaign/Product-to-video generations with usable scripts can become the source for a same-project AI Voiceover generation.
 - Video-to-Campaign can analyze project video assets with mock output by default or Gemini for internal beta users, then save reusable narration text plus an edit plan.
 - Auto Video Editor can reuse eligible Video-to-Campaign analysis or run manual edit setup with a source video and fallback timeline logic.
+- Auto Video Ads can generate mock ad plans by default and Shotstack MP4 renders for eligible real-provider beta users.
 - Generated voiceover audio remains attached to the same project as a private `MediaAsset` when real ElevenLabs output is used.
+- Motion AI Video is now a mock-beta planning workflow. It creates structured image-to-video plans from a product image, optional scenario/background image and campaign/script context. It does not create fake MP4 assets or expose provider URLs; real provider integration is the next Motion phase.
 
 Shown but not deeply refactored yet:
 
 - Fashion Studio is a later module. Legacy try-on routes may remain for internal testing, but the active workspace flow should not present it as a core beta action.
-- Motion AI Video is one of the four planned beta workflows, but the real motion provider remains future work. Legacy mock routes may remain for internal testing until the beta workflow is implemented.
-- Video ad assembly and Avatar Presenter remain coming-soon contextual actions.
+- Avatar Presenter remains a coming-soon contextual action.
 - Auto Video Editor defaults to mock edit plans, but Shotstack rendering can be enabled for eligible internal beta users. Completed renders are stored as private `MediaAsset` records with `usage_role=edited_video_result`.
 
 Out of scope for v1:
