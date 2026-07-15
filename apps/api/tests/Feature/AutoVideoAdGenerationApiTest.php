@@ -28,7 +28,7 @@ class AutoVideoAdGenerationApiTest extends TestCase
     public function test_authenticated_user_can_generate_image_based_auto_video_ad_plan(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 10]);
+        $user = User::factory()->create(['credits_balance' => 20]);
         $project = $this->workspaceProject($user);
         $image = $this->imageAsset($user, $project);
 
@@ -41,7 +41,7 @@ class AutoVideoAdGenerationApiTest extends TestCase
             ->assertJsonPath('data.job_type', 'generate_auto_video_ad')
             ->assertJsonPath('data.provider', 'mock')
             ->assertJsonPath('data.status', Generation::STATUS_QUEUED)
-            ->assertJsonPath('data.credits_charged', 2)
+            ->assertJsonPath('data.credits_charged', 12)
             ->assertJsonPath('data.input_payload.visual_source_type', 'image')
             ->assertJsonPath('data.input_payload.product_image_asset_id', $image->id)
             ->assertJsonPath('meta.credits_balance', 8)
@@ -69,14 +69,14 @@ class AutoVideoAdGenerationApiTest extends TestCase
 
         $transaction = CreditTransaction::query()->where('generation_id', $generationId)->firstOrFail();
         $this->assertSame(CreditTransactionType::Usage, $transaction->type);
-        $this->assertSame(2, $transaction->amount);
+        $this->assertSame(12, $transaction->amount);
         $this->assertSame(8, $transaction->balance_after);
     }
 
     public function test_authenticated_user_can_generate_video_based_auto_video_ad_plan(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 10]);
+        $user = User::factory()->create(['credits_balance' => 20]);
         $project = $this->workspaceProject($user);
         $video = $this->videoAsset($user, $project);
 
@@ -100,7 +100,7 @@ class AutoVideoAdGenerationApiTest extends TestCase
     public function test_authenticated_user_can_generate_hybrid_auto_video_ad_plan(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 10]);
+        $user = User::factory()->create(['credits_balance' => 20]);
         $project = $this->workspaceProject($user);
         $image = $this->imageAsset($user, $project);
         $video = $this->videoAsset($user, $project);
@@ -125,7 +125,7 @@ class AutoVideoAdGenerationApiTest extends TestCase
     public function test_auto_video_ad_requires_at_least_one_visual_asset(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 10]);
+        $user = User::factory()->create(['credits_balance' => 20]);
         $project = $this->workspaceProject($user);
 
         $this->actingAs($user)
@@ -143,7 +143,7 @@ class AutoVideoAdGenerationApiTest extends TestCase
     public function test_auto_video_ad_rejects_wrong_asset_types_and_other_users_assets(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 10]);
+        $user = User::factory()->create(['credits_balance' => 20]);
         $project = $this->workspaceProject($user);
         $otherUser = User::factory()->create();
         $otherProject = $this->workspaceProject($otherUser);
@@ -184,7 +184,7 @@ class AutoVideoAdGenerationApiTest extends TestCase
     public function test_auto_video_ad_accepts_campaign_and_voiceover_sources(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 10]);
+        $user = User::factory()->create(['credits_balance' => 20]);
         $project = $this->workspaceProject($user);
         $image = $this->imageAsset($user, $project);
         $campaign = Generation::factory()->for($user)->for($project)->create([
@@ -239,7 +239,7 @@ class AutoVideoAdGenerationApiTest extends TestCase
             ->assertPaymentRequired()
             ->assertJsonPath('code', 'insufficient_credits')
             ->assertJsonPath('available_credits', 1)
-            ->assertJsonPath('required_credits', 2);
+            ->assertJsonPath('required_credits', 12);
 
         Queue::assertNothingPushed();
         $this->assertSame(1, $user->refresh()->credits_balance);
@@ -251,7 +251,7 @@ class AutoVideoAdGenerationApiTest extends TestCase
     public function test_auto_video_ad_generation_history_still_returns_output_payload(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['credits_balance' => 10]);
+        $user = User::factory()->create(['credits_balance' => 20]);
         $project = $this->workspaceProject($user);
         $image = $this->imageAsset($user, $project);
         $generationId = $this->actingAs($user)

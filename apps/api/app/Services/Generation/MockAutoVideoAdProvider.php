@@ -2,9 +2,10 @@
 
 namespace App\Services\Generation;
 
+use App\Contracts\AutoVideoAdProvider;
 use Illuminate\Support\Str;
 
-class MockAutoVideoAdProvider
+class MockAutoVideoAdProvider implements AutoVideoAdProvider
 {
     /**
      * @param  array<string, mixed>  $input

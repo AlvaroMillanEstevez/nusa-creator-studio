@@ -108,24 +108,24 @@ const voiceoverGeneration: CreatorGeneration = {
 function action(overrides: Partial<ProjectAction> & Pick<ProjectAction, 'key'>): ProjectAction {
   return {
     title: 'Auto Video Ads',
-    description: 'Create a paid ad creative plan.',
+    description: 'Create a paid ad creative and render when beta provider is enabled.',
     service_tier: 'premium',
     output_type: 'ad_plan',
     status: 'configure',
-    credit_cost: 2,
+    credit_cost: 12,
     user_has_access: true,
     upgrade_required: false,
     access_label: 'Included in your plan',
     locked_reason: null,
     action_mode: 'configure',
-    primary_cta: { label: 'Configure ad plan', route: null, action: 'configure_auto_video_ad' },
+    primary_cta: { label: 'Generate Auto Video Ad', route: null, action: 'configure_auto_video_ad' },
     requirements: [],
     recommended_sources: [],
     recommended_assets: [],
     missing_requirements_count: 0,
     required_source: 'media_asset',
     source_generation_id: null,
-    reason: 'Ready to create an ad plan from project visuals.',
+    reason: 'Ready to create an auto video ad from project visuals.',
     action_endpoint: '/api/v1/projects/42/generate-auto-video-ad',
     tool_key: 'auto_video_ads',
     tool_status: 'available',
@@ -190,7 +190,7 @@ function createFetchMock(
             job_type: 'generate_auto_video_ad',
             provider: 'mock',
             status: 'queued',
-            credits_charged: 2,
+            credits_charged: 12,
             result_payload: null,
           },
         },
@@ -242,7 +242,7 @@ describe('AutoVideoAdsActionView', () => {
     expect(wrapper.text()).toContain('Auto Video Ads')
     expect(wrapper.text()).toContain('← Back to workspace')
     expect(wrapper.text()).toContain('Choose visual assets')
-    expect(wrapper.text()).toContain('Generate Ad Plan')
+    expect(wrapper.text()).toContain('Generate Auto Video Ad')
     expect(wrapper.get('[data-testid="auto-video-ad-visual-type"]').text()).toContain('Hybrid ad')
   })
 

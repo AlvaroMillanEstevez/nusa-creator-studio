@@ -1335,6 +1335,8 @@ export interface AutoVideoAdCaptionVariants {
 export interface AutoVideoAdRenderPlan {
   renderer: string
   render_ready: boolean
+  render_available?: boolean
+  shotstack_render_pending?: boolean
   missing_items: string[]
   recommended_assets: string[]
   timeline_strategy: string
@@ -1342,14 +1344,75 @@ export interface AutoVideoAdRenderPlan {
   end_card_strategy: string
 }
 
+export interface AutoVideoAdRenderedVideoAsset {
+  id: number
+  stream_url: string
+  download_url: string
+  original_name: string | null
+  mime_type: string | null
+  size_bytes: number | null
+}
+
+export interface AutoVideoAdCaptionScheduleItem {
+  start: number
+  length: number
+  text: string
+  type: string
+}
+
+export interface AutoVideoAdTimelineItem {
+  order: number
+  timestamp?: string | null
+  timeline_range?: string | null
+  timeline_start_seconds?: number | null
+  timeline_end_seconds?: number | null
+  duration_seconds?: number | null
+  source: string
+  source_range?: string | null
+  source_start_seconds?: number | null
+  source_end_seconds?: number | null
+  instruction: string
+  text_overlay?: string | null
+  narration_line?: string | null
+  repeated_source_range?: boolean
+}
+
+export interface AutoVideoAdProviderMetadata extends Record<string, unknown> {
+  provider?: string
+  workflow?: string
+  mode?: string
+  render_id?: string | null
+  render_status?: string | null
+  provider_render_status?: string | null
+  final_video_asset_id?: number | null
+  output_size?: number | null
+  final_duration_seconds?: number | null
+  selected_clip_count?: number | null
+  repeated_clip_count?: number | null
+  repeated_clip_reason?: string | null
+  diverse_source_segments_used?: boolean | null
+  invalid_clip_ranges_discarded?: number | null
+  caption_schedule?: AutoVideoAdCaptionScheduleItem[]
+  deduped_caption_count?: number | null
+  repeated_captions_removed?: number | null
+  captions_overlapping?: boolean | null
+  caption_visual_strategy?: string | null
+  render_settings?: Record<string, unknown> & {
+    selected_clip_count?: number | null
+    cta_used?: string | null
+  }
+}
+
 export interface AutoVideoAdMetadata {
   generation_type: 'auto_video_ad' | string
-  provider: 'mock' | string
+  provider: 'mock' | 'shotstack' | string
+  mode?: string | null
   visual_source_type: 'image' | 'video' | 'hybrid' | string
   campaign_generation_id: number | null
   product_image_asset_id: number | null
   source_video_asset_id: number | null
   voiceover_generation_id: number | null
+  voiceover_asset_id?: number | null
   target_duration_seconds: number
   ad_format: string
   platform: string
@@ -1357,8 +1420,13 @@ export interface AutoVideoAdMetadata {
   tone: string
   visual_style: string
   hook_style: string
+  final_duration_seconds?: number | null
   render_available: boolean
   shotstack_render_pending: boolean
+  provider_render_status?: string | null
+  render_id?: string | null
+  final_video_asset_id?: number | null
+  timeline_summary?: Record<string, unknown>
   voiceover_ready?: boolean
   campaign_source_used?: boolean
 }
@@ -1375,6 +1443,14 @@ export interface AutoVideoAdResult {
   compliance_notes: string[]
   render_plan: AutoVideoAdRenderPlan
   metadata: AutoVideoAdMetadata
+  rendered_video_asset?: AutoVideoAdRenderedVideoAsset
+  final_video_asset_id?: number | null
+  final_video_stream_url?: string | null
+  final_video_download_url?: string | null
+  timeline?: AutoVideoAdTimelineItem[]
+  clip_sequence?: Array<Record<string, unknown>>
+  captions_plan?: AutoVideoAdCaptionScheduleItem[]
+  provider_metadata?: AutoVideoAdProviderMetadata
 }
 export interface MotionVideoReference {
   id: number

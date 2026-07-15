@@ -71,7 +71,7 @@ class CreatorToolApiTest extends TestCase
             'key' => 'auto_video_ads',
             'service_tier' => 'premium',
             'output_type' => 'ad_plan',
-            'implementation_stage' => 'mock',
+            'implementation_stage' => 'beta',
             'status' => 'available',
         ]);
         $this->assertDatabaseHas('creator_tools', [

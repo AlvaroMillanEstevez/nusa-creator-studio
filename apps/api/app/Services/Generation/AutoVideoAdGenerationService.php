@@ -15,6 +15,7 @@ class AutoVideoAdGenerationService
     public function __construct(
         private readonly GenerationSubmissionService $submissions,
         private readonly ToolAvailabilityService $tools,
+        private readonly AutoVideoAdProviderManager $providers,
     ) {}
 
     /**
@@ -63,12 +64,16 @@ class AutoVideoAdGenerationService
             allowedJobTypes: ['generate_ai_voiceover'],
         );
 
+        $provider = $this->providers->selectedProviderForUser($user);
+
         return $this->submissions->submit(
             project: $project,
             user: $user,
             jobType: 'generate_auto_video_ad',
             creditCost: $this->tools->creditCost('auto_video_ads'),
-            creditReason: 'Mock Auto Video Ads plan generation',
+            creditReason: $provider === 'shotstack'
+                ? 'Auto Video Ads Shotstack render'
+                : 'Mock Auto Video Ads plan generation',
             dispatch: fn (int $generationId) => GenerateAutoVideoAdJob::dispatch($generationId),
             inputPayload: $this->inputPayload(
                 project: $project,
@@ -78,7 +83,7 @@ class AutoVideoAdGenerationService
                 voiceoverGeneration: $voiceoverGeneration,
                 options: $options,
             ),
-            provider: 'mock',
+            provider: $provider,
         );
     }
 

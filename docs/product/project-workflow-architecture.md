@@ -8,7 +8,7 @@ The closed beta should be organized around four main user-facing workflows insid
 
 1. **Product Content Kit** — creates campaign angles, hooks, scripts, captions, hashtags, CTA options and publishing notes from a brief, product image or product video analysis.
 2. **Auto Video Editor** — turns real/raw product footage into an organic creator/social video using AI video analysis or manual edit setup.
-3. **Auto Video Ads** — available mock-beta workflow for paid ad creative plans with hook, benefits, promo overlays, CTA and end card. It reuses Product Content Kit output, project assets and optional voiceover context, while final Shotstack MP4 rendering remains a later phase.
+3. **Auto Video Ads** — available real-beta-capable workflow for paid ad creative with hook, benefits, promo overlays, CTA/end card and optional Shotstack MP4 render. It reuses Product Content Kit output, project assets and optional voiceover context. Mock mode remains the safe default.
 4. **Motion AI Video** — planned closed-beta workflow for short AI motion videos from product image, visual scenario and campaign/script context. The real motion provider will be added later.
 
 The Project Workspace contains:
@@ -144,9 +144,9 @@ Text-only and image-assisted Product Content Kit generations should not appear a
 
 Auto Video Editor can also reuse an existing AI Voiceover generation or audio asset, or proceed with no voiceover. In mock mode it may still plan a new voiceover component. In real Shotstack mode, automatic new ElevenLabs generation is intentionally deferred: creators should generate a voiceover first, then select that existing audio in Auto Video Editor.
 
-## Auto Video Ads mock workflow
+## Auto Video Ads beta workflow
 
-Auto Video Ads is now an available Premium mock-beta workflow. It creates a structured paid social ad plan from one project workspace instead of a disconnected ad tool.
+Auto Video Ads is now an available Premium beta workflow. It creates paid social ad creative from one project workspace instead of a disconnected ad tool. By default it uses the deterministic mock provider and returns a structured plan; when `AUTO_VIDEO_AD_PROVIDER=shotstack`, `AUTO_VIDEO_AD_REAL_ENABLED=true` and the user is eligible, it renders a real MP4 with Shotstack.
 
 Input sources:
 
@@ -155,9 +155,9 @@ Input sources:
 - Optional AI Voiceover generation context.
 - Ad setup options such as platform, format, goal, target duration, tone, visual style, hook style, primary CTA and verified offer text.
 
-The backend endpoint is `POST /api/v1/projects/{project}/generate-auto-video-ad`. It charges 2 internal platform credits, creates a queued `Generation` with job type `generate_auto_video_ad`, and completes asynchronously through the deterministic mock provider.
+The backend endpoint is `POST /api/v1/projects/{project}/generate-auto-video-ad`. It charges 12 internal platform credits at generation start, creates a queued `Generation` with job type `generate_auto_video_ad`, and completes asynchronously through the selected provider. Mock mode remains available; Shotstack mode downloads the rendered MP4 server-side and stores it as a private generated video `MediaAsset`.
 
-Current mock output is a plan only. It includes:
+The shared output schema keeps the ad plan sections in both mock and real modes. It includes:
 
 - `ad_summary`
 - `hook_options`
@@ -171,9 +171,9 @@ Current mock output is a plan only. It includes:
 - `render_plan`
 - `metadata`
 
-It must not create a fake MP4, fake render URL or generated video `MediaAsset`. The result UI should clearly say that final MP4 rendering comes next. Future real rendering can reuse the same source-selection and output schema with Shotstack or another renderer, but provider URLs and private storage paths should remain hidden from the frontend.
+Mock mode must not create a fake MP4, fake render URL or generated video `MediaAsset`; the result UI should clearly say that final MP4 rendering is disabled/not available. Shotstack mode adds secure final-video fields such as `rendered_video_asset`, `final_video_asset_id`, `final_video_stream_url`, `final_video_download_url`, `provider_metadata.provider_render_status=done` and `metadata.render_available=true`. Provider URLs and private storage paths must remain hidden from the frontend.
 
-Shotstack renders require temporary provider-accessible URLs for private source video and optional voiceover audio. These URLs use opaque expiring tokens and do not expose raw storage paths. In local development, a public HTTPS tunnel such as ngrok or cloudflared is required because Shotstack cannot fetch private `localhost` URLs.
+Shotstack Auto Video Ads renders support image-only, video-only and hybrid inputs. They require temporary provider-accessible URLs for private product images, source videos and optional voiceover audio. These URLs use opaque expiring tokens and do not expose raw storage paths. In local development, a public HTTPS tunnel such as ngrok or cloudflared is required because Shotstack cannot fetch private `localhost` URLs.
 
 ### Composite credit reuse rules
 

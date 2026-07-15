@@ -75,7 +75,10 @@ const campaignGenerations = computed(() =>
 const voiceoverGenerations = computed(() =>
   generations.value.filter((item) => item.status === 'completed' && item.job_type === 'generate_ai_voiceover'),
 )
-const creditCost = computed(() => autoVideoAdsAction.value?.credit_cost ?? 2)
+const creditCost = computed(() => autoVideoAdsAction.value?.credit_cost ?? 12)
+const isRealCapableBeta = computed(() => creditCost.value >= 12)
+const submitLabel = computed(() => isRealCapableBeta.value ? 'Generate Auto Video Ad' : 'Generate Ad Plan')
+const submittingLabel = computed(() => isRealCapableBeta.value ? 'Generating auto video ad...' : 'Generating ad plan...')
 const selectedVisualType = computed(() => {
   if (selectedImageAssetId.value !== null && selectedVideoAssetId.value !== null) {
     return 'Hybrid ad'
@@ -140,7 +143,7 @@ async function submit(): Promise<void> {
   }
 
   if (selectedImageAssetId.value === null && selectedVideoAssetId.value === null) {
-    formError.value = 'Select a product image, a source video, or both before generating an ad plan.'
+    formError.value = 'Select a product image, a source video, or both before generating an auto video ad.'
     return
   }
 
@@ -171,9 +174,9 @@ async function submit(): Promise<void> {
     await router.push(`/projects/${projectId.value}/generations/${response.data.id}`)
   } catch (error: unknown) {
     if (error instanceof ApiError && (error.code === 'insufficient_credits' || error.status === 402)) {
-      formError.value = 'You do not have enough credits to generate this ad plan.'
+      formError.value = 'You do not have enough credits to generate this auto video ad.'
     } else {
-      formError.value = error instanceof ApiError ? error.message : 'We could not generate this ad plan.'
+      formError.value = error instanceof ApiError ? error.message : 'We could not generate this auto video ad.'
     }
   } finally {
     isSubmitting.value = false
@@ -216,7 +219,7 @@ onMounted(loadPage)
           <p class="mt-7 text-sm font-medium text-emerald-400">{{ project?.title }}</p>
           <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Auto Video Ads</h1>
           <p class="mt-4 max-w-2xl text-sm leading-7 text-neutral-400">
-            Create paid ad creative plans from your product assets, campaign content and CTA.
+            Create paid ad creative from your product assets, campaign content and CTA. When the real beta provider is enabled, Nusa renders a final MP4.
           </p>
         </header>
 
@@ -226,7 +229,7 @@ onMounted(loadPage)
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Source assets</p>
               <h2 class="mt-2 text-xl font-semibold">Choose visual assets</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Use an image for motion-graphic ads, a video for product demo ads, or both for hybrid ads.
+                Use an image for product-focused motion ads, a video for demo ads, or both for hybrid ads. Mock mode returns the plan; real beta mode renders the MP4.
               </p>
 
               <label class="mt-5 block">
@@ -275,7 +278,7 @@ onMounted(loadPage)
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Voiceover</p>
               <h2 class="mt-2 text-xl font-semibold">Optional voiceover source</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Rendering with voiceover will be added in the next phase.
+                Optional. Real beta rendering can include the selected voiceover; mock mode uses it as planning context.
               </p>
               <select v-model.number="selectedVoiceoverGenerationId" class="nusa-select mt-5" data-testid="auto-video-ad-voiceover-select">
                 <option :value="null">No voiceover</option>
@@ -369,13 +372,13 @@ onMounted(loadPage)
             </div>
 
             <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Mock beta</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ isRealCapableBeta ? 'Real beta' : 'Mock beta' }}</p>
               <p class="mt-2 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
-                Costs {{ creditCost }} credits. This creates a structured ad plan only — not a final MP4 render.
+                Costs {{ creditCost }} credits. {{ isRealCapableBeta ? 'Generates the paid ad and renders a final MP4 when the Shotstack beta provider is enabled.' : 'Creates a structured ad plan only — not a final MP4 render.' }}
               </p>
               <p v-if="formError" role="alert" class="mt-4 rounded-xl border border-rose-900/60 bg-rose-950/30 p-3 text-sm leading-6 text-rose-200">{{ formError }}</p>
               <button type="submit" :disabled="isSubmitting" class="mt-5 min-h-12 w-full rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400">
-                {{ isSubmitting ? 'Generating ad plan...' : 'Generate Ad Plan' }}
+                {{ isSubmitting ? submittingLabel : submitLabel }}
               </button>
             </div>
           </section>

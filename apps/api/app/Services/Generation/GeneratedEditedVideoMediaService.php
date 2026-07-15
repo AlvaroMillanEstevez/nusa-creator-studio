@@ -20,6 +20,9 @@ class GeneratedEditedVideoMediaService
         int $generationId,
         string $videoBinary,
         array $metadata,
+        string $workflow = 'auto-video-editor',
+        string $usageRole = 'edited_video_result',
+        string $originalNamePrefix = 'auto-video-editor',
     ): MediaAsset {
         if ($videoBinary === '') {
             throw new RuntimeException('Generated video content is empty.');
@@ -32,13 +35,15 @@ class GeneratedEditedVideoMediaService
         }
 
         $directory = sprintf(
-            'users/%d/generated/auto-video-editor/%s/%s',
+            'users/%d/generated/%s/%s/%s',
             $user->getKey(),
+            $workflow,
             now()->format('Y'),
             now()->format('m'),
         );
         $filename = sprintf(
-            'auto-video-editor-%d-%s.mp4',
+            '%s-%d-%s.mp4',
+            $originalNamePrefix,
             $generationId,
             Str::uuid(),
         );
@@ -55,14 +60,15 @@ class GeneratedEditedVideoMediaService
         return $user->mediaAssets()->create([
             'project_id' => $project->getKey(),
             'type' => 'video',
-            'usage_role' => 'edited_video_result',
+            'usage_role' => $usageRole,
             'disk' => $disk,
             'path' => $path,
-            'original_name' => 'auto-video-editor-'.$generationId.'.mp4',
+            'original_name' => $originalNamePrefix.'-'.$generationId.'.mp4',
             'mime_type' => 'video/mp4',
             'size_bytes' => strlen($videoBinary),
             'metadata' => array_filter(array_merge([
                 'generated' => true,
+                'workflow' => $workflow,
                 'provider' => 'shotstack',
                 'generation_id' => $generationId,
                 'provider_url_was_downloaded' => true,
