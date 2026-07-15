@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\MotionAiVideoProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -399,11 +400,98 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertSame('motion-ai-video', $asset->metadata['workflow']);
         $this->assertSame('motion_ai_video', $asset->metadata['workflow_key']);
         $this->assertSame('google_veo', $asset->metadata['provider']);
+        $this->assertSame(8, $generation->output_payload['provider_metadata']['duration_requested_seconds']);
+        $this->assertSame(8, $generation->output_payload['provider_metadata']['duration_provider_seconds']);
+        $this->assertFalse($generation->output_payload['provider_metadata']['duration_normalized_for_provider']);
+        $this->assertSame('vertical_9_16', $generation->output_payload['provider_metadata']['aspect_ratio_requested']);
+        $this->assertSame('9:16', $generation->output_payload['provider_metadata']['aspect_ratio_provider']);
         $this->assertSame(7, $user->refresh()->credits_balance);
+
+        Http::assertSent(function (Request $request): bool {
+            if ($request->method() !== 'POST' || ! str_ends_with($request->url(), '/v1beta/models/veo-test:predictLongRunning')) {
+                return false;
+            }
+
+            $data = $request->data();
+            $parameters = data_get($data, 'parameters', []);
+            $instance = data_get($data, 'instances.0', []);
+
+            return $request->hasHeader('x-goog-api-key', 'veo-test-key')
+                && is_string(data_get($instance, 'prompt'))
+                && data_get($instance, 'image.inlineData.mimeType') === 'image/jpeg'
+                && data_get($instance, 'image.inlineData.data') === base64_encode('fake-jpeg-bytes')
+                && data_get($instance, 'referenceImages') === null
+                && data_get($parameters, 'aspectRatio') === '9:16'
+                && data_get($parameters, 'durationSeconds') === '8'
+                && ! array_key_exists('sampleCount', $parameters)
+                && ! array_key_exists('generateAudio', $parameters)
+                && ! array_key_exists('negativePrompt', $parameters)
+                && ! array_key_exists('personGeneration', $parameters);
+        });
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'GET'
+            && str_ends_with($request->url(), '/v1beta/operations/motion-video-123')
+            && $request->hasHeader('x-goog-api-key', 'veo-test-key')
+        );
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'GET'
+            && $request->url() === 'https://veo-output.nusa.test/motion-video-123.mp4'
+            && $request->hasHeader('x-goog-api-key', 'veo-test-key')
+        );
 
         $safeOutput = json_encode($generation->output_payload, JSON_THROW_ON_ERROR);
         $this->assertStringNotContainsString('veo-output.nusa.test', $safeOutput);
         $this->assertStringNotContainsString($image->path, $safeOutput);
+    }
+
+    public function test_google_veo_normalizes_duration_aspect_and_keeps_scenario_image_out_of_provider_body(): void
+    {
+        Queue::fake();
+        $this->enableGoogleVeo();
+        config()->set('motion_ai_video.google_veo.base_url', 'https://generativelanguage.googleapis.com/v1beta');
+        $this->fakeGoogleVeoSuccess();
+        $user = User::factory()->admin()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+        $productImage = $this->storedImageAsset($user, $project);
+        $scenarioImage = $this->imageAsset($user, $project, 'background_reference', 'countertop.jpg');
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-motion-ai-video", $this->validPayload([
+                'product_image_asset_id' => $productImage->id,
+                'scenario_image_asset_id' => $scenarioImage->id,
+                'target_duration_seconds' => 15,
+                'aspect_ratio' => 'portrait_4_5',
+            ]))
+            ->assertCreated()
+            ->json('data.id');
+
+        app()->call([new GenerateMotionAiVideoJob($generationId), 'handle']);
+
+        $generation = Generation::query()->findOrFail($generationId);
+
+        $this->assertSame(15, $generation->output_payload['provider_metadata']['duration_requested_seconds']);
+        $this->assertSame(8, $generation->output_payload['provider_metadata']['duration_provider_seconds']);
+        $this->assertTrue($generation->output_payload['provider_metadata']['duration_normalized_for_provider']);
+        $this->assertSame('portrait_4_5', $generation->output_payload['provider_metadata']['aspect_ratio_requested']);
+        $this->assertSame('9:16', $generation->output_payload['provider_metadata']['aspect_ratio_provider']);
+        $this->assertTrue($generation->output_payload['provider_metadata']['scenario_image_prompt_context_only']);
+
+        Http::assertSent(function (Request $request): bool {
+            if ($request->method() !== 'POST' || $request->url() !== 'https://generativelanguage.googleapis.com/v1beta/models/veo-test:predictLongRunning') {
+                return false;
+            }
+
+            $data = $request->data();
+            $parameters = data_get($data, 'parameters', []);
+            $instance = data_get($data, 'instances.0', []);
+
+            return data_get($parameters, 'durationSeconds') === '8'
+                && data_get($parameters, 'aspectRatio') === '9:16'
+                && data_get($instance, 'image.inlineData.data') === base64_encode('fake-jpeg-bytes')
+                && data_get($instance, 'referenceImages') === null
+                && data_get($instance, 'scenario_image') === null
+                && data_get($instance, 'scenarioImage') === null;
+        });
     }
 
     public function test_google_veo_invalid_download_fails_safely_and_refunds(): void

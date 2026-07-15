@@ -24,8 +24,10 @@ class GoogleVeoMotionAiVideoPromptBuilder
         $audience = $this->stringValue($input['target_audience'] ?? null) ?? 'social commerce shoppers';
         $platform = $this->stringValue($input['platform'] ?? null) ?? 'tiktok';
         $tone = $this->stringValue($input['tone'] ?? null) ?? 'natural';
-        $duration = $this->intValue($input['target_duration_seconds'] ?? null, 8);
-        $aspectRatio = $this->aspectRatio($this->stringValue($input['aspect_ratio'] ?? null) ?? 'vertical_9_16');
+        $requestedDuration = $this->intValue($input['target_duration_seconds'] ?? null, 8);
+        $duration = 8;
+        $requestedAspectRatio = $this->stringValue($input['aspect_ratio'] ?? null) ?? 'vertical_9_16';
+        $aspectRatio = $this->aspectRatio($requestedAspectRatio);
         $visualStyle = $this->stringValue($input['visual_style'] ?? null) ?? 'realistic_product';
         $motionStyle = $this->stringValue($input['motion_style'] ?? null) ?? 'slow_push_in';
         $manualScript = $this->stringValue($input['manual_script'] ?? null);
@@ -88,7 +90,10 @@ class GoogleVeoMotionAiVideoPromptBuilder
                 'product_category' => $productCategory,
                 'platform' => $platform,
                 'aspect_ratio' => $aspectRatio,
+                'requested_aspect_ratio' => $requestedAspectRatio,
                 'target_duration_seconds' => $duration,
+                'requested_target_duration_seconds' => $requestedDuration,
+                'duration_normalized_for_provider' => $requestedDuration !== $duration,
                 'visual_style' => $visualStyle,
                 'motion_style' => $motionStyle,
                 'manual_script_used' => $manualScript !== null,
@@ -162,8 +167,7 @@ class GoogleVeoMotionAiVideoPromptBuilder
     private function aspectRatio(string $value): string
     {
         return match ($value) {
-            'square_1_1' => '1:1',
-            'portrait_4_5' => '4:5',
+            'horizontal_16_9', 'landscape_16_9', '16:9' => '16:9',
             default => '9:16',
         };
     }

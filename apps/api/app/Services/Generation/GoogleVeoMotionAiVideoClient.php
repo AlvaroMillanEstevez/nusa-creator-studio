@@ -129,6 +129,7 @@ class GoogleVeoMotionAiVideoClient
 
         try {
             $response = Http::timeout($this->requestTimeout())
+                ->withOptions(['allow_redirects' => true])
                 ->withHeaders(['x-goog-api-key' => (string) config('motion_ai_video.google_veo.api_key')])
                 ->get($uri);
         } catch (Throwable $exception) {
@@ -139,7 +140,7 @@ class GoogleVeoMotionAiVideoClient
             );
         }
 
-        if (! $response->successful() || $response->body() === '') {
+        if (! $response->successful()) {
             $this->logFailure('Google Veo download failed.', $response, $context + ['stage' => 'download']);
 
             throw MotionAiVideoProviderException::requestFailed(
@@ -147,6 +148,8 @@ class GoogleVeoMotionAiVideoClient
                 $this->responseContext($response, $context + ['stage' => 'download']),
             );
         }
+
+        $this->assertValidDownload($response, $context);
 
         Log::info('Google Veo final motion clip downloaded.', [
             'provider' => 'google_veo',
@@ -260,7 +263,7 @@ class GoogleVeoMotionAiVideoClient
 
     private function http(): PendingRequest
     {
-        return Http::baseUrl($this->baseUrl())
+        return Http::baseUrl($this->apiBaseUrl())
             ->acceptJson()
             ->asJson()
             ->withHeaders([
@@ -268,14 +271,16 @@ class GoogleVeoMotionAiVideoClient
             ]);
     }
 
-    private function baseUrl(): string
+    private function apiBaseUrl(): string
     {
-        return rtrim((string) config('motion_ai_video.google_veo.base_url', 'https://generativelanguage.googleapis.com'), '/');
+        $baseUrl = rtrim((string) config('motion_ai_video.google_veo.base_url', 'https://generativelanguage.googleapis.com/v1beta'), '/');
+
+        return str_ends_with($baseUrl, '/v1beta') ? $baseUrl : $baseUrl.'/v1beta';
     }
 
     private function generateEndpoint(): string
     {
-        return '/v1beta/models/'.$this->model().':predictLongRunning';
+        return '/models/'.$this->model().':predictLongRunning';
     }
 
     private function operationEndpoint(string $operationName): string
@@ -284,12 +289,12 @@ class GoogleVeoMotionAiVideoClient
             return $operationName;
         }
 
-        return '/v1beta/'.ltrim($operationName, '/');
+        return '/'.ltrim($operationName, '/');
     }
 
     private function model(): string
     {
-        return trim((string) config('motion_ai_video.google_veo.model', 'veo-3.0-generate-preview'));
+        return trim((string) config('motion_ai_video.google_veo.model', 'veo-3.1-generate-preview'));
     }
 
     private function requestTimeout(): int
@@ -405,7 +410,7 @@ class GoogleVeoMotionAiVideoClient
         return $context + [
             'provider' => 'google_veo',
             'http_status' => $response->status(),
-            'safe_response_excerpt' => mb_substr($response->body(), 0, 500),
+            'safe_response_excerpt' => $this->safeResponseExcerpt($response->body()),
         ];
     }
 
@@ -438,5 +443,43 @@ class GoogleVeoMotionAiVideoClient
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    private function assertValidDownload(Response $response, array $context): void
+    {
+        $body = $response->body();
+        $contentType = strtolower((string) ($response->header('Content-Type') ?? ''));
+        $prefix = strtolower(substr(ltrim($body), 0, 256));
+        $looksLikeHtmlOrJson = str_starts_with($prefix, '<!doctype')
+            || str_starts_with($prefix, '<html')
+            || str_starts_with($prefix, '<')
+            || str_starts_with($prefix, '{')
+            || str_starts_with($prefix, '[');
+        $isMp4 = str_contains($contentType, 'video/mp4');
+        $isOctetStream = str_contains($contentType, 'application/octet-stream');
+
+        if ($body !== '' && ! $looksLikeHtmlOrJson && ($isMp4 || ($isOctetStream && $this->looksLikeMp4Binary($body)))) {
+            return;
+        }
+
+        throw MotionAiVideoProviderException::invalidResponse('google_veo_invalid_response', array_merge($context, [
+            'stage' => 'download_validate',
+            'http_status' => $response->status(),
+            'content_type' => $contentType,
+            'response_format' => $looksLikeHtmlOrJson ? 'html_or_json' : 'unknown_non_mp4',
+        ]));
+    }
+
+    private function looksLikeMp4Binary(string $body): bool
+    {
+        return strlen($body) >= 12 && substr($body, 4, 4) === 'ftyp';
+    }
+
+    private function safeResponseExcerpt(string $body): string
+    {
+        $excerpt = mb_substr($body, 0, 500);
+        $excerpt = preg_replace('/https?:\/\/\S+/i', '[redacted-url]', $excerpt) ?? $excerpt;
+
+        return preg_replace('/[A-Za-z0-9+\/=]{200,}/', '[redacted-long-token]', $excerpt) ?? $excerpt;
     }
 }

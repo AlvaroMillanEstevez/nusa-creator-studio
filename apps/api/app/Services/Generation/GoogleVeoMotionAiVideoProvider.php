@@ -76,7 +76,13 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
                     'campaign_generation_id' => $this->nullableInt($input['campaign_generation_id'] ?? null),
                     'voiceover_generation_id' => $this->nullableInt($input['voiceover_generation_id'] ?? null),
                     'target_duration_seconds' => $this->duration($input),
+                    'requested_target_duration_seconds' => $this->requestedDuration($input),
+                    'provider_duration_seconds' => $this->duration($input),
+                    'duration_normalized_for_provider' => $this->requestedDuration($input) !== $this->duration($input),
                     'aspect_ratio' => $this->aspectRatio($input),
+                    'requested_aspect_ratio' => $this->requestedAspectRatio($input),
+                    'provider_aspect_ratio' => $this->aspectRatio($input),
+                    'scenario_image_prompt_context_only' => $scenarioImage instanceof MediaAsset,
                     'provider_render_status' => $completion['render_status'] ?? null,
                     'provider_latency_ms' => (int) round((microtime(true) - $startedAt) * 1000),
                     'estimated_provider_cost_usd' => $this->estimatedCost($input),
@@ -191,35 +197,21 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
      */
     private function requestPayload(array $prompt, MediaAsset $productImage, ?MediaAsset $scenarioImage, array $input, array $context): array
     {
-        $referenceImages = [];
-
-        if ($scenarioImage instanceof MediaAsset) {
-            $referenceImages[] = [
-                'image' => $this->inlineImage($scenarioImage, $context + ['stage' => 'read_scenario_image']),
-                'label' => 'scenario_environment_reference',
-            ];
-        }
-
         return [
             'instances' => [[
                 'prompt' => $prompt['prompt'],
                 'image' => $this->inlineImage($productImage, $context + ['stage' => 'read_product_image']),
-                'referenceImages' => $referenceImages,
             ]],
             'parameters' => [
-                'durationSeconds' => $this->duration($input),
                 'aspectRatio' => $this->aspectRatio($input),
-                'sampleCount' => 1,
-                'generateAudio' => false,
-                'negativePrompt' => $prompt['negative_prompt'] ?? null,
-                'personGeneration' => 'dont_allow',
+                'durationSeconds' => (string) $this->duration($input),
             ],
         ];
     }
 
     /**
      * @param  array<string, mixed>  $context
-     * @return array<string, string>
+     * @return array<string, array<string, string>>
      */
     private function inlineImage(MediaAsset $asset, array $context): array
     {
@@ -245,8 +237,10 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
         }
 
         return [
-            'mimeType' => $asset->mime_type ?: 'image/jpeg',
-            'bytesBase64Encoded' => base64_encode($binary),
+            'inlineData' => [
+                'mimeType' => $asset->mime_type ?: 'image/jpeg',
+                'data' => base64_encode($binary),
+            ],
         ];
     }
 
@@ -320,7 +314,9 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
         $payload = $plan;
         $payload['motion_summary'] = array_merge(is_array($plan['motion_summary'] ?? null) ? $plan['motion_summary'] : [], [
             'duration' => $this->duration($input),
-            'aspect_ratio' => $input['aspect_ratio'] ?? 'vertical_9_16',
+            'requested_duration' => $this->requestedDuration($input),
+            'aspect_ratio' => $this->aspectRatio($input),
+            'requested_aspect_ratio' => $this->requestedAspectRatio($input),
             'render_available' => true,
             'visual_first_clip' => true,
             'final_video_asset_id' => $finalVideo->getKey(),
@@ -361,11 +357,16 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'visual_first_clip' => true,
             'product_image_asset_id' => $productImage->getKey(),
             'scenario_image_asset_id' => $scenarioImage?->getKey(),
+            'scenario_image_prompt_context_only' => $scenarioImage instanceof MediaAsset,
             'campaign_generation_id' => $this->nullableInt($input['campaign_generation_id'] ?? null),
             'voiceover_generation_id' => $this->nullableInt($input['voiceover_generation_id'] ?? null),
             'platform' => $input['platform'] ?? 'tiktok',
-            'aspect_ratio' => $input['aspect_ratio'] ?? 'vertical_9_16',
+            'aspect_ratio' => $this->aspectRatio($input),
+            'requested_aspect_ratio' => $this->requestedAspectRatio($input),
             'target_duration_seconds' => $this->duration($input),
+            'requested_target_duration_seconds' => $this->requestedDuration($input),
+            'provider_duration_seconds' => $this->duration($input),
+            'duration_normalized_for_provider' => $this->requestedDuration($input) !== $this->duration($input),
             'render_available' => true,
             'real_provider_enabled' => true,
             'provider_render_status' => $completion['render_status'] ?? 'done',
@@ -378,10 +379,14 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'model' => $this->model(),
             'mode' => 'real',
             'visual_first_clip' => true,
-            'duration_requested_seconds' => $this->duration($input),
-            'aspect_ratio_requested' => $this->aspectRatio($input),
+            'duration_requested_seconds' => $this->requestedDuration($input),
+            'duration_provider_seconds' => $this->duration($input),
+            'duration_normalized_for_provider' => $this->requestedDuration($input) !== $this->duration($input),
+            'aspect_ratio_requested' => $this->requestedAspectRatio($input),
+            'aspect_ratio_provider' => $this->aspectRatio($input),
             'product_image_asset_id' => $productImage->getKey(),
             'scenario_image_asset_id' => $scenarioImage?->getKey(),
+            'scenario_image_prompt_context_only' => $scenarioImage instanceof MediaAsset,
             'campaign_generation_id' => $this->nullableInt($input['campaign_generation_id'] ?? null),
             'voiceover_generation_id' => $this->nullableInt($input['voiceover_generation_id'] ?? null),
             'final_video_asset_id' => $finalVideo->getKey(),
@@ -400,11 +405,17 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
 
     private function model(): string
     {
-        return (string) config('motion_ai_video.google_veo.model', 'veo-3.0-generate-preview');
+        return (string) config('motion_ai_video.google_veo.model', 'veo-3.1-generate-preview');
     }
 
     /** @param array<string, mixed> $input */
     private function duration(array $input): int
+    {
+        return 8;
+    }
+
+    /** @param array<string, mixed> $input */
+    private function requestedDuration(array $input): int
     {
         return is_numeric($input['target_duration_seconds'] ?? null)
             ? max(1, (int) $input['target_duration_seconds'])
@@ -415,10 +426,17 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
     private function aspectRatio(array $input): string
     {
         return match ($input['aspect_ratio'] ?? 'vertical_9_16') {
-            'square_1_1' => '1:1',
-            'portrait_4_5' => '4:5',
+            'horizontal_16_9', 'landscape_16_9', '16:9' => '16:9',
             default => '9:16',
         };
+    }
+
+    /** @param array<string, mixed> $input */
+    private function requestedAspectRatio(array $input): string
+    {
+        return is_scalar($input['aspect_ratio'] ?? null)
+            ? trim((string) $input['aspect_ratio'])
+            : 'vertical_9_16';
     }
 
     /** @param array<string, mixed> $input */

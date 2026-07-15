@@ -237,6 +237,20 @@ Out of scope for v1:
 - Public audio download/player routes.
 - Billing or provider-cost-based credit pricing.
 
+## Motion AI Video Google Veo beta request scope
+
+The real Google Veo beta integration should keep its provider request shape intentionally small until broader inputs are verified against current Google documentation. The backend sends the official long-running REST request to `models/{model}:predictLongRunning`, polls the returned operation name, and downloads the generated video from the completed operation response.
+
+Current supported real-provider input shape:
+
+- One required product image as the primary image-to-video reference.
+- Product/campaign/voiceover/scenario context folded into the text prompt.
+- Scenario image is not sent as an additional raw provider field yet; it is tracked as prompt context only.
+- Provider aspect ratio is normalized to `9:16` or `16:9`, with unsupported app ratios falling back to `9:16`.
+- Provider duration is normalized to `8` seconds for the current Veo 3.1 image-to-video path while preserving requested vs provider duration in metadata.
+
+Avoid sending unsupported experimental fields such as arbitrary metadata, audio disable flags, output format flags, camera-control objects, or scenario/reference images unless the exact REST shape is verified first. Provider download URIs, private storage paths and encoded media bytes must stay out of user-facing output and logs.
+
 ## Future avatar workflows
 
 ### AI Avatar Presenter
