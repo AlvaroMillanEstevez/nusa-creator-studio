@@ -181,6 +181,10 @@ function createFetchMock(
       return Response.json(actions)
     }
 
+    if (url.endsWith('/media-assets') && method === 'POST') {
+      return Response.json({ data: { ...productImage, id: 900, original_name: 'uploaded-product.jpg' } }, { status: 201 })
+    }
+
     if (url.endsWith('/projects/42/generate-motion-ai-video') && method === 'POST') {
       return Response.json(
         {
@@ -253,7 +257,7 @@ describe('MotionAiVideoActionView', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('Select a product image')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Upload or select a product image')
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/projects/42/generate-motion-ai-video'))).toBe(false)
   })
 
@@ -265,11 +269,37 @@ describe('MotionAiVideoActionView', () => {
     expect(wrapper.find('[data-testid="motion-manual-script"]').exists()).toBe(true)
   })
 
+  it('uploads and selects a product image inside the Motion AI form', async () => {
+    const { wrapper, fetchMock } = await mountView([], [])
+    const input = wrapper.findAll<HTMLInputElement>('[data-testid="project-asset-file"]')[0]
+
+    if (!input) {
+      throw new Error('Expected product image file input')
+    }
+
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['image'], 'uploaded-product.jpg', { type: 'image/jpeg' })],
+      configurable: true,
+    })
+
+    await input.trigger('change')
+    await wrapper.findAll('[data-testid="project-asset-upload"]')[0]?.trigger('click')
+    await flushPromises()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const uploadCall = fetchMock.mock.calls.find(([input, init]) => String(input).endsWith('/media-assets') && init?.method === 'POST')
+    const formData = uploadCall?.[1]?.body as FormData
+
+    expect(formData.get('project_id')).toBe('42')
+    expect(formData.get('usage_role')).toBe('product_image')
+    expect(submittedPayload(fetchMock)).toMatchObject({ product_image_asset_id: 900 })
+  })
+
   it('submits expected payload with product, scenario, campaign and voiceover selections', async () => {
     const { wrapper, fetchMock, router } = await mountView()
 
-    await wrapper.get('[data-testid="motion-product-image-select"]').setValue('90')
-    await wrapper.get('[data-testid="motion-scenario-image-select"]').setValue('91')
+    await wrapper.findAll('[data-testid="project-asset-option-91"]')[1]?.trigger('click')
     await wrapper.get('[data-testid="motion-campaign-select"]').setValue('31')
     await wrapper.get('[data-testid="motion-voiceover-select"]').setValue('44')
     await wrapper.get('[data-testid="motion-platform-select"]').setValue('instagram_reels')

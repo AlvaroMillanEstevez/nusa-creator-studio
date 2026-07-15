@@ -179,14 +179,14 @@ class ProjectActionService
         return $this->action(
             user: $user,
             key: 'generate_video_to_campaign',
-            title: 'Generate campaign from video',
+            title: 'Analyze product footage',
             description: 'Turn source product footage into hooks, narration, captions, recommended cuts and an edit plan.',
             serviceTier: 'advanced',
             outputType: 'assisted_media',
             tool: $tool,
             status: 'configure',
             actionMode: 'configure',
-            primaryLabel: $existingVideoCampaigns > 0 ? 'Generate another video campaign' : 'Generate video campaign',
+            primaryLabel: $existingVideoCampaigns > 0 ? 'Generate another video analysis kit' : 'Generate video analysis kit',
             primaryAction: 'configure_video_to_campaign',
             requirements: $requirements,
             recommendedAssets: $this->recommendedAssets($project, [

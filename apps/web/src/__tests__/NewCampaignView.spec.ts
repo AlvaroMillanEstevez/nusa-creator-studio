@@ -33,6 +33,7 @@ async function mountView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) {
       { path: '/dashboard', component: { template: '<div />' } },
       { path: '/campaigns/new', component: NewCampaignView },
       { path: '/projects/:id', name: 'project-detail', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
     ],
   })
 
@@ -49,30 +50,35 @@ async function mountView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) {
   return { wrapper, router }
 }
 
+async function fillRequiredFields(wrapper: Awaited<ReturnType<typeof mountView>>['wrapper']): Promise<void> {
+  await wrapper.get('#product-name').setValue('Pocket Light')
+  await wrapper.get('#product-description').setValue('A compact light for creator desk videos.')
+  await wrapper.get('#target-audience').setValue('TikTok affiliate creators')
+}
+
 describe('NewCampaignView', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('shows Product Content Kit brief-only and image-assisted input modes with video-analysis guidance', async () => {
+  it('shows Product Content Kit brief, image and video-analysis input modes', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(campaignResponse(91, 'Pocket Light'))
     const { wrapper } = await mountView(fetchMock)
 
     expect(wrapper.text()).toContain('Brief only')
     expect(wrapper.text()).toContain('Best when you already know the product, audience and angle.')
     expect(wrapper.text()).toContain('Product image')
-    expect(wrapper.text()).toContain('Use a product photo to improve context and positioning.')
-    expect(wrapper.text()).toContain('Product video path: analyze product footage')
-    expect(wrapper.text()).toContain('Video analysis results still save into this workspace and can feed Auto Video Editor.')
+    expect(wrapper.text()).toContain('Image-assisted campaign context')
+    expect(wrapper.text()).toContain('Product video analysis')
+    expect(wrapper.text()).toContain('Analyze product footage for campaign ideas and edit-plan data.')
+    expect(wrapper.text()).toContain('Brief and image-assisted kits create campaign content.')
   })
 
   it('creates a brief-only Product Content Kit by default', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(campaignResponse(92, 'Pocket Light'))
     const { wrapper, router } = await mountView(fetchMock)
 
-    await wrapper.get('#product-name').setValue('Pocket Light')
-    await wrapper.get('#product-description').setValue('A compact light for creator desk videos.')
-    await wrapper.get('#target-audience').setValue('TikTok affiliate creators')
+    await fillRequiredFields(wrapper)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
@@ -102,21 +108,88 @@ describe('NewCampaignView', () => {
     expect(router.currentRoute.value.fullPath).toBe('/projects/92')
   })
 
-  it('sends image-assisted mode without implying direct Auto Video Editor eligibility', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(campaignResponse(93, 'Pocket Light'))
-    const { wrapper } = await mountView(fetchMock)
+  it('uploads a product image and stores image-assisted asset context on the project', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+
+      if (url.endsWith('/projects') && method === 'POST') {
+        return campaignResponse(93, 'Pocket Light')
+      }
+
+      if (url.endsWith('/media-assets') && method === 'POST') {
+        return Response.json({
+          data: {
+            id: 901,
+            user_id: 1,
+            project_id: 93,
+            type: 'image',
+            usage_role: 'product_image',
+            disk: 'local',
+            storage_identifier: 'asset-901',
+            original_name: 'pocket-light.jpg',
+            mime_type: 'image/jpeg',
+            size_bytes: 2048,
+            size_label: '2 KB',
+            metadata: null,
+            created_at: '2026-07-14T01:00:00.000000Z',
+            updated_at: '2026-07-14T01:00:00.000000Z',
+          },
+        }, { status: 201 })
+      }
+
+      if (url.endsWith('/projects/93') && method === 'PATCH') {
+        return campaignResponse(93, 'Pocket Light')
+      }
+
+      return Response.json({}, { status: 404 })
+    })
+    const { wrapper, router } = await mountView(fetchMock)
 
     await wrapper.get('input[value="image_assisted"]').setValue(true)
-    await wrapper.get('#product-name').setValue('Pocket Light')
-    await wrapper.get('#product-description').setValue('A compact light for creator desk videos.')
-    await wrapper.get('#target-audience').setValue('TikTok affiliate creators')
+    await fillRequiredFields(wrapper)
+
+    const input = wrapper.get<HTMLInputElement>('[data-testid="campaign-product-image-file"]')
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['image'], 'pocket-light.jpg', { type: 'image/jpeg' })],
+      configurable: true,
+    })
+    await input.trigger('change')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const uploadCall = fetchMock.mock.calls.find(([input, init]) => String(input).endsWith('/media-assets') && init?.method === 'POST')
+    const formData = uploadCall?.[1]?.body as FormData
+    const patchCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/projects/93'))
+    const patchBody = JSON.parse(String(patchCall?.[1]?.body)) as { input_payload?: Record<string, unknown> }
+
+    expect(formData.get('project_id')).toBe('93')
+    expect(formData.get('usage_role')).toBe('product_image')
+    expect(formData.get('type')).toBe('image')
+    expect(patchBody.input_payload).toMatchObject({
+      campaign_input_mode: 'image_assisted',
+      source_image_asset_id: 901,
+      product_image_asset_id: 901,
+      product_image_asset_name: 'pocket-light.jpg',
+    })
+    expect(router.currentRoute.value.fullPath).toBe('/projects/93')
+    expect(wrapper.text()).not.toContain('Use image campaigns directly in Auto Video Editor')
+  })
+
+  it('creates a video-analysis Product Content Kit workspace and routes to the video analysis flow', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(campaignResponse(94, 'Pocket Light'))
+    const { wrapper, router } = await mountView(fetchMock)
+
+    await wrapper.get('input[value="video_analysis"]').setValue(true)
+    await fillRequiredFields(wrapper)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
     const call = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/projects'))
     const body = JSON.parse(String(call?.[1]?.body)) as { input_payload?: { campaign_input_mode?: string } }
 
-    expect(body.input_payload?.campaign_input_mode).toBe('image_assisted')
-    expect(wrapper.text()).not.toContain('Use image campaigns directly in Auto Video Editor')
+    expect(body.input_payload?.campaign_input_mode).toBe('video_analysis')
+    expect(router.currentRoute.value.name).toBe('project-video-to-campaign-action')
+    expect(router.currentRoute.value.params.projectId).toBe('94')
   })
 })

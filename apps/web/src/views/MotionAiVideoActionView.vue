@@ -3,15 +3,14 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import ProjectAssetInput from '@/components/ProjectAssetInput.vue'
 import { ApiError } from '@/services/api'
-import { listProjectMediaAssets } from '@/services/media'
 import {
   generateMotionVideo,
   getCreatorProject,
   getProjectActions,
   getProjectGenerations,
 } from '@/services/projects'
-import type { MediaAsset } from '@/types/media'
 import {
   motionAspectRatioOptions,
   motionDurationOptions,
@@ -32,7 +31,6 @@ const router = useRouter()
 const project = ref<CreatorProject | null>(null)
 const actions = ref<ProjectAction[]>([])
 const generations = ref<CreatorGeneration[]>([])
-const mediaAssets = ref<MediaAsset[]>([])
 const selectedProductImageAssetId = ref<number | null>(null)
 const selectedScenarioImageAssetId = ref<number | null>(null)
 const selectedCampaignGenerationId = ref<number | null>(null)
@@ -69,8 +67,6 @@ const projectId = computed(() => {
   return value || ''
 })
 const motionAction = computed(() => actions.value.find((item) => item.key === 'start_motion_video') ?? null)
-const productImages = computed(() => mediaAssets.value.filter((asset) => asset.type === 'image'))
-const scenarioImages = computed(() => productImages.value)
 const campaignGenerations = computed(() =>
   generations.value.filter(
     (item) =>
@@ -94,12 +90,6 @@ const isUpgradeRequired = computed(() =>
 function initializeForm(loadedProject: CreatorProject): void {
   const input = (loadedProject.input_payload ?? {}) as Record<string, unknown>
 
-  selectedProductImageAssetId.value =
-    productImages.value.find((asset) => asset.usage_role === 'product_image')?.id ??
-    productImages.value[0]?.id ??
-    null
-  selectedScenarioImageAssetId.value =
-    productImages.value.find((asset) => asset.usage_role === 'background_reference')?.id ?? null
   selectedCampaignGenerationId.value = campaignGenerations.value[0]?.id ?? null
   selectedVoiceoverGenerationId.value = voiceoverGenerations.value[0]?.id ?? null
   scriptSource.value = selectedCampaignGenerationId.value === null ? 'project_brief' : 'campaign_script'
@@ -113,15 +103,13 @@ async function loadPage(): Promise<void> {
   loadError.value = ''
 
   try {
-    const [loadedProject, assetResponse, generationResponse, actionResponse] = await Promise.all([
+    const [loadedProject, generationResponse, actionResponse] = await Promise.all([
       getCreatorProject(projectId.value),
-      listProjectMediaAssets(projectId.value),
       getProjectGenerations(projectId.value),
       getProjectActions(projectId.value),
     ])
 
     project.value = loadedProject
-    mediaAssets.value = Array.isArray(assetResponse.data) ? assetResponse.data : []
     generations.value = Array.isArray(generationResponse.data) ? generationResponse.data : []
     actions.value = Array.isArray(actionResponse.data) ? actionResponse.data : []
     initializeForm(loadedProject)
@@ -141,7 +129,7 @@ async function submit(): Promise<void> {
   }
 
   if (selectedProductImageAssetId.value === null) {
-    formError.value = 'Select a product image before generating a motion video plan.'
+    formError.value = 'Upload or select a product image before generating a motion video plan.'
     return
   }
 
@@ -237,22 +225,20 @@ onMounted(loadPage)
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Product image</p>
               <h2 class="mt-2 text-xl font-semibold">Choose the source product image</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Use a clear product image. Real video generation will depend heavily on product image quality.
+                Product image is required. Upload or select it here without leaving this workflow.
               </p>
 
-              <label class="mt-5 block">
-                <span class="nusa-label">Product image</span>
-                <select v-model.number="selectedProductImageAssetId" class="nusa-select mt-2" data-testid="motion-product-image-select">
-                  <option :value="null">Select product image</option>
-                  <option v-for="asset in productImages" :key="asset.id" :value="asset.id">
-                    {{ asset.original_name ?? 'Image #' + asset.id }}
-                  </option>
-                </select>
-              </label>
-
-              <RouterLink to="/media" class="mt-4 inline-flex text-sm font-semibold text-emerald-300 hover:text-emerald-200">
-                Upload or manage media assets →
-              </RouterLink>
+              <ProjectAssetInput
+                v-model="selectedProductImageAssetId"
+                :project-id="projectId"
+                accepted-types="image"
+                usage-role="product_image"
+                title="Upload or choose product image"
+                helper-text="Upload or select a clear product image. This is the main visual reference for the motion clip."
+                required
+                auto-select-first
+                class="mt-5"
+              />
             </div>
 
             <div class="nusa-card-premium rounded-[2rem] p-5">
@@ -262,15 +248,15 @@ onMounted(loadPage)
                 Add a scenario image or describe the environment you want.
               </p>
 
-              <label class="mt-5 block">
-                <span class="nusa-label">Scenario image</span>
-                <select v-model.number="selectedScenarioImageAssetId" class="nusa-select mt-2" data-testid="motion-scenario-image-select">
-                  <option :value="null">No scenario image</option>
-                  <option v-for="asset in scenarioImages" :key="asset.id" :value="asset.id">
-                    {{ asset.original_name ?? 'Image #' + asset.id }}
-                  </option>
-                </select>
-              </label>
+              <ProjectAssetInput
+                v-model="selectedScenarioImageAssetId"
+                :project-id="projectId"
+                accepted-types="image"
+                usage-role="background_reference"
+                title="Upload or choose scenario image"
+                helper-text="Optional. Add a background or scene reference to guide the environment."
+                class="mt-5"
+              />
 
               <label class="mt-4 block">
                 <span class="nusa-label">Scene description</span>

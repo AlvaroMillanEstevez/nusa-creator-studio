@@ -241,7 +241,7 @@ function action(overrides: Partial<ProjectAction> & Pick<ProjectAction, 'key'>):
 
 const actions: ProjectActionsResponse = {
   data: [
-    action({ key: 'generate_video_to_campaign', title: 'Generate campaign from video', credit_cost: 2, tool_key: 'video_to_campaign' }),
+    action({ key: 'generate_video_to_campaign', title: 'Analyze product footage', credit_cost: 2, tool_key: 'video_to_campaign' }),
     action({ key: 'generate_auto_video_edit', title: 'Auto Video Editor', credit_cost: 2, service_tier: 'premium', output_type: 'video', tool_key: 'auto_video_editor' }),
     action({ key: 'generate_voiceover_from_script', title: 'Create voiceover', credit_cost: 1, tool_key: 'ai_voiceover' }),
   ],
@@ -288,6 +288,10 @@ function createFetchMock(
       return Response.json(actions)
     }
 
+    if (url.endsWith('/media-assets') && method === 'POST') {
+      return Response.json({ data: { ...sourceVideo, id: 188, original_name: 'uploaded-product-video.mp4' } }, { status: 201 })
+    }
+
     if (url.endsWith('/projects/42/generate-video-campaign') && method === 'POST') {
       return Response.json({ data: { ...videoCampaignGeneration, id: 101, status: 'queued' } }, { status: 202 })
     }
@@ -332,14 +336,40 @@ describe('video workflow action views', () => {
   it('renders Video-to-Campaign source setup and validates missing source video', async () => {
     const { wrapper } = await mountView(VideoToCampaignActionView, '/projects/42/actions/video-to-campaign', [])
 
-    expect(wrapper.text()).toContain('Generate campaign from video')
-    expect(wrapper.text()).toContain('Choose source video')
-    expect(wrapper.text()).toContain('No project videos yet. Upload one below to continue.')
+    expect(wrapper.text()).toContain('Product Content Kit · Video analysis')
+    expect(wrapper.text()).toContain('Upload or choose product video')
+    expect(wrapper.text()).toContain('No project assets yet. Upload one here to continue.')
 
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('Select or upload a source video first.')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Upload or choose a product video first.')
+  })
+
+  it('uploads and uses a product video inside the video-analysis form', async () => {
+    const { wrapper, fetchMock } = await mountView(VideoToCampaignActionView, '/projects/42/actions/video-to-campaign', [])
+    const input = wrapper.get<HTMLInputElement>('[data-testid="project-asset-file"]')
+
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['video'], 'uploaded-product-video.mp4', { type: 'video/mp4' })],
+      configurable: true,
+    })
+
+    await input.trigger('change')
+    await wrapper.get('[data-testid="project-asset-upload"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await flushPromises()
+
+    const uploadCall = fetchMock.mock.calls.find(([input, init]) => String(input).endsWith('/media-assets') && init?.method === 'POST')
+    const formData = uploadCall?.[1]?.body as FormData
+    const generateCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/projects/42/generate-video-campaign'))
+    const body = JSON.parse(String(generateCall?.[1]?.body)) as Record<string, unknown>
+
+    expect(formData.get('project_id')).toBe('42')
+    expect(formData.get('usage_role')).toBe('campaign_source_video')
+    expect(body.source_video_asset_id).toBe(188)
   })
 
   it('submits Video-to-Campaign with the selected source video and redirects to generation detail', async () => {
@@ -552,7 +582,7 @@ describe('video workflow action views', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('Select or upload a source video first.')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Upload or choose a product video first.')
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/projects/42/generate-auto-video-edit'))).toBe(false)
   })
   it('does not overwrite a manually edited Auto Video Editor CTA when switching analysis', async () => {

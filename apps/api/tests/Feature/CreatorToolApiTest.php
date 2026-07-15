@@ -22,6 +22,36 @@ class CreatorToolApiTest extends TestCase
         $this->assertDatabaseCount('creator_tools', 12);
     }
 
+    public function test_creator_tool_seeder_repairs_stale_active_workflow_statuses(): void
+    {
+        CreatorTool::query()->whereIn('key', ['auto_video_ads', 'motion_ai_video'])->update([
+            'status' => 'disabled',
+            'route' => null,
+            'implementation_stage' => 'future',
+            'credit_cost' => 0,
+            'credit_cost_label' => 'Credit cost coming soon',
+            'badge_label' => 'Coming soon',
+        ]);
+
+        $this->seed(CreatorToolSeeder::class);
+
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'auto_video_ads',
+            'status' => 'available',
+            'route' => '/dashboard?tool=auto_video_ads',
+            'implementation_stage' => 'beta',
+            'credit_cost' => 12,
+            'credit_cost_label' => '12 credits',
+            'badge_label' => 'Real beta',
+        ]);
+
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'motion_ai_video',
+            'status' => 'available',
+            'route' => '/dashboard?tool=motion_ai_video',
+        ]);
+    }
+
     public function test_seeded_existing_tools_have_service_tier_output_type_and_stage(): void
     {
         $this->assertDatabaseHas('creator_tools', [

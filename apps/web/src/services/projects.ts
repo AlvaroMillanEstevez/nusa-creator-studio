@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '@/services/api'
+import { apiGet, apiPatch, apiPost } from '@/services/api'
 import type {
   AiVoiceoverFormPayload,
   AiVoiceoverGenerationResponse,
@@ -201,6 +201,18 @@ export async function getCampaignProject(projectId: number | string): Promise<Ca
 
 export async function getCreatorProject(projectId: number | string): Promise<CreatorProject> {
   const response = await apiGet<ResourceResponse<CreatorProject>>('/projects/' + projectId)
+
+  return response.data
+}
+
+export async function updateProject(
+  projectId: number | string,
+  payload: Partial<CreateProjectPayload<unknown, unknown>>,
+): Promise<CreatorProject> {
+  const response = await apiPatch<
+    ResourceResponse<CreatorProject>,
+    Partial<CreateProjectPayload<unknown, unknown>>
+  >('/projects/' + projectId, payload)
 
   return response.data
 }

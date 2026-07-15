@@ -99,8 +99,20 @@ class CreatorToolSeeder extends Seeder
             $creatorTool->status = $tool['status'];
         }
 
+        if (in_array($tool['key'], ['auto_video_ads', 'motion_ai_video'], true)) {
+            $creatorTool->status = $tool['status'];
+        }
+
         if ($tool['key'] === 'motion_ai_video' && $creatorTool->implementation_stage === 'future') {
             $creatorTool->implementation_stage = $tool['implementation_stage'];
+        }
+
+        if ($tool['key'] === 'auto_video_ads') {
+            $creatorTool->implementation_stage = $tool['implementation_stage'];
+            $creatorTool->route = $tool['route'];
+            $creatorTool->credit_cost = $tool['credit_cost'];
+            $creatorTool->credit_cost_label = $tool['credit_cost_label'];
+            $creatorTool->badge_label = $tool['badge_label'];
         }
 
         if ($creatorTool->route === null || ($tool['key'] === 'motion_ai_video' && $creatorTool->route === '/motion-video/new')) {

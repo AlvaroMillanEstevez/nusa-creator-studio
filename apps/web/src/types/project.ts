@@ -461,6 +461,10 @@ export interface CampaignFormPayload {
   target_audience: string
   language: CampaignLanguage
   tone: CampaignTone
+  source_image_asset_id?: number | null
+  product_image_asset_id?: number | null
+  product_image_asset_name?: string | null
+  source_video_asset_id?: number | null
 }
 
 export interface VideoEnhancerForm {
