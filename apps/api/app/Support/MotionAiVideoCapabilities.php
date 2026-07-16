@@ -13,9 +13,13 @@ class MotionAiVideoCapabilities
 
     public const SOURCE_MODE_IMAGE_CONTEXT = 'image_context';
 
+    public const SOURCE_MODE_IMAGE_FIRST_FRAME = 'image_first_frame';
+
     public const SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL = 'image_reference_experimental';
 
     public const REQUEST_MODE_TEXT_ONLY = 'text_only';
+
+    public const REQUEST_MODE_IMAGE_FIRST_FRAME = 'image_first_frame';
 
     public const REQUEST_MODE_REFERENCE_IMAGES_EXPERIMENTAL = 'reference_images_experimental';
 
@@ -28,6 +32,7 @@ class MotionAiVideoCapabilities
             self::SOURCE_MODE_TEXT_PROMPT,
             self::SOURCE_MODE_CAMPAIGN_ASSISTED,
             self::SOURCE_MODE_IMAGE_CONTEXT,
+            self::SOURCE_MODE_IMAGE_FIRST_FRAME,
             self::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL,
         ];
     }
@@ -36,6 +41,10 @@ class MotionAiVideoCapabilities
     {
         if (is_string($value) && in_array($value, self::sourceModes(), true)) {
             return $value;
+        }
+
+        if (is_string($value) && in_array($value, ['image_to_video', 'first_frame_experimental'], true)) {
+            return self::SOURCE_MODE_IMAGE_FIRST_FRAME;
         }
 
         if ($campaignGenerationId !== null && $campaignGenerationId !== '') {
@@ -57,10 +66,14 @@ class MotionAiVideoCapabilities
             ? trim($value)
             : trim((string) config('motion_ai_video.google_veo.request_mode', self::REQUEST_MODE_TEXT_ONLY));
 
+        if (in_array($mode, [self::REQUEST_MODE_FIRST_FRAME_EXPERIMENTAL, 'image_to_video'], true)) {
+            return self::REQUEST_MODE_IMAGE_FIRST_FRAME;
+        }
+
         return in_array($mode, [
             self::REQUEST_MODE_TEXT_ONLY,
+            self::REQUEST_MODE_IMAGE_FIRST_FRAME,
             self::REQUEST_MODE_REFERENCE_IMAGES_EXPERIMENTAL,
-            self::REQUEST_MODE_FIRST_FRAME_EXPERIMENTAL,
         ], true)
             ? $mode
             : self::REQUEST_MODE_TEXT_ONLY;
@@ -79,15 +92,26 @@ class MotionAiVideoCapabilities
             && $requestMode === self::REQUEST_MODE_REFERENCE_IMAGES_EXPERIMENTAL
             && (bool) config('motion_ai_video.google_veo.image_references_enabled', false)
             && (bool) config('motion_ai_video.google_veo.allow_experimental_image_input', false);
+        $imageToVideoEnabled = $provider === 'google_veo'
+            && $requestMode === self::REQUEST_MODE_IMAGE_FIRST_FRAME
+            && (bool) config('motion_ai_video.google_veo.image_to_video_enabled', false);
 
         return [
             'provider_mode' => $provider,
             'real_enabled' => $provider === 'google_veo',
             'request_mode' => $requestMode,
             'product_image_required' => $imageReferencesEnabled,
-            'product_image_supported' => $imageReferencesEnabled ? true : 'context_only',
+            'product_image_supported' => $imageToVideoEnabled
+                ? 'first_frame'
+                : ($imageReferencesEnabled ? true : 'context_only'),
             'campaign_supported' => true,
             'text_prompt_supported' => true,
+            'image_context_supported' => true,
+            'image_to_video_supported' => $provider === 'google_veo',
+            'image_to_video_enabled' => $imageToVideoEnabled,
+            'reference_images_supported' => $provider === 'google_veo',
+            'reference_images_enabled' => $imageReferencesEnabled,
+            'max_reference_images' => (int) config('motion_ai_video.google_veo.max_reference_images', 3),
             'image_reference_experimental' => $imageReferencesEnabled,
             'provider_label' => $provider === 'google_veo' ? 'Google Veo' : 'Mock',
             'default_duration_seconds' => self::defaultDurationSeconds(),
@@ -99,7 +123,12 @@ class MotionAiVideoCapabilities
 
     public static function imageReferencesEnabledForUser(?User $user): bool
     {
-        return (bool) self::forUser($user)['image_reference_experimental'];
+        return (bool) self::forUser($user)['reference_images_enabled'];
+    }
+
+    public static function imageToVideoEnabledForUser(?User $user): bool
+    {
+        return (bool) self::forUser($user)['image_to_video_enabled'];
     }
 
     public static function defaultDurationSeconds(): int

@@ -73,7 +73,8 @@ const motionAction = computed(() => actions.value.find((item) => item.key === 's
 const capabilities = computed(() => motionAction.value?.provider_capabilities ?? null)
 const providerLabel = computed(() => capabilities.value?.provider_label ?? 'Mock')
 const requestModeLabel = computed(() => capabilities.value?.request_mode ?? 'mock')
-const imageReferenceEnabled = computed(() => capabilities.value?.image_reference_experimental === true)
+const imageToVideoEnabled = computed(() => capabilities.value?.image_to_video_enabled === true)
+const imageReferenceEnabled = computed(() => capabilities.value?.reference_images_enabled === true || capabilities.value?.image_reference_experimental === true)
 const supportsRealRendering = computed(() => capabilities.value?.supports_real_rendering === true)
 const isTextOnlyProviderMode = computed(() => capabilities.value?.request_mode === 'text_only')
 const sourceModeOptions = computed<SourceModeOption[]>(() => [
@@ -88,6 +89,15 @@ const sourceModeOptions = computed<SourceModeOption[]>(() => [
     label: 'Use saved campaign',
     eyebrow: 'Campaign to video',
     description: 'Turn an existing Product Content Kit or campaign generation into a motion-video prompt.',
+  },
+  {
+    value: 'image_first_frame',
+    label: 'Animate product image',
+    eyebrow: 'Image to video',
+    description: imageToVideoEnabled.value
+      ? 'Send one selected product image as the starting frame for the Veo beta probe.'
+      : 'First-frame image-to-video is not enabled yet. Use text, campaign, or image-context mode.',
+    disabled: !imageToVideoEnabled.value,
   },
   {
     value: 'image_context',
@@ -105,21 +115,29 @@ const sourceModeOptions = computed<SourceModeOption[]>(() => [
     disabled: !imageReferenceEnabled.value,
   },
 ])
-const usesProductImage = computed(() => ['image_context', 'image_reference_experimental'].includes(sourceMode.value))
+const usesProductImage = computed(() => ['image_context', 'image_first_frame', 'image_reference_experimental'].includes(sourceMode.value))
 const productImageRequired = computed(() => usesProductImage.value)
 const campaignRequired = computed(() => sourceMode.value === 'campaign_assisted')
 const showCampaignPicker = computed(() => sourceMode.value === 'campaign_assisted' || usesProductImage.value)
 const productImageTitle = computed(() =>
-  sourceMode.value === 'image_reference_experimental' ? 'Upload or choose product image *' : 'Upload or choose product image',
+  ['image_first_frame', 'image_reference_experimental'].includes(sourceMode.value)
+    ? 'Upload or choose product image *'
+    : 'Upload or choose product image',
 )
 const productImageHelperText = computed(() => {
+  if (sourceMode.value === 'image_first_frame') {
+    return imageToVideoEnabled.value
+      ? 'The selected image becomes the starting frame for the Veo image-to-video beta. Nusa does not promise exact product preservation yet.'
+      : 'First-frame image-to-video is not enabled for the current provider mode.'
+  }
+
   if (sourceMode.value === 'image_reference_experimental') {
     return imageReferenceEnabled.value
       ? 'Experimental: sends product image as a visual reference to the provider.'
       : 'Image reference beta is not enabled for the current provider mode.'
   }
 
-  return 'The image helps organize your workspace and prompt context. Visual image-to-video preservation is not enabled in this provider mode yet.'
+  return 'The image helps organize your workspace and prompt context only. Image bytes are not sent to the provider in this mode.'
 })
 const campaignGenerations = computed(() =>
   generations.value.filter(
@@ -135,6 +153,9 @@ const campaignGenerations = computed(() =>
 )
 const voiceoverGenerations = computed(() =>
   generations.value.filter((item) => item.status === 'completed' && item.job_type === 'generate_ai_voiceover'),
+)
+const selectedCampaignGeneration = computed(() =>
+  campaignGenerations.value.find((item) => item.id === selectedCampaignGenerationId.value) ?? null,
 )
 const creditCost = computed(() => motionAction.value?.credit_cost ?? 3)
 const isUpgradeRequired = computed(() =>
@@ -197,6 +218,11 @@ async function submit(): Promise<void> {
 
   if (isUpgradeRequired.value) {
     await router.push(motionAction.value?.primary_cta?.route ?? '/pricing')
+    return
+  }
+
+  if (sourceMode.value === 'image_first_frame' && !imageToVideoEnabled.value) {
+    formError.value = 'First-frame image-to-video is not enabled yet. Use text, campaign or image-context mode.'
     return
   }
 
@@ -290,7 +316,7 @@ onMounted(loadPage)
           <p class="mt-7 text-sm font-medium text-emerald-400">{{ project?.title }}</p>
           <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Motion AI Video</h1>
           <p class="mt-4 max-w-2xl text-sm leading-7 text-neutral-400">
-            Create a short visual-first motion product clip from text, saved campaign context, or optional product image context.
+            Create a short visual-first motion product clip from text, saved campaign context, product-image context, or verified first-frame image-to-video.
           </p>
           <p class="mt-4 rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100/80">
             {{ providerLabel }} mode uses {{ requestModeLabel }}. Text-only and campaign-based Motion AI do not require a product image.
@@ -305,7 +331,7 @@ onMounted(loadPage)
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Source mode</p>
               <h2 class="mt-2 text-xl font-semibold">Choose how Nusa should start</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Motion AI can start from a prompt, a saved campaign, or a product image used as workspace context. Visual image-reference rendering stays experimental until enabled.
+                Motion AI can start from a prompt, a saved campaign, or a product image used as workspace context. First-frame and reference-image rendering stay hidden or disabled until explicitly enabled.
               </p>
 
               <div class="mt-5 grid gap-3 sm:grid-cols-2">
@@ -401,6 +427,11 @@ onMounted(loadPage)
                   </option>
                 </select>
               </label>
+              <div v-if="selectedCampaignGeneration" class="mt-3 rounded-2xl border border-emerald-900/50 bg-emerald-950/20 p-3 text-sm leading-6 text-emerald-100/80">
+                <span class="block font-semibold text-emerald-200">Selected campaign context</span>
+                <span class="block text-neutral-300">{{ generationLabel(selectedCampaignGeneration) }}</span>
+                <span class="block text-xs text-neutral-500">Nusa will summarize this campaign into the Veo prompt without sending raw campaign JSON.</span>
+              </div>
               <p v-if="campaignGenerations.length === 0" class="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-400">
                 No saved campaign generations yet. Generate a Product Content Kit first, or switch to text prompt mode.
               </p>

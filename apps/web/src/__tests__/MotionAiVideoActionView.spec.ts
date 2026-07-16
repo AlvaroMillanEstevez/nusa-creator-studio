@@ -135,12 +135,18 @@ function action(overrides: Partial<ProjectAction> = {}): ProjectAction {
       product_image_supported: 'context_only',
       campaign_supported: true,
       text_prompt_supported: true,
+      image_context_supported: true,
+      image_to_video_supported: true,
+      image_to_video_enabled: false,
+      reference_images_supported: true,
+      reference_images_enabled: false,
+      max_reference_images: 3,
       image_reference_experimental: false,
       provider_label: 'Google Veo',
       default_duration_seconds: 8,
       default_aspect_ratio: '9:16',
       supports_real_rendering: true,
-      source_modes: ['text_prompt', 'campaign_assisted', 'image_context', 'image_reference_experimental'],
+      source_modes: ['text_prompt', 'campaign_assisted', 'image_context', 'image_first_frame', 'image_reference_experimental'],
     },
     ...overrides,
   }
@@ -360,6 +366,63 @@ describe('MotionAiVideoActionView', () => {
     expect(wrapper.text()).toContain('Image reference beta is not enabled yet')
   })
 
+  it('keeps first-frame image-to-video disabled unless backend capability allows it', async () => {
+    const { wrapper } = await mountView()
+
+    const disabledButton = wrapper.get('[data-testid="motion-source-mode-image_first_frame"]')
+
+    expect(disabledButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('First-frame image-to-video is not enabled yet')
+  })
+
+  it('submits first-frame image-to-video with the canonical source mode when enabled', async () => {
+    const enabledActions: ProjectActionsResponse = {
+      data: [
+        action({
+          provider_capabilities: {
+            provider_mode: 'google_veo',
+            real_enabled: true,
+            request_mode: 'image_first_frame',
+            product_image_required: false,
+            product_image_supported: 'first_frame',
+            campaign_supported: true,
+            text_prompt_supported: true,
+            image_context_supported: true,
+            image_to_video_supported: true,
+            image_to_video_enabled: true,
+            reference_images_supported: true,
+            reference_images_enabled: false,
+            max_reference_images: 3,
+            image_reference_experimental: false,
+            provider_label: 'Google Veo',
+            default_duration_seconds: 8,
+            default_aspect_ratio: '9:16',
+            supports_real_rendering: true,
+            source_modes: ['text_prompt', 'campaign_assisted', 'image_context', 'image_first_frame', 'image_reference_experimental'],
+          },
+        }),
+      ],
+    }
+    const { wrapper, fetchMock } = await mountView([productImage], [], enabledActions)
+
+    const button = wrapper.get('[data-testid="motion-source-mode-image_first_frame"]')
+
+    expect(button.attributes('disabled')).toBeUndefined()
+    await button.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('The selected image becomes the starting frame')
+
+    await wrapper.get('[data-testid="motion-creative-notes"]').setValue('Animate the product from the first frame.')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(submittedPayload(fetchMock)).toMatchObject({
+      source_mode: 'image_first_frame',
+      product_image_asset_id: 90,
+      campaign_generation_id: null,
+    })
+  })
+
   it('enables experimental visual reference when backend capability allows it', async () => {
     const enabledActions: ProjectActionsResponse = {
       data: [
@@ -372,12 +435,18 @@ describe('MotionAiVideoActionView', () => {
             product_image_supported: true,
             campaign_supported: true,
             text_prompt_supported: true,
+            image_context_supported: true,
+            image_to_video_supported: true,
+            image_to_video_enabled: false,
+            reference_images_supported: true,
+            reference_images_enabled: true,
+            max_reference_images: 3,
             image_reference_experimental: true,
             provider_label: 'Google Veo',
             default_duration_seconds: 8,
             default_aspect_ratio: '9:16',
             supports_real_rendering: true,
-            source_modes: ['text_prompt', 'campaign_assisted', 'image_context', 'image_reference_experimental'],
+            source_modes: ['text_prompt', 'campaign_assisted', 'image_context', 'image_first_frame', 'image_reference_experimental'],
           },
         }),
       ],

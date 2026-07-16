@@ -412,16 +412,23 @@ export type MotionAiVideoSourceMode =
   | 'text_prompt'
   | 'campaign_assisted'
   | 'image_context'
+  | 'image_first_frame'
   | 'image_reference_experimental'
 
 export interface MotionAiVideoProviderCapabilities {
   provider_mode: 'mock' | 'google_veo' | string
   real_enabled: boolean
-  request_mode: 'mock' | 'text_only' | 'reference_images_experimental' | 'first_frame_experimental' | string
+  request_mode: 'mock' | 'text_only' | 'image_first_frame' | 'reference_images_experimental' | 'first_frame_experimental' | string
   product_image_required: boolean
-  product_image_supported: boolean | 'context_only' | string
+  product_image_supported: boolean | 'context_only' | 'first_frame' | string
   campaign_supported: boolean
   text_prompt_supported: boolean
+  image_context_supported?: boolean
+  image_to_video_supported?: boolean
+  image_to_video_enabled?: boolean
+  reference_images_supported?: boolean
+  reference_images_enabled?: boolean
+  max_reference_images?: number
   image_reference_experimental: boolean
   provider_label: string
   default_duration_seconds: number
@@ -1605,7 +1612,7 @@ export interface MotionAiVideoProviderMetadata extends Record<string, unknown> {
   provider_duration_seconds?: number | null
   requested_aspect_ratio?: string | null
   provider_aspect_ratio?: string | null
-  provider_request_shape?: 'text_only' | 'reference_images' | string | null
+  provider_request_shape?: 'text_only' | 'image_first_frame' | 'reference_images' | string | null
   provider_operation_created?: boolean | null
   estimated_provider_cost_usd?: number | null
 }

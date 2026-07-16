@@ -88,11 +88,9 @@ class GoogleVeoMotionAiVideoPromptBuilder
         ];
 
         return [
-            'prompt' => collect($sections)
+            'prompt' => Str::limit(collect($sections)
                 ->map(fn (string $value, string $key): string => "{$key}: {$value}")
-                ->implode('
-
-'),
+                ->implode(PHP_EOL.PHP_EOL), 5200, ''),
             'negative_prompt' => $negativePrompt,
             'summary' => [
                 'source_mode' => $sourceMode,
@@ -124,7 +122,8 @@ class GoogleVeoMotionAiVideoPromptBuilder
             MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_CONTEXT => $productImage instanceof MediaAsset
                 ? 'Image-context mode. A product image exists in the Nusa workspace, but image bytes are not sent in the default provider request. Use product metadata and filename-style context only; do not promise exact visual preservation.'
                 : 'Image-context mode requested, but no product image metadata is available. Use project context only and do not promise exact visual preservation.',
-            MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL => 'Experimental image-reference mode. The product image is sent only when backend provider capability explicitly enables verified reference images. Preserve product identity from the visual reference while keeping claims honest.',
+            MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_FIRST_FRAME => 'First-frame image-to-video mode. The product image is sent as the initial frame only when the dedicated image-to-video feature flag is enabled. Animate from the starting image without claiming exact product preservation.',
+            MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL => 'Experimental reference-image mode. Reference images are separate from first-frame image-to-video and are sent only when explicit backend capability enables verified reference images. Preserve product identity from visual references while keeping claims honest.',
             default => 'Use project context and safe social-commerce creative direction.',
         };
     }
@@ -153,27 +152,52 @@ class GoogleVeoMotionAiVideoPromptBuilder
         }
 
         $parts = [
+            data_get($summary, 'product_name'),
+            data_get($summary, 'product_description'),
+            data_get($summary, 'target_audience'),
             data_get($summary, 'campaign_angle'),
             data_get($summary, 'product_angle'),
+            data_get($summary, 'core_selling_proposition'),
             data_get($summary, 'campaign_title'),
+            data_get($summary, 'desired_tone'),
+            data_get($summary, 'visual_direction'),
             data_get($summary, 'caption'),
             data_get($summary, 'cta'),
             data_get($summary, 'ad_summary.creative_angle'),
             data_get($summary, 'main_script.voiceover_script'),
             data_get($summary, 'script.voiceover_script'),
+            data_get($summary, 'script.title'),
         ];
 
-        $hooks = data_get($summary, 'hooks');
+        foreach (['hooks', 'benefits', 'cta_options'] as $key) {
+            $values = data_get($summary, $key);
 
-        if (is_array($hooks)) {
-            $parts[] = collect($hooks)
-                ->map(fn (mixed $hook): ?string => $this->stringValue(is_array($hook) ? ($hook['hook'] ?? $hook['text'] ?? null) : $hook))
+            if (is_array($values)) {
+                $parts[] = collect($values)
+                    ->map(fn (mixed $value): ?string => $this->stringValue(is_array($value) ? ($value['hook'] ?? $value['text'] ?? $value['benefit'] ?? $value['cta'] ?? null) : $value))
+                    ->filter()
+                    ->take(4)
+                    ->implode(' ');
+            }
+        }
+
+        $scenes = data_get($summary, 'script.scenes');
+
+        if (is_array($scenes)) {
+            $parts[] = collect($scenes)
+                ->map(fn (mixed $scene): ?string => is_array($scene)
+                    ? $this->limitedJoined([
+                        $scene['visual_direction'] ?? null,
+                        $scene['voiceover'] ?? null,
+                        $scene['on_screen_text'] ?? null,
+                    ], 300)
+                    : $this->stringValue($scene))
                 ->filter()
-                ->take(3)
+                ->take(4)
                 ->implode(' ');
         }
 
-        return $this->limitedJoined($parts, 1200);
+        return $this->limitedJoined($parts, 1600);
     }
 
     /** @param array<string, mixed> $input */

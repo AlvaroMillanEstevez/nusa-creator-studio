@@ -118,6 +118,7 @@ class GenerateMotionAiVideoRequest extends FormRequest
 
             if (in_array($sourceMode, [
                 MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_CONTEXT,
+                MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_FIRST_FRAME,
                 MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL,
             ], true) && ! $this->filled('product_image_asset_id')) {
                 $validator->errors()->add('product_image_asset_id', 'Choose a product image for this Motion AI source mode.');
@@ -125,6 +126,11 @@ class GenerateMotionAiVideoRequest extends FormRequest
 
             if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_CAMPAIGN_ASSISTED && ! $this->filled('campaign_generation_id')) {
                 $validator->errors()->add('campaign_generation_id', 'Choose a completed campaign generation for campaign-assisted Motion AI Video.');
+            }
+
+            if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_FIRST_FRAME
+                && ! MotionAiVideoCapabilities::imageToVideoEnabledForUser($this->user())) {
+                $validator->errors()->add('source_mode', 'First-frame image-to-video mode is not enabled for the current provider configuration.');
             }
 
             if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL

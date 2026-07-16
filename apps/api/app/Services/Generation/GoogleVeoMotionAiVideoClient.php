@@ -5,6 +5,7 @@ namespace App\Services\Generation;
 use App\Exceptions\MotionAiVideo\MotionAiVideoProviderException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -34,14 +35,34 @@ class GoogleVeoMotionAiVideoClient
                 $safeContext,
                 $exception,
             );
-        }
+        } catch (RequestException $exception) {
+            $response = $exception->response;
+            $submitContext = $context + ['stage' => 'submit'];
 
-        if (! $response->successful()) {
-            $this->logFailure('Google Veo submit failed.', $response, $context + ['stage' => 'submit']);
+            if ($response instanceof Response) {
+                $this->logFailure('Google Veo submit failed.', $response, $submitContext);
+
+                throw MotionAiVideoProviderException::requestFailed(
+                    $this->responseFailureReason($response, $submitContext),
+                    $this->responseContext($response, $submitContext),
+                    $exception,
+                );
+            }
 
             throw MotionAiVideoProviderException::requestFailed(
                 'google_veo_submit_failed',
-                $this->responseContext($response, $context + ['stage' => 'submit']),
+                $this->safeNetworkContext('submit', $this->generateEndpoint(), $exception, $context),
+                $exception,
+            );
+        }
+
+        if (! $response->successful()) {
+            $submitContext = $context + ['stage' => 'submit'];
+            $this->logFailure('Google Veo submit failed.', $response, $submitContext);
+
+            throw MotionAiVideoProviderException::requestFailed(
+                $this->responseFailureReason($response, $submitContext),
+                $this->responseContext($response, $submitContext),
             );
         }
 
@@ -605,6 +626,22 @@ class GoogleVeoMotionAiVideoClient
             'http_status' => $response->status(),
             'safe_response_excerpt' => $this->safeResponseExcerpt($response->body()),
         ];
+    }
+
+    /** @param array<string, mixed> $context */
+    private function responseFailureReason(Response $response, array $context): string
+    {
+        $excerpt = strtolower($this->safeResponseExcerpt($response->body()));
+        $shape = (string) ($context['provider_request_shape'] ?? '');
+
+        if (($context['stage'] ?? null) === 'submit'
+            && in_array($shape, ['image_first_frame', 'reference_images'], true)
+            && str_contains($excerpt, 'inlinedata')
+            && str_contains($excerpt, 'supported')) {
+            return 'google_veo_unsupported_image_input';
+        }
+
+        return 'google_veo_submit_failed';
     }
 
     private function logFailure(string $message, Response $response, array $context): void
