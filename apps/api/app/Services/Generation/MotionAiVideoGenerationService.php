@@ -8,6 +8,7 @@ use App\Models\MediaAsset;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\ToolAvailabilityService;
+use App\Support\MotionAiVideoCapabilities;
 use Illuminate\Validation\ValidationException;
 
 class MotionAiVideoGenerationService
@@ -23,13 +24,35 @@ class MotionAiVideoGenerationService
      */
     public function generate(Project $project, User $user, array $options): Generation
     {
-        $productImage = $this->requiredImageAsset(
-            project: $project,
-            user: $user,
-            id: $options['product_image_asset_id'] ?? null,
-            field: 'product_image_asset_id',
-            message: 'Choose a product image before generating a Motion AI Video plan.',
+        $provider = $this->providers->selectedProviderForUser($user);
+        $sourceMode = MotionAiVideoCapabilities::normalizeSourceMode(
+            $options['source_mode'] ?? null,
+            $options['campaign_generation_id'] ?? null,
+            $options['product_image_asset_id'] ?? null,
         );
+
+        if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL
+            && ! MotionAiVideoCapabilities::imageReferencesEnabledForUser($user)) {
+            throw ValidationException::withMessages([
+                'source_mode' => 'Product image visual reference mode is not enabled for the current provider configuration.',
+            ]);
+        }
+
+        $productImage = $this->productImageRequiredForSourceMode($sourceMode)
+            ? $this->requiredImageAsset(
+                project: $project,
+                user: $user,
+                id: $options['product_image_asset_id'] ?? null,
+                field: 'product_image_asset_id',
+                message: 'Choose a product image for this Motion AI source mode.',
+            )
+            : $this->optionalImageAsset(
+                project: $project,
+                user: $user,
+                id: $options['product_image_asset_id'] ?? null,
+                field: 'product_image_asset_id',
+                message: 'The selected product image is unavailable for this project.',
+            );
         $scenarioImage = $this->optionalImageAsset(
             project: $project,
             user: $user,
@@ -49,6 +72,13 @@ class MotionAiVideoGenerationService
                 'generate_auto_video_ad',
             ],
         );
+
+        if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_CAMPAIGN_ASSISTED && ! $campaignGeneration instanceof Generation) {
+            throw ValidationException::withMessages([
+                'campaign_generation_id' => 'Choose a completed campaign generation for campaign-assisted Motion AI Video.',
+            ]);
+        }
+
         $voiceoverGeneration = $this->optionalGeneration(
             project: $project,
             user: $user,
@@ -56,8 +86,6 @@ class MotionAiVideoGenerationService
             field: 'voiceover_generation_id',
             allowedJobTypes: ['generate_ai_voiceover'],
         );
-
-        $provider = $this->providers->selectedProviderForUser($user);
 
         return $this->submissions->submit(
             project: $project,
@@ -74,10 +102,19 @@ class MotionAiVideoGenerationService
                 scenarioImage: $scenarioImage,
                 campaignGeneration: $campaignGeneration,
                 voiceoverGeneration: $voiceoverGeneration,
+                sourceMode: $sourceMode,
                 options: $options,
             ),
             provider: $provider,
         );
+    }
+
+    private function productImageRequiredForSourceMode(string $sourceMode): bool
+    {
+        return in_array($sourceMode, [
+            MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_CONTEXT,
+            MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL,
+        ], true);
     }
 
     private function requiredImageAsset(Project $project, User $user, mixed $id, string $field, string $message): MediaAsset
@@ -153,10 +190,11 @@ class MotionAiVideoGenerationService
      */
     private function inputPayload(
         Project $project,
-        MediaAsset $productImage,
+        ?MediaAsset $productImage,
         ?MediaAsset $scenarioImage,
         ?Generation $campaignGeneration,
         ?Generation $voiceoverGeneration,
+        string $sourceMode,
         array $options,
     ): array {
         $projectInput = is_array($project->input_payload) ? $project->input_payload : [];
@@ -168,8 +206,9 @@ class MotionAiVideoGenerationService
             'project_title' => $project->title,
             'project_type' => $project->type,
             'generation_type' => 'motion_ai_video',
-            'product_image_asset_id' => $productImage->getKey(),
-            'product_image_asset' => $this->assetSummary($productImage),
+            'source_mode' => $sourceMode,
+            'product_image_asset_id' => $productImage?->getKey(),
+            'product_image_asset' => $productImage instanceof MediaAsset ? $this->assetSummary($productImage) : null,
             'scenario_image_asset_id' => $scenarioImage?->getKey(),
             'scenario_image_asset' => $scenarioImage instanceof MediaAsset ? $this->assetSummary($scenarioImage) : null,
             'campaign_generation_id' => $campaignGeneration?->getKey(),
@@ -180,7 +219,7 @@ class MotionAiVideoGenerationService
             'manual_script' => $this->stringOption($options, 'manual_script'),
             'creative_notes' => $this->stringOption($options, 'creative_notes'),
             'platform' => $this->stringOption($options, 'platform') ?? $this->stringOption($settings, 'platform') ?? 'tiktok',
-            'target_duration_seconds' => $this->intOption($options, 'target_duration_seconds') ?? 8,
+            'target_duration_seconds' => $this->intOption($options, 'target_duration_seconds') ?? MotionAiVideoCapabilities::defaultDurationSeconds(),
             'visual_style' => $this->stringOption($options, 'visual_style') ?? 'realistic_product',
             'motion_style' => $this->stringOption($options, 'motion_style') ?? 'slow_push_in',
             'camera_direction' => $this->stringOption($options, 'camera_direction'),

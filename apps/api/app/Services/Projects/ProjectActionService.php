@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\AiVoiceoverSourceResolver;
 use App\Support\CampaignWorkflowMetadata;
+use App\Support\MotionAiVideoCapabilities;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 
@@ -404,15 +405,36 @@ class ProjectActionService
     /** @return array<string, mixed> */
     private function motionVideoAction(Project $project, User $user, ?CreatorTool $tool): array
     {
+        $capabilities = MotionAiVideoCapabilities::forUser($user);
         $hasProductImage = $this->hasAssetRole($project, 'product_image', 'image')
             || $project->mediaAssets->contains(fn ($asset): bool => $asset->type === 'image');
+        $hasCampaign = $this->completedGenerations($project, 'generate_affiliate_campaign')->isNotEmpty()
+            || $this->completedGenerations($project, 'generate_video_to_campaign')->isNotEmpty()
+            || $this->completedGenerations($project, 'generate_product_video_script')->isNotEmpty()
+            || $this->completedGenerations($project, 'generate_auto_video_ad')->isNotEmpty();
         $requirements = [
+            $this->requirement(
+                type: 'input',
+                key: 'text_prompt',
+                label: 'Text prompt',
+                satisfied: true,
+                helpText: 'You can generate from the project brief and a manual creative prompt without a product image.',
+            ),
+            $this->requirement(
+                type: 'source_generation',
+                key: 'campaign_script',
+                label: 'Saved campaign',
+                satisfied: $hasCampaign,
+                helpText: 'Optional. Use a Product Content Kit, video analysis or ad generation as campaign context.',
+            ),
             $this->requirement(
                 type: 'media_asset',
                 key: 'product_image',
                 label: 'Product image',
                 satisfied: $hasProductImage,
-                helpText: 'Upload or choose a clear product image for the motion video source.',
+                helpText: $capabilities['image_reference_experimental'] === true
+                    ? 'Optional for text/campaign modes; required only for experimental visual reference mode.'
+                    : 'Optional. Use it as Nusa workspace context; current provider mode will not send image bytes.',
                 suggestedUsageRole: 'product_image',
             ),
             $this->requirement(
@@ -420,16 +442,8 @@ class ProjectActionService
                 key: 'scenario_image',
                 label: 'Scenario image',
                 satisfied: $this->hasAssetRole($project, 'background_reference', 'image'),
-                helpText: 'Optionally add a scenario or background image.',
+                helpText: 'Optional. Add a scenario or background image as prompt context.',
                 suggestedUsageRole: 'background_reference',
-            ),
-            $this->requirement(
-                type: 'source_generation',
-                key: 'campaign_script',
-                label: 'Campaign script',
-                satisfied: $this->completedGenerations($project, 'generate_affiliate_campaign')->isNotEmpty()
-                    || $this->completedGenerations($project, 'generate_video_to_campaign')->isNotEmpty(),
-                helpText: 'Optionally use a Product Content Kit or video analysis generation as script context.',
             ),
         ];
 
@@ -437,7 +451,7 @@ class ProjectActionService
             user: $user,
             key: 'start_motion_video',
             title: 'Motion AI Video',
-            description: 'Create motion-video concepts from product images, scenarios and campaign scripts.',
+            description: 'Create text-to-video or campaign-to-video motion clips, with optional product image context.',
             serviceTier: 'premium',
             outputType: 'video',
             tool: $tool,
@@ -452,10 +466,11 @@ class ProjectActionService
                 'background_reference',
                 'brand_reference',
             ]),
-            missingRequirementsCount: $hasProductImage ? 0 : 1,
-            reason: 'Open setup to choose the product image, optional scenario and script source.',
+            missingRequirementsCount: 0,
+            reason: 'Open setup to choose text, campaign or image-context source mode.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-motion-ai-video",
             creditCost: $tool?->credit_cost,
+            providerCapabilities: $capabilities,
         );
     }
 
@@ -506,6 +521,7 @@ class ProjectActionService
         ?string $actionEndpoint = null,
         ?int $sourceGenerationId = null,
         ?int $creditCost = null,
+        array $providerCapabilities = [],
     ): array {
         $access = $this->access->metadataFor($user, $serviceTier);
         $toolStatus = $this->toolStatus($tool);
@@ -564,6 +580,7 @@ class ProjectActionService
             'action_endpoint' => $actionEndpoint,
             'tool_key' => $tool?->key,
             'tool_status' => $tool?->status,
+            'provider_capabilities' => $providerCapabilities === [] ? null : $providerCapabilities,
         ];
     }
 

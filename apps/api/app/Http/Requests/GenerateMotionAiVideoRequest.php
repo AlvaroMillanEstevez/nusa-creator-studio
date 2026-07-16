@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Project;
+use App\Support\MotionAiVideoCapabilities;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,11 +13,25 @@ class GenerateMotionAiVideoRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $campaignGenerationId = $this->input('campaign_generation_id');
+        $productImageAssetId = $this->input('product_image_asset_id');
+        $sourceMode = MotionAiVideoCapabilities::normalizeSourceMode(
+            $this->input('source_mode'),
+            $campaignGenerationId,
+            $productImageAssetId,
+        );
+
+        $scriptSource = $this->input('script_source');
+        if (! $scriptSource) {
+            $scriptSource = $sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_CAMPAIGN_ASSISTED
+                ? 'campaign_script'
+                : 'project_brief';
+        }
 
         $this->merge([
+            'source_mode' => $sourceMode,
             'platform' => $this->input('platform') ?: 'tiktok',
-            'target_duration_seconds' => $this->input('target_duration_seconds') ?: 8,
-            'script_source' => $this->input('script_source') ?: ($campaignGenerationId ? 'campaign_script' : 'project_brief'),
+            'target_duration_seconds' => $this->input('target_duration_seconds') ?: MotionAiVideoCapabilities::defaultDurationSeconds(),
+            'script_source' => $scriptSource,
             'visual_style' => $this->input('visual_style') ?: 'realistic_product',
             'motion_style' => $this->input('motion_style') ?: 'slow_push_in',
             'aspect_ratio' => $this->input('aspect_ratio') ?: 'vertical_9_16',
@@ -38,7 +55,8 @@ class GenerateMotionAiVideoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_image_asset_id' => ['required', 'integer'],
+            'source_mode' => ['sometimes', 'string', Rule::in(MotionAiVideoCapabilities::sourceModes())],
+            'product_image_asset_id' => ['sometimes', 'nullable', 'integer'],
             'scenario_image_asset_id' => ['sometimes', 'nullable', 'integer'],
             'campaign_generation_id' => ['sometimes', 'nullable', 'integer'],
             'voiceover_generation_id' => ['sometimes', 'nullable', 'integer'],
@@ -87,5 +105,61 @@ class GenerateMotionAiVideoRequest extends FormRequest
             'include_caption_plan' => ['sometimes', 'boolean'],
             'primary_cta' => ['sometimes', 'nullable', 'string', 'max:180'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $sourceMode = MotionAiVideoCapabilities::normalizeSourceMode(
+                $this->input('source_mode'),
+                $this->input('campaign_generation_id'),
+                $this->input('product_image_asset_id'),
+            );
+
+            if (in_array($sourceMode, [
+                MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_CONTEXT,
+                MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL,
+            ], true) && ! $this->filled('product_image_asset_id')) {
+                $validator->errors()->add('product_image_asset_id', 'Choose a product image for this Motion AI source mode.');
+            }
+
+            if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_CAMPAIGN_ASSISTED && ! $this->filled('campaign_generation_id')) {
+                $validator->errors()->add('campaign_generation_id', 'Choose a completed campaign generation for campaign-assisted Motion AI Video.');
+            }
+
+            if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_REFERENCE_EXPERIMENTAL
+                && ! MotionAiVideoCapabilities::imageReferencesEnabledForUser($this->user())) {
+                $validator->errors()->add('source_mode', 'Product image visual reference mode is not enabled for the current provider configuration.');
+            }
+
+            if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_TEXT_PROMPT && ! $this->hasTextPromptContext()) {
+                $validator->errors()->add('creative_notes', 'Add a short prompt or creative direction for text-prompt Motion AI Video.');
+            }
+        });
+    }
+
+    private function hasTextPromptContext(): bool
+    {
+        foreach (['manual_script', 'creative_notes', 'scene_description', 'background_prompt', 'primary_cta'] as $key) {
+            if (is_string($this->input($key)) && trim((string) $this->input($key)) !== '') {
+                return true;
+            }
+        }
+
+        $project = $this->route('project');
+
+        if (! $project instanceof Project) {
+            return false;
+        }
+
+        $input = is_array($project->input_payload) ? $project->input_payload : [];
+
+        foreach (['product_name', 'product_description', 'content_idea', 'target_audience'] as $key) {
+            if (is_string($input[$key] ?? null) && trim((string) $input[$key]) !== '') {
+                return true;
+            }
+        }
+
+        return is_string($project->title) && trim($project->title) !== '';
     }
 }

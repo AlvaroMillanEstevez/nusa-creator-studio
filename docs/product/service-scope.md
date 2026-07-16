@@ -239,19 +239,27 @@ Out of scope for v1:
 
 ## Motion AI Video Google Veo beta request scope
 
-The real Google Veo beta integration should keep its provider request shape intentionally small until broader inputs are verified against current Google documentation. The backend sends the official long-running REST request to `models/{model}:predictLongRunning`, polls the returned operation name, and downloads the generated video from the completed operation response.
+The Google Veo beta integration keeps its provider request shape intentionally small and debuggable. The backend sends the long-running REST request to `models/{model}:predictLongRunning`, polls the returned operation name, downloads the generated video, and stores it privately as a `MediaAsset`.
 
-Current supported real-provider input shape:
+Supported Motion AI source modes:
 
-- One required product image is sent as the first Veo `referenceImages` entry with `referenceType=asset` for product preservation.
-- Product/campaign/voiceover/scenario context is folded into the text prompt.
-- Scenario image is currently prompt-context only unless reference-image support is intentionally expanded and tested.
-- `GOOGLE_VEO_IMAGE_MODE=reference_images` is the default. `text_only` can be used as a safe fallback to omit image bytes and rely on prompt context only.
+- `text_prompt` - supported real provider mode. Uses user prompt, project context and creative direction. No product image is required and no image bytes are sent.
+- `campaign_assisted` - supported real provider mode. Builds a visual Veo prompt from a saved Product Content Kit / campaign generation plus project context. No product image is required.
+- `image_context` - supported prompt-context mode. A product image may be uploaded/selected for workspace organization and prompt context, but image bytes are not sent to Veo in the default safe request mode.
+- `image_reference_experimental` - experimental and disabled until the verified Google image-reference contract works in this account/model path.
+
+Current real-provider request rules:
+
+- Default real mode is `GOOGLE_VEO_REQUEST_MODE=text_only`.
+- `GOOGLE_VEO_IMAGE_REFERENCES_ENABLED=false` and `GOOGLE_VEO_ALLOW_EXPERIMENTAL_IMAGE_INPUT=false` by default.
+- Text-only/campaign/image-context modes use `instances[0].prompt` only.
+- `referenceImages` with inline data is sent only when the request mode is `reference_images_experimental`, image-reference flags are enabled, and the user explicitly selects the experimental source mode.
+- Reference image mode requires an 8 second provider duration; the app records requested vs provider duration in metadata.
 - Provider aspect ratio is normalized to `9:16` or `16:9`, with unsupported app ratios falling back to `9:16`.
-- Provider duration is normalized to `8` seconds for the current Veo 3.1 reference-image path while preserving requested vs provider duration in metadata.
-- Veo output is treated as a visual-first motion clip that can later be composed with Nusa voiceover, captions or final editing.
+- Veo may generate native audio; Nusa currently treats the output as a visual-first base motion clip for later composition with voiceover, captions or Shotstack post-production.
+- Provider download URIs, private storage paths, API keys and encoded media bytes must stay out of user-facing output and logs.
 
-Avoid sending unsupported experimental fields such as arbitrary metadata, audio disable flags, output format flags, camera-control objects, initial `image` payloads, or scenario/reference images beyond the verified product-reference shape unless the exact REST shape is verified first. Provider download URIs, private storage paths and encoded media bytes must stay out of user-facing output and logs.
+Use `php artisan nusa:test-veo-motion --mode=text-only --dry-run` to inspect a safe request summary locally before making real provider calls. Only test image-reference mode after text-only is verified and the image-reference flags are intentionally enabled.
 
 ## Future avatar workflows
 

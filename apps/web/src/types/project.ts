@@ -408,6 +408,28 @@ export interface ProjectActionRecommendedAsset {
   created_at: string | null
 }
 
+export type MotionAiVideoSourceMode =
+  | 'text_prompt'
+  | 'campaign_assisted'
+  | 'image_context'
+  | 'image_reference_experimental'
+
+export interface MotionAiVideoProviderCapabilities {
+  provider_mode: 'mock' | 'google_veo' | string
+  real_enabled: boolean
+  request_mode: 'mock' | 'text_only' | 'reference_images_experimental' | 'first_frame_experimental' | string
+  product_image_required: boolean
+  product_image_supported: boolean | 'context_only' | string
+  campaign_supported: boolean
+  text_prompt_supported: boolean
+  image_reference_experimental: boolean
+  provider_label: string
+  default_duration_seconds: number
+  default_aspect_ratio: string
+  supports_real_rendering: boolean
+  source_modes: MotionAiVideoSourceMode[] | string[]
+}
+
 export interface ProjectAction {
   key: ProjectActionKey
   title: string
@@ -432,6 +454,7 @@ export interface ProjectAction {
   action_endpoint: string | null
   tool_key: string | null
   tool_status: string | null
+  provider_capabilities?: MotionAiVideoProviderCapabilities | null
 }
 
 export interface ProjectActionsResponse {
@@ -589,6 +612,7 @@ export interface GenerateAutoVideoAdPayload {
 export type MotionAiVideoScriptSource = 'campaign_script' | 'manual_script' | 'project_brief'
 
 export interface GenerateMotionAiVideoPayload {
+  source_mode?: MotionAiVideoSourceMode | string | null
   product_image_asset_id: number | null
   scenario_image_asset_id?: number | null
   campaign_generation_id?: number | null
@@ -1570,11 +1594,27 @@ export interface MotionAiVideoProviderMetadata extends Record<string, unknown> {
   response_status?: string | null
   provider_latency_ms?: number | null
   native_audio_ignored?: boolean | null
+  source_mode?: MotionAiVideoSourceMode | string | null
+  request_mode?: string | null
+  image_reference_enabled?: boolean | null
+  product_image_asset_id?: number | null
+  product_image_sent_to_provider?: boolean | null
+  campaign_generation_id?: number | null
+  has_manual_prompt?: boolean | null
+  requested_duration_seconds?: number | null
+  provider_duration_seconds?: number | null
+  requested_aspect_ratio?: string | null
+  provider_aspect_ratio?: string | null
+  provider_request_shape?: 'text_only' | 'reference_images' | string | null
+  provider_operation_created?: boolean | null
+  estimated_provider_cost_usd?: number | null
 }
 
 export interface MotionAiVideoMetadata {
   generation_type: 'motion_ai_video' | string
   provider: string
+  source_mode?: MotionAiVideoSourceMode | string | null
+  request_mode?: string | null
   product_image_asset_id: number | null
   scenario_image_asset_id: number | null
   campaign_generation_id: number | null

@@ -13,7 +13,7 @@
 - Redis-backed async generation jobs
 - Mock MVP workflows and supporting tools, now consolidated into the closed-beta workflow architecture.
 - Auto Video Ads generation endpoint and frontend action flow, with mock planning by default and Shotstack real-beta MP4 rendering when enabled.
-- Motion AI Video mock fallback plus Google Veo real-beta provider architecture for product-image-based visual motion clips.
+- Motion AI Video mock fallback plus Google Veo real-beta provider architecture for text-to-video and campaign-to-video, with image-reference mode kept experimental until verified.
 
 ## Next recommended phases
 

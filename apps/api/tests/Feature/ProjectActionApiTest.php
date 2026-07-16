@@ -196,10 +196,13 @@ class ProjectActionApiTest extends TestCase
         $this->assertSame("/projects/{$project->id}/actions/motion-ai-video", $motionAction['primary_cta']['route']);
         $this->assertSame('/api/v1/projects/'.$project->id.'/generate-motion-ai-video', $motionAction['action_endpoint']);
         $this->assertSame(
-            ['product_image', 'scenario_image', 'campaign_script'],
+            ['text_prompt', 'campaign_script', 'product_image', 'scenario_image'],
             array_column($motionAction['requirements'], 'key'),
         );
-        $this->assertSame(1, $motionAction['missing_requirements_count']);
+        $this->assertSame(0, $motionAction['missing_requirements_count']);
+        $this->assertSame('mock', $motionAction['provider_capabilities']['provider_mode']);
+        $this->assertTrue($motionAction['provider_capabilities']['text_prompt_supported']);
+        $this->assertTrue($motionAction['provider_capabilities']['campaign_supported']);
     }
 
     public function test_project_actions_include_recommended_assets_without_requiring_card_level_blockers(): void

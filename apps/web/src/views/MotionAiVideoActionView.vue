@@ -21,6 +21,7 @@ import {
   type CreatorProject,
   type GenerateMotionAiVideoPayload,
   type MotionAiVideoScriptSource,
+  type MotionAiVideoSourceMode,
   type ProjectAction,
 } from '@/types/project'
 import { generationDisplayName } from '@/utils/generations'
@@ -31,6 +32,7 @@ const router = useRouter()
 const project = ref<CreatorProject | null>(null)
 const actions = ref<ProjectAction[]>([])
 const generations = ref<CreatorGeneration[]>([])
+const sourceMode = ref<MotionAiVideoSourceMode>('text_prompt')
 const selectedProductImageAssetId = ref<number | null>(null)
 const selectedScenarioImageAssetId = ref<number | null>(null)
 const selectedCampaignGenerationId = ref<number | null>(null)
@@ -38,7 +40,6 @@ const selectedVoiceoverGenerationId = ref<number | null>(null)
 const platform = ref('tiktok')
 const aspectRatio = ref('vertical_9_16')
 const targetDurationSeconds = ref(8)
-const scriptSource = ref<MotionAiVideoScriptSource>('project_brief')
 const manualScript = ref('')
 const creativeNotes = ref('')
 const visualStyle = ref('realistic_product')
@@ -55,11 +56,13 @@ const isSubmitting = ref(false)
 const loadError = ref('')
 const formError = ref('')
 
-const scriptSourceOptions: Array<{ value: MotionAiVideoScriptSource; label: string }> = [
-  { value: 'campaign_script', label: 'Use campaign script' },
-  { value: 'project_brief', label: 'Use project brief' },
-  { value: 'manual_script', label: 'Write manual script' },
-]
+type SourceModeOption = {
+  value: MotionAiVideoSourceMode
+  label: string
+  eyebrow: string
+  description: string
+  disabled?: boolean
+}
 
 const projectId = computed(() => {
   const value = Array.isArray(route.params.projectId) ? route.params.projectId[0] : route.params.projectId
@@ -67,6 +70,57 @@ const projectId = computed(() => {
   return value || ''
 })
 const motionAction = computed(() => actions.value.find((item) => item.key === 'start_motion_video') ?? null)
+const capabilities = computed(() => motionAction.value?.provider_capabilities ?? null)
+const providerLabel = computed(() => capabilities.value?.provider_label ?? 'Mock')
+const requestModeLabel = computed(() => capabilities.value?.request_mode ?? 'mock')
+const imageReferenceEnabled = computed(() => capabilities.value?.image_reference_experimental === true)
+const supportsRealRendering = computed(() => capabilities.value?.supports_real_rendering === true)
+const isTextOnlyProviderMode = computed(() => capabilities.value?.request_mode === 'text_only')
+const sourceModeOptions = computed<SourceModeOption[]>(() => [
+  {
+    value: 'text_prompt',
+    label: 'Start from text',
+    eyebrow: 'Prompt only',
+    description: 'Write a creative direction and use the project brief. No product image required.',
+  },
+  {
+    value: 'campaign_assisted',
+    label: 'Use saved campaign',
+    eyebrow: 'Campaign to video',
+    description: 'Turn an existing Product Content Kit or campaign generation into a motion-video prompt.',
+  },
+  {
+    value: 'image_context',
+    label: 'Product image as context',
+    eyebrow: 'Context only',
+    description: 'Use an uploaded product image in your Nusa workspace context without sending image bytes to the provider.',
+  },
+  {
+    value: 'image_reference_experimental',
+    label: 'Product image visual reference',
+    eyebrow: 'Experimental',
+    description: imageReferenceEnabled.value
+      ? 'Experimental: sends product image as a visual reference to the provider.'
+      : 'Image reference beta is not enabled yet. Use text, campaign or image-context mode instead.',
+    disabled: !imageReferenceEnabled.value,
+  },
+])
+const usesProductImage = computed(() => ['image_context', 'image_reference_experimental'].includes(sourceMode.value))
+const productImageRequired = computed(() => usesProductImage.value)
+const campaignRequired = computed(() => sourceMode.value === 'campaign_assisted')
+const showCampaignPicker = computed(() => sourceMode.value === 'campaign_assisted' || usesProductImage.value)
+const productImageTitle = computed(() =>
+  sourceMode.value === 'image_reference_experimental' ? 'Upload or choose product image *' : 'Upload or choose product image',
+)
+const productImageHelperText = computed(() => {
+  if (sourceMode.value === 'image_reference_experimental') {
+    return imageReferenceEnabled.value
+      ? 'Experimental: sends product image as a visual reference to the provider.'
+      : 'Image reference beta is not enabled for the current provider mode.'
+  }
+
+  return 'The image helps organize your workspace and prompt context. Visual image-to-video preservation is not enabled in this provider mode yet.'
+})
 const campaignGenerations = computed(() =>
   generations.value.filter(
     (item) =>
@@ -92,10 +146,9 @@ function initializeForm(loadedProject: CreatorProject): void {
 
   selectedCampaignGenerationId.value = campaignGenerations.value[0]?.id ?? null
   selectedVoiceoverGenerationId.value = voiceoverGenerations.value[0]?.id ?? null
-  scriptSource.value = selectedCampaignGenerationId.value === null ? 'project_brief' : 'campaign_script'
   primaryCta.value = typeof input.cta_preference === 'string' ? input.cta_preference : 'See product details'
-  sceneDescription.value =
-    typeof input.product_description === 'string' ? input.product_description : ''
+  sceneDescription.value = typeof input.product_description === 'string' ? input.product_description : ''
+  targetDurationSeconds.value = capabilities.value?.default_duration_seconds ?? 8
 }
 
 async function loadPage(): Promise<void> {
@@ -120,6 +173,25 @@ async function loadPage(): Promise<void> {
   }
 }
 
+function selectSourceMode(mode: MotionAiVideoSourceMode): void {
+  const option = sourceModeOptions.value.find((item) => item.value === mode)
+
+  if (option?.disabled) {
+    return
+  }
+
+  sourceMode.value = mode
+  formError.value = ''
+}
+
+function scriptSourceForMode(): MotionAiVideoScriptSource {
+  if (sourceMode.value === 'campaign_assisted') {
+    return 'campaign_script'
+  }
+
+  return manualScript.value.trim() !== '' ? 'manual_script' : 'project_brief'
+}
+
 async function submit(): Promise<void> {
   formError.value = ''
 
@@ -128,27 +200,33 @@ async function submit(): Promise<void> {
     return
   }
 
-  if (selectedProductImageAssetId.value === null) {
-    formError.value = 'Upload or select a product image before generating a motion video plan.'
+  if (sourceMode.value === 'image_reference_experimental' && !imageReferenceEnabled.value) {
+    formError.value = 'Product image visual reference mode is not enabled yet. Use text, campaign or image-context mode.'
     return
   }
 
-  if (scriptSource.value === 'manual_script' && manualScript.value.trim() === '') {
-    formError.value = 'Write a manual script or choose another script source.'
+  if (productImageRequired.value && selectedProductImageAssetId.value === null) {
+    formError.value = 'Upload or select a product image for this Motion AI source mode.'
+    return
+  }
+
+  if (campaignRequired.value && selectedCampaignGenerationId.value === null) {
+    formError.value = 'Choose a saved campaign generation first, or switch to text prompt mode.'
     return
   }
 
   isSubmitting.value = true
 
   const payload: GenerateMotionAiVideoPayload = {
-    product_image_asset_id: selectedProductImageAssetId.value,
+    source_mode: sourceMode.value,
+    product_image_asset_id: usesProductImage.value ? selectedProductImageAssetId.value : null,
     scenario_image_asset_id: selectedScenarioImageAssetId.value,
-    campaign_generation_id: selectedCampaignGenerationId.value,
+    campaign_generation_id: showCampaignPicker.value ? selectedCampaignGenerationId.value : null,
     voiceover_generation_id: selectedVoiceoverGenerationId.value,
     platform: platform.value,
     target_duration_seconds: targetDurationSeconds.value,
-    script_source: scriptSource.value,
-    manual_script: scriptSource.value === 'manual_script' ? manualScript.value.trim() : null,
+    script_source: scriptSourceForMode(),
+    manual_script: manualScript.value.trim() || null,
     creative_notes: creativeNotes.value.trim() || null,
     visual_style: visualStyle.value,
     motion_style: motionStyle.value,
@@ -207,35 +285,73 @@ onMounted(loadPage)
       <template v-else>
         <header class="mt-10">
           <RouterLink :to="`/projects/${projectId}`" class="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30">
-            ← Back to workspace
+            ? Back to workspace
           </RouterLink>
           <p class="mt-7 text-sm font-medium text-emerald-400">{{ project?.title }}</p>
           <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Motion AI Video</h1>
           <p class="mt-4 max-w-2xl text-sm leading-7 text-neutral-400">
-            Create a short visual-first motion product clip from your product image, scenario and campaign context.
+            Create a short visual-first motion product clip from text, saved campaign context, or optional product image context.
           </p>
           <p class="mt-4 rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100/80">
-            Mock mode creates a render-ready plan. Real internal beta mode renders a base MP4 motion clip that can later be combined with voiceover, captions and final polish.
+            {{ providerLabel }} mode uses {{ requestModeLabel }}. Text-only and campaign-based Motion AI do not require a product image.
+            <span v-if="isTextOnlyProviderMode"> Product images stay as Nusa-side prompt context only.</span>
+            <span v-if="supportsRealRendering"> Real beta renders a base MP4 motion clip for later editing.</span>
           </p>
         </header>
 
         <form class="mt-8 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]" @submit.prevent="submit">
           <section class="space-y-5">
             <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Product image</p>
-              <h2 class="mt-2 text-xl font-semibold">Choose the source product image</h2>
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Source mode</p>
+              <h2 class="mt-2 text-xl font-semibold">Choose how Nusa should start</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Product image is required. Upload or select it here without leaving this workflow.
+                Motion AI can start from a prompt, a saved campaign, or a product image used as workspace context. Visual image-reference rendering stays experimental until enabled.
               </p>
+
+              <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                <button
+                  v-for="option in sourceModeOptions"
+                  :key="option.value"
+                  type="button"
+                  :disabled="option.disabled"
+                  :data-testid="`motion-source-mode-${option.value}`"
+                  class="rounded-3xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50"
+                  :class="sourceMode === option.value ? 'border-emerald-400 bg-emerald-950/30' : 'border-neutral-800 bg-neutral-950/60 hover:border-neutral-600'"
+                  @click="selectSourceMode(option.value)"
+                >
+                  <span class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">{{ option.eyebrow }}</span>
+                  <span class="mt-2 block font-semibold text-white">{{ option.label }}</span>
+                  <span class="mt-2 block text-sm leading-6 text-neutral-400">{{ option.description }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="sourceMode === 'text_prompt'" class="nusa-card-premium rounded-[2rem] p-5">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Text prompt</p>
+              <h2 class="mt-2 text-xl font-semibold">Describe the motion clip</h2>
+              <p class="mt-2 text-sm leading-6 text-neutral-400">
+                Use this as a valid first-class workflow: no image is required. Nusa will combine your prompt with the project brief.
+              </p>
+
+              <label class="mt-5 block">
+                <span class="nusa-label">Prompt / creative direction</span>
+                <textarea v-model="manualScript" rows="5" class="nusa-textarea mt-2" data-testid="motion-manual-script" placeholder="e.g. Create a clean product showcase with a slow reveal, useful close-up, and stable hero frame." />
+              </label>
+            </div>
+
+            <div v-if="usesProductImage" class="nusa-card-premium rounded-[2rem] p-5">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Product image</p>
+              <h2 class="mt-2 text-xl font-semibold">Choose product image context</h2>
+              <p class="mt-2 text-sm leading-6 text-neutral-400">{{ productImageHelperText }}</p>
 
               <ProjectAssetInput
                 v-model="selectedProductImageAssetId"
                 :project-id="projectId"
                 accepted-types="image"
                 usage-role="product_image"
-                title="Upload or choose product image"
-                helper-text="Upload or select a clear product image. This is the main visual reference for the motion clip."
-                required
+                :title="productImageTitle"
+                :helper-text="productImageHelperText"
+                :required="productImageRequired"
                 auto-select-first
                 class="mt-5"
               />
@@ -245,7 +361,7 @@ onMounted(loadPage)
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Scenario / background</p>
               <h2 class="mt-2 text-xl font-semibold">Add environment context</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Add a scenario image or describe the environment you want.
+                Add a scenario image or describe the environment. Scenario images are prompt context only unless a future provider mode supports them.
               </p>
 
               <ProjectAssetInput
@@ -269,9 +385,12 @@ onMounted(loadPage)
               </label>
             </div>
 
-            <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Campaign / script source</p>
-              <h2 class="mt-2 text-xl font-semibold">Choose the script context</h2>
+            <div v-if="showCampaignPicker" class="nusa-card-premium rounded-[2rem] p-5">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Campaign source</p>
+              <h2 class="mt-2 text-xl font-semibold">Use saved campaign context</h2>
+              <p class="mt-2 text-sm leading-6 text-neutral-400">
+                {{ campaignRequired ? 'Required for saved campaign mode.' : 'Optional. Add campaign hooks, script and CTA as prompt context.' }}
+              </p>
 
               <label class="mt-5 block">
                 <span class="nusa-label">Campaign generation</span>
@@ -282,20 +401,9 @@ onMounted(loadPage)
                   </option>
                 </select>
               </label>
-
-              <label class="mt-4 block">
-                <span class="nusa-label">Script source</span>
-                <select v-model="scriptSource" class="nusa-select mt-2" data-testid="motion-script-source-select">
-                  <option v-for="option in scriptSourceOptions" :key="option.value" :value="option.value">
-                    {{ option.label }}
-                  </option>
-                </select>
-              </label>
-
-              <label v-if="scriptSource === 'manual_script'" class="mt-4 block">
-                <span class="nusa-label">Manual script</span>
-                <textarea v-model="manualScript" rows="5" class="nusa-textarea mt-2" data-testid="motion-manual-script" placeholder="Write the narration or visual script Nusa should plan around." />
-              </label>
+              <p v-if="campaignGenerations.length === 0" class="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-400">
+                No saved campaign generations yet. Generate a Product Content Kit first, or switch to text prompt mode.
+              </p>
             </div>
           </section>
 
@@ -399,7 +507,7 @@ onMounted(loadPage)
             </div>
 
             <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Ready to plan</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Ready to generate</p>
               <h2 class="mt-2 text-xl font-semibold">Generate Motion Video</h2>
               <p class="mt-3 text-sm leading-6 text-neutral-400">
                 Costs {{ creditCost }} credits. Real provider mode creates a visual-first MP4 motion clip; mock mode creates a render-ready plan.

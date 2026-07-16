@@ -60,6 +60,22 @@ Before public launch, define whether generated examples and saved outputs are la
 
 Avoid confusing mock outputs with real AI provider outputs. Public examples, galleries, demo workflows, and support docs should make the output source clear.
 
+
+### Motion AI Video / Google Veo beta contract
+
+Motion AI Video should treat text-to-video and campaign-to-video as the first stable real-provider modes. Product images can support the workspace and prompt context, but they must not be sent to Google as inline media unless the image-reference contract has been manually verified and explicit experimental flags are enabled.
+
+Current intended modes:
+
+| Mode | Real provider request | Product image requirement | Status |
+| --- | --- | --- | --- |
+| Text prompt | Text-only prompt | Not required | Supported beta path |
+| Saved campaign | Text-only prompt built from campaign context | Not required | Supported beta path |
+| Product image as context | Text-only prompt with Nusa-side asset context | Required for this UI mode, not sent to provider | Supported prompt-context path |
+| Product image visual reference | `referenceImages` / image-reference contract | Required | Experimental, disabled until verified |
+
+Veo generated videos should be downloaded and stored privately because provider retention and URL stability are not a product contract. The frontend should only expose Nusa media stream/download routes, never raw provider URLs.
+
 ## Risk controls
 
 - Keep provider calls behind feature flags.

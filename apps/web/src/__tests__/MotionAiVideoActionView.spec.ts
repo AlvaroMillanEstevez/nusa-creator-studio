@@ -127,6 +127,21 @@ function action(overrides: Partial<ProjectAction> = {}): ProjectAction {
     action_endpoint: '/api/v1/projects/42/generate-motion-ai-video',
     tool_key: 'motion_ai_video',
     tool_status: 'available',
+    provider_capabilities: {
+      provider_mode: 'google_veo',
+      real_enabled: true,
+      request_mode: 'text_only',
+      product_image_required: false,
+      product_image_supported: 'context_only',
+      campaign_supported: true,
+      text_prompt_supported: true,
+      image_reference_experimental: false,
+      provider_label: 'Google Veo',
+      default_duration_seconds: 8,
+      default_aspect_ratio: '9:16',
+      supports_real_rendering: true,
+      source_modes: ['text_prompt', 'campaign_assisted', 'image_context', 'image_reference_experimental'],
+    },
     ...overrides,
   }
 }
@@ -160,6 +175,7 @@ function routerFor() {
 function createFetchMock(
   mediaAssets: MediaAsset[] = [productImage, scenarioImage],
   generationHistory: CreatorGeneration[] = [voiceoverGeneration, campaignGeneration],
+  actionResponse: ProjectActionsResponse = actions,
 ) {
   return vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
     const url = String(input)
@@ -178,7 +194,7 @@ function createFetchMock(
     }
 
     if (url.endsWith('/projects/42/actions')) {
-      return Response.json(actions)
+      return Response.json(actionResponse)
     }
 
     if (url.endsWith('/media-assets') && method === 'POST') {
@@ -210,9 +226,10 @@ function createFetchMock(
 async function mountView(
   mediaAssets: MediaAsset[] = [productImage, scenarioImage],
   generationHistory: CreatorGeneration[] = [voiceoverGeneration, campaignGeneration],
+  actionResponse: ProjectActionsResponse = actions,
 ) {
   const router = routerFor()
-  const fetchMock = createFetchMock(mediaAssets, generationHistory)
+  const fetchMock = createFetchMock(mediaAssets, generationHistory, actionResponse)
 
   vi.stubGlobal('fetch', fetchMock)
   vi.stubGlobal('scrollTo', vi.fn<() => void>())
@@ -245,15 +262,17 @@ describe('MotionAiVideoActionView', () => {
     const { wrapper } = await mountView()
 
     expect(wrapper.text()).toContain('Motion AI Video')
-    expect(wrapper.text()).toContain('← Back to workspace')
-    expect(wrapper.text()).toContain('Product image')
+    expect(wrapper.text()).toContain('Back to workspace')
+    expect(wrapper.text()).toContain('Source mode')
+    expect(wrapper.text()).toContain('Start from text')
     expect(wrapper.text()).toContain('Generate Motion Video')
     expect(wrapper.text()).toContain('Costs 3 credits')
   })
 
-  it('requires a product image before submitting', async () => {
+  it('requires a product image only for image context mode', async () => {
     const { wrapper, fetchMock } = await mountView([], [])
 
+    await wrapper.get('[data-testid="motion-source-mode-image_context"]').trigger('click')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
@@ -261,16 +280,19 @@ describe('MotionAiVideoActionView', () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/projects/42/generate-motion-ai-video'))).toBe(false)
   })
 
-  it('shows manual script textarea when manual script source is selected', async () => {
+  it('shows text prompt textarea in text prompt mode', async () => {
     const { wrapper } = await mountView()
 
-    await wrapper.get('[data-testid="motion-script-source-select"]').setValue('manual_script')
-
     expect(wrapper.find('[data-testid="motion-manual-script"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('No product image required')
   })
 
   it('uploads and selects a product image inside the Motion AI form', async () => {
     const { wrapper, fetchMock } = await mountView([], [])
+
+    await wrapper.get('[data-testid="motion-source-mode-image_context"]').trigger('click')
+    await flushPromises()
+
     const input = wrapper.findAll<HTMLInputElement>('[data-testid="project-asset-file"]')[0]
 
     if (!input) {
@@ -296,9 +318,84 @@ describe('MotionAiVideoActionView', () => {
     expect(submittedPayload(fetchMock)).toMatchObject({ product_image_asset_id: 900 })
   })
 
+
+  it('submits text prompt mode without a product image', async () => {
+    const { wrapper, fetchMock, router } = await mountView([], [])
+
+    await wrapper.get('[data-testid="motion-creative-notes"]').setValue('Create a clean prompt-only showcase.')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(submittedPayload(fetchMock)).toMatchObject({
+      source_mode: 'text_prompt',
+      product_image_asset_id: null,
+      campaign_generation_id: null,
+      creative_notes: 'Create a clean prompt-only showcase.',
+    })
+    expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/203')
+  })
+
+  it('submits saved campaign mode without a product image', async () => {
+    const { wrapper, fetchMock } = await mountView()
+
+    await wrapper.get('[data-testid="motion-source-mode-campaign_assisted"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(submittedPayload(fetchMock)).toMatchObject({
+      source_mode: 'campaign_assisted',
+      product_image_asset_id: null,
+      campaign_generation_id: 31,
+      script_source: 'campaign_script',
+    })
+  })
+
+  it('keeps experimental visual reference disabled unless backend capability allows it', async () => {
+    const { wrapper } = await mountView()
+
+    const disabledButton = wrapper.get('[data-testid="motion-source-mode-image_reference_experimental"]')
+
+    expect(disabledButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Image reference beta is not enabled yet')
+  })
+
+  it('enables experimental visual reference when backend capability allows it', async () => {
+    const enabledActions: ProjectActionsResponse = {
+      data: [
+        action({
+          provider_capabilities: {
+            provider_mode: 'google_veo',
+            real_enabled: true,
+            request_mode: 'reference_images_experimental',
+            product_image_required: true,
+            product_image_supported: true,
+            campaign_supported: true,
+            text_prompt_supported: true,
+            image_reference_experimental: true,
+            provider_label: 'Google Veo',
+            default_duration_seconds: 8,
+            default_aspect_ratio: '9:16',
+            supports_real_rendering: true,
+            source_modes: ['text_prompt', 'campaign_assisted', 'image_context', 'image_reference_experimental'],
+          },
+        }),
+      ],
+    }
+    const { wrapper } = await mountView([productImage], [], enabledActions)
+
+    const button = wrapper.get('[data-testid="motion-source-mode-image_reference_experimental"]')
+
+    expect(button.attributes('disabled')).toBeUndefined()
+    await button.trigger('click')
+    expect(wrapper.text()).toContain('Experimental: sends product image as a visual reference to the provider.')
+  })
+
   it('submits expected payload with product, scenario, campaign and voiceover selections', async () => {
     const { wrapper, fetchMock, router } = await mountView()
 
+    await wrapper.get('[data-testid="motion-source-mode-image_context"]').trigger('click')
+    await flushPromises()
     await wrapper.findAll('[data-testid="project-asset-option-91"]')[1]?.trigger('click')
     await wrapper.get('[data-testid="motion-campaign-select"]').setValue('31')
     await wrapper.get('[data-testid="motion-voiceover-select"]').setValue('44')
@@ -312,13 +409,14 @@ describe('MotionAiVideoActionView', () => {
     await flushPromises()
 
     expect(submittedPayload(fetchMock)).toMatchObject({
+      source_mode: 'image_context',
       product_image_asset_id: 90,
       scenario_image_asset_id: 91,
       campaign_generation_id: 31,
       voiceover_generation_id: 44,
       platform: 'instagram_reels',
       target_duration_seconds: 10,
-      script_source: 'campaign_script',
+      script_source: 'project_brief',
       creative_notes: 'Make the clip premium and realistic.',
       visual_style: 'premium_brand',
       motion_style: 'product_orbit',

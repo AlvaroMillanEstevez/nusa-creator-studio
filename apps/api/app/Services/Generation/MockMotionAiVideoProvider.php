@@ -3,6 +3,7 @@
 namespace App\Services\Generation;
 
 use App\Contracts\MotionAiVideoProvider;
+use App\Support\MotionAiVideoCapabilities;
 use Illuminate\Support\Str;
 
 class MockMotionAiVideoProvider implements MotionAiVideoProvider
@@ -13,6 +14,11 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
      */
     public function generate(array $input): array
     {
+        $sourceMode = MotionAiVideoCapabilities::normalizeSourceMode(
+            $input['source_mode'] ?? null,
+            $input['campaign_generation_id'] ?? null,
+            $input['product_image_asset_id'] ?? null,
+        );
         $product = $this->value($input, 'product_name', $this->value($input, 'project_title', 'the featured product', 160), 160);
         $description = $this->value($input, 'product_description', 'A product that should be shown clearly without exaggerated claims.', 320);
         $audience = $this->value($input, 'target_audience', 'social commerce shoppers', 180);
@@ -58,6 +64,7 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
                 'visual_style' => $visualStyle,
                 'motion_style' => $motionStyle,
                 'source_type' => $this->sourceType($hasScenario, $hasCampaign, $hasVoiceover),
+                'source_mode' => $sourceMode,
                 'creative_angle' => $creativeAngle,
                 'target_audience' => $audience,
                 'primary_cta' => $primaryCta,
@@ -119,6 +126,7 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
             'metadata' => [
                 'generation_type' => 'motion_ai_video',
                 'provider' => 'mock',
+                'source_mode' => $sourceMode,
                 'product_image_asset_id' => $this->nullableInt($input['product_image_asset_id'] ?? null),
                 'scenario_image_asset_id' => $this->nullableInt($input['scenario_image_asset_id'] ?? null),
                 'campaign_generation_id' => $this->nullableInt($input['campaign_generation_id'] ?? null),
