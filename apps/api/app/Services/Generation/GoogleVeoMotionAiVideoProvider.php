@@ -223,7 +223,7 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             ]],
             'parameters' => [
                 'aspectRatio' => $this->aspectRatio($input),
-                'durationSeconds' => (string) $this->duration($input),
+                'durationSeconds' => $this->duration($input),
             ],
         ];
     }
@@ -250,7 +250,7 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             ]],
             'parameters' => [
                 'aspectRatio' => $this->aspectRatio($input),
-                'durationSeconds' => (string) $this->duration($input),
+                'durationSeconds' => $this->duration($input),
             ],
         ];
     }

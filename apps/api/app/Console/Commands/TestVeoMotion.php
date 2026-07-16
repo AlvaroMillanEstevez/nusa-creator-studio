@@ -58,6 +58,7 @@ class TestVeoMotion extends Command
             $this->warn('Reference-image mode is not enabled. The safe request shape will remain text_only.');
         }
 
+        $networkSummary = $this->client->safeNetworkSummary('submit');
         $summary = [
             'provider' => 'google_veo',
             'model' => (string) config('motion_ai_video.google_veo.model'),
@@ -71,6 +72,14 @@ class TestVeoMotion extends Command
             'product_image_sent_to_provider' => $providerRequestShape === 'reference_images' && $asset instanceof MediaAsset ? 'true' : 'false',
             'duration_seconds' => MotionAiVideoCapabilities::defaultDurationSeconds(),
             'aspect_ratio' => MotionAiVideoCapabilities::defaultAspectRatio(),
+            'endpoint_host' => $networkSummary['endpoint_host'] ?? 'unknown',
+            'endpoint_path' => $networkSummary['endpoint_path'] ?? 'unknown',
+            'connect_timeout_seconds' => $networkSummary['connect_timeout_seconds'] ?? 'unknown',
+            'timeout_seconds' => $networkSummary['timeout_seconds'] ?? 'unknown',
+            'retry_times' => $networkSummary['retry_times'] ?? 'unknown',
+            'retry_sleep_ms' => $networkSummary['retry_sleep_ms'] ?? 'unknown',
+            'force_ipv4' => ($networkSummary['force_ipv4'] ?? false) ? 'true' : 'false',
+            'force_http1' => ($networkSummary['force_http1'] ?? false) ? 'true' : 'false',
         ];
 
         $this->info('Safe Google Veo request summary:');
@@ -173,7 +182,7 @@ class TestVeoMotion extends Command
             ]],
             'parameters' => [
                 'aspectRatio' => MotionAiVideoCapabilities::defaultAspectRatio(),
-                'durationSeconds' => (string) MotionAiVideoCapabilities::defaultDurationSeconds(),
+                'durationSeconds' => MotionAiVideoCapabilities::defaultDurationSeconds(),
             ],
         ];
     }
@@ -202,7 +211,7 @@ class TestVeoMotion extends Command
             ]],
             'parameters' => [
                 'aspectRatio' => MotionAiVideoCapabilities::defaultAspectRatio(),
-                'durationSeconds' => (string) MotionAiVideoCapabilities::defaultDurationSeconds(),
+                'durationSeconds' => MotionAiVideoCapabilities::defaultDurationSeconds(),
             ],
         ];
     }

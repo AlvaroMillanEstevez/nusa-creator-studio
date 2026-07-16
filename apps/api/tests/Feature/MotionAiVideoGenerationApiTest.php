@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\CreditTransactionType;
+use App\Exceptions\MotionAiVideo\MotionAiVideoProviderException;
 use App\Jobs\GenerateMotionAiVideoJob;
 use App\Models\CreatorTool;
 use App\Models\CreditTransaction;
@@ -10,10 +11,13 @@ use App\Models\Generation;
 use App\Models\MediaAsset;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Generation\GoogleVeoMotionAiVideoClient;
 use App\Services\Generation\MotionAiVideoProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -38,6 +42,13 @@ class MotionAiVideoGenerationApiTest extends TestCase
         config()->set('motion_ai_video.google_veo.allow_experimental_image_input', false);
         config()->set('motion_ai_video.google_veo.default_duration_seconds', 8);
         config()->set('motion_ai_video.google_veo.default_aspect_ratio', '9:16');
+        config()->set('motion_ai_video.google_veo.connect_timeout_seconds', 60);
+        config()->set('motion_ai_video.google_veo.timeout_seconds', 300);
+        config()->set('motion_ai_video.google_veo.request_timeout_seconds', 180);
+        config()->set('motion_ai_video.google_veo.retry_times', 2);
+        config()->set('motion_ai_video.google_veo.retry_sleep_ms', 1500);
+        config()->set('motion_ai_video.google_veo.force_ipv4', false);
+        config()->set('motion_ai_video.google_veo.force_http1', false);
         config()->set('motion_ai_video.google_veo.poll_interval_seconds', 0);
         config()->set('motion_ai_video.google_veo.max_poll_attempts', 1);
         config()->set('motion_ai_video.google_veo.estimated_cost_usd_per_second', '0.02');
@@ -443,6 +454,144 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertSame('Google Veo', data_get($action, 'provider_capabilities.provider_label'));
     }
 
+    public function test_google_veo_client_uses_configured_network_options(): void
+    {
+        $this->enableGoogleVeo();
+        config()->set('motion_ai_video.google_veo.connect_timeout_seconds', 61);
+        config()->set('motion_ai_video.google_veo.timeout_seconds', 301);
+        config()->set('motion_ai_video.google_veo.retry_times', 3);
+        config()->set('motion_ai_video.google_veo.retry_sleep_ms', 750);
+
+        $client = app(GoogleVeoMotionAiVideoClient::class);
+        $options = $client->networkOptionsForDiagnostics();
+        $summary = $client->safeNetworkSummary('submit');
+
+        $this->assertSame(61, $options['connect_timeout']);
+        $this->assertSame(301, $options['timeout']);
+        $this->assertSame(3, $options['retry_times']);
+        $this->assertSame(750, $options['retry_sleep_ms']);
+        $this->assertSame('generativelanguage.googleapis.com', $summary['endpoint_host']);
+        $this->assertSame('/v1beta/models/veo-test:predictLongRunning', $summary['endpoint_path']);
+        $this->assertSame(61, $summary['connect_timeout_seconds']);
+        $this->assertSame(301, $summary['timeout_seconds']);
+        $this->assertFalse($summary['force_ipv4']);
+        $this->assertFalse($summary['force_http1']);
+    }
+
+    public function test_google_veo_timeout_falls_back_to_legacy_request_timeout(): void
+    {
+        $this->enableGoogleVeo();
+        config()->set('motion_ai_video.google_veo.timeout_seconds', null);
+        config()->set('motion_ai_video.google_veo.request_timeout_seconds', 222);
+
+        $this->assertSame(222, app(GoogleVeoMotionAiVideoClient::class)->networkOptionsForDiagnostics()['timeout']);
+    }
+
+    public function test_google_veo_force_ipv4_and_http1_curl_options_are_opt_in(): void
+    {
+        $this->enableGoogleVeo();
+
+        $disabledOptions = app(GoogleVeoMotionAiVideoClient::class)->networkOptionsForDiagnostics();
+        $this->assertSame([], $disabledOptions['curl']);
+
+        config()->set('motion_ai_video.google_veo.force_ipv4', true);
+        config()->set('motion_ai_video.google_veo.force_http1', true);
+
+        $enabledOptions = app(GoogleVeoMotionAiVideoClient::class)->networkOptionsForDiagnostics();
+        $this->assertIsArray($enabledOptions['curl']);
+
+        if (defined('CURLOPT_IPRESOLVE') && defined('CURL_IPRESOLVE_V4')) {
+            $this->assertArrayHasKey(constant('CURLOPT_IPRESOLVE'), $enabledOptions['curl']);
+            $this->assertSame(constant('CURL_IPRESOLVE_V4'), $enabledOptions['curl'][constant('CURLOPT_IPRESOLVE')]);
+        }
+
+        if (defined('CURLOPT_HTTP_VERSION') && defined('CURL_HTTP_VERSION_1_1')) {
+            $this->assertArrayHasKey(constant('CURLOPT_HTTP_VERSION'), $enabledOptions['curl']);
+            $this->assertSame(constant('CURL_HTTP_VERSION_1_1'), $enabledOptions['curl'][constant('CURLOPT_HTTP_VERSION')]);
+        }
+    }
+
+    public function test_google_veo_curl_options_do_not_crash_when_curl_constants_are_missing(): void
+    {
+        $this->enableGoogleVeo();
+        config()->set('motion_ai_video.google_veo.force_ipv4', true);
+        config()->set('motion_ai_video.google_veo.force_http1', true);
+
+        $client = new class extends GoogleVeoMotionAiVideoClient
+        {
+            protected function curlConstant(string $name): ?int
+            {
+                return null;
+            }
+        };
+
+        $options = $client->networkOptionsForDiagnostics();
+
+        $this->assertSame([], $options['curl']);
+    }
+
+    public function test_google_veo_connection_exception_is_wrapped_and_logged_safely(): void
+    {
+        $this->enableGoogleVeo('veo-secret-key');
+        config()->set('motion_ai_video.google_veo.connect_timeout_seconds', 60);
+        config()->set('motion_ai_video.google_veo.timeout_seconds', 300);
+        config()->set('motion_ai_video.google_veo.retry_times', 1);
+        config()->set('motion_ai_video.google_veo.retry_sleep_ms', 0);
+        config()->set('motion_ai_video.google_veo.force_ipv4', true);
+        config()->set('motion_ai_video.google_veo.force_http1', true);
+
+        Log::spy();
+        Http::fake(function (Request $request): never {
+            throw new ConnectionException('cURL error 28: SSL connection timeout for https://generativelanguage.googleapis.com/v1beta/models/veo-test:predictLongRunning?key=veo-secret-key '.str_repeat('A', 220));
+        });
+
+        try {
+            app(GoogleVeoMotionAiVideoClient::class)->submit([
+                'instances' => [[
+                    'prompt' => 'Create a clean product showcase.',
+                ]],
+                'parameters' => [
+                    'aspectRatio' => '9:16',
+                    'durationSeconds' => 8,
+                ],
+            ], [
+                'generation_id' => 123,
+                'request_mode' => 'text_only',
+                'provider_request_shape' => 'text_only',
+            ]);
+
+            $this->fail('Expected the Google Veo client to wrap the connection exception.');
+        } catch (MotionAiVideoProviderException $exception) {
+            $this->assertSame('google_veo_submit_failed', $exception->reason);
+            $this->assertInstanceOf(ConnectionException::class, $exception->getPrevious());
+            $this->assertSame('submit', $exception->context['stage']);
+            $this->assertSame('google_veo', $exception->context['provider']);
+            $this->assertSame('veo-test', $exception->context['model']);
+            $this->assertSame('generativelanguage.googleapis.com', $exception->context['endpoint_host']);
+            $this->assertSame('/v1beta/models/veo-test:predictLongRunning', $exception->context['endpoint_path']);
+            $this->assertSame(60, $exception->context['connect_timeout_seconds']);
+            $this->assertSame(300, $exception->context['timeout_seconds']);
+            $this->assertSame(1, $exception->context['retry_times']);
+            $this->assertSame(0, $exception->context['retry_sleep_ms']);
+            $this->assertTrue($exception->context['force_ipv4']);
+            $this->assertTrue($exception->context['force_http1']);
+            $this->assertStringNotContainsString('veo-secret-key', $exception->context['safe_exception_message']);
+            $this->assertStringNotContainsString('https://generativelanguage.googleapis.com', $exception->context['safe_exception_message']);
+            $this->assertStringContainsString('[redacted-url]', $exception->context['safe_exception_message']);
+            $this->assertStringContainsString('[redacted-long-token]', $exception->context['safe_exception_message']);
+            $this->assertStringNotContainsString('veo-secret-key', json_encode($exception->context, JSON_THROW_ON_ERROR));
+        }
+
+        Log::shouldHaveReceived('warning')->once()->withArgs(function (string $message, array $context): bool {
+            return $message === 'Google Veo submit connection failed.'
+                && ($context['provider'] ?? null) === 'google_veo'
+                && ($context['stage'] ?? null) === 'submit'
+                && ($context['endpoint_host'] ?? null) === 'generativelanguage.googleapis.com'
+                && ! str_contains(json_encode($context, JSON_THROW_ON_ERROR), 'veo-secret-key')
+                && str_contains((string) ($context['safe_exception_message'] ?? ''), '[redacted-url]');
+        });
+    }
+
     public function test_google_veo_motion_video_generation_stores_private_media_asset(): void
     {
         Queue::fake();
@@ -520,7 +669,7 @@ class MotionAiVideoGenerationApiTest extends TestCase
                 && data_get($instance, 'image') === null
                 && $referenceImages === null
                 && data_get($parameters, 'aspectRatio') === '9:16'
-                && data_get($parameters, 'durationSeconds') === '8'
+                && data_get($parameters, 'durationSeconds') === 8
                 && ! array_key_exists('sampleCount', $parameters)
                 && ! array_key_exists('generateAudio', $parameters)
                 && ! array_key_exists('negativePrompt', $parameters)
@@ -590,7 +739,7 @@ class MotionAiVideoGenerationApiTest extends TestCase
 
             $referenceImages = data_get($instance, 'referenceImages');
 
-            return data_get($parameters, 'durationSeconds') === '8'
+            return data_get($parameters, 'durationSeconds') === 8
                 && data_get($parameters, 'aspectRatio') === '9:16'
                 && data_get($instance, 'image') === null
                 && $referenceImages === null

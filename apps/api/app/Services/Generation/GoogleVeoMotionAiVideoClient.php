@@ -24,12 +24,14 @@ class GoogleVeoMotionAiVideoClient
 
         try {
             $response = $this->http()
-                ->timeout($this->requestTimeout())
                 ->post($this->generateEndpoint(), $payload);
         } catch (ConnectionException $exception) {
+            $safeContext = $this->safeNetworkContext('submit', $this->generateEndpoint(), $exception, $context);
+            $this->logConnectionFailure('Google Veo submit connection failed.', $safeContext);
+
             throw MotionAiVideoProviderException::requestFailed(
                 'google_veo_submit_failed',
-                $context + ['stage' => 'submit', 'provider' => 'google_veo'],
+                $safeContext,
                 $exception,
             );
         }
@@ -128,14 +130,21 @@ class GoogleVeoMotionAiVideoClient
         $startedAt = microtime(true);
 
         try {
-            $response = Http::timeout($this->requestTimeout())
-                ->withOptions(['allow_redirects' => true])
-                ->withHeaders(['x-goog-api-key' => (string) config('motion_ai_video.google_veo.api_key')])
+            $response = $this->downloadHttp()
                 ->get($uri);
+        } catch (ConnectionException $exception) {
+            $safeContext = $this->safeNetworkContext('download', $uri, $exception, $context);
+            $this->logConnectionFailure('Google Veo download connection failed.', $safeContext);
+
+            throw MotionAiVideoProviderException::requestFailed(
+                'google_veo_download_failed',
+                $safeContext,
+                $exception,
+            );
         } catch (Throwable $exception) {
             throw MotionAiVideoProviderException::requestFailed(
                 'google_veo_download_failed',
-                $context + ['stage' => 'download', 'provider' => 'google_veo'],
+                $this->safeNetworkContext('download', $uri, $exception, $context),
                 $exception,
             );
         }
@@ -220,13 +229,16 @@ class GoogleVeoMotionAiVideoClient
         $this->ensureConfigured();
 
         try {
+            $endpoint = $this->operationEndpoint($operationName);
             $response = $this->http()
-                ->timeout($this->requestTimeout())
-                ->get($this->operationEndpoint($operationName));
+                ->get($endpoint);
         } catch (ConnectionException $exception) {
+            $safeContext = $this->safeNetworkContext('poll', $endpoint ?? $this->operationEndpoint($operationName), $exception, $context);
+            $this->logConnectionFailure('Google Veo poll connection failed.', $safeContext);
+
             throw MotionAiVideoProviderException::requestFailed(
                 'google_veo_poll_failed',
-                $context + ['stage' => 'poll', 'provider' => 'google_veo'],
+                $safeContext,
                 $exception,
             );
         }
@@ -263,12 +275,69 @@ class GoogleVeoMotionAiVideoClient
 
     private function http(): PendingRequest
     {
-        return Http::baseUrl($this->apiBaseUrl())
-            ->acceptJson()
-            ->asJson()
-            ->withHeaders([
-                'x-goog-api-key' => (string) config('motion_ai_video.google_veo.api_key'),
-            ]);
+        return $this->withNetworkOptions(
+            Http::baseUrl($this->apiBaseUrl())
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders([
+                    'x-goog-api-key' => (string) config('motion_ai_video.google_veo.api_key'),
+                ])
+        );
+    }
+
+    private function downloadHttp(): PendingRequest
+    {
+        return $this->withNetworkOptions(
+            Http::withOptions(['allow_redirects' => true])
+                ->withHeaders([
+                    'x-goog-api-key' => (string) config('motion_ai_video.google_veo.api_key'),
+                ])
+        );
+    }
+
+    private function withNetworkOptions(PendingRequest $request): PendingRequest
+    {
+        $request = $request
+            ->connectTimeout($this->connectTimeoutSeconds())
+            ->timeout($this->timeoutSeconds())
+            ->retry($this->retryTimes(), $this->retrySleepMs());
+
+        $guzzleOptions = $this->guzzleOptions();
+
+        if ($guzzleOptions !== []) {
+            $request->withOptions($guzzleOptions);
+        }
+
+        return $request;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function networkOptionsForDiagnostics(): array
+    {
+        return [
+            'connect_timeout' => $this->connectTimeoutSeconds(),
+            'timeout' => $this->timeoutSeconds(),
+            'retry_times' => $this->retryTimes(),
+            'retry_sleep_ms' => $this->retrySleepMs(),
+            'curl' => $this->curlOptions(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function safeNetworkSummary(?string $stage = null, ?string $endpoint = null): array
+    {
+        return $this->endpointDetails($endpoint ?? $this->generateEndpoint(), $stage === 'download') + [
+            'connect_timeout_seconds' => $this->connectTimeoutSeconds(),
+            'timeout_seconds' => $this->timeoutSeconds(),
+            'retry_times' => $this->retryTimes(),
+            'retry_sleep_ms' => $this->retrySleepMs(),
+            'force_ipv4' => $this->forceIpv4(),
+            'force_http1' => $this->forceHttp1(),
+        ];
     }
 
     private function apiBaseUrl(): string
@@ -297,9 +366,133 @@ class GoogleVeoMotionAiVideoClient
         return trim((string) config('motion_ai_video.google_veo.model', 'veo-3.1-generate-preview'));
     }
 
-    private function requestTimeout(): int
+    private function connectTimeoutSeconds(): int
     {
-        return max(1, (int) config('motion_ai_video.google_veo.request_timeout_seconds', 180));
+        return max(1, (int) config('motion_ai_video.google_veo.connect_timeout_seconds', 60));
+    }
+
+    private function timeoutSeconds(): int
+    {
+        $timeout = config('motion_ai_video.google_veo.timeout_seconds');
+
+        if ($timeout === null || $timeout === '') {
+            $timeout = config('motion_ai_video.google_veo.request_timeout_seconds', 300);
+        }
+
+        return max(1, (int) $timeout);
+    }
+
+    private function retryTimes(): int
+    {
+        return max(1, (int) config('motion_ai_video.google_veo.retry_times', 2));
+    }
+
+    private function retrySleepMs(): int
+    {
+        return max(0, (int) config('motion_ai_video.google_veo.retry_sleep_ms', 1500));
+    }
+
+    private function forceIpv4(): bool
+    {
+        return (bool) config('motion_ai_video.google_veo.force_ipv4', false);
+    }
+
+    private function forceHttp1(): bool
+    {
+        return (bool) config('motion_ai_video.google_veo.force_http1', false);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function guzzleOptions(): array
+    {
+        $curlOptions = $this->curlOptions();
+
+        return $curlOptions === [] ? [] : ['curl' => $curlOptions];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function curlOptions(): array
+    {
+        $options = [];
+        $ipResolveOption = $this->curlConstant('CURLOPT_IPRESOLVE');
+        $ipv4Value = $this->curlConstant('CURL_IPRESOLVE_V4');
+        $httpVersionOption = $this->curlConstant('CURLOPT_HTTP_VERSION');
+        $http1Value = $this->curlConstant('CURL_HTTP_VERSION_1_1');
+
+        if ($this->forceIpv4() && $ipResolveOption !== null && $ipv4Value !== null) {
+            $options[$ipResolveOption] = $ipv4Value;
+        }
+
+        if ($this->forceHttp1() && $httpVersionOption !== null && $http1Value !== null) {
+            $options[$httpVersionOption] = $http1Value;
+        }
+
+        return $options;
+    }
+
+    protected function curlConstant(string $name): ?int
+    {
+        return defined($name) ? (int) constant($name) : null;
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function endpointDetails(string $endpoint, bool $redactPath = false): array
+    {
+        $isAbsolute = str_starts_with($endpoint, 'http://') || str_starts_with($endpoint, 'https://');
+        $basePath = (string) (parse_url($this->apiBaseUrl(), PHP_URL_PATH) ?: '');
+        $path = $isAbsolute
+            ? (string) (parse_url($endpoint, PHP_URL_PATH) ?: '/')
+            : rtrim($basePath, '/').'/'.ltrim($endpoint, '/');
+
+        return [
+            'endpoint_host' => $isAbsolute
+                ? (string) (parse_url($endpoint, PHP_URL_HOST) ?: 'unknown')
+                : (string) (parse_url($this->apiBaseUrl(), PHP_URL_HOST) ?: 'unknown'),
+            'endpoint_path' => $redactPath ? '[redacted-download-path]' : $path,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private function safeNetworkContext(string $stage, string $endpoint, Throwable $exception, array $context = []): array
+    {
+        return array_merge($context, [
+            'provider' => 'google_veo',
+            'stage' => $stage,
+            'model' => $this->model(),
+            'exception_class' => $exception::class,
+            'safe_exception_message' => $this->safeExceptionMessage($exception),
+        ], $this->safeNetworkSummary($stage, $endpoint));
+    }
+
+    /** @param array<string, mixed> $context */
+    private function logConnectionFailure(string $message, array $context): void
+    {
+        Log::warning($message, $context);
+    }
+
+    private function safeExceptionMessage(Throwable $exception): string
+    {
+        $message = $exception->getMessage();
+        $apiKey = trim((string) config('motion_ai_video.google_veo.api_key', ''));
+
+        if ($apiKey !== '') {
+            $message = str_replace($apiKey, '[redacted-api-key]', $message);
+        }
+
+        $message = preg_replace('/([?&]key=)[^&\s)]+/i', '$1[redacted-api-key]', $message) ?? $message;
+        $message = preg_replace('/https?:\/\/[^\s)]+/i', '[redacted-url]', $message) ?? $message;
+        $message = preg_replace('/[A-Za-z0-9+\/=]{200,}/', '[redacted-long-token]', $message) ?? $message;
+
+        return mb_substr($message, 0, 500);
     }
 
     /**
