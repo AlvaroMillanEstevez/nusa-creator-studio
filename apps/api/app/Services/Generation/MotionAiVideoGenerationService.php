@@ -218,6 +218,12 @@ class MotionAiVideoGenerationService
         $settings = is_array($project->settings) ? $project->settings : [];
         $scriptSource = $this->stringOption($options, 'script_source')
             ?? ($campaignGeneration instanceof Generation ? 'campaign_script' : 'project_brief');
+        $includeVoiceoverPlan = $this->boolOption($options, 'use_voiceover')
+            ?? $this->boolOption($options, 'include_voiceover_plan')
+            ?? true;
+        $includeCaptionPlan = $this->boolOption($options, 'use_captions')
+            ?? $this->boolOption($options, 'include_caption_plan')
+            ?? true;
 
         return array_merge($projectInput, [
             'project_title' => $project->title,
@@ -246,8 +252,10 @@ class MotionAiVideoGenerationService
             'background_prompt' => $this->stringOption($options, 'background_prompt'),
             'negative_prompt' => $this->stringOption($options, 'negative_prompt'),
             'aspect_ratio' => $this->stringOption($options, 'aspect_ratio') ?? 'vertical_9_16',
-            'include_voiceover_plan' => (bool) ($options['include_voiceover_plan'] ?? true),
-            'include_caption_plan' => (bool) ($options['include_caption_plan'] ?? true),
+            'include_voiceover_plan' => $includeVoiceoverPlan,
+            'include_caption_plan' => $includeCaptionPlan,
+            'use_voiceover' => $includeVoiceoverPlan,
+            'use_captions' => $includeCaptionPlan,
             'primary_cta' => $this->stringOption($options, 'primary_cta')
                 ?? $this->stringOption($projectInput, 'cta_preference')
                 ?? 'See product details',
@@ -520,6 +528,16 @@ class MotionAiVideoGenerationService
         $trimmed = trim($value);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    /** @param array<string, mixed> $input */
+    private function boolOption(array $input, string $key): ?bool
+    {
+        if (! array_key_exists($key, $input)) {
+            return null;
+        }
+
+        return filter_var($input[$key], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     }
 
     /** @param array<string, mixed> $input */

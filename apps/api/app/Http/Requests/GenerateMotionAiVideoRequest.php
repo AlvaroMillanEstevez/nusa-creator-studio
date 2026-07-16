@@ -27,6 +27,13 @@ class GenerateMotionAiVideoRequest extends FormRequest
                 : 'project_brief';
         }
 
+        $includeVoiceoverPlan = $this->has('use_voiceover')
+            ? $this->boolean('use_voiceover')
+            : ($this->has('include_voiceover_plan') ? $this->boolean('include_voiceover_plan') : true);
+        $includeCaptionPlan = $this->has('use_captions')
+            ? $this->boolean('use_captions')
+            : ($this->has('include_caption_plan') ? $this->boolean('include_caption_plan') : true);
+
         $this->merge([
             'source_mode' => $sourceMode,
             'platform' => $this->input('platform') ?: 'tiktok',
@@ -35,12 +42,10 @@ class GenerateMotionAiVideoRequest extends FormRequest
             'visual_style' => $this->input('visual_style') ?: 'realistic_product',
             'motion_style' => $this->input('motion_style') ?: 'slow_push_in',
             'aspect_ratio' => $this->input('aspect_ratio') ?: 'vertical_9_16',
-            'include_voiceover_plan' => $this->has('include_voiceover_plan')
-                ? $this->boolean('include_voiceover_plan')
-                : true,
-            'include_caption_plan' => $this->has('include_caption_plan')
-                ? $this->boolean('include_caption_plan')
-                : true,
+            'include_voiceover_plan' => $includeVoiceoverPlan,
+            'include_caption_plan' => $includeCaptionPlan,
+            'use_voiceover' => $includeVoiceoverPlan,
+            'use_captions' => $includeCaptionPlan,
         ]);
     }
 
@@ -103,6 +108,8 @@ class GenerateMotionAiVideoRequest extends FormRequest
             ])],
             'include_voiceover_plan' => ['sometimes', 'boolean'],
             'include_caption_plan' => ['sometimes', 'boolean'],
+            'use_voiceover' => ['sometimes', 'boolean'],
+            'use_captions' => ['sometimes', 'boolean'],
             'primary_cta' => ['sometimes', 'nullable', 'string', 'max:180'],
         ];
     }

@@ -458,8 +458,10 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'final_video_asset_id' => $finalVideo->getKey(),
         ]);
         $payload['generation_prompt'] = array_merge(is_array($plan['generation_prompt'] ?? null) ? $plan['generation_prompt'] : [], [
-            'main_prompt' => $prompt['prompt'],
-            'negative_prompt' => $prompt['negative_prompt'] ?? data_get($plan, 'generation_prompt.negative_prompt'),
+            'main_prompt' => $prompt['display_prompt']
+                ?? data_get($plan, 'generation_prompt.main_prompt')
+                ?? 'Clean visual-first product footage prepared for post-production overlays.',
+            'negative_prompt' => $prompt['display_negative_prompt'] ?? data_get($plan, 'generation_prompt.negative_prompt'),
         ]);
         $payload['rendered_video_asset'] = [
             'id' => $finalVideo->getKey(),
@@ -581,6 +583,13 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'final_video_asset_id' => $finalVideoAssetId,
             'output_size' => $outputSize,
             'platform' => $input['platform'] ?? 'tiktok',
+            'final_prompt_character_count' => data_get($prompt, 'summary.final_prompt_character_count'),
+            'final_prompt_hash' => data_get($prompt, 'summary.final_prompt_hash'),
+            'captions_requested' => (bool) data_get($prompt, 'summary.captions_requested', false),
+            'voiceover_requested' => (bool) data_get($prompt, 'summary.voiceover_requested', false),
+            'overlay_text_deferred' => (bool) data_get($prompt, 'summary.overlay_text_deferred', true),
+            'platform_ui_forbidden' => (bool) data_get($prompt, 'summary.platform_ui_forbidden', true),
+            'invented_names_forbidden' => (bool) data_get($prompt, 'summary.invented_names_forbidden', true),
             'prompt_summary' => $prompt['summary'] ?? [],
         ];
     }

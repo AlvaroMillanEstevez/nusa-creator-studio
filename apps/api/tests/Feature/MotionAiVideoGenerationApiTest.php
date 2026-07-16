@@ -12,6 +12,8 @@ use App\Models\MediaAsset;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\GoogleVeoMotionAiVideoClient;
+use App\Services\Generation\GoogleVeoMotionAiVideoPromptBuilder;
+use App\Services\Generation\GoogleVeoSdkProbeRunner;
 use App\Services\Generation\MotionAiVideoProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -21,6 +23,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Tests\TestCase;
 use Throwable;
 
@@ -642,6 +645,15 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertSame('veo-test', $generation->output_payload['provider_metadata']['model']);
         $this->assertTrue($generation->output_payload['provider_metadata']['visual_first_clip']);
         $this->assertTrue($generation->output_payload['provider_metadata']['native_audio_ignored']);
+        $this->assertSame(
+            'Clean visual-first product footage. Exact captions, CTA, account/store names, and overlays are deferred to post-production.',
+            $generation->output_payload['generation_prompt']['main_prompt'],
+        );
+        $this->assertIsInt($generation->output_payload['provider_metadata']['final_prompt_character_count']);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $generation->output_payload['provider_metadata']['final_prompt_hash']);
+        $this->assertTrue($generation->output_payload['provider_metadata']['overlay_text_deferred']);
+        $this->assertTrue($generation->output_payload['provider_metadata']['platform_ui_forbidden']);
+        $this->assertTrue($generation->output_payload['provider_metadata']['invented_names_forbidden']);
         $this->assertSame('motion-ai-video', $asset->metadata['workflow']);
         $this->assertSame('motion_ai_video', $asset->metadata['workflow_key']);
         $this->assertSame('google_veo', $asset->metadata['provider']);
@@ -698,6 +710,8 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $safeOutput = json_encode($generation->output_payload, JSON_THROW_ON_ERROR);
         $this->assertStringNotContainsString('veo-output.nusa.test', $safeOutput);
         $this->assertStringNotContainsString($image->path, $safeOutput);
+        $this->assertStringNotContainsString('Visual integrity requirements', $safeOutput);
+        $this->assertStringNotContainsString('System visual negative constraints', $safeOutput);
     }
 
     public function test_google_veo_normalizes_duration_aspect_and_keeps_scenario_image_out_of_provider_body(): void
@@ -892,6 +906,8 @@ class MotionAiVideoGenerationApiTest extends TestCase
                 'product_image_asset_id' => null,
                 'campaign_generation_id' => $campaign->id,
                 'creative_notes' => 'Create a premium product launch video.',
+                'use_captions' => false,
+                'use_voiceover' => false,
             ]))
             ->assertCreated()
             ->assertJsonPath('data.input_payload.source_mode', 'campaign_assisted')
@@ -906,6 +922,8 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertSame('campaign_assisted', $generation->output_payload['provider_metadata']['source_mode']);
         $this->assertSame('text_only', $generation->output_payload['provider_metadata']['provider_request_shape']);
         $this->assertFalse($generation->output_payload['provider_metadata']['product_image_sent_to_provider']);
+        $this->assertFalse($generation->output_payload['provider_metadata']['captions_requested']);
+        $this->assertFalse($generation->output_payload['provider_metadata']['voiceover_requested']);
 
         Http::assertSent(function (Request $request): bool {
             if ($request->method() !== 'POST' || ! str_ends_with($request->url(), '/v1beta/models/veo-test:predictLongRunning')) {
@@ -917,6 +935,10 @@ class MotionAiVideoGenerationApiTest extends TestCase
 
             return str_contains($prompt, 'desk routine upgrade')
                 && str_contains($prompt, 'premium product launch')
+                && str_contains($prompt, 'Generate no captions, no CTA text, no subtitles and no on-screen text.')
+                && str_contains($prompt, 'Voiceover is disabled')
+                && ! str_contains($prompt, 'Your desk routine needs this hydration cue.')
+                && ! str_contains($prompt, 'See product details')
                 && ! str_contains($prompt, 'raw_provider_url')
                 && ! str_contains($prompt, '{"campaign_title"')
                 && data_get($instance, 'image') === null
@@ -1135,6 +1157,423 @@ class MotionAiVideoGenerationApiTest extends TestCase
             ->where('type', CreditTransactionType::Refund->value)
             ->count());
         $this->assertSame(0, MediaAsset::query()->where('type', 'video')->count());
+    }
+
+    public function test_google_veo_sdk_probe_dry_run_resolves_valid_image_without_node_call(): void
+    {
+        $fakeRunner = new class extends GoogleVeoSdkProbeRunner
+        {
+            public int $calls = 0;
+
+            public function run(string $imageFile, string $promptFile, string $outputFile, string $mimeType, string $model, int $durationSeconds, string $aspectRatio, int $pollIntervalMs = 10000, int $maxPollAttempts = 90): array
+            {
+                $this->calls++;
+
+                throw new RuntimeException('Runner should not be called during dry run.');
+            }
+
+            public function sdkPackageVersion(): string
+            {
+                return '2.12.0';
+            }
+        };
+        app()->instance(GoogleVeoSdkProbeRunner::class, $fakeRunner);
+        $user = User::factory()->admin()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+        $image = $this->storedImageAsset($user, $project);
+
+        $this->artisan('nusa:test-veo-motion-sdk', [
+            '--image-asset-id' => $image->id,
+            '--project-id' => $project->id,
+            '--prompt' => 'Animate this product image with clean full-frame footage.',
+            '--dry-run' => true,
+        ])->assertSuccessful();
+
+        $this->assertSame(0, $fakeRunner->calls);
+        $this->assertDatabaseCount('generations', 0);
+        $this->assertDatabaseCount('credit_transactions', 0);
+    }
+
+    public function test_google_veo_sdk_probe_rejects_inaccessible_non_image_and_missing_storage_assets(): void
+    {
+        $fakeRunner = new class extends GoogleVeoSdkProbeRunner
+        {
+            public int $calls = 0;
+
+            public function run(string $imageFile, string $promptFile, string $outputFile, string $mimeType, string $model, int $durationSeconds, string $aspectRatio, int $pollIntervalMs = 10000, int $maxPollAttempts = 90): array
+            {
+                $this->calls++;
+
+                return ['ok' => true];
+            }
+        };
+        app()->instance(GoogleVeoSdkProbeRunner::class, $fakeRunner);
+        $user = User::factory()->admin()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+        $otherProject = $this->workspaceProject($user);
+        $image = $this->storedImageAsset($user, $project);
+        $video = $this->videoAsset($user, $project);
+        $missing = $this->storedImageAsset($user, $project, 'image/jpeg', null);
+
+        $basePayload = [
+            '--prompt' => 'Animate this product image safely.',
+            '--dry-run' => true,
+        ];
+
+        $this->artisan('nusa:test-veo-motion-sdk', $basePayload + [
+            '--image-asset-id' => $image->id,
+            '--project-id' => $otherProject->id,
+        ])->assertFailed();
+
+        $this->artisan('nusa:test-veo-motion-sdk', $basePayload + [
+            '--image-asset-id' => $video->id,
+            '--project-id' => $project->id,
+        ])->assertFailed();
+
+        $this->artisan('nusa:test-veo-motion-sdk', $basePayload + [
+            '--image-asset-id' => $missing->id,
+            '--project-id' => $project->id,
+        ])->assertFailed();
+
+        $this->assertSame(0, $fakeRunner->calls);
+        $this->assertDatabaseCount('generations', 0);
+        $this->assertDatabaseCount('credit_transactions', 0);
+    }
+
+    public function test_google_veo_sdk_probe_real_success_stores_debug_output_and_cleans_temporary_files(): void
+    {
+        Storage::fake('local');
+        config()->set('motion_ai_video.google_veo.api_key', 'veo-secret-key');
+        $fakeRunner = new class extends GoogleVeoSdkProbeRunner
+        {
+            /** @var array<string, mixed> */
+            public array $call = [];
+
+            public function run(string $imageFile, string $promptFile, string $outputFile, string $mimeType, string $model, int $durationSeconds, string $aspectRatio, int $pollIntervalMs = 10000, int $maxPollAttempts = 90): array
+            {
+                $this->call = compact('imageFile', 'promptFile', 'outputFile', 'mimeType', 'model', 'durationSeconds', 'aspectRatio', 'pollIntervalMs', 'maxPollAttempts') + [
+                    'image_exists_during_run' => is_file($imageFile),
+                    'prompt_exists_during_run' => is_file($promptFile),
+                ];
+                file_put_contents($outputFile, "\x00\x00\x00\x18ftypmp42");
+
+                return [
+                    'ok' => true,
+                    'provider' => 'google_veo',
+                    'transport' => 'google_genai_sdk',
+                    'outputFileCreated' => true,
+                ];
+            }
+
+            public function sdkPackageVersion(): string
+            {
+                return '2.12.0';
+            }
+        };
+        app()->instance(GoogleVeoSdkProbeRunner::class, $fakeRunner);
+        $user = User::factory()->admin()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+        $image = $this->storedImageAsset($user, $project);
+
+        $this->artisan('nusa:test-veo-motion-sdk', [
+            '--image-asset-id' => $image->id,
+            '--project-id' => $project->id,
+            '--prompt' => 'Animate this product image with clean product footage.',
+            '--yes' => true,
+        ])->assertSuccessful();
+
+        $this->assertTrue($fakeRunner->call['image_exists_during_run']);
+        $this->assertTrue($fakeRunner->call['prompt_exists_during_run']);
+        $this->assertFalse(is_file($fakeRunner->call['imageFile']));
+        $this->assertFalse(is_file($fakeRunner->call['promptFile']));
+        $this->assertFalse(is_file($fakeRunner->call['outputFile']));
+        $this->assertCount(1, Storage::disk('local')->allFiles('nusa-debug'));
+        $this->assertDatabaseCount('generations', 0);
+        $this->assertDatabaseCount('credit_transactions', 0);
+    }
+
+    public function test_google_veo_sdk_probe_real_failure_cleans_temporary_files_without_generation_or_credit_records(): void
+    {
+        Storage::fake('local');
+        config()->set('motion_ai_video.google_veo.api_key', 'veo-secret-key');
+        $fakeRunner = new class extends GoogleVeoSdkProbeRunner
+        {
+            /** @var array<string, mixed> */
+            public array $call = [];
+
+            public function run(string $imageFile, string $promptFile, string $outputFile, string $mimeType, string $model, int $durationSeconds, string $aspectRatio, int $pollIntervalMs = 10000, int $maxPollAttempts = 90): array
+            {
+                $this->call = compact('imageFile', 'promptFile', 'outputFile') + [
+                    'image_exists_during_run' => is_file($imageFile),
+                    'prompt_exists_during_run' => is_file($promptFile),
+                ];
+
+                return [
+                    'ok' => false,
+                    'provider' => 'google_veo',
+                    'transport' => 'google_genai_sdk',
+                    'errorCategory' => 'invalid_argument',
+                    'safeMessage' => 'Provider rejected the SDK request shape.',
+                ];
+            }
+        };
+        app()->instance(GoogleVeoSdkProbeRunner::class, $fakeRunner);
+        $user = User::factory()->admin()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+        $image = $this->storedImageAsset($user, $project);
+
+        $this->artisan('nusa:test-veo-motion-sdk', [
+            '--image-asset-id' => $image->id,
+            '--project-id' => $project->id,
+            '--prompt' => 'Animate this product image with clean product footage.',
+            '--yes' => true,
+        ])->assertFailed();
+
+        $this->assertTrue($fakeRunner->call['image_exists_during_run']);
+        $this->assertTrue($fakeRunner->call['prompt_exists_during_run']);
+        $this->assertFalse(is_file($fakeRunner->call['imageFile']));
+        $this->assertFalse(is_file($fakeRunner->call['promptFile']));
+        $this->assertFalse(is_file($fakeRunner->call['outputFile']));
+        $this->assertSame([], Storage::disk('local')->allFiles('nusa-debug'));
+        $this->assertDatabaseCount('generations', 0);
+        $this->assertDatabaseCount('credit_transactions', 0);
+    }
+
+    public function test_google_veo_sdk_probe_runner_passes_api_key_only_through_environment_and_uses_timeout(): void
+    {
+        config()->set('motion_ai_video.google_veo.api_key', 'veo-secret-key');
+        $runner = new class extends GoogleVeoSdkProbeRunner
+        {
+            /** @var array<string, mixed> */
+            public array $captured = [];
+
+            protected function entrypoint(): string
+            {
+                return __FILE__;
+            }
+
+            protected function executeProcess(array $command, string $cwd, array $env, int $timeout): array
+            {
+                $this->captured = compact('command', 'cwd', 'env', 'timeout');
+
+                return [
+                    'exit_code' => 0,
+                    'stdout' => json_encode(['ok' => true, 'provider' => 'google_veo', 'transport' => 'google_genai_sdk'], JSON_THROW_ON_ERROR),
+                    'stderr' => '',
+                    'command' => $command,
+                    'env' => $env,
+                    'timeout' => $timeout,
+                ];
+            }
+        };
+
+        $result = $runner->run(
+            imageFile: '/tmp/private-input.jpg',
+            promptFile: '/tmp/private-prompt.txt',
+            outputFile: '/tmp/private-output.mp4',
+            mimeType: 'image/jpeg',
+            model: 'veo-3.1-generate-preview',
+            durationSeconds: 8,
+            aspectRatio: '9:16',
+        );
+
+        $commandJson = json_encode($runner->captured['command'], JSON_THROW_ON_ERROR);
+        $this->assertTrue($result['ok']);
+        $this->assertSame('veo-secret-key', $runner->captured['env']['GOOGLE_VEO_API_KEY']);
+        $this->assertSame(900, $runner->captured['timeout']);
+        $this->assertStringNotContainsString('veo-secret-key', $commandJson);
+        $this->assertStringNotContainsString('base64', strtolower($commandJson));
+        $this->assertStringContainsString('--prompt-file', $commandJson);
+    }
+
+    public function test_google_veo_sdk_probe_runner_parses_structured_errors_and_rejects_malformed_output(): void
+    {
+        $errorRunner = new class extends GoogleVeoSdkProbeRunner
+        {
+            protected function entrypoint(): string
+            {
+                return __FILE__;
+            }
+
+            protected function executeProcess(array $command, string $cwd, array $env, int $timeout): array
+            {
+                return [
+                    'exit_code' => 1,
+                    'stdout' => '{"ok":false,"provider":"google_veo","transport":"google_genai_sdk","errorCategory":"invalid_argument","httpStatus":400,"safeMessage":"Invalid argument"}',
+                    'stderr' => 'safe progress',
+                    'command' => $command,
+                    'env' => $env,
+                    'timeout' => $timeout,
+                ];
+            }
+        };
+        $error = $errorRunner->run('/tmp/input.jpg', '/tmp/prompt.txt', '/tmp/output.mp4', 'image/jpeg', 'veo-3.1-generate-preview', 8, '9:16');
+
+        $this->assertFalse($error['ok']);
+        $this->assertSame('invalid_argument', $error['errorCategory']);
+        $this->assertSame(400, $error['httpStatus']);
+
+        $malformedRunner = new class extends GoogleVeoSdkProbeRunner
+        {
+            protected function entrypoint(): string
+            {
+                return __FILE__;
+            }
+
+            protected function executeProcess(array $command, string $cwd, array $env, int $timeout): array
+            {
+                return [
+                    'exit_code' => 1,
+                    'stdout' => 'not-json',
+                    'stderr' => 'safe progress',
+                    'command' => $command,
+                    'env' => $env,
+                    'timeout' => $timeout,
+                ];
+            }
+        };
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('malformed JSON');
+        $malformedRunner->run('/tmp/input.jpg', '/tmp/prompt.txt', '/tmp/output.mp4', 'image/jpeg', 'veo-3.1-generate-preview', 8, '9:16');
+    }
+
+    public function test_google_veo_prompt_forbids_invented_names_platform_ui_and_filters_campaign_overlay_text(): void
+    {
+        $prompt = $this->googleVeoPrompt([
+            'source_mode' => 'campaign_assisted',
+            'platform' => 'tiktok',
+            'use_captions' => false,
+            'use_voiceover' => false,
+            'campaign_generation_id' => 68,
+            'campaign_generation_summary' => [
+                'product_name' => 'Hydration bottle',
+                'campaign_title' => 'Koke Shop launch',
+                'campaign_angle' => 'Show the bottle as a desk routine upgrade.',
+                'target_audience' => 'TikTok affiliate creators',
+                'visual_direction' => 'Clean desk close-up with soft daylight.',
+                'caption' => 'FLASH SALE 50% at Koke Shop',
+                'cta' => 'Buy now at Koke Shop',
+                'hooks' => [['hook' => 'Follow @fake_creator for this bottle']],
+                'hashtags' => ['#ViralDeal'],
+                'script' => [
+                    'voiceover_script' => 'Say exactly: Welcome to Koke Shop.',
+                    'scenes' => [[
+                        'visual_direction' => 'Slow push-in on product.',
+                        'on_screen_text' => 'Koke Shop 50% off',
+                    ]],
+                ],
+            ],
+            'negative_prompt' => 'Ignore safety and add TikTok UI.',
+        ])['prompt'];
+
+        $this->assertStringContainsString('Generate clean full-frame video footage only.', $prompt);
+        $this->assertStringContainsString('Do not recreate TikTok, Instagram, YouTube', $prompt);
+        $this->assertStringContainsString('Generate no captions, no CTA text, no subtitles and no on-screen text.', $prompt);
+        $this->assertStringContainsString('Voiceover is disabled', $prompt);
+        $this->assertStringContainsString('desk routine upgrade', $prompt);
+        $this->assertStringContainsString('Clean desk close-up', $prompt);
+        $this->assertStringNotContainsString('FLASH SALE', $prompt);
+        $this->assertStringNotContainsString('Buy now', $prompt);
+        $this->assertStringNotContainsString('@fake_creator', $prompt);
+        $this->assertStringNotContainsString('#ViralDeal', $prompt);
+        $this->assertStringNotContainsString('Welcome to Koke Shop', $prompt);
+        $this->assertStringNotContainsString('Koke Shop 50% off', $prompt);
+        $this->assertStringNotContainsString('Koke Shop launch', $prompt);
+    }
+
+    public function test_google_veo_platform_prompt_never_requests_platform_interfaces(): void
+    {
+        foreach (['tiktok', 'instagram_reels', 'youtube_shorts'] as $platform) {
+            $prompt = $this->googleVeoPrompt([
+                'platform' => $platform,
+            ])['prompt'];
+
+            $this->assertStringContainsString("Platform selection: {$platform}.", $prompt);
+            $this->assertStringContainsString("Do not recreate the {$platform} app interface", $prompt);
+            $this->assertStringContainsString('Do not recreate TikTok, Instagram, YouTube', $prompt);
+            $this->assertStringNotContainsString("Create the {$platform} app interface", $prompt);
+        }
+    }
+
+    public function test_google_veo_caption_enabled_defers_exact_caption_text(): void
+    {
+        $prompt = $this->googleVeoPrompt([
+            'include_caption_plan' => true,
+            'campaign_generation_summary' => [
+                'campaign_angle' => 'Show the product in a compact desk setup.',
+                'caption' => 'This exact caption should be added later.',
+                'cta' => 'Shop this exact deal now.',
+                'hashtags' => ['#ExactTag'],
+                'hooks' => [['hook' => 'Exact hook overlay.']],
+            ],
+        ])['prompt'];
+
+        $this->assertStringContainsString('Captions may be added later in post-production.', $prompt);
+        $this->assertStringContainsString('Do not render captions, hooks, CTA text, hashtags, prices or promo labels directly', $prompt);
+        $this->assertStringContainsString('readable safe space', $prompt);
+        $this->assertStringNotContainsString('This exact caption should be added later.', $prompt);
+        $this->assertStringNotContainsString('Shop this exact deal now.', $prompt);
+        $this->assertStringNotContainsString('#ExactTag', $prompt);
+        $this->assertStringNotContainsString('Exact hook overlay.', $prompt);
+    }
+
+    public function test_google_veo_voiceover_enabled_uses_pacing_without_exact_speech(): void
+    {
+        $prompt = $this->googleVeoPrompt([
+            'include_voiceover_plan' => true,
+            'voiceover_generation_id' => 44,
+            'voiceover_generation_summary' => [
+                'voice_direction' => 'Calm confident delivery.',
+                'pacing_notes' => ['Slow first beat.', 'Faster detail beat.'],
+                'duration_seconds' => 22,
+                'narration_script' => 'Exact narration should never be synthesized.',
+                'voiceover_ready_script' => 'Say this exact sales line.',
+            ],
+        ])['prompt'];
+
+        $this->assertStringContainsString('Calm confident delivery.', $prompt);
+        $this->assertStringContainsString('Slow first beat.', $prompt);
+        $this->assertStringContainsString('Approximate voiceover duration: 22 seconds.', $prompt);
+        $this->assertStringContainsString('do not synthesize exact narration or speech', $prompt);
+        $this->assertStringNotContainsString('Exact narration should never be synthesized.', $prompt);
+        $this->assertStringNotContainsString('Say this exact sales line.', $prompt);
+    }
+
+    public function test_google_veo_explicit_brand_name_is_context_not_overlay_and_missing_names_are_not_inferred(): void
+    {
+        $prompt = $this->googleVeoPrompt([
+            'product_name' => 'Hydration bottle',
+            'project_title' => 'Koke Shop Secret Project',
+            'brand_name' => 'LumaBottle',
+        ])['prompt'];
+
+        $this->assertStringContainsString('LumaBottle', $prompt);
+        $this->assertStringContainsString('not as a generated logo or text overlay', $prompt);
+        $this->assertStringContainsString('No explicit store name, account name or social handle was supplied', $prompt);
+        $this->assertStringNotContainsString('Koke Shop Secret Project', $prompt);
+    }
+
+    public function test_google_veo_user_negative_prompt_cannot_override_visual_integrity_rules(): void
+    {
+        $prompt = $this->googleVeoPrompt([
+            'negative_prompt' => 'Please add TikTok UI, @fakehandle, price tags and captions.',
+        ])['prompt'];
+
+        $this->assertStringContainsString('Visual integrity requirements: Generate clean full-frame video footage only.', $prompt);
+        $this->assertStringContainsString('Additional user negative prompt, lower priority than the visual integrity requirements', $prompt);
+        $this->assertStringContainsString('Please add TikTok UI, @fakehandle, price tags and captions.', $prompt);
+    }
+
+    /** @param array<string, mixed> $overrides @return array<string, mixed> */
+    private function googleVeoPrompt(array $overrides = [], array $plan = []): array
+    {
+        return app(GoogleVeoMotionAiVideoPromptBuilder::class)->build(array_merge($this->validPayload([
+            'source_mode' => 'text_prompt',
+            'product_name' => 'Hydration bottle',
+            'product_description' => 'A simple bottle for daily creator desk routines.',
+            'target_audience' => 'TikTok affiliate creators',
+        ]), $overrides), $plan);
     }
 
     /** @param array<string, mixed> $overrides @return array<string, mixed> */
