@@ -88,12 +88,8 @@ class MotionAiVideoCapabilities
         $requestMode = $provider === 'google_veo'
             ? self::normalizeRequestMode()
             : 'mock';
-        $imageReferencesEnabled = $provider === 'google_veo'
-            && $requestMode === self::REQUEST_MODE_REFERENCE_IMAGES_EXPERIMENTAL
-            && (bool) config('motion_ai_video.google_veo.image_references_enabled', false)
-            && (bool) config('motion_ai_video.google_veo.allow_experimental_image_input', false);
+        $imageReferencesEnabled = false;
         $imageToVideoEnabled = $provider === 'google_veo'
-            && $requestMode === self::REQUEST_MODE_IMAGE_FIRST_FRAME
             && (bool) config('motion_ai_video.google_veo.image_to_video_enabled', false);
 
         return [

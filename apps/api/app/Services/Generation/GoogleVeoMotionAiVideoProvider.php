@@ -18,6 +18,7 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
         private readonly MockMotionAiVideoProvider $planner,
         private readonly GoogleVeoMotionAiVideoPromptBuilder $prompt,
         private readonly GoogleVeoMotionAiVideoClient $client,
+        private readonly GoogleVeoSdkBridgeRunner $sdkBridge,
         private readonly GeneratedEditedVideoMediaService $videos,
     ) {}
 
@@ -60,19 +61,38 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
         );
         $plan = $this->planner->generate($input);
         $prompt = $this->prompt->build($input, $plan, $productImage, $scenarioImage);
+        if ($providerRequestShape === 'image_first_frame') {
+            return $this->generateFirstFrameWithSdk(
+                input: $input,
+                user: $user,
+                project: $project,
+                generationId: $generationId,
+                sourceMode: $sourceMode,
+                requestMode: $requestMode,
+                providerRequestShape: $providerRequestShape,
+                productImage: $productImage,
+                scenarioImage: $scenarioImage,
+                referenceImagesCount: $referenceImagesCount,
+                context: $context,
+                plan: $plan,
+                prompt: $prompt,
+                startedAt: $startedAt,
+            );
+        }
+
         $requestPayload = match ($providerRequestShape) {
-            'image_first_frame' => $this->buildFirstFrameRequest($prompt, $productImage, $input, $context),
             'reference_images' => $this->buildReferenceImagesRequest($prompt, $productImage, $input, $context),
             default => $this->buildTextOnlyRequest($prompt, $input),
         };
 
         Log::info('Submitting Google Veo Motion AI Video request.', $context + [
             'stage' => 'submit',
+            'provider_transport' => 'php_rest',
         ]);
 
-        $submit = $this->client->submit($requestPayload, $context);
+        $submit = $this->client->submit($requestPayload, $context + ['provider_transport' => 'php_rest']);
         $completion = $this->completion($submit, $context);
-        $binary = $this->client->videoBinary($completion['video'], $context + ['stage' => 'download']);
+        $binary = $this->client->videoBinary($completion['video'], $context + ['stage' => 'download', 'provider_transport' => 'php_rest']);
 
         $this->assertValidMp4($binary, $context + ['stage' => 'download_validate']);
 
@@ -231,30 +251,140 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
     }
 
     /**
-     * @param  array<string, mixed>  $prompt
      * @param  array<string, mixed>  $input
      * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $plan
+     * @param  array<string, mixed>  $prompt
      * @return array<string, mixed>
      */
-    private function buildFirstFrameRequest(array $prompt, ?MediaAsset $productImage, array $input, array $context): array
-    {
-        if (! $productImage instanceof MediaAsset) {
-            throw MotionAiVideoProviderException::invalidResponse('google_veo_invalid_response', $context + [
-                'stage' => 'build_first_frame_request',
-                'response_format' => 'missing_product_image',
-            ]);
+    private function generateFirstFrameWithSdk(
+        array $input,
+        User $user,
+        Project $project,
+        int $generationId,
+        string $sourceMode,
+        string $requestMode,
+        string $providerRequestShape,
+        MediaAsset $productImage,
+        ?MediaAsset $scenarioImage,
+        int $referenceImagesCount,
+        array $context,
+        array $plan,
+        array $prompt,
+        float $startedAt,
+    ): array {
+        $image = $this->imageBinary($productImage, array_merge($context, [
+            'stage' => 'read_product_image_first_frame_sdk',
+            'provider_transport' => 'google_genai_sdk',
+        ]));
+
+        Log::info('Submitting Google Veo Motion AI Video SDK bridge request.', array_merge($context, [
+            'stage' => 'sdk_bridge_submit',
+            'provider_transport' => 'google_genai_sdk',
+        ]));
+
+        $render = $this->sdkBridge->renderImageFirstFrame(
+            imageBinary: $image['binary'],
+            prompt: (string) $prompt['prompt'],
+            mimeType: $image['mime_type'],
+            model: $this->model(),
+            durationSeconds: $this->duration($input),
+            aspectRatio: $this->aspectRatio($input),
+            context: array_merge($context, [
+                'stage' => 'sdk_bridge_submit',
+                'provider_transport' => 'google_genai_sdk',
+            ]),
+        );
+        $submit = [
+            'operation_name' => null,
+            'submit_latency_ms' => null,
+            'sdk_package_version' => $render['result']['sdkPackageVersion'] ?? $this->sdkBridge->sdkPackageVersion(),
+            'provider_transport' => 'google_genai_sdk',
+            'process_exit_code' => $render['result']['process_exit_code'] ?? null,
+        ];
+        $completion = [
+            'operation_name' => null,
+            'render_status' => 'done',
+            'response_status' => 'done',
+            'video' => ['transport' => 'google_genai_sdk'],
+            'render_time_ms' => null,
+            'sdk_package_version' => $submit['sdk_package_version'],
+            'provider_transport' => 'google_genai_sdk',
+        ];
+        $binary = $render['video_binary'];
+
+        $this->assertValidMp4($binary, array_merge($context, [
+            'stage' => 'sdk_bridge_download_validate',
+            'provider_transport' => 'google_genai_sdk',
+        ]));
+
+        try {
+            $finalVideo = $this->videos->store(
+                user: $user,
+                project: $project,
+                generationId: $generationId,
+                videoBinary: $binary,
+                metadata: $this->safeMetadata(
+                    input: $input,
+                    sourceMode: $sourceMode,
+                    requestMode: $requestMode,
+                    providerRequestShape: $providerRequestShape,
+                    productImage: $productImage,
+                    scenarioImage: $scenarioImage,
+                    referenceImagesCount: $referenceImagesCount,
+                    completion: $completion,
+                    providerLatencyMs: (int) round((microtime(true) - $startedAt) * 1000),
+                    finalVideoAssetId: null,
+                    outputSize: null,
+                    prompt: $prompt,
+                    submit: $submit,
+                ) + [
+                    'provider' => 'google_veo',
+                    'provider_transport' => 'google_genai_sdk',
+                    'workflow_key' => 'motion_ai_video',
+                    'workflow' => 'motion-ai-video',
+                    'mode' => 'real',
+                    'visual_first_clip' => true,
+                    'target_duration_seconds' => $this->duration($input),
+                ],
+                workflow: 'motion-ai-video',
+                usageRole: 'edited_video_result',
+                originalNamePrefix: 'motion-ai-video',
+            );
+        } catch (Throwable $exception) {
+            throw MotionAiVideoProviderException::requestFailed(
+                'google_veo_store_failed',
+                array_merge($context, ['stage' => 'store', 'provider_transport' => 'google_genai_sdk']),
+                $exception,
+            );
         }
 
-        return [
-            'instances' => [[
-                'prompt' => $prompt['prompt'],
-                'image' => $this->inlineImage($productImage, $context + ['stage' => 'read_product_image_first_frame']),
-            ]],
-            'parameters' => [
-                'aspectRatio' => $this->aspectRatio($input),
-                'durationSeconds' => $this->duration($input),
-            ],
-        ];
+        Log::info('Google Veo Motion AI Video SDK bridge generation completed.', [
+            'provider' => 'google_veo',
+            'provider_transport' => 'google_genai_sdk',
+            'workflow' => 'motion_ai_video',
+            'generation_id' => $generationId ?: null,
+            'project_id' => $project->getKey(),
+            'final_video_asset_id' => $finalVideo->getKey(),
+            'provider_request_shape' => $providerRequestShape,
+            'product_image_sent_to_provider' => true,
+        ]);
+
+        return $this->outputPayload(
+            plan: $plan,
+            prompt: $prompt,
+            input: $input,
+            sourceMode: $sourceMode,
+            requestMode: $requestMode,
+            providerRequestShape: $providerRequestShape,
+            productImage: $productImage,
+            scenarioImage: $scenarioImage,
+            referenceImagesCount: $referenceImagesCount,
+            finalVideo: $finalVideo,
+            submit: $submit,
+            completion: $completion,
+            providerLatencyMs: (int) round((microtime(true) - $startedAt) * 1000),
+        );
     }
 
     /**
@@ -302,6 +432,22 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
      */
     private function inlineImage(MediaAsset $asset, array $context): array
     {
+        $image = $this->imageBinary($asset, $context);
+
+        return [
+            'inlineData' => [
+                'mimeType' => $image['mime_type'],
+                'data' => base64_encode($image['binary']),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array{mime_type: string, binary: string}
+     */
+    private function imageBinary(MediaAsset $asset, array $context): array
+    {
         $mimeType = $this->supportedImageMimeType($asset);
 
         if ($mimeType === null) {
@@ -344,10 +490,8 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
         }
 
         return [
-            'inlineData' => [
-                'mimeType' => $mimeType,
-                'data' => base64_encode($binary),
-            ],
+            'mime_type' => $mimeType,
+            'binary' => $binary,
         ];
     }
 
@@ -540,6 +684,8 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'source_mode' => $sourceMode,
             'provider' => 'google_veo',
             'model' => $this->model(),
+            'provider_transport' => $this->providerTransport($providerRequestShape),
+            'sdk_package_version' => $submit['sdk_package_version'] ?? null,
             'request_mode' => $requestMode,
             'request_mode_summary' => $requestMode,
             'image_input_mode' => $providerRequestShape,
@@ -567,6 +713,7 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'provider_duration_seconds' => $this->duration($input),
             'duration_provider_seconds' => $this->duration($input),
             'target_duration_seconds' => $this->duration($input),
+            'duration_seconds' => $this->duration($input),
             'requested_target_duration_seconds' => $this->requestedDuration($input),
             'duration_normalized_for_provider' => $this->requestedDuration($input) !== $this->duration($input),
             'requested_aspect_ratio' => $this->requestedAspectRatio($input),
@@ -581,10 +728,12 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'submit_latency_ms' => $submit['submit_latency_ms'] ?? null,
             'render_time_ms' => $completion['render_time_ms'] ?? null,
             'final_video_asset_id' => $finalVideoAssetId,
+            'output_video_asset_id' => $finalVideoAssetId,
             'output_size' => $outputSize,
             'platform' => $input['platform'] ?? 'tiktok',
             'final_prompt_character_count' => data_get($prompt, 'summary.final_prompt_character_count'),
             'final_prompt_hash' => data_get($prompt, 'summary.final_prompt_hash'),
+            'prompt_hash' => data_get($prompt, 'summary.final_prompt_hash'),
             'captions_requested' => (bool) data_get($prompt, 'summary.captions_requested', false),
             'voiceover_requested' => (bool) data_get($prompt, 'summary.voiceover_requested', false),
             'overlay_text_deferred' => (bool) data_get($prompt, 'summary.overlay_text_deferred', true),
@@ -619,6 +768,7 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'request_mode' => $requestMode,
             'image_input_mode' => $providerRequestShape,
             'provider_request_shape' => $providerRequestShape,
+            'provider_transport' => $this->providerTransport($providerRequestShape),
             'request_mode_summary' => $requestMode,
             'image_to_video_enabled' => $this->imageToVideoEnabled(),
             'image_reference_enabled' => $this->imageReferencesEnabled(),
@@ -659,22 +809,36 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
 
     private function imageToVideoEnabled(): bool
     {
-        return $this->requestMode() === MotionAiVideoCapabilities::REQUEST_MODE_IMAGE_FIRST_FRAME
-            && (bool) config('motion_ai_video.google_veo.image_to_video_enabled', false);
+        return (bool) config('motion_ai_video.google_veo.image_to_video_enabled', false);
     }
 
     private function imageReferencesEnabled(): bool
     {
-        return $this->requestMode() === MotionAiVideoCapabilities::REQUEST_MODE_REFERENCE_IMAGES_EXPERIMENTAL
-            && (bool) config('motion_ai_video.google_veo.image_references_enabled', false)
-            && (bool) config('motion_ai_video.google_veo.allow_experimental_image_input', false);
+        return false;
     }
 
     private function providerRequestShape(string $sourceMode, ?MediaAsset $productImage): string
     {
-        if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_FIRST_FRAME
-            && $this->imageToVideoEnabled()
-            && $productImage instanceof MediaAsset) {
+        if ($sourceMode === MotionAiVideoCapabilities::SOURCE_MODE_IMAGE_FIRST_FRAME) {
+            if (! $this->imageToVideoEnabled()) {
+                throw MotionAiVideoProviderException::requestFailed('google_veo_image_to_video_disabled', [
+                    'provider' => 'google_veo',
+                    'workflow' => 'motion_ai_video',
+                    'stage' => 'resolve_provider_request_shape',
+                    'source_mode' => $sourceMode,
+                ]);
+            }
+
+            if (! $productImage instanceof MediaAsset) {
+                throw MotionAiVideoProviderException::invalidResponse('google_veo_invalid_response', [
+                    'provider' => 'google_veo',
+                    'workflow' => 'motion_ai_video',
+                    'stage' => 'resolve_provider_request_shape',
+                    'source_mode' => $sourceMode,
+                    'response_format' => 'missing_product_image',
+                ]);
+            }
+
             return 'image_first_frame';
         }
 
@@ -685,6 +849,11 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
         }
 
         return 'text_only';
+    }
+
+    private function providerTransport(string $providerRequestShape): string
+    {
+        return $providerRequestShape === 'image_first_frame' ? 'google_genai_sdk' : 'php_rest';
     }
 
     private function productImageSentToProvider(string $providerRequestShape, ?MediaAsset $productImage): bool

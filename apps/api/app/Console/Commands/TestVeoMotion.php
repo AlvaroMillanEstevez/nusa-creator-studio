@@ -20,7 +20,7 @@ use Throwable;
 class TestVeoMotion extends Command
 {
     protected $signature = 'nusa:test-veo-motion
-        {--mode=text-only : text-only, campaign-assisted, image-first-frame, or reference-images}
+        {--mode=text-only : text-only or campaign-assisted. Use nusa:test-veo-motion-sdk for image-first-frame; reference-images is disabled}
         {--prompt= : Prompt for the selected test mode}
         {--campaign-generation-id= : Completed campaign generation ID for campaign-assisted mode}
         {--image-asset-id= : Product image MediaAsset ID for image-first-frame/reference-images mode}
@@ -51,6 +51,15 @@ class TestVeoMotion extends Command
         }
 
         $mode = $this->mode();
+
+        if (in_array($mode, ['image-first-frame', 'reference-images'], true)) {
+            $this->error($mode === 'image-first-frame'
+                ? 'Image-first-frame uses the official SDK bridge. Run php artisan nusa:test-veo-motion-sdk for CLI diagnostics.'
+                : 'Reference-images mode is disabled until that provider path is separately verified.');
+
+            return self::FAILURE;
+        }
+
         $requestMode = MotionAiVideoCapabilities::normalizeRequestMode();
         $imageToVideoEnabled = $this->imageToVideoEnabled();
         $imageReferencesEnabled = $this->imageReferencesEnabled();
@@ -180,15 +189,12 @@ class TestVeoMotion extends Command
 
     private function imageToVideoEnabled(): bool
     {
-        return MotionAiVideoCapabilities::normalizeRequestMode() === MotionAiVideoCapabilities::REQUEST_MODE_IMAGE_FIRST_FRAME
-            && (bool) config('motion_ai_video.google_veo.image_to_video_enabled', false);
+        return (bool) config('motion_ai_video.google_veo.image_to_video_enabled', false);
     }
 
     private function imageReferencesEnabled(): bool
     {
-        return MotionAiVideoCapabilities::normalizeRequestMode() === MotionAiVideoCapabilities::REQUEST_MODE_REFERENCE_IMAGES_EXPERIMENTAL
-            && (bool) config('motion_ai_video.google_veo.image_references_enabled', false)
-            && (bool) config('motion_ai_video.google_veo.allow_experimental_image_input', false);
+        return false;
     }
 
     private function campaignGeneration(): ?Generation
@@ -319,67 +325,9 @@ class TestVeoMotion extends Command
     }
 
     /** @return array<string, mixed> */
-    private function firstFramePayload(string $prompt, ?MediaAsset $asset): array
-    {
-        if (! $asset instanceof MediaAsset) {
-            throw new MotionAiVideoProviderException('Image-first-frame mode requires --image-asset-id.', 'google_veo_missing_image_asset');
-        }
-
-        return [
-            'instances' => [[
-                'prompt' => $prompt,
-                'image' => $this->inlineImage($asset),
-            ]],
-            'parameters' => [
-                'aspectRatio' => MotionAiVideoCapabilities::defaultAspectRatio(),
-                'durationSeconds' => MotionAiVideoCapabilities::defaultDurationSeconds(),
-            ],
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private function referenceImagesPayload(string $prompt, ?MediaAsset $asset): array
-    {
-        if (! $asset instanceof MediaAsset) {
-            throw new MotionAiVideoProviderException('Reference-image mode requires --image-asset-id.', 'google_veo_missing_reference_asset');
-        }
-
-        return [
-            'instances' => [[
-                'prompt' => $prompt,
-                'referenceImages' => [[
-                    'image' => $this->inlineImage($asset),
-                    'referenceType' => 'asset',
-                ]],
-            ]],
-            'parameters' => [
-                'aspectRatio' => MotionAiVideoCapabilities::defaultAspectRatio(),
-                'durationSeconds' => MotionAiVideoCapabilities::defaultDurationSeconds(),
-            ],
-        ];
-    }
-
-    /** @return array<string, mixed> */
     private function payloadForShape(string $shape, string $prompt, ?MediaAsset $asset): array
     {
-        return match ($shape) {
-            'image_first_frame' => $this->firstFramePayload($prompt, $asset),
-            'reference_images' => $this->referenceImagesPayload($prompt, $asset),
-            default => $this->textOnlyPayload($prompt),
-        };
-    }
-
-    /** @return array<string, array<string, string>> */
-    private function inlineImage(MediaAsset $asset): array
-    {
-        $binary = Storage::disk($asset->disk)->get($asset->path);
-
-        return [
-            'inlineData' => [
-                'mimeType' => $this->supportedImageMimeType($asset) ?? 'image/jpeg',
-                'data' => base64_encode($binary),
-            ],
-        ];
+        return $this->textOnlyPayload($prompt);
     }
 
     /** @return array<string, mixed> */

@@ -74,7 +74,7 @@ const capabilities = computed(() => motionAction.value?.provider_capabilities ??
 const providerLabel = computed(() => capabilities.value?.provider_label ?? 'Mock')
 const requestModeLabel = computed(() => capabilities.value?.request_mode ?? 'mock')
 const imageToVideoEnabled = computed(() => capabilities.value?.image_to_video_enabled === true)
-const imageReferenceEnabled = computed(() => capabilities.value?.reference_images_enabled === true || capabilities.value?.image_reference_experimental === true)
+const imageReferenceEnabled = computed(() => false)
 const supportsRealRendering = computed(() => capabilities.value?.supports_real_rendering === true)
 const isTextOnlyProviderMode = computed(() => capabilities.value?.request_mode === 'text_only')
 const sourceModeOptions = computed<SourceModeOption[]>(() => [
@@ -95,7 +95,7 @@ const sourceModeOptions = computed<SourceModeOption[]>(() => [
     label: 'Animate product image',
     eyebrow: 'Image to video',
     description: imageToVideoEnabled.value
-      ? 'Send one selected product image as the starting frame for the Veo beta probe.'
+      ? 'Send one selected product image as the starting frame for the Veo image-to-video beta.'
       : 'First-frame image-to-video is not enabled yet. Use text, campaign, or image-context mode.',
     disabled: !imageToVideoEnabled.value,
   },

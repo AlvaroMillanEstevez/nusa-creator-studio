@@ -36,6 +36,8 @@ return [
         'force_http1' => (bool) env('GOOGLE_VEO_FORCE_HTTP1', false),
         'poll_interval_seconds' => (int) env('GOOGLE_VEO_POLL_INTERVAL_SECONDS', 5),
         'max_poll_attempts' => (int) env('GOOGLE_VEO_MAX_POLL_ATTEMPTS', 120),
+        'sdk_process_timeout_seconds' => (int) env('GOOGLE_VEO_SDK_PROCESS_TIMEOUT_SECONDS', 900),
+        'sdk_poll_interval_seconds' => (int) env('GOOGLE_VEO_SDK_POLL_INTERVAL_SECONDS', 10),
         'estimated_cost_usd_per_second' => env('GOOGLE_VEO_ESTIMATED_COST_USD_PER_SECOND'),
     ],
 ];

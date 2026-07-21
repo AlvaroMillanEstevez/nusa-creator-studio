@@ -70,6 +70,8 @@ class GenerationFailureService
             'failure_reason' => $exception->reason,
             'failure_stage' => is_string($exception->context['stage'] ?? null) ? $exception->context['stage'] : null,
             'endpoint_type' => is_string($exception->context['endpoint_type'] ?? null) ? $exception->context['endpoint_type'] : null,
+            'provider_transport' => is_string($exception->context['provider_transport'] ?? null) ? $exception->context['provider_transport'] : null,
+            'safe_error_category' => is_string($exception->context['safe_error_category'] ?? null) ? $exception->context['safe_error_category'] : null,
             'http_status' => is_numeric($exception->context['http_status'] ?? null) ? (int) $exception->context['http_status'] : null,
             'render_id' => is_string($exception->context['render_id'] ?? null) ? $exception->context['render_id'] : null,
         ];

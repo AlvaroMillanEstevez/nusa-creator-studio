@@ -382,7 +382,7 @@ describe('MotionAiVideoActionView', () => {
           provider_capabilities: {
             provider_mode: 'google_veo',
             real_enabled: true,
-            request_mode: 'image_first_frame',
+            request_mode: 'text_only',
             product_image_required: false,
             product_image_supported: 'first_frame',
             campaign_supported: true,
@@ -423,8 +423,8 @@ describe('MotionAiVideoActionView', () => {
     })
   })
 
-  it('enables experimental visual reference when backend capability allows it', async () => {
-    const enabledActions: ProjectActionsResponse = {
+  it('keeps experimental visual reference disabled even if stale capabilities try to enable it', async () => {
+    const staleActions: ProjectActionsResponse = {
       data: [
         action({
           provider_capabilities: {
@@ -451,13 +451,13 @@ describe('MotionAiVideoActionView', () => {
         }),
       ],
     }
-    const { wrapper } = await mountView([productImage], [], enabledActions)
+    const { wrapper } = await mountView([productImage], [], staleActions)
 
     const button = wrapper.get('[data-testid="motion-source-mode-image_reference_experimental"]')
 
-    expect(button.attributes('disabled')).toBeUndefined()
+    expect(button.attributes('disabled')).toBeDefined()
     await button.trigger('click')
-    expect(wrapper.text()).toContain('Experimental: sends product image as a visual reference to the provider.')
+    expect(wrapper.text()).toContain('Image reference beta is not enabled yet')
   })
 
   it('submits expected payload with product, scenario, campaign and voiceover selections', async () => {

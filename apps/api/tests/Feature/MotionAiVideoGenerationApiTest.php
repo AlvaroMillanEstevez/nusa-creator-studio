@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\GoogleVeoMotionAiVideoClient;
 use App\Services\Generation\GoogleVeoMotionAiVideoPromptBuilder;
+use App\Services\Generation\GoogleVeoSdkBridgeRunner;
 use App\Services\Generation\GoogleVeoSdkProbeRunner;
 use App\Services\Generation\MotionAiVideoProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -57,6 +58,8 @@ class MotionAiVideoGenerationApiTest extends TestCase
         config()->set('motion_ai_video.google_veo.force_http1', false);
         config()->set('motion_ai_video.google_veo.poll_interval_seconds', 0);
         config()->set('motion_ai_video.google_veo.max_poll_attempts', 1);
+        config()->set('motion_ai_video.google_veo.sdk_process_timeout_seconds', 900);
+        config()->set('motion_ai_video.google_veo.sdk_poll_interval_seconds', 10);
         config()->set('motion_ai_video.google_veo.estimated_cost_usd_per_second', '0.02');
 
         Storage::fake('motion-video-test');
@@ -466,6 +469,29 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertSame('Google Veo', data_get($action, 'provider_capabilities.provider_label'));
     }
 
+    public function test_project_actions_enable_image_first_frame_from_feature_flag_without_reference_images(): void
+    {
+        $this->enableGoogleVeo();
+        config()->set('motion_ai_video.google_veo.image_to_video_enabled', true);
+        config()->set('motion_ai_video.google_veo.request_mode', 'text_only');
+        config()->set('motion_ai_video.google_veo.image_references_enabled', true);
+        config()->set('motion_ai_video.google_veo.allow_experimental_image_input', true);
+        $user = User::factory()->admin()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+
+        $response = $this->actingAs($user)
+            ->getJson("/api/v1/projects/{$project->id}/actions")
+            ->assertOk();
+
+        $action = collect($response->json('data'))->firstWhere('key', 'start_motion_video');
+
+        $this->assertSame('text_only', data_get($action, 'provider_capabilities.request_mode'));
+        $this->assertSame('first_frame', data_get($action, 'provider_capabilities.product_image_supported'));
+        $this->assertTrue(data_get($action, 'provider_capabilities.image_to_video_enabled'));
+        $this->assertFalse(data_get($action, 'provider_capabilities.reference_images_enabled'));
+        $this->assertFalse(data_get($action, 'provider_capabilities.image_reference_experimental'));
+    }
+
     public function test_google_veo_client_uses_configured_network_options(): void
     {
         $this->enableGoogleVeo();
@@ -833,52 +859,29 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertDatabaseMissing('generations', ['job_type' => 'generate_motion_ai_video']);
     }
 
-    public function test_google_veo_reference_images_request_only_exists_when_experiment_is_enabled(): void
+    public function test_google_veo_reference_images_remain_disabled_even_if_legacy_flags_are_set(): void
     {
         Queue::fake();
         $this->enableGoogleVeo();
         config()->set('motion_ai_video.google_veo.request_mode', 'reference_images_experimental');
         config()->set('motion_ai_video.google_veo.image_references_enabled', true);
         config()->set('motion_ai_video.google_veo.allow_experimental_image_input', true);
-        $this->fakeGoogleVeoSuccess();
+        Http::fake();
         $user = User::factory()->admin()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
         $project = $this->workspaceProject($user);
         $image = $this->storedImageAsset($user, $project);
 
-        $generationId = $this->actingAs($user)
+        $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/generate-motion-ai-video", $this->validPayload([
                 'source_mode' => 'image_reference_experimental',
                 'product_image_asset_id' => $image->id,
             ]))
-            ->assertCreated()
-            ->json('data.id');
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('source_mode');
 
-        app()->call([new GenerateMotionAiVideoJob($generationId), 'handle']);
-
-        $generation = Generation::query()->findOrFail($generationId);
-
-        $this->assertSame('image_reference_experimental', $generation->output_payload['provider_metadata']['source_mode']);
-        $this->assertSame('reference_images_experimental', $generation->output_payload['provider_metadata']['request_mode']);
-        $this->assertSame('reference_images', $generation->output_payload['provider_metadata']['provider_request_shape']);
-        $this->assertTrue($generation->output_payload['provider_metadata']['image_reference_enabled']);
-        $this->assertTrue($generation->output_payload['provider_metadata']['product_image_sent_to_provider']);
-        $this->assertSame(1, $generation->output_payload['provider_metadata']['reference_images_count']);
-
-        Http::assertSent(function (Request $request): bool {
-            if ($request->method() !== 'POST' || ! str_ends_with($request->url(), '/v1beta/models/veo-test:predictLongRunning')) {
-                return false;
-            }
-
-            $instance = data_get($request->data(), 'instances.0', []);
-            $referenceImages = data_get($instance, 'referenceImages');
-
-            return data_get($instance, 'image') === null
-                && is_array($referenceImages)
-                && count($referenceImages) === 1
-                && data_get($instance, 'referenceImages.0.image.inlineData.mimeType') === 'image/jpeg'
-                && data_get($instance, 'referenceImages.0.image.inlineData.data') === base64_encode('fake-jpeg-bytes')
-                && data_get($instance, 'referenceImages.0.referenceType') === 'asset';
-        });
+        Queue::assertNothingPushed();
+        Http::assertNothingSent();
+        $this->assertDatabaseMissing('generations', ['job_type' => 'generate_motion_ai_video']);
     }
 
     public function test_google_veo_campaign_assisted_remains_text_only_and_uses_safe_campaign_context(): void
@@ -1003,13 +1006,64 @@ class MotionAiVideoGenerationApiTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    public function test_google_veo_image_first_frame_request_uses_official_image_structure_when_enabled(): void
+    public function test_image_first_frame_requires_product_image_when_enabled(): void
     {
         Queue::fake();
         $this->enableGoogleVeo();
-        config()->set('motion_ai_video.google_veo.request_mode', 'image_first_frame');
         config()->set('motion_ai_video.google_veo.image_to_video_enabled', true);
-        $this->fakeGoogleVeoSuccess();
+        $user = User::factory()->admin()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
+        $project = $this->workspaceProject($user);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-motion-ai-video", $this->validPayload([
+                'source_mode' => 'image_first_frame',
+                'product_image_asset_id' => null,
+                'creative_notes' => 'Animate the product from a first frame.',
+            ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('product_image_asset_id');
+
+        Queue::assertNothingPushed();
+    }
+
+    public function test_google_veo_image_first_frame_uses_sdk_bridge_when_enabled(): void
+    {
+        Queue::fake();
+        $this->enableGoogleVeo();
+        config()->set('motion_ai_video.google_veo.image_to_video_enabled', true);
+        Http::fake();
+        $bridge = new class extends GoogleVeoSdkBridgeRunner
+        {
+            /** @var array<string, mixed> */
+            public array $call = [];
+
+            public function renderImageFirstFrame(
+                string $imageBinary,
+                string $prompt,
+                string $mimeType,
+                string $model,
+                int $durationSeconds,
+                string $aspectRatio,
+                array $context = [],
+                ?int $pollIntervalMs = null,
+                ?int $maxPollAttempts = null,
+            ): array {
+                $this->call = compact('imageBinary', 'prompt', 'mimeType', 'model', 'durationSeconds', 'aspectRatio', 'context', 'pollIntervalMs', 'maxPollAttempts');
+
+                return [
+                    'result' => [
+                        'ok' => true,
+                        'provider' => 'google_veo',
+                        'transport' => 'google_genai_sdk',
+                        'sdkPackageVersion' => '2.12.0',
+                        'process_exit_code' => 0,
+                    ],
+                    'video_binary' => "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom",
+                    'output_size' => 24,
+                ];
+            }
+        };
+        app()->instance(GoogleVeoSdkBridgeRunner::class, $bridge);
         $user = User::factory()->admin()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
         $project = $this->workspaceProject($user);
         $image = $this->storedImageAsset($user, $project, 'image/png', 'fake-png-bytes');
@@ -1026,35 +1080,44 @@ class MotionAiVideoGenerationApiTest extends TestCase
         app()->call([new GenerateMotionAiVideoJob($generationId), 'handle']);
 
         $generation = Generation::query()->findOrFail($generationId);
+        $asset = MediaAsset::query()
+            ->where('type', 'video')
+            ->where('usage_role', 'edited_video_result')
+            ->firstOrFail();
 
+        $this->assertSame('fake-png-bytes', $bridge->call['imageBinary']);
+        $this->assertSame('image/png', $bridge->call['mimeType']);
+        $this->assertSame('veo-test', $bridge->call['model']);
+        $this->assertSame(8, $bridge->call['durationSeconds']);
+        $this->assertSame('9:16', $bridge->call['aspectRatio']);
+        $this->assertSame('google_genai_sdk', $bridge->call['context']['provider_transport']);
+        $this->assertStringContainsString('Subtle cinematic camera movement', $bridge->call['prompt']);
+
+        $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame($asset->id, $generation->output_payload['final_video_asset_id']);
         $this->assertSame('image_first_frame', $generation->output_payload['provider_metadata']['source_mode']);
-        $this->assertSame('image_first_frame', $generation->output_payload['provider_metadata']['request_mode']);
+        $this->assertSame('text_only', $generation->output_payload['provider_metadata']['request_mode']);
         $this->assertSame('image_first_frame', $generation->output_payload['provider_metadata']['provider_request_shape']);
+        $this->assertSame('google_genai_sdk', $generation->output_payload['provider_metadata']['provider_transport']);
+        $this->assertSame('2.12.0', $generation->output_payload['provider_metadata']['sdk_package_version']);
         $this->assertTrue($generation->output_payload['provider_metadata']['image_to_video_enabled']);
         $this->assertTrue($generation->output_payload['provider_metadata']['product_image_sent_to_provider']);
         $this->assertTrue($generation->output_payload['provider_metadata']['product_image_sent_as_first_frame']);
         $this->assertFalse($generation->output_payload['provider_metadata']['product_image_sent_as_reference']);
         $this->assertSame(0, $generation->output_payload['provider_metadata']['reference_images_count']);
+        $this->assertSame($asset->id, $generation->output_payload['provider_metadata']['output_video_asset_id']);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $generation->output_payload['provider_metadata']['prompt_hash']);
+        $this->assertSame('google_genai_sdk', $asset->metadata['provider_transport']);
+        $this->assertSame($asset->id, $generation->output_payload['rendered_video_asset']['id']);
+        $this->assertSame(7, $user->refresh()->credits_balance);
 
-        Http::assertSent(function (Request $request): bool {
-            if ($request->method() !== 'POST' || ! str_ends_with($request->url(), '/v1beta/models/veo-test:predictLongRunning')) {
-                return false;
-            }
-
-            $instance = data_get($request->data(), 'instances.0', []);
-
-            return is_string(data_get($instance, 'prompt'))
-                && data_get($instance, 'image.inlineData.mimeType') === 'image/png'
-                && data_get($instance, 'image.inlineData.data') === base64_encode('fake-png-bytes')
-                && ! str_starts_with((string) data_get($instance, 'image.inlineData.data'), 'data:image/')
-                && data_get($instance, 'referenceImages') === null
-                && data_get($request->data(), 'parameters.durationSeconds') === 8;
-        });
+        Http::assertNothingSent();
 
         $safeOutput = json_encode($generation->output_payload, JSON_THROW_ON_ERROR);
         $this->assertStringNotContainsString('fake-png-bytes', $safeOutput);
         $this->assertStringNotContainsString(base64_encode('fake-png-bytes'), $safeOutput);
         $this->assertStringNotContainsString($image->path, $safeOutput);
+        $this->assertStringNotContainsString('Visual integrity requirements', $safeOutput);
     }
 
     public function test_google_veo_image_first_frame_missing_storage_object_fails_safely_and_refunds(): void
@@ -1087,19 +1150,38 @@ class MotionAiVideoGenerationApiTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_google_veo_inline_data_rejection_becomes_safe_image_input_failure(): void
+    public function test_google_veo_sdk_bridge_failure_is_safe_and_refunds(): void
     {
         Queue::fake();
         $this->enableGoogleVeo();
-        config()->set('motion_ai_video.google_veo.request_mode', 'image_first_frame');
         config()->set('motion_ai_video.google_veo.image_to_video_enabled', true);
-        Http::fake([
-            'https://generativelanguage.googleapis.com/v1beta/models/veo-test:predictLongRunning' => Http::response([
-                'error' => [
-                    'message' => "`inlineData` isn't supported by this model.",
-                ],
-            ], 400),
-        ]);
+        Http::fake();
+        $bridge = new class extends GoogleVeoSdkBridgeRunner
+        {
+            public int $calls = 0;
+
+            public function renderImageFirstFrame(
+                string $imageBinary,
+                string $prompt,
+                string $mimeType,
+                string $model,
+                int $durationSeconds,
+                string $aspectRatio,
+                array $context = [],
+                ?int $pollIntervalMs = null,
+                ?int $maxPollAttempts = null,
+            ): array {
+                $this->calls++;
+
+                throw MotionAiVideoProviderException::requestFailed('google_veo_sdk_bridge_failed', array_merge($context, [
+                    'stage' => 'sdk_bridge_generate',
+                    'provider_transport' => 'google_genai_sdk',
+                    'safe_error_category' => 'invalid_argument',
+                    'safe_provider_message' => '[redacted-url] rejected image-first-frame request safely.',
+                ]));
+            }
+        };
+        app()->instance(GoogleVeoSdkBridgeRunner::class, $bridge);
         $user = User::factory()->admin()->create(['credits_balance' => 10, 'plan_key' => 'creator']);
         $project = $this->workspaceProject($user);
         $image = $this->storedImageAsset($user, $project);
@@ -1117,14 +1199,21 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $generation = Generation::query()->findOrFail($generationId);
         $encoded = json_encode($generation->output_payload ?? [], JSON_THROW_ON_ERROR);
 
+        $this->assertSame(1, $bridge->calls);
         $this->assertInstanceOf(MotionAiVideoProviderException::class, $exception);
-        $this->assertSame('google_veo_unsupported_image_input', $exception->reason);
+        $this->assertSame('google_veo_sdk_bridge_failed', $exception->reason);
         $this->assertSame(Generation::STATUS_FAILED, $generation->status);
+        $this->assertSame('google_veo_sdk_bridge_failed', $generation->output_payload['provider_metadata']['failure_reason']);
+        $this->assertSame('sdk_bridge_generate', $generation->output_payload['provider_metadata']['failure_stage']);
+        $this->assertSame('google_genai_sdk', $generation->output_payload['provider_metadata']['provider_transport']);
+        $this->assertSame('invalid_argument', $generation->output_payload['provider_metadata']['safe_error_category']);
         $this->assertSame(10, $user->refresh()->credits_balance);
         $this->assertSame(0, MediaAsset::query()->where('type', 'video')->count());
+        Http::assertNothingSent();
         $this->assertStringNotContainsString('veo-test-key', $encoded);
         $this->assertStringNotContainsString(base64_encode('fake-jpeg-bytes'), $encoded);
         $this->assertStringNotContainsString($image->path, $encoded);
+        $this->assertStringNotContainsString('https://', $encoded);
     }
 
     public function test_google_veo_invalid_download_fails_safely_and_refunds(): void
