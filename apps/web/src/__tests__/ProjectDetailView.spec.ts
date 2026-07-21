@@ -796,10 +796,10 @@ describe('ProjectDetailView', () => {
     )
     expect(text).toContain('Create another motion plan')
     expect(text).toContain('Motion AI Video')
-    expect(text).toContain('Creative direction')
-    expect(text).toContain('Vertical product video prompt.')
-    expect(text).toContain('Provider summary')
-    expect(text).toContain('Real motion video rendering is available only when the configured beta provider is enabled')
+    expect(text).toContain('Timeline notes')
+    expect(text).toContain('Visual sequence')
+    expect(text).toContain('Internal diagnostics')
+    expect(text).toContain('Video preview is not available for this generation')
     expect(text).not.toContain('Generated video placeholder')
     expect(text).not.toContain('API-ready payload preview')
   })
@@ -832,10 +832,9 @@ describe('ProjectDetailView', () => {
 
     const wrapper = await mountProjectDetail(motionVideoProject, history)
 
-    expect(wrapper.text()).toContain('Generation failed. Please try again.')
-    expect(wrapper.text()).toContain(
-      'Your charged credits are returned automatically for an internal processing failure.',
-    )
+    expect(wrapper.text()).toContain('Video generation failed. Your credits were refunded if they were charged.')
+    expect(wrapper.text()).toContain('No fake output was created.')
+    expect(wrapper.text()).toContain('Edit settings')
   })
 
   it('routes Motion AI Video projects to the setup page instead of direct generation', async () => {

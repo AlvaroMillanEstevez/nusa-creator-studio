@@ -167,6 +167,43 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertNull($generation->output_payload['asset_plan']['product_image_asset_id']);
     }
 
+    public function test_motion_ai_video_mock_output_keeps_postproduction_metadata_honest(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-motion-ai-video", $this->validPayload([
+                'source_mode' => 'text_prompt',
+                'product_image_asset_id' => null,
+                'scene_description' => 'Create a clean creator desk motion clip.',
+                'negative_prompt' => 'shaky camera, distorted product',
+                'include_caption_plan' => false,
+                'primary_cta' => 'Shop the bottle',
+            ]))
+            ->assertCreated()
+            ->json('data.id');
+
+        app()->call([new GenerateMotionAiVideoJob($generationId), 'handle']);
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $payload = $generation->output_payload;
+
+        $this->assertSame('text_prompt', $payload['metadata']['source_mode']);
+        $this->assertSame('mock', $payload['metadata']['configured_request_mode']);
+        $this->assertSame('text_prompt', $payload['metadata']['effective_request_mode']);
+        $this->assertSame('user_provided', $payload['metadata']['primary_cta_source']);
+        $this->assertSame('shaky camera, distorted product', $payload['metadata']['user_negative_prompt']);
+        $this->assertTrue($payload['metadata']['user_negative_prompt_supplied']);
+        $this->assertTrue($payload['metadata']['system_visual_constraints_applied']);
+        $this->assertFalse($payload['metadata']['captions_requested']);
+        $this->assertSame([], $payload['script_plan']['caption_lines']);
+        $this->assertSame('Shop the bottle', $payload['script_plan']['CTA_line']);
+        $this->assertSame('user_provided', $payload['script_plan']['primary_cta_source']);
+        $this->assertNotContains('Shop the bottle', array_column($payload['scene_plan'], 'overlay_or_caption'));
+    }
+
     public function test_campaign_assisted_mode_accepts_campaign_without_product_image(): void
     {
         Queue::fake();
@@ -1097,6 +1134,8 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertSame($asset->id, $generation->output_payload['final_video_asset_id']);
         $this->assertSame('image_first_frame', $generation->output_payload['provider_metadata']['source_mode']);
         $this->assertSame('text_only', $generation->output_payload['provider_metadata']['request_mode']);
+        $this->assertSame('text_only', $generation->output_payload['provider_metadata']['configured_request_mode']);
+        $this->assertSame('image_first_frame', $generation->output_payload['provider_metadata']['effective_request_mode']);
         $this->assertSame('image_first_frame', $generation->output_payload['provider_metadata']['provider_request_shape']);
         $this->assertSame('google_genai_sdk', $generation->output_payload['provider_metadata']['provider_transport']);
         $this->assertSame('2.12.0', $generation->output_payload['provider_metadata']['sdk_package_version']);

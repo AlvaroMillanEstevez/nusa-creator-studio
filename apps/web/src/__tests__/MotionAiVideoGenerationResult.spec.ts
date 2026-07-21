@@ -143,21 +143,47 @@ describe('MotionAiVideoGenerationResult', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders motion summary, prompt, scene plan and provider readiness without fake video controls', () => {
+  it('renders motion summary, timeline notes and post-production suggestions without fake video controls', () => {
     const wrapper = mount(MotionAiVideoGenerationResult, {
       props: { result },
     })
 
     expect(wrapper.text()).toContain('Motion AI Video')
     expect(wrapper.text()).toContain('Show the bottle in a fast creator desk routine.')
-    expect(wrapper.text()).toContain('Creative direction')
-    expect(wrapper.text()).toContain('Scene plan timeline')
+    expect(wrapper.text()).toContain('Timeline notes')
+    expect(wrapper.text()).toContain('Visual sequence')
     expect(wrapper.text()).toContain('Open on the product image.')
-    expect(wrapper.text()).toContain('Provider summary')
-    expect(wrapper.text()).toContain('Real motion video rendering is available only')
+    expect(wrapper.text()).toContain('Post-production text')
+    expect(wrapper.text()).toContain('Suggested CTA')
+    expect(wrapper.text()).toContain('Internal diagnostics')
+    expect(wrapper.text()).not.toContain('Negative prompt')
     expect(wrapper.find('[data-testid="motion-final-preview"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Download MP4')
     expect(wrapper.text()).not.toContain('Generated video placeholder')
+  })
+
+
+
+  it('does not present caption suggestions as included when captions were disabled', () => {
+    const captionsDisabled: MotionVideoResult = {
+      ...result,
+      metadata: {
+        ...result.metadata,
+        captions_requested: false,
+      },
+      script_plan: {
+        ...result.script_plan,
+        caption_lines: ['Meet the bottle'],
+      },
+    }
+
+    const wrapper = mount(MotionAiVideoGenerationResult, {
+      props: { result: captionsDisabled },
+    })
+
+    expect(wrapper.text()).toContain('Captions preparedNo')
+    expect(wrapper.text()).not.toContain('Suggested captions for post-production')
+    expect(wrapper.text()).not.toContain('Suggested post-production caption')
   })
 
   it('renders secure preview and download controls for real Google Veo output', async () => {
@@ -181,10 +207,11 @@ describe('MotionAiVideoGenerationResult', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="motion-final-preview"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Visual-first MP4 ready')
+    expect(wrapper.text()).toContain('MP4 preview ready')
     expect(wrapper.text()).toContain('Download MP4')
     expect(wrapper.text()).toContain('Google Veo')
     expect(wrapper.text()).toContain('veo-test')
+    expect(wrapper.text()).not.toContain('provider_transport')
     expect(wrapper.get('[data-testid="motion-video-player"]').attributes('src')).toBe('blob:motion-video')
     expect(fetch).toHaveBeenCalled()
   })

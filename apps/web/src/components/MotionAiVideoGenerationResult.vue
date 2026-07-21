@@ -1,8 +1,9 @@
+
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { fetchMediaBlob } from '@/services/media'
-import type { MotionVideoResult } from '@/types/project'
+import type { MotionAiVideoScene, MotionVideoResult } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
 
 const props = defineProps<{ result: MotionVideoResult }>()
@@ -11,34 +12,105 @@ const result = computed(() => props.result)
 const streamUrl = computed(() => result.value.final_video_stream_url ?? result.value.rendered_video_asset?.stream_url ?? null)
 const downloadUrl = computed(() => result.value.final_video_download_url ?? result.value.rendered_video_asset?.download_url ?? null)
 const hasFinalVideo = computed(() => Boolean(streamUrl.value))
-const isRealRender = computed(() => hasFinalVideo.value || result.value.metadata.mode === 'real' || result.value.provider_readiness.provider === 'google_veo')
+const providerName = computed(() => String(result.value.provider_metadata?.provider ?? result.value.metadata.provider ?? result.value.provider_readiness.provider ?? 'mock'))
+const isRealRender = computed(() => hasFinalVideo.value || result.value.metadata.mode === 'real' || providerName.value === 'google_veo')
 const videoUrl = ref<string | null>(null)
 const isPreviewLoading = ref(false)
 const isDownloadingVideo = ref(false)
 const videoError = ref('')
 const downloadError = ref('')
 
+const effectiveSourceMode = computed(() =>
+  stringMeta('effective_request_mode') ??
+  stringMeta('source_mode') ??
+  result.value.motion_summary.source_mode ??
+  result.value.motion_summary.source_type,
+)
+const captionsPrepared = computed(() =>
+  boolMeta('captions_requested') ?? (result.value.script_plan.caption_lines.length > 0),
+)
+const voiceoverTimingUsed = computed(() =>
+  result.value.asset_plan.voiceover_generation_id !== null ||
+  boolMeta('voiceover_context_used') === true ||
+  boolMeta('voiceover_requested') === true,
+)
+const captionLines = computed(() => {
+  if (!captionsPrepared.value) {
+    return []
+  }
+
+  return uniqueStrings(result.value.script_plan.caption_lines)
+})
+const primaryCtaSource = computed(() => stringMeta('primary_cta_source') ?? 'default_suggestion')
+const primaryCtaLabel = computed(() => primaryCtaSource.value === 'user_provided' ? 'CTA' : 'Suggested CTA')
+const sceneItems = computed(() =>
+  result.value.scene_plan.map((scene) => ({
+    ...scene,
+    caption: captionsPrepared.value ? scene.overlay_or_caption : '',
+  })),
+)
+const userExclusions = computed(() => stringMeta('user_negative_prompt') ?? stringMeta('user_exclusions'))
+const systemConstraintsApplied = computed(() => Boolean(stringMeta('system_visual_constraints') ?? stringMeta('system_negative_constraints')))
 const summaryItems = computed(() => [
-  { label: 'Platform', value: formatLabel(result.value.motion_summary.platform) },
+  { label: 'Source', value: sourceLabel(effectiveSourceMode.value) },
   { label: 'Duration', value: `${result.value.motion_summary.duration}s` },
   { label: 'Aspect ratio', value: formatLabel(result.value.motion_summary.aspect_ratio) },
-  { label: 'Source', value: formatLabel(result.value.motion_summary.source_type) },
+  { label: 'Visual style', value: formatLabel(result.value.motion_summary.visual_style) },
+  { label: 'Camera movement', value: formatLabel(result.value.motion_summary.motion_style) },
+  { label: 'Captions prepared', value: captionsPrepared.value ? 'Yes, for post-production' : 'No' },
+  { label: 'Voiceover timing used', value: voiceoverTimingUsed.value ? 'Yes, pacing only' : 'No' },
 ])
-
-const providerSummaryItems = computed(() => {
-  const metadata = result.value.provider_metadata
-
-  return [
-    { label: 'Provider', value: formatLabel(metadata?.provider ?? result.value.provider_readiness.provider) },
-    { label: 'Model', value: metadata?.model ? String(metadata.model) : result.value.metadata.model ?? null },
-    { label: 'Mode', value: formatLabel(metadata?.mode ?? result.value.metadata.mode ?? 'mock') },
-    { label: 'Render status', value: formatLabel(metadata?.response_status ?? result.value.metadata.provider_render_status ?? (hasFinalVideo.value ? 'done' : 'plan_only')) },
+const diagnosticsItems = computed(() => {
+  const items = [
+    { label: 'Provider', value: formatLabel(providerName.value) },
+    { label: 'Model', value: stringMeta('model') },
+    { label: 'Render status', value: formatLabel(stringMeta('provider_render_status') ?? stringMeta('response_status') ?? (hasFinalVideo.value ? 'done' : 'plan_only')) },
+    { label: 'Effective request mode', value: formatLabel(stringMeta('effective_request_mode') ?? stringMeta('provider_request_shape') ?? effectiveSourceMode.value) },
+    { label: 'Configured request mode', value: formatLabel(stringMeta('configured_request_mode') ?? stringMeta('request_mode') ?? undefined) },
     { label: 'Final video asset', value: result.value.final_video_asset_id ? String(result.value.final_video_asset_id) : null },
-  ].filter((item): item is { label: string; value: string } => item.value !== null && item.value !== '')
+  ]
+
+  return items.filter((item): item is { label: string; value: string } => Boolean(item.value))
 })
 
-function joinedFutureInputs(inputs: string[]): string {
-  return inputs.map((input) => formatLabel(input)).join(', ')
+function stringMeta(key: string): string | null {
+  const fromMetadata = result.value.metadata[key]
+  const fromProvider = result.value.provider_metadata?.[key]
+  const value = fromMetadata ?? fromProvider
+
+  return typeof value === 'string' && value.trim() !== '' ? value : null
+}
+
+function boolMeta(key: string): boolean | null {
+  const fromMetadata = result.value.metadata[key]
+  const fromProvider = result.value.provider_metadata?.[key]
+  const value = fromMetadata ?? fromProvider
+
+  return typeof value === 'boolean' ? value : null
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
+}
+
+function sourceLabel(value: string | null | undefined): string {
+  if (value === 'campaign_assisted') {
+    return 'Saved campaign'
+  }
+
+  if (value === 'image_first_frame') {
+    return 'Product image used as starting frame'
+  }
+
+  if (value === 'image_context') {
+    return 'Product image used as workspace context'
+  }
+
+  return 'Text description'
+}
+
+function sceneRange(scene: MotionAiVideoScene): string {
+  return `${scene.start_seconds}–${scene.end_seconds}s`
 }
 
 function revokeVideoUrl(): void {
@@ -135,9 +207,9 @@ onBeforeUnmount(() => {
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Generated motion clip</p>
-          <h2 class="mt-2 text-xl font-semibold">Visual-first MP4 ready</h2>
+          <h2 class="mt-2 text-xl font-semibold">MP4 preview ready</h2>
           <p class="mt-2 text-sm leading-6 text-neutral-400">
-            This is a base product motion clip. Add voiceover, captions or final polish in a later editing step.
+            This is the base visual footage. Captions, CTA overlays and voiceover are added later during post-production.
           </p>
         </div>
         <button
@@ -172,186 +244,110 @@ onBeforeUnmount(() => {
       </p>
     </section>
 
+    <section v-else class="nusa-card-premium rounded-[2rem] p-5">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-400">Render plan</p>
+      <h2 class="mt-2 text-xl font-semibold">Video preview is not available for this generation</h2>
+      <p class="mt-2 text-sm leading-6 text-neutral-400">
+        This historical or mock result contains a motion plan, not a stored MP4 preview.
+      </p>
+    </section>
+
     <section class="nusa-card-premium rounded-[2rem] p-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-            Motion AI Video
-          </p>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Motion AI Video</p>
           <h2 class="mt-3 text-xl font-bold">{{ result.motion_summary.creative_angle }}</h2>
         </div>
-        <span
-          class="rounded-full border px-3 py-1 text-xs font-semibold"
-          :class="isRealRender ? 'border-emerald-800 bg-emerald-950/60 text-emerald-200' : 'border-amber-800 bg-amber-950/60 text-amber-200'"
-        >
-          {{ isRealRender ? 'Motion clip ready' : 'Render plan' }}
+        <span class="rounded-full border px-3 py-1 text-xs font-semibold" :class="isRealRender ? 'border-emerald-800 bg-emerald-950/60 text-emerald-200' : 'border-amber-800 bg-amber-950/60 text-amber-200'">
+          {{ isRealRender ? 'Video footage ready' : 'Plan only' }}
         </span>
       </div>
+
       <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div v-for="item in summaryItems" :key="item.label" class="rounded-2xl bg-neutral-950/70 p-3">
           <p class="text-xs text-neutral-500">{{ item.label }}</p>
           <p class="mt-1 text-sm font-semibold">{{ item.value }}</p>
         </div>
       </div>
+
       <p class="mt-4 text-sm leading-7 text-neutral-300">
-        <span v-if="isRealRender">
-          Real provider mode generated a visual-first product motion clip. Native provider audio is not treated as the primary workflow output.
-        </span>
-        <span v-else>
-          This mock beta result is a structured motion plan. It does not include a rendered MP4 yet.
-        </span>
+        Nusa generated or planned visual-first product footage. Text overlays, exact captions, CTA cards and final narration are treated as post-production work, not guaranteed pixels inside the Veo clip.
       </p>
     </section>
 
-    <section class="grid gap-5 lg:grid-cols-[1fr_0.8fr]">
-      <div class="nusa-card-premium rounded-[2rem] p-5">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-          Creative direction
-        </p>
-        <p class="mt-4 rounded-2xl bg-neutral-950/70 p-4 text-sm leading-7 text-neutral-200">
-          {{ result.generation_prompt.main_prompt }}
-        </p>
-        <dl class="mt-4 grid gap-3 text-sm text-neutral-300">
-          <div>
-            <dt class="text-xs uppercase tracking-[0.14em] text-neutral-500">Camera motion</dt>
-            <dd class="mt-1 leading-6">{{ result.generation_prompt.camera_motion }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs uppercase tracking-[0.14em] text-neutral-500">Lighting</dt>
-            <dd class="mt-1 leading-6">{{ result.generation_prompt.lighting_style }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs uppercase tracking-[0.14em] text-neutral-500">Negative prompt</dt>
-            <dd class="mt-1 leading-6">{{ result.generation_prompt.negative_prompt }}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <div class="nusa-card-premium rounded-[2rem] p-5">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-          Source context used
-        </p>
-        <dl class="mt-4 space-y-3 text-sm">
-          <div>
-            <dt class="text-neutral-500">Product image</dt>
-            <dd class="mt-1 font-semibold text-neutral-100">
-              Asset #{{ result.asset_plan.product_image_asset_id }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-neutral-500">Scenario image</dt>
-            <dd class="mt-1 font-semibold text-neutral-100">
-              <span v-if="result.asset_plan.scenario_image_asset_id">
-                Asset #{{ result.asset_plan.scenario_image_asset_id }}
-              </span>
-              <span v-else>Not selected</span>
-            </dd>
-          </div>
-          <div>
-            <dt class="text-neutral-500">Campaign source</dt>
-            <dd class="mt-1 font-semibold text-neutral-100">
-              <span v-if="result.asset_plan.campaign_generation_id">
-                Generation #{{ result.asset_plan.campaign_generation_id }}
-              </span>
-              <span v-else>Project brief</span>
-            </dd>
-          </div>
-          <div>
-            <dt class="text-neutral-500">Voiceover source</dt>
-            <dd class="mt-1 font-semibold text-neutral-100">
-              <span v-if="result.asset_plan.voiceover_generation_id">
-                Generation #{{ result.asset_plan.voiceover_generation_id }} used as visual pacing guidance
-              </span>
-              <span v-else>Not selected</span>
-            </dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-
-    <section v-if="result.scene_plan.length" class="nusa-card-premium rounded-[2rem] p-5">
-      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-        Scene plan timeline
-      </p>
+    <section v-if="sceneItems.length" class="nusa-card-premium rounded-[2rem] p-5">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Timeline notes</p>
+      <h2 class="mt-2 text-xl font-semibold">Visual sequence</h2>
       <div class="mt-4 space-y-3">
-        <article
-          v-for="scene in result.scene_plan"
-          :key="scene.scene_number"
-          class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4"
-        >
-          <p class="text-xs font-semibold text-emerald-300">
-            {{ scene.start_seconds }}–{{ scene.end_seconds }}s · Scene {{ scene.scene_number }}
-          </p>
+        <article v-for="scene in sceneItems" :key="scene.scene_number" class="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4">
+          <p class="text-xs font-semibold text-emerald-300">{{ sceneRange(scene) }} · Scene {{ scene.scene_number }}</p>
           <p class="mt-3 text-sm leading-6 text-neutral-200">{{ scene.visual_direction }}</p>
-          <p class="mt-2 text-sm leading-6 text-neutral-400">
-            Product action: {{ scene.product_action }}
-          </p>
-          <p class="mt-2 text-sm leading-6 text-neutral-400">
-            Camera: {{ scene.camera_direction }}
-          </p>
-          <p class="mt-2 text-xs font-semibold text-neutral-300">
-            Caption: {{ scene.overlay_or_caption }}
+          <p class="mt-2 text-sm leading-6 text-neutral-400">Product action: {{ scene.product_action }}</p>
+          <p class="mt-2 text-sm leading-6 text-neutral-400">Camera: {{ scene.camera_direction }}</p>
+          <p v-if="scene.caption" class="mt-2 text-xs font-semibold text-neutral-300">
+            Suggested post-production caption: {{ scene.caption }}
           </p>
         </article>
       </div>
     </section>
 
     <section class="grid gap-5 lg:grid-cols-2">
-      <div class="nusa-card-premium rounded-[2rem] p-5">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-          Script / voiceover guidance
-        </p>
+      <div v-if="voiceoverTimingUsed" class="nusa-card-premium rounded-[2rem] p-5">
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Voiceover timing</p>
+        <h2 class="mt-2 text-xl font-semibold">Pacing guidance</h2>
         <p class="mt-4 rounded-2xl bg-neutral-950/70 p-4 text-sm leading-7 text-neutral-200">
           {{ result.script_plan.voiceover_ready_script }}
         </p>
+        <p class="mt-3 text-xs leading-5 text-neutral-500">
+          This is pacing guidance only. The final audio is added in post-production.
+        </p>
       </div>
 
-      <div class="nusa-card-premium rounded-[2rem] p-5">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-          Captions / CTA
-        </p>
-        <ul class="mt-4 space-y-2 text-sm leading-6 text-neutral-300">
-          <li v-for="caption in result.script_plan.caption_lines" :key="caption">
-            • {{ caption }}
-          </li>
-        </ul>
-        <p class="mt-4 rounded-2xl border border-emerald-900/60 bg-emerald-950/20 p-3 text-sm font-semibold text-emerald-100">
-          CTA: {{ result.script_plan.CTA_line }}
+      <div v-if="captionLines.length || result.script_plan.CTA_line" class="nusa-card-premium rounded-[2rem] p-5">
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Post-production text</p>
+        <h2 class="mt-2 text-xl font-semibold">Caption and CTA suggestions</h2>
+        <div v-if="captionLines.length" class="mt-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Suggested captions for post-production</p>
+          <ul class="mt-3 space-y-2 text-sm leading-6 text-neutral-300">
+            <li v-for="caption in captionLines" :key="caption">• {{ caption }}</li>
+          </ul>
+        </div>
+        <p v-if="result.script_plan.CTA_line" class="mt-4 rounded-2xl border border-emerald-900/60 bg-emerald-950/20 p-3 text-sm font-semibold text-emerald-100">
+          {{ primaryCtaLabel }}: {{ result.script_plan.CTA_line }}
         </p>
       </div>
     </section>
 
-    <section class="nusa-card-premium rounded-[2rem] p-5">
-      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-        Provider summary
+    <section v-if="userExclusions || systemConstraintsApplied" class="rounded-3xl border border-neutral-800 bg-neutral-950/50 p-5">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Safety and visual integrity</p>
+      <p v-if="userExclusions" class="mt-3 text-sm leading-6 text-neutral-300">
+        User things to avoid: {{ userExclusions }}
       </p>
-      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <p v-for="item in providerSummaryItems" :key="item.label" class="rounded-2xl bg-neutral-950/70 p-3 text-sm text-neutral-300">
-          <span class="block text-xs text-neutral-500">{{ item.label }}</span>
-          <span class="mt-1 block font-semibold text-neutral-100">{{ item.value }}</span>
-        </p>
-      </div>
-      <p v-if="!isRealRender" class="mt-4 text-sm leading-7 text-neutral-400">
-        Future provider inputs:
-        {{ joinedFutureInputs(result.provider_readiness.future_provider_inputs) }}.
-      </p>
-      <p class="mt-4 rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100/80">
-        <span v-if="isRealRender">
-          This clip is stored privately and served through Nusa secure media routes. Final voiceover/music/caption compositing is a later step.
-        </span>
-        <span v-else>
-          Real motion video rendering is available only when the configured beta provider is enabled for the current user.
-        </span>
+      <p v-if="systemConstraintsApplied" class="mt-3 text-sm leading-6 text-neutral-500">
+        Nusa also applied internal visual-integrity constraints. These are not treated as user-entered instructions.
       </p>
     </section>
 
     <section v-if="result.compliance_notes.length" class="rounded-3xl border border-amber-900/50 bg-amber-950/20 p-5">
-      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-400">
-        Compliance notes
-      </p>
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-400">Compliance notes</p>
       <ul class="mt-4 space-y-3 text-sm leading-6 text-amber-100/80">
         <li v-for="item in result.compliance_notes" :key="item">• {{ item }}</li>
       </ul>
     </section>
+
+    <details class="nusa-card-premium rounded-[2rem] p-5" data-testid="motion-internal-diagnostics">
+      <summary class="cursor-pointer text-sm font-semibold text-neutral-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">
+        Internal diagnostics
+      </summary>
+      <p class="mt-3 text-xs leading-5 text-neutral-500">
+        Safe provider metadata for debugging. No API keys, private paths, base64 or raw provider URLs are shown.
+      </p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <p v-for="item in diagnosticsItems" :key="item.label" class="rounded-2xl bg-neutral-950/70 p-3 text-sm text-neutral-300">
+          <span class="block text-xs text-neutral-500">{{ item.label }}</span>
+          <span class="mt-1 block font-semibold text-neutral-100">{{ item.value }}</span>
+        </p>
+      </div>
+    </details>
   </div>
 </template>

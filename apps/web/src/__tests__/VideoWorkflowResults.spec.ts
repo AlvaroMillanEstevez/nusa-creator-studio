@@ -100,7 +100,7 @@ describe('video workflow result rendering', () => {
     expect(wrapper.text()).toContain(
       'This can take a few minutes depending on video length and provider processing time.',
     )
-    expect(wrapper.text()).toContain('Please keep this page open. The result will update automatically.')
+    expect(wrapper.text()).toContain('You can stay on this page; the result updates automatically.')
   })
 
   it('renders the Video-to-Campaign failed state with actions and no processing copy', async () => {

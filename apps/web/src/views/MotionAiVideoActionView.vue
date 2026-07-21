@@ -5,16 +5,10 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AppNav from '@/components/AppNav.vue'
 import ProjectAssetInput from '@/components/ProjectAssetInput.vue'
 import { ApiError } from '@/services/api'
-import {
-  generateMotionVideo,
-  getCreatorProject,
-  getProjectActions,
-  getProjectGenerations,
-} from '@/services/projects'
+import { generateMotionVideo, getCreatorProject, getProjectActions, getProjectGenerations } from '@/services/projects'
 import {
   motionAspectRatioOptions,
   motionDurationOptions,
-  motionPlatformOptions,
   motionStyleOptions,
   motionVisualStyleOptions,
   type CreatorGeneration,
@@ -40,7 +34,6 @@ const selectedVoiceoverGenerationId = ref<number | null>(null)
 const platform = ref('tiktok')
 const aspectRatio = ref('vertical_9_16')
 const targetDurationSeconds = ref(8)
-const manualScript = ref('')
 const creativeNotes = ref('')
 const visualStyle = ref('realistic_product')
 const motionStyle = ref('slow_push_in')
@@ -48,20 +41,41 @@ const cameraDirection = ref('')
 const sceneDescription = ref('')
 const backgroundPrompt = ref('')
 const negativePrompt = ref('')
-const includeVoiceoverPlan = ref(true)
+const includeVoiceoverPlan = ref(false)
 const includeCaptionPlan = ref(true)
 const primaryCta = ref('')
 const isLoading = ref(true)
 const isSubmitting = ref(false)
 const loadError = ref('')
 const formError = ref('')
+const advancedOpen = ref(false)
+
+type ConsumerSourceMode = Extract<MotionAiVideoSourceMode, 'text_prompt' | 'campaign_assisted' | 'image_first_frame'>
 
 type SourceModeOption = {
-  value: MotionAiVideoSourceMode
+  value: ConsumerSourceMode
   label: string
   eyebrow: string
   description: string
-  disabled?: boolean
+  requiredSummary: string
+}
+
+const visualStyleLabels: Record<string, string> = {
+  realistic_product: 'Realistic product',
+  ugc_lifestyle: 'Lifestyle',
+  premium_brand: 'Premium',
+  clean_studio: 'Minimal studio',
+  cinematic: 'Cinematic',
+  social_ad: 'Energetic social video',
+}
+
+const cameraMovementLabels: Record<string, string> = {
+  slow_push_in: 'Slow push-in',
+  handheld_ugc: 'Handheld lifestyle',
+  product_orbit: 'Orbit around product',
+  top_down_demo: 'Top-down demo',
+  lifestyle_reveal: 'Dynamic reveal',
+  before_after: 'Before / after reveal',
 }
 
 const projectId = computed(() => {
@@ -72,104 +86,130 @@ const projectId = computed(() => {
 const motionAction = computed(() => actions.value.find((item) => item.key === 'start_motion_video') ?? null)
 const capabilities = computed(() => motionAction.value?.provider_capabilities ?? null)
 const providerLabel = computed(() => capabilities.value?.provider_label ?? 'Mock')
-const requestModeLabel = computed(() => capabilities.value?.request_mode ?? 'mock')
 const imageToVideoEnabled = computed(() => capabilities.value?.image_to_video_enabled === true)
-const imageReferenceEnabled = computed(() => false)
 const supportsRealRendering = computed(() => capabilities.value?.supports_real_rendering === true)
-const isTextOnlyProviderMode = computed(() => capabilities.value?.request_mode === 'text_only')
-const sourceModeOptions = computed<SourceModeOption[]>(() => [
-  {
-    value: 'text_prompt',
-    label: 'Start from text',
-    eyebrow: 'Prompt only',
-    description: 'Write a creative direction and use the project brief. No product image required.',
-  },
-  {
-    value: 'campaign_assisted',
-    label: 'Use saved campaign',
-    eyebrow: 'Campaign to video',
-    description: 'Turn an existing Product Content Kit or campaign generation into a motion-video prompt.',
-  },
-  {
-    value: 'image_first_frame',
-    label: 'Animate product image',
-    eyebrow: 'Image to video',
-    description: imageToVideoEnabled.value
-      ? 'Send one selected product image as the starting frame for the Veo image-to-video beta.'
-      : 'First-frame image-to-video is not enabled yet. Use text, campaign, or image-context mode.',
-    disabled: !imageToVideoEnabled.value,
-  },
-  {
-    value: 'image_context',
-    label: 'Product image as context',
-    eyebrow: 'Context only',
-    description: 'Use an uploaded product image in your Nusa workspace context without sending image bytes to the provider.',
-  },
-  {
-    value: 'image_reference_experimental',
-    label: 'Product image visual reference',
-    eyebrow: 'Experimental',
-    description: imageReferenceEnabled.value
-      ? 'Experimental: sends product image as a visual reference to the provider.'
-      : 'Image reference beta is not enabled yet. Use text, campaign or image-context mode instead.',
-    disabled: !imageReferenceEnabled.value,
-  },
-])
-const usesProductImage = computed(() => ['image_context', 'image_first_frame', 'image_reference_experimental'].includes(sourceMode.value))
+const sourceModeOptions = computed<SourceModeOption[]>(() => {
+  const options: SourceModeOption[] = [
+    {
+      value: 'text_prompt',
+      label: 'Describe a video',
+      eyebrow: 'Text description',
+      description: 'Create a new video from your product brief and creative direction.',
+      requiredSummary: 'Requires a clear video description.',
+    },
+    {
+      value: 'campaign_assisted',
+      label: 'Use a saved campaign',
+      eyebrow: 'Campaign to video',
+      description: 'Turn a previous Product Content Kit campaign into video footage.',
+      requiredSummary: 'Requires one completed campaign generation.',
+    },
+  ]
+
+  if (imageToVideoEnabled.value) {
+    options.push({
+      value: 'image_first_frame',
+      label: 'Animate a product image',
+      eyebrow: 'Image to video',
+      description: 'Use one product image as the first frame of the generated video.',
+      requiredSummary: 'Requires exactly one product image.',
+    })
+  }
+
+  return options
+})
+const selectedSourceOption = computed(() => sourceModeOptions.value.find((item) => item.value === sourceMode.value) ?? sourceModeOptions.value[0])
+const usesProductImage = computed(() => sourceMode.value === 'image_first_frame')
 const productImageRequired = computed(() => usesProductImage.value)
 const campaignRequired = computed(() => sourceMode.value === 'campaign_assisted')
-const showCampaignPicker = computed(() => sourceMode.value === 'campaign_assisted' || usesProductImage.value)
-const productImageTitle = computed(() =>
-  ['image_first_frame', 'image_reference_experimental'].includes(sourceMode.value)
-    ? 'Upload or choose product image *'
-    : 'Upload or choose product image',
-)
-const productImageHelperText = computed(() => {
-  if (sourceMode.value === 'image_first_frame') {
-    return imageToVideoEnabled.value
-      ? 'The selected image becomes the starting frame for the Veo image-to-video beta. Nusa does not promise exact product preservation yet.'
-      : 'First-frame image-to-video is not enabled for the current provider mode.'
-  }
-
-  if (sourceMode.value === 'image_reference_experimental') {
-    return imageReferenceEnabled.value
-      ? 'Experimental: sends product image as a visual reference to the provider.'
-      : 'Image reference beta is not enabled for the current provider mode.'
-  }
-
-  return 'The image helps organize your workspace and prompt context only. Image bytes are not sent to the provider in this mode.'
-})
+const productImageHelperText = 'Required for image-to-video. The selected image becomes the starting frame; exact logo, text or product-detail preservation is not guaranteed yet.'
 const campaignGenerations = computed(() =>
   generations.value.filter(
     (item) =>
       item.status === 'completed' &&
-      [
-        'generate_affiliate_campaign',
-        'generate_video_to_campaign',
-        'generate_product_video_script',
-        'generate_auto_video_ad',
-      ].includes(item.job_type),
+      ['generate_affiliate_campaign', 'generate_video_to_campaign', 'generate_product_video_script', 'generate_auto_video_ad'].includes(item.job_type),
   ),
 )
 const voiceoverGenerations = computed(() =>
   generations.value.filter((item) => item.status === 'completed' && item.job_type === 'generate_ai_voiceover'),
 )
-const selectedCampaignGeneration = computed(() =>
-  campaignGenerations.value.find((item) => item.id === selectedCampaignGenerationId.value) ?? null,
-)
+const selectedCampaignGeneration = computed(() => campaignGenerations.value.find((item) => item.id === selectedCampaignGenerationId.value) ?? null)
 const creditCost = computed(() => motionAction.value?.credit_cost ?? 3)
-const isUpgradeRequired = computed(() =>
-  motionAction.value?.upgrade_required === true || motionAction.value?.action_mode === 'upgrade',
-)
+const isUpgradeRequired = computed(() => motionAction.value?.upgrade_required === true || motionAction.value?.action_mode === 'upgrade')
+const visualStyleChoices = computed(() => motionVisualStyleOptions.map((option) => ({ ...option, label: visualStyleLabels[option.value] ?? option.label })))
+const cameraMovementChoices = computed(() => motionStyleOptions.map((option) => ({ ...option, label: cameraMovementLabels[option.value] ?? option.label })))
+const durationChoices = computed(() => supportsRealRendering.value ? [capabilities.value?.default_duration_seconds ?? 8] : [...motionDurationOptions])
+const aspectRatioChoices = computed(() => supportsRealRendering.value ? motionAspectRatioOptions.filter((option) => option.value === 'vertical_9_16') : motionAspectRatioOptions)
+const expectedBaseDuration = computed(() => capabilities.value?.default_duration_seconds ?? targetDurationSeconds.value)
+const selectedModeSummary = computed(() => {
+  if (sourceMode.value === 'campaign_assisted') {
+    return selectedCampaignGeneration.value ? `Saved campaign: ${generationLabel(selectedCampaignGeneration.value)}` : 'Saved campaign required'
+  }
+
+  if (sourceMode.value === 'image_first_frame') {
+    return selectedProductImageAssetId.value === null ? 'Product image required' : `Product image #${selectedProductImageAssetId.value} as starting frame`
+  }
+
+  return 'Text description with project brief'
+})
+const canUseVoiceoverTiming = computed(() => voiceoverGenerations.value.length > 0)
+const effectiveVoiceoverEnabled = computed(() => includeVoiceoverPlan.value && selectedVoiceoverGenerationId.value !== null)
+const primaryDescriptionEmpty = computed(() => sceneDescription.value.trim() === '')
+const formBlockingReason = computed(() => {
+  if (isSubmitting.value) {
+    return 'Generation is already being submitted.'
+  }
+
+  if (isUpgradeRequired.value) {
+    return ''
+  }
+
+  if (sourceMode.value === 'image_first_frame' && !imageToVideoEnabled.value) {
+    return 'Image-to-video is not enabled for this workspace yet.'
+  }
+
+  if (campaignRequired.value && selectedCampaignGenerationId.value === null) {
+    return 'Choose a saved campaign first.'
+  }
+
+  if (productImageRequired.value && selectedProductImageAssetId.value === null) {
+    return 'Choose one product image first.'
+  }
+
+  if (primaryDescriptionEmpty.value) {
+    return 'Describe the video you want first.'
+  }
+
+  return ''
+})
+const canSubmit = computed(() => formBlockingReason.value === '')
+const generateButtonLabel = computed(() => {
+  if (isSubmitting.value) {
+    return 'Generating video...'
+  }
+
+  if (isUpgradeRequired.value) {
+    return 'View plan options'
+  }
+
+  return sourceMode.value === 'image_first_frame' ? 'Animate product image' : 'Generate video'
+})
 
 function initializeForm(loadedProject: CreatorProject): void {
   const input = (loadedProject.input_payload ?? {}) as Record<string, unknown>
+  const initialDescription = firstString([input.content_idea, input.product_description, input.target_audience])
 
-  selectedCampaignGenerationId.value = campaignGenerations.value[0]?.id ?? null
+  selectedCampaignGenerationId.value = null
   selectedVoiceoverGenerationId.value = voiceoverGenerations.value[0]?.id ?? null
-  primaryCta.value = typeof input.cta_preference === 'string' ? input.cta_preference : 'See product details'
-  sceneDescription.value = typeof input.product_description === 'string' ? input.product_description : ''
-  targetDurationSeconds.value = capabilities.value?.default_duration_seconds ?? 8
+  includeVoiceoverPlan.value = selectedVoiceoverGenerationId.value !== null
+  primaryCta.value = typeof input.cta_preference === 'string' ? input.cta_preference : ''
+
+  if (sceneDescription.value.trim() === '' && initialDescription !== null) {
+    sceneDescription.value = initialDescription
+  }
+
+  targetDurationSeconds.value = durationChoices.value[0] ?? 8
+  aspectRatio.value = aspectRatioChoices.value[0]?.value ?? 'vertical_9_16'
 }
 
 async function loadPage(): Promise<void> {
@@ -194,50 +234,54 @@ async function loadPage(): Promise<void> {
   }
 }
 
-function selectSourceMode(mode: MotionAiVideoSourceMode): void {
-  const option = sourceModeOptions.value.find((item) => item.value === mode)
-
-  if (option?.disabled) {
-    return
-  }
-
+function selectSourceMode(mode: ConsumerSourceMode): void {
   sourceMode.value = mode
   formError.value = ''
+
+  if (mode === 'campaign_assisted' && selectedCampaignGenerationId.value === null) {
+    selectedCampaignGenerationId.value = campaignGenerations.value[0]?.id ?? null
+  }
+
+  if (mode !== 'campaign_assisted') {
+    selectedCampaignGenerationId.value = null
+  }
+
+  if (mode !== 'image_first_frame') {
+    selectedProductImageAssetId.value = null
+  }
 }
 
 function scriptSourceForMode(): MotionAiVideoScriptSource {
-  if (sourceMode.value === 'campaign_assisted') {
-    return 'campaign_script'
+  return sourceMode.value === 'campaign_assisted' ? 'campaign_script' : 'project_brief'
+}
+
+function handleVoiceoverToggle(): void {
+  if (!includeVoiceoverPlan.value) {
+    selectedVoiceoverGenerationId.value = null
+    return
   }
 
-  return manualScript.value.trim() !== '' ? 'manual_script' : 'project_brief'
+  selectedVoiceoverGenerationId.value = voiceoverGenerations.value[0]?.id ?? null
+
+  if (selectedVoiceoverGenerationId.value === null) {
+    includeVoiceoverPlan.value = false
+  }
 }
 
 async function submit(): Promise<void> {
   formError.value = ''
+
+  if (isSubmitting.value) {
+    return
+  }
 
   if (isUpgradeRequired.value) {
     await router.push(motionAction.value?.primary_cta?.route ?? '/pricing')
     return
   }
 
-  if (sourceMode.value === 'image_first_frame' && !imageToVideoEnabled.value) {
-    formError.value = 'First-frame image-to-video is not enabled yet. Use text, campaign or image-context mode.'
-    return
-  }
-
-  if (sourceMode.value === 'image_reference_experimental' && !imageReferenceEnabled.value) {
-    formError.value = 'Product image visual reference mode is not enabled yet. Use text, campaign or image-context mode.'
-    return
-  }
-
-  if (productImageRequired.value && selectedProductImageAssetId.value === null) {
-    formError.value = 'Upload or select a product image for this Motion AI source mode.'
-    return
-  }
-
-  if (campaignRequired.value && selectedCampaignGenerationId.value === null) {
-    formError.value = 'Choose a saved campaign generation first, or switch to text prompt mode.'
+  if (!canSubmit.value) {
+    formError.value = formBlockingReason.value
     return
   }
 
@@ -247,12 +291,12 @@ async function submit(): Promise<void> {
     source_mode: sourceMode.value,
     product_image_asset_id: usesProductImage.value ? selectedProductImageAssetId.value : null,
     scenario_image_asset_id: selectedScenarioImageAssetId.value,
-    campaign_generation_id: showCampaignPicker.value ? selectedCampaignGenerationId.value : null,
-    voiceover_generation_id: selectedVoiceoverGenerationId.value,
+    campaign_generation_id: campaignRequired.value ? selectedCampaignGenerationId.value : null,
+    voiceover_generation_id: effectiveVoiceoverEnabled.value ? selectedVoiceoverGenerationId.value : null,
     platform: platform.value,
     target_duration_seconds: targetDurationSeconds.value,
     script_source: scriptSourceForMode(),
-    manual_script: manualScript.value.trim() || null,
+    manual_script: null,
     creative_notes: creativeNotes.value.trim() || null,
     visual_style: visualStyle.value,
     motion_style: motionStyle.value,
@@ -261,7 +305,7 @@ async function submit(): Promise<void> {
     background_prompt: backgroundPrompt.value.trim() || null,
     negative_prompt: negativePrompt.value.trim() || null,
     aspect_ratio: aspectRatio.value,
-    include_voiceover_plan: includeVoiceoverPlan.value,
+    include_voiceover_plan: effectiveVoiceoverEnabled.value,
     include_caption_plan: includeCaptionPlan.value,
     primary_cta: primaryCta.value.trim() || null,
   }
@@ -271,9 +315,9 @@ async function submit(): Promise<void> {
     await router.push(`/projects/${projectId.value}/generations/${response.data.id}`)
   } catch (error: unknown) {
     if (error instanceof ApiError && (error.code === 'insufficient_credits' || error.status === 402)) {
-      formError.value = 'You do not have enough credits to generate this motion video plan.'
+      formError.value = 'You do not have enough credits to generate this motion video.'
     } else {
-      formError.value = error instanceof ApiError ? error.message : 'We could not generate this motion video plan.'
+      formError.value = error instanceof ApiError ? error.message : 'We could not generate this motion video.'
     }
   } finally {
     isSubmitting.value = false
@@ -284,12 +328,31 @@ function generationLabel(generation: CreatorGeneration): string {
   return generationDisplayName(generation, project.value)
 }
 
+function firstString(values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim() !== '') {
+      return value
+    }
+  }
+
+  return null
+}
+
+function campaignPreview(generation: CreatorGeneration): string {
+  const output = generation.result_payload && typeof generation.result_payload === 'object'
+    ? generation.result_payload as unknown as Record<string, unknown>
+    : {}
+  const text = firstString([output.campaign_title, output.campaign_angle, output.product_angle, output.caption])
+
+  return text ?? 'Completed campaign context ready for a video prompt.'
+}
+
 onMounted(loadPage)
 </script>
 
 <template>
   <main class="nusa-page min-h-screen text-white">
-    <div class="nusa-page-container mx-auto min-h-screen max-w-5xl px-5 pb-16 pt-5 sm:px-6">
+    <div class="nusa-page-container mx-auto min-h-screen max-w-4xl px-5 pb-28 pt-5 sm:px-6">
       <AppNav />
 
       <section v-if="isLoading" class="mt-12" aria-live="polite">
@@ -310,86 +373,235 @@ onMounted(loadPage)
 
       <template v-else>
         <header class="mt-10">
-          <RouterLink :to="`/projects/${projectId}`" class="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30">
-            ? Back to workspace
+          <RouterLink :to="`/projects/${projectId}`" class="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">
+            ← Back to workspace
           </RouterLink>
           <p class="mt-7 text-sm font-medium text-emerald-400">{{ project?.title }}</p>
           <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">Motion AI Video</h1>
           <p class="mt-4 max-w-2xl text-sm leading-7 text-neutral-400">
-            Create a short visual-first motion product clip from text, saved campaign context, product-image context, or verified first-frame image-to-video.
+            Create short visual-first product footage for social commerce. Nusa keeps captions, CTA overlays and voiceover composition honest as post-production steps.
           </p>
-          <p class="mt-4 rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100/80">
-            {{ providerLabel }} mode uses {{ requestModeLabel }}. Text-only and campaign-based Motion AI do not require a product image.
-            <span v-if="isTextOnlyProviderMode"> Product images stay as Nusa-side prompt context only.</span>
-            <span v-if="supportsRealRendering"> Real beta renders a base MP4 motion clip for later editing.</span>
+          <p class="mt-4 max-w-2xl rounded-2xl border border-emerald-900/50 bg-emerald-950/20 p-4 text-sm leading-6 text-emerald-100/80">
+            {{ providerLabel }} creates the base visual clip. Final captions, narration and platform polish can be added later in the workspace.
           </p>
         </header>
 
-        <form class="mt-8 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]" @submit.prevent="submit">
-          <section class="space-y-5">
-            <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Source mode</p>
-              <h2 class="mt-2 text-xl font-semibold">Choose how Nusa should start</h2>
+        <form class="mt-8 space-y-5" @submit.prevent="submit">
+          <section class="nusa-card-premium rounded-[2rem] p-5">
+            <fieldset>
+              <legend>
+                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">1 · How should the video start?</span>
+                <span class="mt-2 block text-xl font-semibold text-white">Choose the source</span>
+              </legend>
               <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Motion AI can start from a prompt, a saved campaign, or a product image used as workspace context. First-frame and reference-image rendering stay hidden or disabled until explicitly enabled.
+                Pick one clear starting point. Advanced provider and transport details stay out of the creator flow.
               </p>
 
-              <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                <button
-                  v-for="option in sourceModeOptions"
-                  :key="option.value"
-                  type="button"
-                  :disabled="option.disabled"
-                  :data-testid="`motion-source-mode-${option.value}`"
-                  class="rounded-3xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50"
-                  :class="sourceMode === option.value ? 'border-emerald-400 bg-emerald-950/30' : 'border-neutral-800 bg-neutral-950/60 hover:border-neutral-600'"
-                  @click="selectSourceMode(option.value)"
-                >
-                  <span class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">{{ option.eyebrow }}</span>
-                  <span class="mt-2 block font-semibold text-white">{{ option.label }}</span>
-                  <span class="mt-2 block text-sm leading-6 text-neutral-400">{{ option.description }}</span>
-                </button>
+              <div class="mt-5 space-y-3" role="radiogroup" aria-label="Motion AI Video source">
+                <div v-for="option in sourceModeOptions" :key="option.value" class="rounded-[1.75rem] border border-neutral-800 bg-neutral-950/30 p-2">
+                  <button
+                    type="button"
+                    role="radio"
+                    :aria-checked="sourceMode === option.value"
+                    :data-testid="`motion-source-mode-${option.value}`"
+                    class="w-full rounded-[1.35rem] border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+                    :class="sourceMode === option.value ? 'border-emerald-400 bg-emerald-950/30' : 'border-neutral-800 bg-neutral-950/60 hover:border-neutral-600'"
+                    @click="selectSourceMode(option.value)"
+                  >
+                    <span class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <span class="min-w-0">
+                        <span class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">{{ option.eyebrow }}</span>
+                        <span class="mt-2 block text-lg font-semibold text-white">{{ option.label }}</span>
+                        <span class="mt-2 block text-sm leading-6 text-neutral-400">{{ option.description }}</span>
+                      </span>
+                      <span class="rounded-full border border-neutral-700 px-3 py-1 text-xs font-semibold text-neutral-300">
+                        {{ sourceMode === option.value ? 'Selected' : 'Choose' }}
+                      </span>
+                    </span>
+                    <span class="mt-3 block text-xs leading-5 text-neutral-500">{{ option.requiredSummary }}</span>
+                  </button>
+
+                  <div v-if="sourceMode === option.value && option.value === 'campaign_assisted'" class="mt-3 rounded-[1.25rem] border border-emerald-900/50 bg-emerald-950/20 p-4" data-testid="motion-campaign-inline-panel">
+                    <label class="block">
+                      <span class="nusa-label">Saved campaign *</span>
+                      <select v-model.number="selectedCampaignGenerationId" class="nusa-select mt-2" data-testid="motion-campaign-select" required>
+                        <option :value="null">Choose a campaign generation</option>
+                        <option v-for="generation in campaignGenerations" :key="generation.id" :value="generation.id">
+                          {{ generationLabel(generation) }}
+                        </option>
+                      </select>
+                    </label>
+                    <div v-if="selectedCampaignGeneration" class="mt-3 rounded-2xl border border-emerald-900/50 bg-neutral-950/50 p-3 text-sm leading-6 text-emerald-100/80">
+                      <span class="block font-semibold text-emerald-200">Selected campaign context</span>
+                      <span class="block text-neutral-300">{{ campaignPreview(selectedCampaignGeneration) }}</span>
+                      <span class="block text-xs text-neutral-500">Nusa summarizes the campaign into creative direction. Raw campaign JSON is not shown here.</span>
+                    </div>
+                    <p v-if="campaignGenerations.length === 0" class="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-400">
+                      No saved campaign generations yet. Generate a Product Content Kit first, or use text description mode.
+                    </p>
+                  </div>
+
+                  <div v-if="sourceMode === option.value && option.value === 'image_first_frame'" class="mt-3 rounded-[1.25rem] border border-emerald-900/50 bg-emerald-950/20 p-4" data-testid="motion-image-inline-panel">
+                    <ProjectAssetInput
+                      v-model="selectedProductImageAssetId"
+                      :project-id="projectId"
+                      accepted-types="image"
+                      usage-role="product_image"
+                      title="Upload or choose product image *"
+                      :helper-text="productImageHelperText"
+                      :required="productImageRequired"
+                      auto-select-first
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div v-if="sourceMode === 'text_prompt'" class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Text prompt</p>
-              <h2 class="mt-2 text-xl font-semibold">Describe the motion clip</h2>
-              <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Use this as a valid first-class workflow: no image is required. Nusa will combine your prompt with the project brief.
+              <p v-if="!imageToVideoEnabled" class="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-xs leading-5 text-neutral-500">
+                Product image animation appears here only when the verified first-frame provider capability is enabled. Reference images remain disabled.
               </p>
+            </fieldset>
+          </section>
 
-              <label class="mt-5 block">
-                <span class="nusa-label">Prompt / creative direction</span>
-                <textarea v-model="manualScript" rows="5" class="nusa-textarea mt-2" data-testid="motion-manual-script" placeholder="e.g. Create a clean product showcase with a slow reveal, useful close-up, and stable hero frame." />
+          <section class="nusa-card-premium rounded-[2rem] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">2 · Describe the video</p>
+            <h2 class="mt-2 text-xl font-semibold">Describe the video you want</h2>
+            <p class="mt-2 text-sm leading-6 text-neutral-400">
+              Explain what should happen in the video, how the product should appear, and the feeling you want.
+            </p>
+            <label class="mt-5 block" for="motion-scene-description">
+              <span class="nusa-label">Video description *</span>
+              <textarea
+                id="motion-scene-description"
+                v-model="sceneDescription"
+                rows="6"
+                class="nusa-textarea mt-2"
+                data-testid="motion-main-description"
+                placeholder="Show the product on a clean studio surface with a slow camera push-in, soft lighting and a premium look."
+                required
+              />
+            </label>
+            <p class="mt-2 text-xs leading-5 text-neutral-500">
+              This maps to Nusa’s scene description field and becomes the main creative instruction for the provider.
+            </p>
+          </section>
+
+          <section class="nusa-card-premium rounded-[2rem] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">3 · Basic video settings</p>
+            <h2 class="mt-2 text-xl font-semibold">Set the look and format</h2>
+            <div class="mt-5 grid gap-4 sm:grid-cols-2">
+              <label class="block">
+                <span class="nusa-label">Visual style</span>
+                <select v-model="visualStyle" class="nusa-select mt-2" data-testid="motion-visual-style-select">
+                  <option v-for="option in visualStyleChoices" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="nusa-label">Camera movement</span>
+                <select v-model="motionStyle" class="nusa-select mt-2" data-testid="motion-style-select">
+                  <option v-for="option in cameraMovementChoices" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="nusa-label">Duration</span>
+                <select v-model.number="targetDurationSeconds" class="nusa-select mt-2" data-testid="motion-duration-select">
+                  <option v-for="duration in durationChoices" :key="duration" :value="duration">
+                    {{ duration }} seconds
+                  </option>
+                </select>
+                <span v-if="supportsRealRendering" class="mt-2 block text-xs leading-5 text-neutral-500">
+                  Current Veo beta output is generated as an {{ expectedBaseDuration }}s base clip.
+                </span>
+              </label>
+
+              <label class="block">
+                <span class="nusa-label">Aspect ratio</span>
+                <select v-model="aspectRatio" class="nusa-select mt-2" data-testid="motion-aspect-ratio-select">
+                  <option v-for="option in aspectRatioChoices" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+                <span v-if="supportsRealRendering" class="mt-2 block text-xs leading-5 text-neutral-500">
+                  Verified production flow currently uses vertical 9:16.
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section class="nusa-card-premium rounded-[2rem] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">4 · Post-production</p>
+            <h2 class="mt-2 text-xl font-semibold">Prepare captions and pacing</h2>
+            <p class="mt-2 text-sm leading-6 text-neutral-400">
+              These options prepare the visual footage for captions or voiceover that can be added after the Veo clip is generated.
+            </p>
+
+            <div class="mt-5 space-y-3">
+              <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 text-sm text-neutral-300">
+                <input v-model="includeCaptionPlan" type="checkbox" class="mt-1 size-4 accent-emerald-400" data-testid="motion-caption-plan-toggle">
+                <span>
+                  <span class="block font-semibold text-neutral-100">Prepare space for captions</span>
+                  <span class="mt-1 block leading-6 text-neutral-400">The generated footage will leave readable space for captions added later. Captions are not burned into the Veo MP4.</span>
+                </span>
+              </label>
+
+              <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 text-sm text-neutral-300" :class="!canUseVoiceoverTiming ? 'opacity-70' : ''">
+                <input
+                  v-model="includeVoiceoverPlan"
+                  type="checkbox"
+                  class="mt-1 size-4 accent-emerald-400"
+                  data-testid="motion-voiceover-plan-toggle"
+                  :disabled="!canUseVoiceoverTiming"
+                  @change="handleVoiceoverToggle"
+                >
+                <span>
+                  <span class="block font-semibold text-neutral-100">Use voiceover timing</span>
+                  <span class="mt-1 block leading-6 text-neutral-400">Use an existing voiceover to guide pacing. The audio is added during post-production.</span>
+                  <span v-if="!canUseVoiceoverTiming" class="mt-2 block text-xs text-amber-200">Generate or select a voiceover first to use timing guidance.</span>
+                </span>
               </label>
             </div>
 
-            <div v-if="usesProductImage" class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Product image</p>
-              <h2 class="mt-2 text-xl font-semibold">Choose product image context</h2>
-              <p class="mt-2 text-sm leading-6 text-neutral-400">{{ productImageHelperText }}</p>
+            <label v-if="includeVoiceoverPlan && canUseVoiceoverTiming" class="mt-4 block">
+              <span class="nusa-label">Voiceover for pacing</span>
+              <select v-model.number="selectedVoiceoverGenerationId" class="nusa-select mt-2" data-testid="motion-voiceover-select">
+                <option :value="null">No voiceover selected</option>
+                <option v-for="generation in voiceoverGenerations" :key="generation.id" :value="generation.id">
+                  {{ generationLabel(generation) }}
+                </option>
+              </select>
+            </label>
 
-              <ProjectAssetInput
-                v-model="selectedProductImageAssetId"
-                :project-id="projectId"
-                accepted-types="image"
-                usage-role="product_image"
-                :title="productImageTitle"
-                :helper-text="productImageHelperText"
-                :required="productImageRequired"
-                auto-select-first
-                class="mt-5"
-              />
-            </div>
+            <label class="mt-4 block">
+              <span class="nusa-label">CTA for later edit</span>
+              <input v-model="primaryCta" class="nusa-input mt-2" placeholder="See product details" data-testid="motion-primary-cta-input">
+              <span class="mt-2 block text-xs leading-5 text-neutral-500">Optional. If left empty, Nusa may suggest a generic CTA and label it as suggested.</span>
+            </label>
+          </section>
 
-            <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Scenario / background</p>
-              <h2 class="mt-2 text-xl font-semibold">Add environment context</h2>
-              <p class="mt-2 text-sm leading-6 text-neutral-400">
-                Add a scenario image or describe the environment. Scenario images are prompt context only unless a future provider mode supports them.
-              </p>
+          <section class="nusa-card-premium rounded-[2rem] p-5">
+            <button
+              type="button"
+              class="flex w-full items-center justify-between gap-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+              :aria-expanded="advancedOpen"
+              aria-controls="motion-advanced-settings"
+              data-testid="motion-advanced-toggle"
+              @click="advancedOpen = !advancedOpen"
+            >
+              <span>
+                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">5 · Advanced settings</span>
+                <span class="mt-2 block text-xl font-semibold text-white">Fine-tune optional context</span>
+              </span>
+              <span class="rounded-full border border-neutral-700 px-3 py-1 text-sm font-semibold text-neutral-300">
+                {{ advancedOpen ? 'Hide' : 'Show' }}
+              </span>
+            </button>
 
+            <div v-show="advancedOpen" id="motion-advanced-settings" class="mt-5 space-y-4">
               <ProjectAssetInput
                 v-model="selectedScenarioImageAssetId"
                 :project-id="projectId"
@@ -397,164 +609,65 @@ onMounted(loadPage)
                 usage-role="background_reference"
                 title="Upload or choose scenario image"
                 helper-text="Optional. Add a background or scene reference to guide the environment."
-                class="mt-5"
               />
 
-              <label class="mt-4 block">
-                <span class="nusa-label">Scene description</span>
-                <textarea v-model="sceneDescription" rows="3" class="nusa-textarea mt-2" placeholder="e.g. Product on a warm creator desk with soft daylight." />
+              <label class="block">
+                <span class="nusa-label">Background or setting</span>
+                <textarea v-model="backgroundPrompt" rows="3" class="nusa-textarea mt-2" placeholder="Minimal light-grey studio with soft shadows." />
               </label>
 
-              <label class="mt-4 block">
-                <span class="nusa-label">Background prompt</span>
-                <textarea v-model="backgroundPrompt" rows="3" class="nusa-textarea mt-2" placeholder="Describe the background or environment." />
+              <label class="block">
+                <span class="nusa-label">Detailed camera direction</span>
+                <textarea v-model="cameraDirection" rows="3" class="nusa-textarea mt-2" placeholder="Optional: slow push-in, then hold a stable hero frame." />
               </label>
-            </div>
 
-            <div v-if="showCampaignPicker" class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Campaign source</p>
-              <h2 class="mt-2 text-xl font-semibold">Use saved campaign context</h2>
-              <p class="mt-2 text-sm leading-6 text-neutral-400">
-                {{ campaignRequired ? 'Required for saved campaign mode.' : 'Optional. Add campaign hooks, script and CTA as prompt context.' }}
-              </p>
-
-              <label class="mt-5 block">
-                <span class="nusa-label">Campaign generation</span>
-                <select v-model.number="selectedCampaignGenerationId" class="nusa-select mt-2" data-testid="motion-campaign-select">
-                  <option :value="null">No campaign selected</option>
-                  <option v-for="generation in campaignGenerations" :key="generation.id" :value="generation.id">
-                    {{ generationLabel(generation) }}
-                  </option>
-                </select>
+              <label class="block">
+                <span class="nusa-label">Things to avoid</span>
+                <textarea v-model="negativePrompt" rows="3" class="nusa-textarea mt-2" data-testid="motion-things-to-avoid" placeholder="Busy background, shaky camera, distorted product, visible text." />
+                <span class="mt-2 block text-xs leading-5 text-neutral-500">Optional. System safety and visual-integrity rules still apply separately.</span>
               </label>
-              <div v-if="selectedCampaignGeneration" class="mt-3 rounded-2xl border border-emerald-900/50 bg-emerald-950/20 p-3 text-sm leading-6 text-emerald-100/80">
-                <span class="block font-semibold text-emerald-200">Selected campaign context</span>
-                <span class="block text-neutral-300">{{ generationLabel(selectedCampaignGeneration) }}</span>
-                <span class="block text-xs text-neutral-500">Nusa will summarize this campaign into the Veo prompt without sending raw campaign JSON.</span>
-              </div>
-              <p v-if="campaignGenerations.length === 0" class="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-400">
-                No saved campaign generations yet. Generate a Product Content Kit first, or switch to text prompt mode.
-              </p>
+
+              <label class="block">
+                <span class="nusa-label">Additional notes</span>
+                <textarea v-model="creativeNotes" rows="3" class="nusa-textarea mt-2" data-testid="motion-additional-notes" placeholder="Optional: add mood, product moment or extra visual guidance." />
+              </label>
             </div>
           </section>
 
-          <section class="space-y-5">
-            <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Motion setup</p>
-              <h2 class="mt-2 text-xl font-semibold">Style the motion plan</h2>
-
-              <div class="mt-5 grid gap-4 sm:grid-cols-2">
-                <label class="block">
-                  <span class="nusa-label">Platform</span>
-                  <select v-model="platform" class="nusa-select mt-2" data-testid="motion-platform-select">
-                    <option v-for="option in motionPlatformOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="nusa-label">Aspect ratio</span>
-                  <select v-model="aspectRatio" class="nusa-select mt-2" data-testid="motion-aspect-ratio-select">
-                    <option v-for="option in motionAspectRatioOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="nusa-label">Duration</span>
-                  <select v-model.number="targetDurationSeconds" class="nusa-select mt-2" data-testid="motion-duration-select">
-                    <option v-for="duration in motionDurationOptions" :key="duration" :value="duration">
-                      {{ duration }} seconds
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="nusa-label">Visual style</span>
-                  <select v-model="visualStyle" class="nusa-select mt-2" data-testid="motion-visual-style-select">
-                    <option v-for="option in motionVisualStyleOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block sm:col-span-2">
-                  <span class="nusa-label">Motion style</span>
-                  <select v-model="motionStyle" class="nusa-select mt-2" data-testid="motion-style-select">
-                    <option v-for="option in motionStyleOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </label>
-              </div>
-
-              <label class="mt-4 block">
-                <span class="nusa-label">Camera direction</span>
-                <textarea v-model="cameraDirection" rows="3" class="nusa-textarea mt-2" placeholder="Optional camera notes, e.g. slow push-in then stable hero frame." />
-              </label>
-
-              <label class="mt-4 block">
-                <span class="nusa-label">Creative notes</span>
-                <textarea v-model="creativeNotes" rows="3" class="nusa-textarea mt-2" data-testid="motion-creative-notes" placeholder="Optional: describe the mood, product moment, or visual guidance for the clip." />
-              </label>
-
-              <label class="mt-4 block">
-                <span class="nusa-label">Negative prompt</span>
-                <textarea v-model="negativePrompt" rows="3" class="nusa-textarea mt-2" placeholder="Optional: warped product, fake logos, unreadable text..." />
-              </label>
-            </div>
-
-            <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Voiceover and captions</p>
-              <h2 class="mt-2 text-xl font-semibold">Plan narration and text</h2>
-
-              <label class="mt-5 block">
-                <span class="nusa-label">Voiceover generation</span>
-                <select v-model.number="selectedVoiceoverGenerationId" class="nusa-select mt-2" data-testid="motion-voiceover-select">
-                  <option :value="null">No voiceover selected</option>
-                  <option v-for="generation in voiceoverGenerations" :key="generation.id" :value="generation.id">
-                    {{ generationLabel(generation) }}
-                  </option>
-                </select>
-              </label>
-
-              <div class="mt-5 space-y-3">
-                <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
-                  <input v-model="includeVoiceoverPlan" type="checkbox" class="mt-1 size-4 accent-emerald-400">
-                  <span>Include voiceover plan</span>
-                </label>
-                <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
-                  <input v-model="includeCaptionPlan" type="checkbox" class="mt-1 size-4 accent-emerald-400">
-                  <span>Include caption plan</span>
-                </label>
-              </div>
-
-              <label class="mt-4 block">
-                <span class="nusa-label">Primary CTA</span>
-                <input v-model="primaryCta" class="nusa-input mt-2" placeholder="See product details" data-testid="motion-primary-cta-input">
-              </label>
-            </div>
-
-            <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Ready to generate</p>
-              <h2 class="mt-2 text-xl font-semibold">Generate Motion Video</h2>
-              <p class="mt-3 text-sm leading-6 text-neutral-400">
-                Costs {{ creditCost }} credits. Real provider mode creates a visual-first MP4 motion clip; mock mode creates a render-ready plan.
+          <section class="nusa-card-premium rounded-[2rem] p-5" data-testid="motion-generate-card">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">6 · Generate</p>
+            <h2 class="mt-2 text-xl font-semibold">Ready to create the base clip</h2>
+            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+              <p class="rounded-2xl bg-neutral-950/70 p-3 text-sm text-neutral-300">
+                <span class="block text-xs text-neutral-500">Cost</span>
+                <span class="mt-1 block font-semibold text-neutral-100">{{ creditCost }} credits</span>
               </p>
-              <p v-if="formError" role="alert" class="mt-4 rounded-2xl border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">
-                {{ formError }}
+              <p class="rounded-2xl bg-neutral-950/70 p-3 text-sm text-neutral-300">
+                <span class="block text-xs text-neutral-500">Base duration</span>
+                <span class="mt-1 block font-semibold text-neutral-100">{{ expectedBaseDuration }}s</span>
               </p>
-              <button
-                type="submit"
-                :disabled="isSubmitting"
-                data-testid="motion-submit"
-                class="mt-5 flex min-h-12 w-full items-center justify-center rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {{ isSubmitting ? 'Generating motion video...' : 'Generate Motion Video' }}
-              </button>
+              <p class="rounded-2xl bg-neutral-950/70 p-3 text-sm text-neutral-300">
+                <span class="block text-xs text-neutral-500">Source</span>
+                <span class="mt-1 block font-semibold text-neutral-100">{{ selectedSourceOption?.label }}</span>
+              </p>
             </div>
+            <p class="mt-4 text-sm leading-6 text-neutral-400">
+              {{ selectedModeSummary }}. Veo creates the visual footage first; captions, voiceover and final overlays are post-production.
+            </p>
+            <p v-if="formBlockingReason && !isSubmitting" class="mt-3 text-xs leading-5 text-amber-200" data-testid="motion-submit-helper">
+              {{ formBlockingReason }}
+            </p>
+            <p v-if="formError" role="alert" class="mt-4 rounded-2xl border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">
+              {{ formError }}
+            </p>
+            <button
+              type="submit"
+              :disabled="!canSubmit"
+              data-testid="motion-submit"
+              class="mt-5 flex min-h-12 w-full items-center justify-center rounded-2xl bg-white px-5 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {{ generateButtonLabel }}
+            </button>
           </section>
         </form>
       </template>

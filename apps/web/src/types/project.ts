@@ -1515,9 +1515,14 @@ export interface MotionAiVideoSummary {
   visual_style: string
   motion_style: string
   source_type: 'product_image_only' | 'product_image_with_scenario' | 'campaign_assisted' | 'voiceover_assisted' | string
+  source_mode?: MotionAiVideoSourceMode | string | null
+  configured_request_mode?: string | null
+  effective_request_mode?: string | null
+  provider_request_shape?: string | null
   creative_angle: string
   target_audience: string
   primary_cta: string
+  primary_cta_source?: 'user_provided' | 'campaign_provided' | 'default_suggestion' | 'none' | string | null
   render_available: boolean
   visual_first_clip?: boolean
   final_video_asset_id?: number | null
@@ -1551,6 +1556,7 @@ export interface MotionAiVideoScriptPlan {
   voiceover_ready_script: string
   caption_lines: string[]
   CTA_line: string
+  primary_cta_source?: 'user_provided' | 'campaign_provided' | 'default_suggestion' | 'none' | string | null
 }
 
 export interface MotionAiVideoSettings {
@@ -1603,6 +1609,8 @@ export interface MotionAiVideoProviderMetadata extends Record<string, unknown> {
   native_audio_ignored?: boolean | null
   source_mode?: MotionAiVideoSourceMode | string | null
   request_mode?: string | null
+  configured_request_mode?: string | null
+  effective_request_mode?: string | null
   image_reference_enabled?: boolean | null
   product_image_asset_id?: number | null
   product_image_sent_to_provider?: boolean | null
@@ -1622,6 +1630,17 @@ export interface MotionAiVideoMetadata {
   provider: string
   source_mode?: MotionAiVideoSourceMode | string | null
   request_mode?: string | null
+  configured_request_mode?: string | null
+  effective_request_mode?: string | null
+  provider_request_shape?: string | null
+  primary_cta_source?: 'user_provided' | 'campaign_provided' | 'default_suggestion' | 'none' | string | null
+  user_negative_prompt?: string | null
+  user_negative_prompt_supplied?: boolean | null
+  system_visual_constraints?: string | null
+  system_visual_constraints_applied?: boolean | null
+  captions_requested?: boolean | null
+  voiceover_requested?: boolean | null
+  voiceover_context_used?: boolean | null
   product_image_asset_id: number | null
   scenario_image_asset_id: number | null
   campaign_generation_id: number | null

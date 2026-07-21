@@ -32,6 +32,8 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
         $backgroundPrompt = $this->value($input, 'background_prompt', 'A simple social commerce background that supports the product without distraction.', 600);
         $negativePrompt = $this->value($input, 'negative_prompt', 'warped product, unreadable text, fake logos, exaggerated product results, distorted hands, distracting camera shake', 600);
         $primaryCta = $this->value($input, 'primary_cta', 'See product details', 180);
+        $primaryCtaSource = $this->value($input, 'primary_cta_source', 'default_suggestion', 80);
+        $userNegativePrompt = $this->string($input['user_negative_prompt'] ?? null) ?? $this->string($input['negative_prompt'] ?? null);
         $scriptSource = $this->value($input, 'script_source', 'project_brief', 80);
         $includeVoiceoverPlan = (bool) ($input['include_voiceover_plan'] ?? true);
         $includeCaptionPlan = (bool) ($input['include_caption_plan'] ?? true);
@@ -65,9 +67,13 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
                 'motion_style' => $motionStyle,
                 'source_type' => $this->sourceType($hasScenario, $hasCampaign, $hasVoiceover),
                 'source_mode' => $sourceMode,
+                'configured_request_mode' => 'mock',
+                'effective_request_mode' => $sourceMode,
+                'provider_request_shape' => 'mock',
                 'creative_angle' => $creativeAngle,
                 'target_audience' => $audience,
                 'primary_cta' => $primaryCta,
+                'primary_cta_source' => $primaryCtaSource,
                 'render_available' => false,
             ],
             'generation_prompt' => [
@@ -86,6 +92,7 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
                 'voiceover_ready_script' => $includeVoiceoverPlan ? $script['voiceover_ready_script'] : 'Voiceover plan disabled for this draft.',
                 'caption_lines' => $captionLines,
                 'CTA_line' => $primaryCta,
+                'primary_cta_source' => $primaryCtaSource,
             ],
             'motion_settings' => [
                 'visual_style' => $visualStyle,
@@ -127,6 +134,9 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
                 'generation_type' => 'motion_ai_video',
                 'provider' => 'mock',
                 'source_mode' => $sourceMode,
+                'configured_request_mode' => 'mock',
+                'effective_request_mode' => $sourceMode,
+                'provider_request_shape' => 'mock',
                 'product_image_asset_id' => $this->nullableInt($input['product_image_asset_id'] ?? null),
                 'scenario_image_asset_id' => $this->nullableInt($input['scenario_image_asset_id'] ?? null),
                 'campaign_generation_id' => $this->nullableInt($input['campaign_generation_id'] ?? null),
@@ -137,6 +147,12 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
                 'motion_style' => $motionStyle,
                 'target_duration_seconds' => $duration,
                 'script_source' => $scriptSource,
+                'primary_cta_source' => $primaryCtaSource,
+                'user_negative_prompt' => $userNegativePrompt,
+                'user_negative_prompt_supplied' => $userNegativePrompt !== null,
+                'system_visual_constraints_applied' => true,
+                'captions_requested' => $includeCaptionPlan,
+                'voiceover_requested' => $includeVoiceoverPlan,
                 'render_available' => false,
                 'real_provider_enabled' => false,
                 'voiceover_assisted' => $hasVoiceover,
@@ -194,7 +210,7 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
     {
         $sceneCount = $duration <= 5 ? 2 : ($duration <= 10 ? 3 : 4);
         $segments = $this->segments($duration, $sceneCount);
-        $captions = $captionLines === [] ? ["Meet {$product}", 'Show the product clearly', $primaryCta] : $captionLines;
+        $captions = $captionLines;
         $goals = [
             ['Open on the product image with an immediate, clear reveal.', 'Keep the product centered and readable.', "Introduce {$product} in one simple line."],
             ['Build context with a scenario or background cue.', $creativeAngle, 'Show why this product fits the viewer\'s routine.'],
@@ -205,7 +221,7 @@ class MockMotionAiVideoProvider implements MotionAiVideoProvider
         return collect($segments)
             ->map(function (array $segment, int $index) use ($product, $motionStyle, $cameraDirection, $captions, $goals, $includeVoiceoverPlan): array {
                 $goal = $goals[$index] ?? end($goals);
-                $caption = $captions[$index] ?? end($captions);
+                $caption = $captions[$index] ?? '';
 
                 return [
                     'scene_number' => $index + 1,

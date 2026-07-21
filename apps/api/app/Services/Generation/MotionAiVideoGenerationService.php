@@ -224,6 +224,14 @@ class MotionAiVideoGenerationService
         $includeCaptionPlan = $this->boolOption($options, 'use_captions')
             ?? $this->boolOption($options, 'include_caption_plan')
             ?? true;
+        $userPrimaryCta = $this->stringOption($options, 'primary_cta');
+        $campaignPrimaryCta = $this->stringOption($projectInput, 'cta_preference');
+        $primaryCta = $userPrimaryCta
+            ?? $campaignPrimaryCta
+            ?? 'See product details';
+        $primaryCtaSource = $userPrimaryCta !== null
+            ? 'user_provided'
+            : ($campaignPrimaryCta !== null ? 'campaign_provided' : 'default_suggestion');
 
         return array_merge($projectInput, [
             'project_title' => $project->title,
@@ -256,9 +264,10 @@ class MotionAiVideoGenerationService
             'include_caption_plan' => $includeCaptionPlan,
             'use_voiceover' => $includeVoiceoverPlan,
             'use_captions' => $includeCaptionPlan,
-            'primary_cta' => $this->stringOption($options, 'primary_cta')
-                ?? $this->stringOption($projectInput, 'cta_preference')
-                ?? 'See product details',
+            'primary_cta' => $primaryCta,
+            'primary_cta_source' => $primaryCtaSource,
+            'user_negative_prompt' => $this->stringOption($options, 'negative_prompt'),
+            'system_visual_constraints_applied' => true,
         ]);
     }
 

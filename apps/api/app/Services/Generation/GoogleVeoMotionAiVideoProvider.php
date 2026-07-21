@@ -600,6 +600,7 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'render_available' => true,
             'visual_first_clip' => true,
             'final_video_asset_id' => $finalVideo->getKey(),
+            'primary_cta_source' => data_get($metadata, 'primary_cta_source', 'default_suggestion'),
         ]);
         $payload['generation_prompt'] = array_merge(is_array($plan['generation_prompt'] ?? null) ? $plan['generation_prompt'] : [], [
             'main_prompt' => $prompt['display_prompt']
@@ -621,7 +622,10 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
         $payload['provider_readiness'] = [
             'provider' => 'google_veo',
             'real_provider_required' => false,
+            'real_provider_used' => true,
             'render_available' => true,
+            'provider_render_available' => true,
+            'render_completed' => true,
             'recommended_provider_type' => match ($providerRequestShape) {
                 'image_first_frame' => 'image_to_video',
                 'reference_images' => 'image_reference_to_video',
@@ -687,7 +691,9 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'provider_transport' => $this->providerTransport($providerRequestShape),
             'sdk_package_version' => $submit['sdk_package_version'] ?? null,
             'request_mode' => $requestMode,
-            'request_mode_summary' => $requestMode,
+            'configured_request_mode' => $requestMode,
+            'effective_request_mode' => $providerRequestShape === 'image_first_frame' ? 'image_first_frame' : $sourceMode,
+            'request_mode_summary' => $providerRequestShape,
             'image_input_mode' => $providerRequestShape,
             'image_to_video_enabled' => $this->imageToVideoEnabled(),
             'image_reference_enabled' => $this->imageReferencesEnabled(),
@@ -736,6 +742,12 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'prompt_hash' => data_get($prompt, 'summary.final_prompt_hash'),
             'captions_requested' => (bool) data_get($prompt, 'summary.captions_requested', false),
             'voiceover_requested' => (bool) data_get($prompt, 'summary.voiceover_requested', false),
+            'voiceover_context_used' => (bool) data_get($prompt, 'summary.voiceover_context_used', false),
+            'primary_cta_source' => data_get($prompt, 'summary.primary_cta_source', $input['primary_cta_source'] ?? 'default_suggestion'),
+            'user_negative_prompt' => is_string($input['user_negative_prompt'] ?? null) ? trim((string) $input['user_negative_prompt']) : null,
+            'user_negative_prompt_supplied' => (bool) data_get($prompt, 'summary.user_negative_prompt_supplied', false),
+            'system_visual_constraints' => data_get($prompt, 'system_negative_constraints'),
+            'system_visual_constraints_applied' => (bool) data_get($prompt, 'summary.system_visual_constraints_applied', true),
             'overlay_text_deferred' => (bool) data_get($prompt, 'summary.overlay_text_deferred', true),
             'platform_ui_forbidden' => (bool) data_get($prompt, 'summary.platform_ui_forbidden', true),
             'invented_names_forbidden' => (bool) data_get($prompt, 'summary.invented_names_forbidden', true),
@@ -766,6 +778,8 @@ class GoogleVeoMotionAiVideoProvider implements MotionAiVideoProvider
             'source_mode' => $sourceMode,
             'model' => $this->model(),
             'request_mode' => $requestMode,
+            'configured_request_mode' => $requestMode,
+            'effective_request_mode' => $providerRequestShape === 'image_first_frame' ? 'image_first_frame' : $sourceMode,
             'image_input_mode' => $providerRequestShape,
             'provider_request_shape' => $providerRequestShape,
             'provider_transport' => $this->providerTransport($providerRequestShape),

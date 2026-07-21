@@ -135,32 +135,50 @@ const isVideoToCampaignGeneration = computed(() =>
 const isAutoVideoEditorGeneration = computed(() =>
   props.generation?.job_type === 'generate_auto_video_edit',
 )
+const isMotionAiVideoGeneration = computed(() =>
+  props.generation?.job_type === 'generate_motion_ai_video',
+)
 const isVideoProcessingWorkflow = computed(() =>
-  isVideoToCampaignGeneration.value || isAutoVideoEditorGeneration.value,
+  isVideoToCampaignGeneration.value || isAutoVideoEditorGeneration.value || isMotionAiVideoGeneration.value,
 )
 const processingTitle = computed(() =>
   isVideoToCampaignGeneration.value
     ? 'Analyzing your video and creating the campaign.'
     : isAutoVideoEditorGeneration.value
       ? 'Rendering your video.'
-      : 'Creating your result...',
+      : isMotionAiVideoGeneration.value
+        ? 'Creating your video.'
+        : 'Creating your result...',
 )
-const processingDescription = computed(() =>
-  isVideoProcessingWorkflow.value
-    ? 'This can take a few minutes depending on video length and provider processing time.'
-    : 'We are creating your result. The result will update automatically.',
-)
+const processingDescription = computed(() => {
+  if (isMotionAiVideoGeneration.value) {
+    return 'Preparing the creative direction, generating the visual footage and saving your result. This can take a few minutes. You can stay on this page; the result updates automatically.'
+  }
+
+  if (isVideoProcessingWorkflow.value) {
+    return 'This can take a few minutes depending on video length and provider processing time. You can stay on this page; the result updates automatically.'
+  }
+
+  return 'We are creating your result. You can stay on this page; the result updates automatically.'
+})
 const failedTitle = computed(() =>
   isVideoToCampaignGeneration.value
     ? 'Video analysis failed. Your credits were refunded if they were charged.'
     : isAutoVideoEditorGeneration.value
       ? 'Video rendering failed. Your credits were refunded if they were charged.'
-      : 'Generation failed. Please try again.',
+      : isMotionAiVideoGeneration.value
+        ? 'Video generation failed. Your credits were refunded if they were charged.'
+        : 'Generation failed. Please try again.',
 )
 const failedDescription = computed(() =>
-  isVideoProcessingWorkflow.value
-    ? 'The provider did not return a usable result. We kept the technical details out of the UI so private provider data stays safe.'
-    : 'Your charged credits are returned automatically for an internal processing failure.',
+  isMotionAiVideoGeneration.value
+    ? 'No fake output was created. We kept technical provider details out of the UI so private data stays safe. Edit the settings and try again when you are ready.'
+    : isVideoProcessingWorkflow.value
+      ? 'The provider did not return a usable result. We kept the technical details out of the UI so private provider data stays safe.'
+      : 'Your charged credits are returned automatically for an internal processing failure.',
+)
+const retryActionLabel = computed(() =>
+  isMotionAiVideoGeneration.value ? 'Edit settings' : 'Try again',
 )
 </script>
 
@@ -200,9 +218,6 @@ const failedDescription = computed(() =>
     <p class="mt-3 text-sm leading-6 text-neutral-300">
       {{ processingDescription }}
     </p>
-    <p class="mt-2 text-sm leading-6 text-neutral-400">
-      Please keep this page open. The result will update automatically.
-    </p>
     <p v-if="showQueueWorkerHint" class="mt-3 text-xs text-amber-300">
       Queue worker may not be running.
     </p>
@@ -230,7 +245,7 @@ const failedDescription = computed(() =>
         :to="retryRoute"
         class="flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
       >
-        Try again
+        {{ retryActionLabel }}
       </RouterLink>
     </div>
   </section>

@@ -42,8 +42,9 @@ class GoogleVeoMotionAiVideoPromptBuilder
         $sceneDescription = $this->stringValue($input['scene_description'] ?? null)
             ?? $this->stringValue(data_get($plan, 'generation_prompt.scene_description'));
         $backgroundPrompt = $this->stringValue($input['background_prompt'] ?? null);
-        $userNegativePrompt = $this->stringValue($input['negative_prompt'] ?? null)
-            ?? $this->stringValue(data_get($plan, 'generation_prompt.negative_prompt'));
+        $userNegativePrompt = $this->stringValue($input['user_negative_prompt'] ?? null)
+            ?? $this->stringValue($input['negative_prompt'] ?? null);
+        $primaryCtaSource = $this->stringValue($input['primary_cta_source'] ?? null) ?? 'default_suggestion';
         $captionsRequested = $this->boolOption($input, ['use_captions', 'include_caption_plan'], true);
         $voiceoverRequested = $this->boolOption($input, ['use_voiceover', 'include_voiceover_plan'], true);
         $hasVoiceoverAsset = $this->nullableInt($input['voiceover_generation_id'] ?? null) !== null
@@ -119,6 +120,9 @@ class GoogleVeoMotionAiVideoPromptBuilder
             'voiceover_requested' => $voiceoverRequested,
             'voiceover_context_used' => $voiceoverPacingContext !== null,
             'captions_requested' => $captionsRequested,
+            'primary_cta_source' => $primaryCtaSource,
+            'user_negative_prompt_supplied' => $userNegativePrompt !== null,
+            'system_visual_constraints_applied' => true,
             'overlay_text_deferred' => true,
             'platform_ui_forbidden' => true,
             'invented_names_forbidden' => true,
