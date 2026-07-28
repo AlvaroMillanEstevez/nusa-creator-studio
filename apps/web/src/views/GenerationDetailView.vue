@@ -72,6 +72,11 @@ const latestVideoAnalysisGeneration = computed(() =>
     (item) => item.job_type === 'generate_video_to_campaign' && item.status === 'completed',
   ) ?? (generation.value?.job_type === 'generate_video_to_campaign' && generation.value.status === 'completed' ? generation.value : null),
 )
+const latestFashionTryOnGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_fashion_try_on' && item.status === 'completed',
+  ) ?? (generation.value?.job_type === 'generate_fashion_try_on' && generation.value.status === 'completed' ? generation.value : null),
+)
 const latestMotionAiVideoGeneration = computed(() =>
   generationHistory.value.find(
     (item) => item.job_type === 'generate_motion_ai_video' && item.status === 'completed',
@@ -311,6 +316,7 @@ onBeforeUnmount(stopPolling)
           :latest-campaign-generation="latestCampaignGeneration"
           :latest-voiceover-generation="latestVoiceoverGeneration"
           :latest-video-analysis-generation="latestVideoAnalysisGeneration"
+          :latest-fashion-try-on-generation="latestFashionTryOnGeneration"
           :latest-motion-ai-video-generation="latestMotionAiVideoGeneration"
           :latest-auto-video-editor-generation="latestAutoVideoEditorGeneration"
           :campaign-generation-count="campaignGenerationCount"

@@ -3,6 +3,7 @@
 namespace App\Services\Generation;
 
 use App\Contracts\FashionTryOnProvider;
+use App\Support\FashionTryOnCapabilities;
 use Illuminate\Support\Str;
 
 class MockFashionTryOnProvider implements FashionTryOnProvider
@@ -28,7 +29,10 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
         $modelAsset = $this->asset($input, 'model_reference');
         $garmentAsset = $this->asset($input, 'garment_reference');
 
-        return match (strtolower($this->value($input, 'language', 'english', 40))) {
+        $tier = FashionTryOnCapabilities::normalizeTier(is_string($input['tier'] ?? null) ? $input['tier'] : null);
+        $category = is_string($input['category'] ?? null) ? $input['category'] : 'auto';
+
+        $localized = match (strtolower($this->value($input, 'language', 'english', 40))) {
             'indonesian' => $this->localized(
                 $title,
                 "Buat konsep try-on {$outputStyle} untuk {$product}, tipe {$garmentType}, ditujukan untuk {$audience}. Gunakan referensi yang diunggah dan jangan mengubah desain utama produk.",
@@ -78,6 +82,31 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 array_values(array_filter(['This mock result is a planning placeholder; no real try-on image is generated yet.', 'Use only assets you own or have permission to use.', 'Avoid implying exact sizing, body changes, or guaranteed product outcomes.', $notes !== '' ? "Creator note to consider: {$notes}" : null])),
             ),
         };
+
+        return array_merge([
+            'tier' => $tier,
+            'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
+            'selected_person_image' => $modelAsset,
+            'selected_product_image' => $garmentAsset,
+            'input_readiness' => [
+                'person_image_selected' => $modelAsset !== [],
+                'product_image_selected' => $garmentAsset !== [],
+                'permission_confirmed' => (bool) ($input['person_image_permission_confirmed'] ?? false),
+            ],
+            'provider_request_summary' => [
+                'provider' => 'mock',
+                'tier' => $tier,
+                'output_count' => 0,
+                'real_provider_call_made' => false,
+            ],
+            'image_quality_recommendations' => [
+                'Use a clear person photo where the body and outfit area are visible.',
+                'Use one clear clothing or wearable product photo with minimal background clutter.',
+                'Avoid screenshots, collages, low light, heavy filters or tiny product crops.',
+            ],
+            'expected_output_description' => 'A future real provider call will combine the person photo with the clothing/product photo into one private try-on image.',
+            'missing_or_risky_input_notes' => [],
+        ], $localized);
     }
 
     /**
@@ -99,8 +128,8 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
             'model_reference_summary' => $modelSummary,
             'garment_reference_summary' => $garmentSummary,
             'generated_image' => [
-                'status' => 'placeholder',
-                'message' => 'Real try-on image generation will be connected later.',
+                'status' => 'not_generated',
+                'message' => 'Preview plan only — no try-on image was generated.',
                 'provider' => 'mock',
             ],
             'composition_plan' => $composition,

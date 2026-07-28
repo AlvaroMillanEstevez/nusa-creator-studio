@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\AiVoiceoverSourceResolver;
 use App\Support\CampaignWorkflowMetadata;
+use App\Support\FashionTryOnCapabilities;
 use App\Support\MotionAiVideoCapabilities;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
@@ -367,21 +368,27 @@ class ProjectActionService
     /** @return array<string, mixed> */
     private function fashionTryOnAction(Project $project, User $user, ?CreatorTool $tool): array
     {
+        $capabilities = FashionTryOnCapabilities::forUser($user);
+        $hasPersonImage = $this->hasAssetRole($project, 'model_reference', 'image')
+            || $project->mediaAssets->contains(fn ($asset): bool => $asset->type === 'image');
+        $hasProductImage = $this->hasAssetRole($project, 'garment_reference', 'image')
+            || $this->hasAssetRole($project, 'product_image', 'image')
+            || $project->mediaAssets->contains(fn ($asset): bool => $asset->type === 'image');
         $requirements = [
             $this->requirement(
                 type: 'media_asset',
-                key: 'model_reference',
-                label: 'Model reference image',
-                satisfied: $this->hasAssetRole($project, 'model_reference', 'image'),
-                helpText: 'Upload a clear model/person reference image in the launcher.',
+                key: 'person_image',
+                label: 'Person photo',
+                satisfied: $hasPersonImage,
+                helpText: 'Choose or upload a clear person photo in the setup flow.',
                 suggestedUsageRole: 'model_reference',
             ),
             $this->requirement(
                 type: 'media_asset',
-                key: 'garment_reference',
-                label: 'Garment reference image',
-                satisfied: $this->hasAssetRole($project, 'garment_reference', 'image'),
-                helpText: 'Upload a clear garment/product reference image in the launcher.',
+                key: 'product_image',
+                label: 'Clothing/product photo',
+                satisfied: $hasProductImage,
+                helpText: 'Choose or upload one clear clothing or wearable product image in the setup flow.',
                 suggestedUsageRole: 'garment_reference',
             ),
         ];
@@ -389,8 +396,8 @@ class ProjectActionService
         return $this->action(
             user: $user,
             key: 'start_fashion_try_on',
-            title: 'Start Fashion Try-On',
-            description: 'Use project context with model and garment references for a try-on workflow.',
+            title: 'AI Fashion Try-On',
+            description: 'Combine a person photo with a clothing or wearable product image to create a realistic fashion result.',
             serviceTier: 'premium',
             outputType: 'image',
             tool: $tool,
@@ -398,12 +405,14 @@ class ProjectActionService
             actionMode: 'configure',
             primaryLabel: 'Setup Try-On',
             primaryAction: 'configure_fashion_try_on',
+            primaryRoute: "/projects/{$project->id}/actions/fashion-try-on",
             requirements: $requirements,
-            recommendedAssets: $this->recommendedAssets($project, ['model_reference', 'garment_reference']),
+            recommendedAssets: $this->recommendedAssets($project, ['model_reference', 'garment_reference', 'product_image', 'general']),
             missingRequirementsCount: $this->missingRequirementCount($requirements),
-            reason: 'Open setup to choose or upload model and garment reference images.',
+            reason: 'Open setup to choose person and clothing photos and confirm permission.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-fashion-try-on",
             creditCost: $tool?->credit_cost,
+            providerCapabilities: $capabilities,
         );
     }
 

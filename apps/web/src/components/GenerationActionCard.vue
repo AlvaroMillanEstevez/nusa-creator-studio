@@ -53,11 +53,11 @@ const copy = computed<GenerationActionCopy>(() => {
 
   if (props.projectType === 'fashion_try_on') {
     return {
-      title: 'Generate try-on mock',
+      title: 'Configure AI Fashion Try-On',
       description:
-        'Create a deterministic try-on planning result using the selected model and garment reference images. No real image is generated yet.',
-      button: props.hasGeneration ? 'Generate another try-on mock' : 'Generate try-on mock',
-      loadingButton: 'Generating try-on mock...',
+        'Choose a person photo, clothing/product photo, Standard quality settings and permission confirmation before generating.',
+      button: props.hasGeneration ? 'Generate another try-on' : 'Setup Try-On',
+      loadingButton: 'Opening try-on setup...',
     }
   }
 

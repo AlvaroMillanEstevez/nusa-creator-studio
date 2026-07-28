@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminUserController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CreatorToolController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\FashionTryOnCapabilitiesController;
 use App\Http\Controllers\Api\V1\GenerateAiVoiceoverController;
 use App\Http\Controllers\Api\V1\GenerateAutoVideoAdController;
 use App\Http\Controllers\Api\V1\GenerateAutoVideoEditController;
@@ -89,6 +90,8 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard.show');
         Route::get('voiceover/voices', VoiceoverVoiceController::class)
             ->name('voiceover.voices.index');
+        Route::get('fashion-try-on/capabilities', FashionTryOnCapabilitiesController::class)
+            ->name('fashion-try-on.capabilities');
         Route::get('generations/{generation}', GenerationController::class)
             ->name('generations.show');
         Route::get(

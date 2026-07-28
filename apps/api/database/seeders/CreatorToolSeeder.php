@@ -99,7 +99,7 @@ class CreatorToolSeeder extends Seeder
             $creatorTool->status = $tool['status'];
         }
 
-        if (in_array($tool['key'], ['affiliate_campaign', 'video_to_campaign', 'motion_ai_video', 'auto_video_editor', 'auto_video_ads'], true)) {
+        if (in_array($tool['key'], ['affiliate_campaign', 'video_to_campaign', 'fashion_try_on', 'motion_ai_video', 'auto_video_editor', 'auto_video_ads'], true)) {
             $creatorTool->status = $tool['status'];
             $creatorTool->implementation_stage = $tool['implementation_stage'];
             $creatorTool->route = $tool['route'];
@@ -284,23 +284,23 @@ class CreatorToolSeeder extends Seeder
             ],
             [
                 'key' => 'fashion_try_on',
-                'title' => 'Fashion Try-On',
-                'short_description' => 'Prepare product-model try-on concepts using uploaded model and garment references.',
-                'long_description' => 'Combine a model/person reference and a garment/product reference into a structured try-on generation plan.',
+                'title' => 'AI Fashion Try-On',
+                'short_description' => 'Combine a person photo with a clothing or wearable product image to create a realistic fashion result.',
+                'long_description' => 'Create an AI Fashion Try-On from one person photo and one clothing or wearable product image. Standard is prepared for FASHN tryon-v1.6; Premium remains disabled until tryon-max is validated.',
                 'category' => 'fashion',
                 'service_tier' => 'premium',
                 'output_type' => 'image',
-                'implementation_stage' => 'future',
-                'status' => 'coming_soon',
-                'route' => '/fashion-try-on/new',
+                'implementation_stage' => 'real_provider',
+                'status' => 'available',
+                'route' => '/dashboard?tool=ai_fashion_try_on',
                 'credit_cost' => 2,
-                'credit_cost_label' => '2 credits preview',
-                'badge_label' => 'Preview workflow',
+                'credit_cost_label' => '2 credits',
+                'badge_label' => 'Available now',
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 50,
                 'metadata' => [
-                    'service_note' => 'Future real provider should generate try-on images.',
+                    'service_note' => 'Standard uses FASHN when the real provider is enabled for internal users. Mock mode remains an honest preview plan. Premium is disabled until validation.',
                 ],
             ],
             [

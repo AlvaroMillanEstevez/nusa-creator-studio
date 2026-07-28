@@ -588,10 +588,23 @@ describe('project service', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(generateFashionTryOn(99)).resolves.toEqual(response)
+    await expect(generateFashionTryOn(99, {
+      tier: 'standard',
+      person_image_asset_id: 12,
+      product_image_asset_id: 13,
+      person_image_permission_confirmed: true,
+    })).resolves.toEqual(response)
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/projects/99/generate-fashion-try-on',
-      expect.objectContaining({ method: 'POST', body: '{}' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          tier: 'standard',
+          person_image_asset_id: 12,
+          product_image_asset_id: 13,
+          person_image_permission_confirmed: true,
+        }),
+      }),
     )
   })
 

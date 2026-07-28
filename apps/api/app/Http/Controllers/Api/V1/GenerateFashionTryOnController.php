@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\FashionTryOn\FashionTryOnProviderException;
 use App\Exceptions\InsufficientCreditsException;
-use App\Exceptions\MissingFashionTryOnAssetsException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GenerateFashionTryOnRequest;
 use App\Http\Resources\GenerationResource;
 use App\Models\Project;
 use App\Models\User;
@@ -12,7 +13,6 @@ use App\Services\Generation\FashionTryOnGenerationService;
 use App\Services\ToolAvailabilityService;
 use App\Support\CurrentUserResolver;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class GenerateFashionTryOnController extends Controller
@@ -23,15 +23,15 @@ class GenerateFashionTryOnController extends Controller
         private readonly ToolAvailabilityService $tools,
     ) {}
 
-    public function __invoke(Request $request, Project $project): JsonResponse
+    public function __invoke(GenerateFashionTryOnRequest $request, Project $project): JsonResponse
     {
         $user = $this->currentUser->resolve($request);
 
         $this->ensureOwnedBy($user, $project);
 
-        if ($project->type !== 'fashion_try_on') {
+        if (! in_array($project->type, ['workspace', 'fashion_try_on'], true)) {
             return response()->json([
-                'message' => 'Only Fashion Try-On projects can generate try-on mockups.',
+                'message' => 'Only project workspaces can generate AI Fashion Try-On results.',
                 'code' => 'invalid_project_type',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -44,15 +44,15 @@ class GenerateFashionTryOnController extends Controller
         }
 
         try {
-            $generation = $this->tryOns->generate($project, $user);
-        } catch (MissingFashionTryOnAssetsException $exception) {
+            $generation = $this->tryOns->generate($project, $user, $request->validated());
+        } catch (FashionTryOnProviderException $exception) {
             return response()->json([
-                'message' => $exception->getMessage(),
-                'code' => 'missing_reference_assets',
+                'message' => $this->safeMessage($exception->reason),
+                'code' => $exception->reason,
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (InsufficientCreditsException $exception) {
             return response()->json([
-                'message' => 'You do not have enough platform credits to generate this try-on mockup.',
+                'message' => 'You do not have enough platform credits to generate this AI Fashion Try-On result.',
                 'code' => 'insufficient_credits',
                 'available_credits' => $exception->availableCredits,
                 'required_credits' => $exception->requiredCredits,
@@ -70,5 +70,18 @@ class GenerateFashionTryOnController extends Controller
     private function ensureOwnedBy(User $user, Project $project): void
     {
         abort_unless($project->user_id === $user->id, Response::HTTP_NOT_FOUND);
+    }
+
+    private function safeMessage(string $reason): string
+    {
+        return match ($reason) {
+            'fashn_premium_disabled' => 'Premium Fashion Try-On is prepared but not enabled yet.',
+            'fashn_standard_disabled' => 'Standard Fashion Try-On is temporarily disabled.',
+            'fashn_image_load_failed' => 'Use clear, accessible image assets before generating a fashion try-on.',
+            'fashn_pose_not_detected' => 'Use a clear photo where the person’s body and pose are visible.',
+            'fashn_content_moderation' => 'This image could not be processed under the fashion-image safety policy.',
+            'fashn_insufficient_credits' => 'The provider is temporarily unavailable for this test account.',
+            default => 'Please choose one person photo, one clothing photo and confirm permission before generating.',
+        };
     }
 }

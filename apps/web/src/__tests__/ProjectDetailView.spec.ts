@@ -676,10 +676,10 @@ describe('ProjectDetailView', () => {
     expect(text).toContain('Fashion try-on brief')
     expect(text).toContain('Everyday creator jacket')
     expect(text).not.toContain('Add a model reference image and garment reference image before generating.')
-    expect(text).toContain('Generate another try-on mock')
-    expect(text).toContain('Try-on concept')
-    expect(text).toContain('Generated image placeholder')
-    expect(text).toContain('Vertical fashion try-on mockup.')
+    expect(text).toContain('Generate another version')
+    expect(text).toContain('Try-on preparation complete')
+    expect(text).toContain('No fashion image was generated in mock mode')
+    expect(text).toContain('Quality checklist')
   })
 
 
@@ -911,7 +911,7 @@ describe('ProjectDetailView', () => {
     expect(router.currentRoute.value.params.projectId).toBe('123')
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/projects/123/generate-motion'))).toBe(false)
   })
-  it('calls the Fashion Try-On generation endpoint and shows missing-asset errors', async () => {
+  it('routes Fashion Try-On projects to the setup page instead of direct generation', async () => {
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [
@@ -921,48 +921,17 @@ describe('ProjectDetailView', () => {
         { path: '/login', component: { template: '<div />' } },
         { path: '/register', component: { template: '<div />' } },
         { path: '/projects/:id', component: ProjectDetailView },
+        { path: '/projects/:projectId/actions/fashion-try-on', name: 'project-fashion-try-on-action', component: { template: '<div />' } },
         { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
       ],
     })
-    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
-      const url =
-        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-      const method = init?.method ?? 'GET'
-
-      if (url.endsWith('/projects/99/generate-fashion-try-on') && method === 'POST') {
-        return Response.json(
-          {
-            message:
-              'Please upload a model reference image and a garment reference image before generating a try-on.',
-            code: 'missing_reference_assets',
-          },
-          { status: 422 },
-        )
-      }
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
 
       if (url.endsWith('/projects/99/actions')) return Response.json(defaultActions)
       if (url.endsWith('/projects/99/generations')) return Response.json(emptyHistory)
       if (url.endsWith('/projects/99/media-assets')) return Response.json({ data: [] })
-      if (url.endsWith('/tools')) {
-        return Response.json({
-          data: [
-            {
-              key: 'fashion_try_on',
-              title: 'Fashion Try-On',
-              short_description: 'Create try-on concepts.',
-              long_description: null,
-              category: 'fashion',
-              status: 'available',
-              route: '/fashion-try-on/new',
-              credit_cost: 2,
-              credit_cost_label: '2 credits',
-              badge_label: 'Available now',
-              is_recommended: false,
-              sort_order: 50,
-            },
-          ],
-        })
-      }
+      if (url.endsWith('/tools')) return Response.json({ data: [] })
 
       return Response.json({ data: fashionTryOnProject })
     })
@@ -978,21 +947,17 @@ describe('ProjectDetailView', () => {
     })
     await flushPromises()
 
-    const button = wrapper.findAll('button').find((candidate) =>
-      candidate.text().includes('Generate try-on mock'),
+    const cta = [...wrapper.findAll('a'), ...wrapper.findAll('button')].find((candidate) =>
+      candidate.text().includes('Setup Try-On') || candidate.text().includes('AI Fashion Try-On'),
     )
 
-    expect(button).toBeTruthy()
-    await button?.trigger('click')
+    expect(cta).toBeTruthy()
+    await cta?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/projects/99/generate-fashion-try-on'),
-      expect.objectContaining({ method: 'POST' }),
-    )
-    expect(wrapper.text()).toContain(
-      'Please upload a model reference image and a garment reference image before generating a try-on.',
-    )
+    expect(router.currentRoute.value.name).toBe('project-fashion-try-on-action')
+    expect(router.currentRoute.value.params.projectId).toBe('99')
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/projects/99/generate-fashion-try-on'))).toBe(false)
   })
   it('calls the AI Voiceover generation endpoint from the project detail action', async () => {
     const router = createRouter({

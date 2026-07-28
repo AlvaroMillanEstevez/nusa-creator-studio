@@ -20,7 +20,6 @@ import { ApiError } from '@/services/api'
 import {
   generateAiVoiceover,
   generateCampaignProject,
-  generateFashionTryOn,
   generateProductVideoScript,
   generateVideoEnhancerProject,
   getCreatorProject,
@@ -77,6 +76,11 @@ const latestVoiceoverGeneration = computed(() =>
 const latestVideoAnalysisGeneration = computed(() =>
   generationHistory.value.find(
     (item) => item.job_type === 'generate_video_to_campaign' && item.status === 'completed',
+  ) ?? null,
+)
+const latestFashionTryOnGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_fashion_try_on' && item.status === 'completed',
   ) ?? null,
 )
 const latestMotionAiVideoGeneration = computed(() =>
@@ -333,9 +337,9 @@ async function generateContent(): Promise<void> {
       await router.push('/projects/' + projectId + '/actions/motion-ai-video')
       return
     } else if (project.value.type === 'fashion_try_on') {
-      const response = await generateFashionTryOn(projectId)
-      generated = response.data
-      creditsBalance = response.meta.credits_balance
+      isGenerating.value = false
+      await router.push('/projects/' + projectId + '/actions/fashion-try-on')
+      return
     } else if (project.value.type === 'ai_voiceover') {
       const response = await generateAiVoiceover(projectId)
       generated = response.data
@@ -465,6 +469,7 @@ onBeforeUnmount(stopPolling)
             :latest-campaign-generation="latestCampaignGeneration"
             :latest-voiceover-generation="latestVoiceoverGeneration"
             :latest-video-analysis-generation="latestVideoAnalysisGeneration"
+            :latest-fashion-try-on-generation="latestFashionTryOnGeneration"
             :latest-motion-ai-video-generation="latestMotionAiVideoGeneration"
             :latest-auto-video-editor-generation="latestAutoVideoEditorGeneration"
             :campaign-generation-count="campaignGenerationCount"
@@ -539,6 +544,7 @@ onBeforeUnmount(stopPolling)
             :latest-campaign-generation="latestCampaignGeneration"
             :latest-voiceover-generation="latestVoiceoverGeneration"
             :latest-video-analysis-generation="latestVideoAnalysisGeneration"
+            :latest-fashion-try-on-generation="latestFashionTryOnGeneration"
             :latest-motion-ai-video-generation="latestMotionAiVideoGeneration"
             :latest-auto-video-editor-generation="latestAutoVideoEditorGeneration"
             :campaign-generation-count="campaignGenerationCount"

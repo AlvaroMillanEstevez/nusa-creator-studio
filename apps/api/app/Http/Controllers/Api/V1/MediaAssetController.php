@@ -162,7 +162,7 @@ class MediaAssetController extends Controller
         if ($origin === 'generated') {
             $query->where(function ($generatedQuery): void {
                 $generatedQuery
-                    ->whereIn('usage_role', ['voiceover_audio', 'edited_video_result'])
+                    ->whereIn('usage_role', ['voiceover_audio', 'edited_video_result', 'fashion_try_on_result'])
                     ->orWhere('path', 'like', '%/generated/%')
                     ->orWhere('metadata->generated', true)
                     ->orWhereNotNull('metadata->generation_id')
@@ -178,7 +178,7 @@ class MediaAssetController extends Controller
                 ->where(function ($roleQuery): void {
                     $roleQuery
                         ->whereNull('usage_role')
-                        ->orWhereNotIn('usage_role', ['voiceover_audio', 'edited_video_result']);
+                        ->orWhereNotIn('usage_role', ['voiceover_audio', 'edited_video_result', 'fashion_try_on_result']);
                 })
                 ->where('path', 'not like', '%/generated/%')
                 ->where(function ($metadataQuery): void {

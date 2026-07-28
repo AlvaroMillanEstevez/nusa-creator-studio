@@ -1,0 +1,131 @@
+<?php
+
+namespace App\Services\Generation;
+
+use App\Support\FashionTryOnCapabilities;
+use Illuminate\Support\Str;
+
+class FashnFashionTryOnPayloadBuilder
+{
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function standard(array $input, string $personImageDataUri, string $garmentImageDataUri): array
+    {
+        return [
+            'model_name' => (string) config('fashion_try_on.fashn.standard_model', 'tryon-v1.6'),
+            'inputs' => [
+                'model_image' => $personImageDataUri,
+                'garment_image' => $garmentImageDataUri,
+                'category' => $this->standardCategory($input),
+                'garment_photo_type' => $this->garmentPhotoType($input),
+                'mode' => $this->standardMode($input),
+                'segmentation_free' => (bool) config('fashion_try_on.fashn.standard_segmentation_free', true),
+                'moderation_level' => FashionTryOnCapabilities::safeModerationLevel(),
+                'num_samples' => 1,
+                'output_format' => $this->outputFormat(),
+                'return_base64' => $this->returnBase64(),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function premium(array $input, string $personImageDataUri, string $productImageDataUri): array
+    {
+        $preset = $this->premiumPreset($input);
+
+        return [
+            'model_name' => (string) config('fashion_try_on.fashn.premium_model', 'tryon-max'),
+            'inputs' => array_filter([
+                'model_image' => $personImageDataUri,
+                'product_image' => $productImageDataUri,
+                'prompt' => $this->premiumPrompt($input),
+                'resolution' => $preset['resolution'],
+                'generation_mode' => $preset['generation_mode'],
+                'num_images' => 1,
+                'output_format' => $this->outputFormat(),
+                'return_base64' => $this->returnBase64(),
+            ], fn (mixed $value): bool => $value !== null && $value !== ''),
+        ];
+    }
+
+    /** @param array<string, mixed> $input */
+    public function standardCategory(array $input): string
+    {
+        $category = is_string($input['category'] ?? null)
+            ? $input['category']
+            : (string) config('fashion_try_on.fashn.standard_category', 'auto');
+
+        return in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true)
+            ? $category
+            : 'auto';
+    }
+
+    /** @param array<string, mixed> $input */
+    public function garmentPhotoType(array $input): string
+    {
+        $type = is_string($input['garment_photo_type'] ?? null)
+            ? $input['garment_photo_type']
+            : (string) config('fashion_try_on.fashn.standard_garment_photo_type', 'auto');
+
+        return in_array($type, FashionTryOnCapabilities::STANDARD_GARMENT_PHOTO_TYPES, true)
+            ? $type
+            : 'auto';
+    }
+
+    /** @param array<string, mixed> $input */
+    public function standardMode(array $input): string
+    {
+        $mode = is_string($input['standard_mode'] ?? null)
+            ? $input['standard_mode']
+            : (string) config('fashion_try_on.fashn.standard_mode', 'balanced');
+
+        return in_array($mode, FashionTryOnCapabilities::STANDARD_MODES, true)
+            ? $mode
+            : 'balanced';
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function premiumPreset(array $input): array
+    {
+        $key = is_string($input['quality_preset'] ?? null)
+            ? $input['quality_preset']
+            : 'premium_fast';
+        $presets = FashionTryOnCapabilities::premiumPresets();
+
+        return $presets[$key] ?? $presets['premium_fast'];
+    }
+
+    /** @param array<string, mixed> $input */
+    public function premiumPrompt(array $input): ?string
+    {
+        $prompt = $input['prompt'] ?? null;
+
+        if (! is_string($prompt)) {
+            return null;
+        }
+
+        $prompt = trim($prompt);
+
+        return $prompt === '' ? null : Str::limit($prompt, 700, '');
+    }
+
+    private function outputFormat(): string
+    {
+        $format = strtolower((string) config('fashion_try_on.fashn.output_format', 'png'));
+
+        return in_array($format, ['png', 'jpeg', 'jpg', 'webp'], true) ? $format : 'png';
+    }
+
+    private function returnBase64(): bool
+    {
+        return (bool) config('fashion_try_on.fashn.return_base64', true);
+    }
+}

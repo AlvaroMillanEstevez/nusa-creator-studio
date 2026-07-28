@@ -3,6 +3,7 @@
 namespace App\Services\Generation;
 
 use App\Exceptions\AutoVideoEditor\AutoVideoEditorProviderException;
+use App\Exceptions\FashionTryOn\FashionTryOnProviderException;
 use App\Exceptions\MotionAiVideo\MotionAiVideoProviderException;
 use App\Exceptions\VideoToCampaign\VideoToCampaignProviderException;
 use App\Models\Generation;
@@ -60,7 +61,7 @@ class GenerationFailureService
      */
     private function safeFailurePayload(Generation $generation, ?Throwable $exception): ?array
     {
-        if (! $exception instanceof VideoToCampaignProviderException && ! $exception instanceof AutoVideoEditorProviderException && ! $exception instanceof MotionAiVideoProviderException) {
+        if (! $exception instanceof VideoToCampaignProviderException && ! $exception instanceof AutoVideoEditorProviderException && ! $exception instanceof MotionAiVideoProviderException && ! $exception instanceof FashionTryOnProviderException) {
             return null;
         }
 
@@ -74,6 +75,7 @@ class GenerationFailureService
             'safe_error_category' => is_string($exception->context['safe_error_category'] ?? null) ? $exception->context['safe_error_category'] : null,
             'http_status' => is_numeric($exception->context['http_status'] ?? null) ? (int) $exception->context['http_status'] : null,
             'render_id' => is_string($exception->context['render_id'] ?? null) ? $exception->context['render_id'] : null,
+            'provider_prediction_id' => is_string($exception->context['provider_prediction_id'] ?? null) ? $exception->context['provider_prediction_id'] : null,
         ];
 
         return [

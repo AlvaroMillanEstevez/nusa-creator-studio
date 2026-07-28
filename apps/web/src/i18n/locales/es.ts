@@ -129,6 +129,11 @@ export default {
       shortDescription: 'Crea ángulos de campaña, hooks, guiones, captions, hashtags, opciones de CTA y notas de publicación.',
       longDescription: 'Desde brief, imagen de producto o video de producto. Ideal para convertir contexto de producto en contenido reutilizable de social commerce.',
     },
+    ai_fashion_try_on: {
+      title: 'AI Fashion Try-On',
+      shortDescription: 'Combina una foto de persona con una imagen de prenda o producto wearable para crear un resultado de moda realista.',
+      longDescription: 'Standard está disponible para previews mock y validación interna de FASHN. Premium está preparado pero desactivado hasta validar tryon-max.',
+    },
     auto_video_editor: {
       title: 'Auto Video Editor',
       shortDescription: 'Convierte footage de producto en un video orgánico de creador con análisis AI o configuración manual.',

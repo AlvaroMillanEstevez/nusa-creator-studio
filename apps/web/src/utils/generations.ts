@@ -17,6 +17,7 @@ const jobTypeLabels: Record<string, string> = {
   generate_auto_video_edit: 'Auto Video Editor',
   generate_product_video_script: 'Product Content Kit · Script pack',
   generate_auto_video_ad: 'Auto Video Ads',
+  generate_fashion_try_on: 'AI Fashion Try-On',
   generate_motion_ai_video: 'Motion AI Video',
 }
 
@@ -51,6 +52,10 @@ export function generationFriendlyLabel(generation: CreatorGeneration): string {
     if (visualSourceType === 'hybrid') {
       return 'Auto Video Ads · Hybrid ad'
     }
+  }
+
+  if (generation.job_type === 'generate_fashion_try_on') {
+    return 'AI Fashion Try-On'
   }
 
   if (generation.job_type === 'generate_motion_ai_video') {

@@ -39,6 +39,7 @@ class MediaAsset extends Model
         'audio_track',
         'voiceover_audio',
         'edited_video_result',
+        'fashion_try_on_result',
         'video_reference',
         'model_reference',
         'garment_reference',

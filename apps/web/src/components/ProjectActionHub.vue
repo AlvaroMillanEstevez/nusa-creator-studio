@@ -26,6 +26,7 @@ const props = defineProps<{
   latestCampaignGeneration?: CreatorGeneration | null
   latestVoiceoverGeneration?: CreatorGeneration | null
   latestVideoAnalysisGeneration?: CreatorGeneration | null
+  latestFashionTryOnGeneration?: CreatorGeneration | null
   latestMotionAiVideoGeneration?: CreatorGeneration | null
   latestAutoVideoEditorGeneration?: CreatorGeneration | null
   campaignGenerationCount?: number
@@ -168,6 +169,10 @@ function isVideoToCampaignAction(action: ProjectAction): boolean {
   return action.key === 'generate_video_to_campaign'
 }
 
+function isFashionTryOnAction(action: ProjectAction): boolean {
+  return action.key === 'start_fashion_try_on'
+}
+
 function isMotionAction(action: ProjectAction): boolean {
   return action.key === 'start_motion_video'
 }
@@ -259,6 +264,11 @@ function latestGenerationForAction(action: ProjectAction): CreatorGeneration | n
       ?? completedGeneration(props.selectedGeneration, 'generate_video_to_campaign')
   }
 
+  if (isFashionTryOnAction(action)) {
+    return completedGeneration(props.latestFashionTryOnGeneration, 'generate_fashion_try_on')
+      ?? completedGeneration(props.selectedGeneration, 'generate_fashion_try_on')
+  }
+
   if (isMotionAction(action)) {
     return completedGeneration(props.latestMotionAiVideoGeneration, 'generate_motion_ai_video')
       ?? completedGeneration(props.selectedGeneration, 'generate_motion_ai_video')
@@ -287,6 +297,10 @@ function latestResultLabel(action: ProjectAction): string {
 
   if (isVideoToCampaignAction(action)) {
     return t('projectActions.viewLatestVideoAnalysis')
+  }
+
+  if (isFashionTryOnAction(action)) {
+    return t('projectActions.viewLatestFashionTryOn')
   }
 
   if (isMotionAction(action)) {
@@ -339,6 +353,10 @@ function actionButtonLabel(action: ProjectAction): string {
     return t('projectActions.analyzeNewFootage')
   }
 
+  if (isFashionTryOnAction(action)) {
+    return t('projectActions.setupFashionTryOn')
+  }
+
   if (isMotionAction(action)) {
     return t('projectActions.createMotionAiVideo')
   }
@@ -384,6 +402,13 @@ function motionAiVideoActionRoute() {
       sourceMode: 'campaign_assisted',
       campaignGenerationId: String(campaign.id),
     },
+  }
+}
+
+function fashionTryOnActionRoute() {
+  return {
+    name: 'project-fashion-try-on-action',
+    params: { projectId: String(props.projectId) },
   }
 }
 
@@ -466,6 +491,11 @@ async function handleAction(action: ProjectAction): Promise<void> {
 
   if (isAutoVideoEditorAction(action)) {
     await router.push(autoVideoEditorActionRoute())
+    return
+  }
+
+  if (isFashionTryOnAction(action)) {
+    await router.push(fashionTryOnActionRoute())
     return
   }
 

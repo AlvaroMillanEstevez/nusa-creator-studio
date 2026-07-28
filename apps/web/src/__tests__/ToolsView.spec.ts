@@ -51,6 +51,7 @@ function tool(overrides: Partial<CreatorTool> & Pick<CreatorTool, 'key' | 'title
 const tools: CreatorTool[] = [
   tool({ key: 'affiliate_campaign', title: 'Product Content Kit', service_tier: 'basic', credit_cost: 1, credit_cost_label: '1 credit' }),
   tool({ key: 'video_to_campaign', title: 'Analyze Footage with AI', service_tier: 'advanced', credit_cost: 2, credit_cost_label: '2 credits' }),
+  tool({ key: 'fashion_try_on', title: 'AI Fashion Try-On', service_tier: 'premium', credit_cost: 2, credit_cost_label: '2 credits' }),
   tool({ key: 'motion_ai_video', title: 'Motion AI Video', service_tier: 'premium', credit_cost: 3, credit_cost_label: '3 credits' }),
   tool({ key: 'auto_video_editor', title: 'Auto Video Editor', service_tier: 'premium', credit_cost: 2, credit_cost_label: '2 credits base' }),
   tool({ key: 'auto_video_ads', title: 'Auto Video Ads', service_tier: 'premium', status: 'coming_soon', route: null, credit_cost: 0, credit_cost_label: 'Credit cost coming soon', badge_label: 'Coming soon' }),
@@ -111,6 +112,7 @@ describe('ToolsView', () => {
     expect(titles).toEqual([
       'Product Content Kit',
       'Analyze Footage with AI',
+      'AI Fashion Try-On',
       'Motion AI Video',
       'Auto Video Editor',
     ])

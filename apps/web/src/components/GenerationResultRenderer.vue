@@ -140,6 +140,10 @@ const retryRoute = computed(() => {
     return `/projects/${String(id)}/actions/motion-ai-video`
   }
 
+  if (props.generation?.job_type === 'generate_fashion_try_on') {
+    return `/projects/${String(id)}/actions/fashion-try-on`
+  }
+
   return `/projects/${String(id)}`
 })
 const isVideoToCampaignGeneration = computed(() =>
@@ -151,8 +155,14 @@ const isAutoVideoEditorGeneration = computed(() =>
 const isMotionAiVideoGeneration = computed(() =>
   props.generation?.job_type === 'generate_motion_ai_video',
 )
+const isFashionTryOnGeneration = computed(() =>
+  props.generation?.job_type === 'generate_fashion_try_on',
+)
 const isVideoProcessingWorkflow = computed(() =>
   isVideoToCampaignGeneration.value || isAutoVideoEditorGeneration.value || isMotionAiVideoGeneration.value,
+)
+const isMediaProcessingWorkflow = computed(() =>
+  isVideoProcessingWorkflow.value || isFashionTryOnGeneration.value,
 )
 const processingTitle = computed(() =>
   isVideoToCampaignGeneration.value
@@ -161,11 +171,17 @@ const processingTitle = computed(() =>
       ? 'Rendering your video.'
       : isMotionAiVideoGeneration.value
         ? 'Creating your video.'
-        : 'Creating your result...',
+        : isFashionTryOnGeneration.value
+          ? 'Creating your fashion try-on.'
+          : 'Creating your result...',
 )
 const processingDescription = computed(() => {
   if (isMotionAiVideoGeneration.value) {
     return 'Preparing the creative direction, generating the visual footage and saving your result. This can take a few minutes. You can stay on this page; the result updates automatically.'
+  }
+
+  if (isFashionTryOnGeneration.value) {
+    return 'Preparing your images, creating the fashion try-on and saving your private result. This can take a short while; the result updates automatically.'
   }
 
   if (isVideoProcessingWorkflow.value) {
@@ -181,7 +197,9 @@ const failedTitle = computed(() =>
       ? 'Video rendering failed. Your credits were refunded if they were charged.'
       : isMotionAiVideoGeneration.value
         ? 'Video generation failed. Your credits were refunded if they were charged.'
-        : 'Generation failed. Please try again.',
+        : isFashionTryOnGeneration.value
+          ? 'Fashion try-on failed. Your credits were refunded if they were charged.'
+          : 'Generation failed. Please try again.',
 )
 const failedDescription = computed(() =>
   isMotionAiVideoGeneration.value
@@ -191,7 +209,7 @@ const failedDescription = computed(() =>
       : 'Your charged credits are returned automatically for an internal processing failure.',
 )
 const retryActionLabel = computed(() =>
-  isMotionAiVideoGeneration.value ? 'Edit settings' : 'Try again',
+  isMotionAiVideoGeneration.value || isFashionTryOnGeneration.value ? 'Edit settings' : 'Try again',
 )
 </script>
 
@@ -247,7 +265,7 @@ const retryActionLabel = computed(() =>
     <p class="mt-2 text-sm leading-6 text-rose-200">
       {{ failedDescription }}
     </p>
-    <div v-if="isVideoProcessingWorkflow" class="mt-5 grid gap-3 sm:grid-cols-2">
+    <div v-if="isMediaProcessingWorkflow" class="mt-5 grid gap-3 sm:grid-cols-2">
       <RouterLink
         :to="projectWorkspaceRoute"
         class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-100 transition hover:border-emerald-500 hover:bg-emerald-950/30"
@@ -306,7 +324,12 @@ const retryActionLabel = computed(() =>
       :result="aiVoiceoverResult"
       :media-assets="mediaAssets"
     />
-    <FashionTryOnGenerationResult v-else-if="fashionTryOnResult" :result="fashionTryOnResult" />
+    <FashionTryOnGenerationResult
+      v-else-if="fashionTryOnResult"
+      :result="fashionTryOnResult"
+      :project-id="projectId ?? generation.project_id"
+      :generation-id="generation.id"
+    />
     <MotionAiVideoGenerationResult
       v-else-if="motionVideoResult"
       :result="motionVideoResult"

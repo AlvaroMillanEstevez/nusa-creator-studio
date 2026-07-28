@@ -128,6 +128,30 @@ export const fashionPlatformOptions = [
   { value: 'generic_social', label: 'Generic social' },
   { value: 'ecommerce', label: 'Ecommerce' },
 ] as const
+
+export const fashionTryOnTierOptions = [
+  { value: 'standard', label: 'Standard', description: 'Fast, reliable clothing try-on for everyday content.' },
+  { value: 'premium', label: 'Premium', description: 'Higher detail and broader wearable support. Coming after Standard validation.' },
+] as const
+
+export const fashionTryOnCategoryOptions = [
+  { value: 'auto', label: 'Auto detect' },
+  { value: 'tops', label: 'Top' },
+  { value: 'bottoms', label: 'Bottom' },
+  { value: 'one-pieces', label: 'One-piece' },
+] as const
+
+export const fashionTryOnGarmentPhotoTypeOptions = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'flat_lay', label: 'Flat-lay' },
+  { value: 'model', label: 'Worn by a model' },
+] as const
+
+export const fashionTryOnStandardModeOptions = [
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'quality', label: 'Quality' },
+] as const
 export const motionVideoGoalOptions = [
   { value: 'product_showcase', label: 'Product showcase' },
   { value: 'affiliate_ad', label: 'Affiliate ad' },
@@ -334,6 +358,10 @@ export type AutoVideoAdDuration = (typeof autoVideoAdDurationOptions)[number]
 export type AutoVideoAdTone = (typeof autoVideoAdToneOptions)[number]['value']
 export type AutoVideoAdVisualStyle = (typeof autoVideoAdVisualStyleOptions)[number]['value']
 export type AutoVideoAdHookStyle = (typeof autoVideoAdHookStyleOptions)[number]['value']
+export type FashionTryOnTier = (typeof fashionTryOnTierOptions)[number]['value']
+export type FashionTryOnCategory = (typeof fashionTryOnCategoryOptions)[number]['value']
+export type FashionTryOnGarmentPhotoType = (typeof fashionTryOnGarmentPhotoTypeOptions)[number]['value']
+export type FashionTryOnStandardMode = (typeof fashionTryOnStandardModeOptions)[number]['value']
 export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionVideoPlatform | WorkspacePlatform
 
 export type ProjectType =
@@ -441,6 +469,31 @@ export interface MotionAiVideoProviderCapabilities {
   source_modes: MotionAiVideoSourceMode[] | string[]
 }
 
+export interface FashionTryOnProviderCapabilities {
+  provider: 'mock' | 'fashn' | string
+  mock_mode: boolean
+  public_enabled?: boolean
+  real_rendering_supported: boolean
+  real_rendering_enabled: boolean
+  standard_supported: boolean
+  standard_enabled: boolean
+  premium_supported: boolean
+  premium_enabled: boolean
+  standard_categories: FashionTryOnCategory[] | string[]
+  standard_garment_photo_types: FashionTryOnGarmentPhotoType[] | string[]
+  standard_modes: FashionTryOnStandardMode[] | string[]
+  premium_presets: string[]
+  maximum_outputs: number
+  consent_required: boolean
+  person_image_required: boolean
+  product_image_required: boolean
+  supported_mime_types: string[]
+}
+
+export interface FashionTryOnCapabilitiesResponse {
+  data: FashionTryOnProviderCapabilities
+}
+
 export interface ProjectAction {
   key: ProjectActionKey
   title: string
@@ -465,7 +518,7 @@ export interface ProjectAction {
   action_endpoint: string | null
   tool_key: string | null
   tool_status: string | null
-  provider_capabilities?: MotionAiVideoProviderCapabilities | null
+  provider_capabilities?: MotionAiVideoProviderCapabilities | FashionTryOnProviderCapabilities | null
 }
 
 export interface ProjectActionsResponse {
@@ -643,6 +696,18 @@ export interface GenerateMotionAiVideoPayload {
   include_voiceover_plan?: boolean
   include_caption_plan?: boolean
   primary_cta?: string | null
+}
+
+export interface GenerateFashionTryOnPayload {
+  tier?: FashionTryOnTier
+  person_image_asset_id: number
+  product_image_asset_id: number
+  category?: FashionTryOnCategory | string | null
+  garment_photo_type?: FashionTryOnGarmentPhotoType | string | null
+  standard_mode?: FashionTryOnStandardMode | string | null
+  quality_preset?: string | null
+  prompt?: string | null
+  person_image_permission_confirmed: boolean
 }
 export interface FashionTryOnFormPayload {
   title: string
@@ -899,26 +964,74 @@ export interface AiVoiceoverResult {
 }
 
 export interface FashionTryOnGeneratedImage {
-  status: 'placeholder'
+  status: 'not_generated' | 'rendered' | 'placeholder' | string
   message: string
-  provider: 'mock'
+  provider: 'mock' | 'fashn' | string
+}
+
+export interface FashionTryOnSelectedImageSummary {
+  id: number
+  original_name: string | null
+  mime_type: string | null
+  size_bytes: number | null
+}
+
+export interface FashionTryOnRenderedImageAsset {
+  id: number
+  stream_url: string | null
+  download_url: string | null
+  mime_type: string | null
+  size_bytes: number | null
+}
+
+export interface FashionTryOnProviderMetadata {
+  provider?: string | null
+  provider_model?: string | null
+  provider_prediction_id?: string | null
+  provider_status?: string | null
+  provider_credits_used?: number | null
+  provider_credits_source?: string | null
+  estimated_provider_cost_usd?: number | null
+  actual_provider_cost_usd?: number | null
+  provider_latency_ms?: number | null
+  tier?: FashionTryOnTier | string | null
+  quality_preset?: string | null
+  output_count?: number | null
+  [key: string]: unknown
 }
 
 export interface FashionTryOnResult {
   try_on_title: string
   concept_summary: string
-  model_reference_summary: string
-  garment_reference_summary: string
+  tier?: FashionTryOnTier | string | null
+  quality_preset?: string | null
+  category?: FashionTryOnCategory | string | null
+  model_reference_summary?: string
+  garment_reference_summary?: string
+  selected_person_image?: FashionTryOnSelectedImageSummary
+  selected_product_image?: FashionTryOnSelectedImageSummary
   generated_image: FashionTryOnGeneratedImage
-  composition_plan: string[]
-  pose_and_framing_notes: string[]
-  garment_fit_notes: string[]
-  background_and_lighting_notes: string[]
-  platform_usage_notes: string[]
-  quality_checklist: string[]
-  api_ready_prompt: string
-  negative_prompt: string
-  recommended_assets: string[]
+  final_image_asset_id?: number | null
+  final_image_stream_url?: string | null
+  final_image_download_url?: string | null
+  rendered_image_asset?: FashionTryOnRenderedImageAsset | null
+  generation_summary?: Record<string, string | number | null>
+  provider_metadata?: FashionTryOnProviderMetadata | null
+  provider_request_summary?: Record<string, unknown>
+  input_readiness?: Record<string, boolean>
+  image_quality_recommendations?: string[]
+  expected_output_description?: string
+  missing_or_risky_input_notes?: string[]
+  suggested_next_actions?: string[]
+  composition_plan?: string[]
+  pose_and_framing_notes?: string[]
+  garment_fit_notes?: string[]
+  background_and_lighting_notes?: string[]
+  platform_usage_notes?: string[]
+  quality_checklist?: string[]
+  api_ready_prompt?: string
+  negative_prompt?: string
+  recommended_assets?: string[]
   compliance_notes: string[]
 }
 

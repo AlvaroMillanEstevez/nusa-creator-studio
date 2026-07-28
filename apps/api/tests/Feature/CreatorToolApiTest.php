@@ -88,8 +88,8 @@ class CreatorToolApiTest extends TestCase
             'key' => 'fashion_try_on',
             'service_tier' => 'premium',
             'output_type' => 'image',
-            'implementation_stage' => 'future',
-            'status' => 'coming_soon',
+            'implementation_stage' => 'real_provider',
+            'status' => 'available',
         ]);
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'auto_video_editor',

@@ -14,6 +14,7 @@ import {
   type CreatorGeneration,
   type CreatorProject,
   type GenerateMotionAiVideoPayload,
+  type MotionAiVideoProviderCapabilities,
   type MotionAiVideoScriptSource,
   type MotionAiVideoSourceMode,
   type ProjectAction,
@@ -83,8 +84,18 @@ const projectId = computed(() => {
 
   return value || ''
 })
+const isMotionCapabilities = (
+  value: ProjectAction['provider_capabilities'],
+): value is MotionAiVideoProviderCapabilities => {
+  return value !== null && value !== undefined && 'provider_label' in value && 'request_mode' in value
+}
+
 const motionAction = computed(() => actions.value.find((item) => item.key === 'start_motion_video') ?? null)
-const capabilities = computed(() => motionAction.value?.provider_capabilities ?? null)
+const capabilities = computed<MotionAiVideoProviderCapabilities | null>(() => {
+  const value = motionAction.value?.provider_capabilities ?? null
+
+  return isMotionCapabilities(value) ? value : null
+})
 const providerLabel = computed(() => capabilities.value?.provider_label ?? 'Mock')
 const imageToVideoEnabled = computed(() => capabilities.value?.image_to_video_enabled === true)
 const supportsRealRendering = computed(() => capabilities.value?.supports_real_rendering === true)
@@ -344,6 +355,13 @@ function applyQueryPreselection(): void {
     if (sourceModeOptions.value.some((option) => option.value === querySourceMode)) {
       sourceMode.value = querySourceMode
     }
+  }
+
+  const productImageAssetId = positiveInt(Array.isArray(route.query.productImageAssetId) ? route.query.productImageAssetId[0] : route.query.productImageAssetId)
+
+  if (productImageAssetId !== null && imageToVideoEnabled.value) {
+    sourceMode.value = 'image_first_frame'
+    selectedProductImageAssetId.value = productImageAssetId
   }
 }
 

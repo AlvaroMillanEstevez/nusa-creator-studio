@@ -73,6 +73,7 @@ const stats: MediaAssetStats = {
     video_reference: 0,
     model_reference: 0,
     garment_reference: 0,
+    fashion_try_on_result: 0,
     background_reference: 0,
     brand_reference: 0,
   },

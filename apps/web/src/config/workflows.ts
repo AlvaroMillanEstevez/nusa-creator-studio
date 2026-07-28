@@ -3,6 +3,7 @@ import type { ProjectActionKey } from '@/types/project'
 export type BetaWorkflowKey =
   | 'product_content_kit'
   | 'analyze_footage'
+  | 'ai_fashion_try_on'
   | 'motion_ai_video'
   | 'auto_video_editor'
   | 'auto_video_ads'
@@ -43,6 +44,17 @@ export const betaWorkflows: BetaWorkflowDefinition[] = [
     recommendedInputKeys: ['product_video'],
     outputKeys: ['video_summary', 'product_moments', 'recommended_cuts', 'campaign_angle', 'captions', 'narration_script', 'edit_plan', 'optional_voiceover_action'],
     iconKey: 'analysis',
+  },
+  {
+    key: 'ai_fashion_try_on',
+    status: 'available',
+    sourceToolKey: 'fashion_try_on',
+    dashboardToolKey: 'ai_fashion_try_on',
+    projectActionKey: 'start_fashion_try_on',
+    categoryKey: 'fashion_try_on',
+    recommendedInputKeys: ['person_photo', 'clothing_product_photo', 'consent_confirmation'],
+    outputKeys: ['try_on_image', 'private_image_asset', 'fashion_result_summary', 'motion_video_followup'],
+    iconKey: 'fashion',
   },
   {
     key: 'motion_ai_video',
