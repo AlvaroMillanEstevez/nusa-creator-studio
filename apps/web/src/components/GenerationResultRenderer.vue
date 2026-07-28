@@ -27,6 +27,7 @@ import {
   type ProjectAction,
 } from '@/types/project'
 import { formatDate } from '@/utils/formatters'
+import { voiceoverSourceGenerationId } from '@/utils/workflowLineage'
 
 const props = defineProps<{
   generation: CreatorGeneration | null
@@ -34,6 +35,7 @@ const props = defineProps<{
   mediaAssets?: MediaAsset[]
   projectId?: number | string | null
   voiceoverAction?: ProjectAction | null
+  projectGenerations?: CreatorGeneration[]
 }>()
 
 const result = computed(() =>
@@ -86,6 +88,17 @@ const autoVideoAdResult = computed(() =>
     ? result.value
     : null,
 )
+const linkedVoiceoverGeneration = computed(() => {
+  if (props.generation === null || props.generation.job_type !== 'generate_video_to_campaign') {
+    return null
+  }
+
+  return (props.projectGenerations ?? []).find(
+    (item) => item.job_type === 'generate_ai_voiceover'
+      && item.status === 'completed'
+      && voiceoverSourceGenerationId(item) === props.generation?.id,
+  ) ?? null
+})
 const hasSupportedResult = computed(
   () =>
     campaignResult.value !== null ||
@@ -276,7 +289,13 @@ const retryActionLabel = computed(() =>
       </div>
     </section>
 
-    <CampaignGenerationResult v-if="campaignResult" :result="campaignResult" />
+    <CampaignGenerationResult
+      v-if="campaignResult"
+      :result="campaignResult"
+      :project-id="projectId ?? generation.project_id"
+      :generation-id="generation.id"
+      :voiceover-action="voiceoverAction"
+    />
     <VideoEnhancerGenerationResult v-else-if="videoEnhancerResult" :result="videoEnhancerResult" />
     <ProductToVideoGenerationResult
       v-else-if="productToVideoResult"
@@ -288,18 +307,25 @@ const retryActionLabel = computed(() =>
       :media-assets="mediaAssets"
     />
     <FashionTryOnGenerationResult v-else-if="fashionTryOnResult" :result="fashionTryOnResult" />
-    <MotionAiVideoGenerationResult v-else-if="motionVideoResult" :result="motionVideoResult" />
+    <MotionAiVideoGenerationResult
+      v-else-if="motionVideoResult"
+      :result="motionVideoResult"
+      :project-id="projectId ?? generation.project_id"
+      :generation-id="generation.id"
+    />
     <VideoToCampaignGenerationResult
       v-else-if="videoToCampaignResult"
       :result="videoToCampaignResult"
       :project-id="projectId ?? generation.project_id"
       :generation-id="generation.id"
       :voiceover-action="voiceoverAction"
+      :linked-voiceover-generation="linkedVoiceoverGeneration"
     />
     <AutoVideoEditorGenerationResult
       v-else-if="autoVideoEditorResult"
       :result="autoVideoEditorResult"
       :generation-id="generation.id"
+      :project-id="projectId ?? generation.project_id"
     />
     <AutoVideoAdGenerationResult v-else-if="autoVideoAdResult" :result="autoVideoAdResult" />
   </div>

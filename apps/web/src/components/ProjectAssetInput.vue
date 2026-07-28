@@ -6,6 +6,7 @@ import { ApiError } from '@/services/api'
 import { listProjectMediaAssets, uploadMediaAsset } from '@/services/media'
 import type { MediaAsset, MediaAssetType, MediaAssetUsageRole } from '@/types/media'
 import { MEDIA_MAX_SIZE_BYTES, validateMediaFile } from '@/utils/mediaValidation'
+import { mediaAssetOriginLabel } from '@/utils/workflowLineage'
 
 type AcceptedAssetTypes = 'image' | 'video' | 'audio' | 'mixed'
 
@@ -314,7 +315,7 @@ onMounted(loadAssets)
             <span class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-neutral-500">
               <span>{{ typeLabel(asset.type) }}</span>
               <span v-if="asset.size_label">{{ asset.size_label }}</span>
-              <span>{{ asset.origin_label ?? t('projectAssetInput.projectAsset') }}</span>
+              <span>{{ mediaAssetOriginLabel(asset) }}</span>
               <span>{{ dateLabel(asset.created_at) }}</span>
             </span>
           </span>

@@ -37,7 +37,7 @@ export default {
       videoEnhancer: 'Video enhancer',
       productToVideo: 'Produk ke video',
       voiceover: 'Voiceover',
-      videoToCampaignAction: 'Video-to-Campaign',
+      videoToCampaignAction: 'Analyze Footage with AI',
       autoVideoEditorAction: 'Auto Video Editor',
       autoVideoAdsAction: 'Auto Video Ads',
       motionAiVideoAction: 'Motion AI Video',

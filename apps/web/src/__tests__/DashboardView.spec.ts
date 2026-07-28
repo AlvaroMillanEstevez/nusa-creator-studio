@@ -126,9 +126,9 @@ describe('DashboardView', () => {
     )
     expect(text).toContain('Your project workspaces')
     expect(text.match(/Your project workspaces/g) ?? []).toHaveLength(1)
-    expect(text).toContain('Start with a product workspace, then generate campaign content, organic videos, paid ads or AI motion videos from the same brief and assets.')
+    expect(text).toContain('Start with a product workspace, then create content kits, analyze footage, generate Motion AI clips and edit creator videos from the same brief and assets.')
     expect(text).toContain('Recent projects')
-    expect(text).toContain('Open a workspace to continue with Product Content Kit, Auto Video Editor, Auto Video Ads or Motion AI Video.')
+    expect(text).toContain('Open a workspace to continue with Product Content Kit, Analyze Footage with AI, Motion AI Video or Auto Video Editor.')
     expect(wrapper.get('[data-testid="dashboard-beta-workflows"]').text()).toContain('Product Content Kit')
     expect(wrapper.get('[data-testid="dashboard-beta-workflows"]').text()).toContain('Auto Video Editor')
     expect(wrapper.get('[data-testid="dashboard-beta-workflows"]').text()).toContain('Auto Video Ads')
@@ -165,7 +165,7 @@ describe('DashboardView', () => {
     expect(text).toContain('Choose existing project')
     expect(text).toContain('Open workspace and run from Continue from here')
     expect(text).toContain('View workspace activity')
-    expect(text).not.toContain('Start with a product workspace, then generate campaign content, organic videos, paid ads or AI motion videos from the same brief and assets.')
+    expect(text).not.toContain('Start with a product workspace, then create content kits, analyze footage, generate Motion AI clips and edit creator videos from the same brief and assets.')
     expect(text).not.toContain('Your project workspaces')
     expect(wrapper.findAll('a[href="/projects/new"]')).toHaveLength(1)
     expect(wrapper.find('a[href="/dashboard?tool=ai_voiceover#analytics"]').exists()).toBe(true)
@@ -180,8 +180,8 @@ describe('DashboardView', () => {
 
     const videoAnalysis = await mountDashboard(populatedDashboard, '/dashboard?tool=video_to_campaign')
 
-    expect(videoAnalysis.wrapper.text()).toContain('Start with Product Content Kit · Video analysis')
-    expect(videoAnalysis.wrapper.text()).toContain('Choose a project workspace to continue with Product Content Kit · Video analysis.')
+    expect(videoAnalysis.wrapper.text()).toContain('Start with Analyze Footage with AI')
+    expect(videoAnalysis.wrapper.text()).toContain('Choose a project workspace to continue with Analyze Footage with AI.')
     expect(videoAnalysis.wrapper.find('a[href="/dashboard?tool=video_to_campaign#analytics"]').exists()).toBe(true)
 
     const autoEditor = await mountDashboard(populatedDashboard, '/dashboard?tool=auto_video_editor')

@@ -55,6 +55,13 @@ class AiVoiceoverSourceResolver
 
             $sourceGenerationExcerpt = Str::limit($explicitSourceText, 240, '');
             $sourceLanguage = $this->sourceGenerationLanguage($sourceGeneration, $project, $input);
+            $sourceWorkflow = $this->sourceWorkflow($sourceGeneration);
+            $input['source_workflow'] = $sourceWorkflow;
+            $input['source_origin_label'] = $this->sourceOriginLabel($sourceGeneration);
+            $input['source_campaign_generation_id'] = $sourceWorkflow === 'product_content_kit' ? $sourceGeneration->getKey() : null;
+            $input['source_analysis_generation_id'] = $sourceWorkflow === 'analyze_footage' ? $sourceGeneration->getKey() : null;
+            $input['source_video_asset_id'] = $sourceWorkflow === 'analyze_footage' ? $this->sourceVideoAssetId($sourceGeneration) : null;
+            $input['origin_workflow'] = 'voiceover';
             $input['source_generation_language'] = $sourceLanguage;
             $input['voiceover_output_language'] = $sourceLanguage;
             $input['language'] = $sourceLanguage;
@@ -138,6 +145,37 @@ class AiVoiceoverSourceResolver
         }
 
         return $allowed;
+    }
+
+    private function sourceWorkflow(Generation $generation): string
+    {
+        return match ($generation->job_type) {
+            'generate_video_to_campaign' => 'analyze_footage',
+            'generate_affiliate_campaign' => 'product_content_kit',
+            'generate_motion_ai_video' => 'motion_ai_video',
+            'generate_auto_video_edit' => 'auto_video_editor',
+            default => 'unknown',
+        };
+    }
+
+    private function sourceOriginLabel(Generation $generation): string
+    {
+        return match ($this->sourceWorkflow($generation)) {
+            'analyze_footage' => 'Analyze Footage with AI · Video analysis',
+            'motion_ai_video' => 'Motion AI Video · Generated footage',
+            'auto_video_editor' => 'Auto Video Editor · Edited video',
+            'product_content_kit' => 'Product Content Kit · Project brief',
+            default => 'Saved generation',
+        };
+    }
+
+    private function sourceVideoAssetId(Generation $generation): ?int
+    {
+        $value = data_get($generation->output_payload, 'source_video_asset_id')
+            ?? data_get($generation->output_payload, 'provider_metadata.source_video_asset_id')
+            ?? data_get($generation->input_payload, 'source_video_asset_id');
+
+        return is_numeric($value) ? (int) $value : null;
     }
 
     private function sourceGenerationLanguage(Generation $generation, Project $project, array $input): string

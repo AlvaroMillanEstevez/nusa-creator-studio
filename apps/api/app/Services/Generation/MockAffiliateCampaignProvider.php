@@ -272,7 +272,7 @@ class MockAffiliateCampaignProvider implements CampaignGenerationProvider
 
         $usageNotes[] = $campaignInputMode === 'video_analysis'
             ? 'This campaign includes video analysis and can be used in Auto Video Editor.'
-            : 'Use this kit for captions, scripts, voiceover and publishing. To create an edited video from raw footage, generate a Video-to-Campaign Insight or use Manual edit setup.';
+            : 'Use this kit for captions, scripts, voiceover and publishing. To create an edited video from raw footage, analyze footage with AI or use Manual edit setup.';
         $hooks = array_values(array_map(
             fn (mixed $hook, int $index): array => [
                 'label' => 'Hook '.($index + 1),

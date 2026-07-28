@@ -66,10 +66,10 @@ class MotionAiVideoGenerationApiTest extends TestCase
 
         CreatorTool::query()->where('key', 'motion_ai_video')->update([
             'status' => 'available',
-            'implementation_stage' => 'mock',
+            'implementation_stage' => 'real_provider',
             'credit_cost' => 3,
             'credit_cost_label' => '3 credits',
-            'badge_label' => 'Mock beta',
+            'badge_label' => 'Available now',
         ]);
     }
 
@@ -80,10 +80,10 @@ class MotionAiVideoGenerationApiTest extends TestCase
 
         $this->assertIsArray($tool);
         $this->assertSame('available', $tool['status']);
-        $this->assertSame('mock', $tool['implementation_stage']);
+        $this->assertSame('real_provider', $tool['implementation_stage']);
         $this->assertSame(3, $tool['credit_cost']);
-        $this->assertSame('Mock beta', $tool['badge_label']);
-        $this->assertStringContainsString('motion-video concepts', $tool['short_description']);
+        $this->assertSame('Available now', $tool['badge_label']);
+        $this->assertStringContainsString('premium AI product footage', $tool['short_description']);
     }
 
     public function test_guest_cannot_generate_motion_ai_video(): void

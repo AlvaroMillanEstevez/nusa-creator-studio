@@ -1,14 +1,77 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import { fetchMediaBlob } from '@/services/media'
 import type { MotionAiVideoScene, MotionVideoResult } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
 
-const props = defineProps<{ result: MotionVideoResult }>()
+const props = defineProps<{
+  result: MotionVideoResult
+  projectId?: number | string | null
+  generationId?: number | string | null
+}>()
 
 const result = computed(() => props.result)
+const finalVideoAssetId = computed(() => {
+  const value = result.value.final_video_asset_id ?? result.value.rendered_video_asset?.id ?? result.value.metadata.final_video_asset_id ?? result.value.provider_metadata?.final_video_asset_id ?? null
+
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+})
+const projectRoute = computed(() => {
+  return props.projectId === null || props.projectId === undefined ? '/dashboard' : `/projects/${String(props.projectId)}`
+})
+const analyzeFootageRoute = computed(() => {
+  if (props.projectId === null || props.projectId === undefined || finalVideoAssetId.value === null) {
+    return null
+  }
+
+  const query: Record<string, string> = {
+    sourceVideoAssetId: String(finalVideoAssetId.value),
+    returnWorkflow: 'motion_ai_video',
+  }
+
+  if (props.generationId !== null && props.generationId !== undefined) {
+    query.fromGenerationId = String(props.generationId)
+  }
+
+  return {
+    name: 'project-video-to-campaign-action',
+    params: { projectId: String(props.projectId) },
+    query,
+  }
+})
+const manualEditRoute = computed(() => {
+  if (props.projectId === null || props.projectId === undefined || finalVideoAssetId.value === null) {
+    return null
+  }
+
+  const query: Record<string, string> = {
+    editMode: 'manual_edit',
+    sourceVideoAssetId: String(finalVideoAssetId.value),
+  }
+
+  if (props.generationId !== null && props.generationId !== undefined) {
+    query.sourceGenerationId = String(props.generationId)
+  }
+
+  return {
+    name: 'project-auto-video-editor-action',
+    params: { projectId: String(props.projectId) },
+    query,
+  }
+})
+const generateAnotherRoute = computed(() => {
+  if (props.projectId === null || props.projectId === undefined) {
+    return '/dashboard'
+  }
+
+  return {
+    name: 'project-motion-ai-video-action',
+    params: { projectId: String(props.projectId) },
+  }
+})
 const streamUrl = computed(() => result.value.final_video_stream_url ?? result.value.rendered_video_asset?.stream_url ?? null)
 const downloadUrl = computed(() => result.value.final_video_download_url ?? result.value.rendered_video_asset?.download_url ?? null)
 const hasFinalVideo = computed(() => Boolean(streamUrl.value))
@@ -250,6 +313,46 @@ onBeforeUnmount(() => {
       <p class="mt-2 text-sm leading-6 text-neutral-400">
         This historical or mock result contains a motion plan, not a stored MP4 preview.
       </p>
+    </section>
+
+    <section class="nusa-card-premium rounded-[2rem] p-5" data-testid="motion-next-actions">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Next workflow</p>
+      <h2 class="mt-2 text-xl font-semibold">Reuse this generated MP4</h2>
+      <p class="mt-2 text-sm leading-6 text-neutral-400">
+        The generated video is saved as a private project media asset. You can analyze it like uploaded footage, edit it manually, or create another version. None of these actions starts a provider call automatically.
+      </p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <RouterLink
+          v-if="analyzeFootageRoute"
+          :to="analyzeFootageRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-center text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+          data-testid="motion-analyze-video"
+        >
+          Analyze this video with AI
+        </RouterLink>
+        <RouterLink
+          v-if="manualEditRoute"
+          :to="manualEditRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl border border-sky-800 bg-sky-950/30 px-4 text-center text-sm font-semibold text-sky-100 transition hover:border-sky-500 hover:bg-sky-900/40"
+          data-testid="motion-edit-video-manually"
+        >
+          Edit video manually
+        </RouterLink>
+        <RouterLink
+          :to="generateAnotherRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-center text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30"
+          data-testid="motion-generate-another"
+        >
+          Generate another version
+        </RouterLink>
+        <RouterLink
+          :to="projectRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-center text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30"
+          data-testid="motion-return-project"
+        >
+          Return to project
+        </RouterLink>
+      </div>
     </section>
 
     <section class="nusa-card-premium rounded-[2rem] p-5">

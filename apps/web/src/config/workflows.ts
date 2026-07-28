@@ -2,11 +2,12 @@ import type { ProjectActionKey } from '@/types/project'
 
 export type BetaWorkflowKey =
   | 'product_content_kit'
+  | 'analyze_footage'
+  | 'motion_ai_video'
   | 'auto_video_editor'
   | 'auto_video_ads'
-  | 'motion_ai_video'
 
-export type BetaWorkflowStatus = 'available' | 'beta_next'
+export type BetaWorkflowStatus = 'available' | 'coming_soon'
 
 export interface BetaWorkflowDefinition {
   key: BetaWorkflowKey
@@ -27,32 +28,21 @@ export const betaWorkflows: BetaWorkflowDefinition[] = [
     sourceToolKey: 'affiliate_campaign',
     dashboardToolKey: 'product_content_kit',
     projectActionKey: 'generate_campaign',
-    categoryKey: 'content',
-    recommendedInputKeys: ['brief', 'image', 'video'],
-    outputKeys: ['hooks', 'script', 'captions', 'hashtags', 'cta', 'strategy'],
+    categoryKey: 'content_kit',
+    recommendedInputKeys: ['project_brief', 'optional_product_image'],
+    outputKeys: ['hooks', 'script', 'captions', 'hashtags', 'cta', 'publishing_guidance'],
     iconKey: 'kit',
   },
   {
-    key: 'auto_video_editor',
+    key: 'analyze_footage',
     status: 'available',
-    sourceToolKey: 'auto_video_editor',
-    dashboardToolKey: 'auto_video_editor',
-    projectActionKey: 'generate_auto_video_edit',
-    categoryKey: 'organic_video',
-    recommendedInputKeys: ['raw_footage', 'video_analysis', 'voiceover'],
-    outputKeys: ['organic_video', 'captions', 'overlays', 'end_card'],
-    iconKey: 'editor',
-  },
-  {
-    key: 'auto_video_ads',
-    status: 'available',
-    sourceToolKey: 'auto_video_ads',
-    dashboardToolKey: 'auto_video_ads',
-    projectActionKey: 'create_video_ad',
-    categoryKey: 'paid_ads',
-    recommendedInputKeys: ['product_kit', 'product_image', 'raw_footage', 'cta'],
-    outputKeys: ['paid_ad_creative', 'storyboard', 'promo_overlays', 'cta', 'end_card'],
-    iconKey: 'ads',
+    sourceToolKey: 'video_to_campaign',
+    dashboardToolKey: 'video_to_campaign',
+    projectActionKey: 'generate_video_to_campaign',
+    categoryKey: 'video_analysis',
+    recommendedInputKeys: ['product_video'],
+    outputKeys: ['video_summary', 'product_moments', 'recommended_cuts', 'campaign_angle', 'captions', 'narration_script', 'edit_plan', 'optional_voiceover_action'],
+    iconKey: 'analysis',
   },
   {
     key: 'motion_ai_video',
@@ -60,18 +50,39 @@ export const betaWorkflows: BetaWorkflowDefinition[] = [
     sourceToolKey: 'motion_ai_video',
     dashboardToolKey: 'motion_ai_video',
     projectActionKey: 'start_motion_video',
-    categoryKey: 'ai_motion',
-    recommendedInputKeys: ['product_image', 'scenario', 'script'],
-    outputKeys: ['ai_motion_video', 'visual_plan', 'caption', 'cta'],
+    categoryKey: 'ai_video_generation',
+    recommendedInputKeys: ['project_brief', 'creative_description', 'compatible_saved_campaign', 'product_image_when_enabled'],
+    outputKeys: ['generated_mp4', 'private_video_asset', 'visual_generation_summary', 'post_production_suggestions'],
     iconKey: 'motion',
+  },
+  {
+    key: 'auto_video_editor',
+    status: 'available',
+    sourceToolKey: 'auto_video_editor',
+    dashboardToolKey: 'auto_video_editor',
+    projectActionKey: 'generate_auto_video_edit',
+    categoryKey: 'auto_video_editor',
+    recommendedInputKeys: ['raw_or_generated_footage', 'optional_video_analysis', 'optional_voiceover'],
+    outputKeys: ['edited_mp4', 'captions_overlays_when_composed', 'cta_end_card'],
+    iconKey: 'editor',
+  },
+  {
+    key: 'auto_video_ads',
+    status: 'coming_soon',
+    sourceToolKey: 'auto_video_ads',
+    dashboardToolKey: 'auto_video_ads',
+    projectActionKey: 'create_video_ad',
+    categoryKey: 'paid_ads',
+    recommendedInputKeys: ['campaign_content', 'product_footage', 'overlays', 'cta'],
+    outputKeys: ['paid_ad_variations', 'storyboard', 'promo_overlays', 'cta', 'end_card'],
+    iconKey: 'ads',
   },
 ]
 
-export const laterWorkflowKeys = [
-  'fashion_studio',
-  'product_photo_studio',
-  'brand_kit',
-  'content_calendar',
-] as const
+export const availableWorkflowDefinitions = betaWorkflows.filter(
+  (workflow) => workflow.status === 'available',
+)
 
-export type LaterWorkflowKey = typeof laterWorkflowKeys[number]
+export const comingSoonWorkflowDefinitions = betaWorkflows.filter(
+  (workflow) => workflow.status === 'coming_soon',
+)

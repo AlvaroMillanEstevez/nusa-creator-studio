@@ -157,6 +157,10 @@ async function mountGenerationDetail() {
       { path: '/media', component: { template: '<div />' } },
       { path: '/account', component: { template: '<div />' } },
       { path: '/projects/:id', name: 'project-detail', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: GenerationDetailView },
     ],
   })
@@ -187,6 +191,6 @@ describe('GenerationDetailView', () => {
     expect(text).toContain('Back to workspace')
     expect(wrapper.find('a[href="/projects/77"]').text()).toContain('Back to workspace')
     expect(wrapper.find('[data-testid="project-action-hub"]').exists()).toBe(true)
-    expect(text).toContain('Create voiceover')
+    expect(text).toContain('Create Motion AI Video')
   })
 })

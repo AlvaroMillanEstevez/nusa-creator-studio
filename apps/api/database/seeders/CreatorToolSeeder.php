@@ -31,7 +31,7 @@ class CreatorToolSeeder extends Seeder
         $this->applyTaxonomyDefaults($creatorTool, $tool);
         $this->applyMetadataDefaults($creatorTool, $tool);
 
-        if (in_array($tool['key'], ['ai_voiceover', 'fashion_try_on', 'motion_ai_video', 'auto_video_ads'], true)) {
+        if (in_array($tool['key'], ['affiliate_campaign', 'video_to_campaign', 'ai_voiceover', 'fashion_try_on', 'motion_ai_video', 'auto_video_editor', 'auto_video_ads'], true)) {
             $this->refreshLegacyLaunchCopy($creatorTool, $tool);
         }
 
@@ -99,8 +99,14 @@ class CreatorToolSeeder extends Seeder
             $creatorTool->status = $tool['status'];
         }
 
-        if (in_array($tool['key'], ['auto_video_ads', 'motion_ai_video'], true)) {
+        if (in_array($tool['key'], ['affiliate_campaign', 'video_to_campaign', 'motion_ai_video', 'auto_video_editor', 'auto_video_ads'], true)) {
             $creatorTool->status = $tool['status'];
+            $creatorTool->implementation_stage = $tool['implementation_stage'];
+            $creatorTool->route = $tool['route'];
+            $creatorTool->credit_cost = $tool['credit_cost'];
+            $creatorTool->credit_cost_label = $tool['credit_cost_label'];
+            $creatorTool->badge_label = $tool['badge_label'];
+            $creatorTool->sort_order = $tool['sort_order'];
         }
 
         if ($tool['key'] === 'motion_ai_video' && $creatorTool->implementation_stage === 'future') {
@@ -173,9 +179,9 @@ class CreatorToolSeeder extends Seeder
         return [
             [
                 'key' => 'affiliate_campaign',
-                'title' => 'Affiliate Campaign Generator',
-                'short_description' => 'Generate hooks, a TikTok script, caption, hashtags, CTA and filming notes.',
-                'long_description' => 'Turn a product brief into a structured affiliate campaign ready to film and refine.',
+                'title' => 'Product Content Kit',
+                'short_description' => 'Create reusable campaign content from your product brief, including hooks, scripts, captions, CTA suggestions and publishing guidance.',
+                'long_description' => 'Create a reusable content kit from product and project information. Footage analysis is handled separately through Analyze Footage with AI.',
                 'category' => 'campaign_creation',
                 'service_tier' => 'basic',
                 'output_type' => 'script_pack',
@@ -215,9 +221,9 @@ class CreatorToolSeeder extends Seeder
             ],
             [
                 'key' => 'video_to_campaign',
-                'title' => 'Video-to-Campaign',
-                'short_description' => 'Analyze raw product footage and turn it into campaign hooks, narration, captions and an edit plan.',
-                'long_description' => 'Use uploaded product footage as the source for structured campaign angles, voiceover-ready narration, caption ideas, recommended cuts and a reusable edit plan.',
+                'title' => 'Analyze Footage with AI',
+                'short_description' => 'Analyze product footage to identify key moments, recommended cuts, campaign angles, captions, narration and a reusable edit plan.',
+                'long_description' => 'Use product footage as the source for observed product moments, campaign direction, narration, captions, recommended cuts and a reusable edit plan for Auto Video Editor.',
                 'category' => 'video_production',
                 'service_tier' => 'advanced',
                 'output_type' => 'assisted_media',
@@ -226,12 +232,12 @@ class CreatorToolSeeder extends Seeder
                 'route' => '/dashboard?tool=video_to_campaign',
                 'credit_cost' => 2,
                 'credit_cost_label' => '2 credits',
-                'badge_label' => 'Core beta',
+                'badge_label' => 'Available now',
                 'is_recommended' => false,
                 'is_visible' => true,
-                'sort_order' => 25,
+                'sort_order' => 20,
                 'metadata' => [
-                    'service_note' => 'Current mock workflow creates a deterministic campaign plan from uploaded video metadata and project context; future real v1 should analyze video frames or transcripts.',
+                    'service_note' => 'Analyzes product footage and stores reusable video-analysis context for downstream editor and voiceover actions.',
                 ],
             ],
             [
@@ -300,64 +306,64 @@ class CreatorToolSeeder extends Seeder
             [
                 'key' => 'motion_ai_video',
                 'title' => 'Motion AI Video',
-                'short_description' => 'Create motion-video concepts from product images, scenarios and campaign scripts.',
-                'long_description' => 'Create a motion-video concept from a product image, scenario and campaign script.',
+                'short_description' => 'Generate premium AI product footage from a description, a saved campaign or a product image.',
+                'long_description' => 'Generate short vertical product footage from project context, campaign-assisted creative direction or an enabled product image first frame.',
                 'category' => 'ai_video',
                 'service_tier' => 'premium',
                 'output_type' => 'video',
-                'implementation_stage' => 'mock',
+                'implementation_stage' => 'real_provider',
                 'status' => 'available',
                 'route' => '/dashboard?tool=motion_ai_video',
                 'credit_cost' => 3,
                 'credit_cost_label' => '3 credits',
-                'badge_label' => 'Mock beta',
+                'badge_label' => 'Available now',
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 60,
                 'metadata' => [
-                    'service_note' => 'Mock beta planning workflow; future real provider should generate video assets.',
+                    'service_note' => 'Creates Motion AI Video outputs through the configured provider mode and stores reusable private MP4 assets when rendering completes.',
                 ],
             ],
             [
                 'key' => 'auto_video_editor',
                 'title' => 'Auto Video Editor',
-                'short_description' => 'Turn product footage, campaign context and optional voiceover into an edit-ready vertical video plan.',
-                'long_description' => 'Prepare an edit decision list, timeline, captions plan, audio mix plan and mock final-video placeholder from existing project sources.',
+                'short_description' => 'Turn raw or AI-generated product footage into an edited creator video using manual setup or a previous AI footage analysis.',
+                'long_description' => 'Render or plan an edited vertical creator video from project footage, optional footage analysis and optional voiceover.',
                 'category' => 'ai_video',
                 'service_tier' => 'premium',
                 'output_type' => 'video',
-                'implementation_stage' => 'beta',
+                'implementation_stage' => 'real_provider',
                 'status' => 'available',
                 'route' => '/dashboard?tool=auto_video_editor',
                 'credit_cost' => 2,
                 'credit_cost_label' => '2 credits base',
-                'badge_label' => 'Mock preview',
+                'badge_label' => 'Available now',
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 65,
                 'metadata' => [
-                    'service_note' => 'Composite mock workflow. Effective cost may include reused or newly generated video analysis and voiceover planning.',
+                    'service_note' => 'Uses manual setup or completed footage analysis with optional voiceover to create a reusable edited-video result.',
                 ],
             ],
             [
                 'key' => 'auto_video_ads',
                 'title' => 'Auto Video Ads',
                 'short_description' => 'Create paid ad creative plans with hook, benefits, overlays, CTA and end card from your campaign and product assets.',
-                'long_description' => 'Turn campaign content, product images and source videos into a rendered paid social ad using the beta Shotstack pipeline when enabled.',
+                'long_description' => 'Planned paid social ad workflow for campaign content, product footage, overlays, CTA and end cards.',
                 'category' => 'paid_ads',
                 'service_tier' => 'premium',
                 'output_type' => 'ad_plan',
-                'implementation_stage' => 'beta',
-                'status' => 'available',
-                'route' => '/dashboard?tool=auto_video_ads',
-                'credit_cost' => 12,
-                'credit_cost_label' => '12 credits',
-                'badge_label' => 'Real beta',
+                'implementation_stage' => 'future',
+                'status' => 'coming_soon',
+                'route' => null,
+                'credit_cost' => 0,
+                'credit_cost_label' => 'Credit cost coming soon',
+                'badge_label' => 'Coming soon',
                 'is_recommended' => false,
                 'is_visible' => true,
                 'sort_order' => 67,
                 'metadata' => [
-                    'service_note' => 'Beta workflow for paid ad creative plans. Real Shotstack rendering is enabled only when provider flags allow it; otherwise mock planning remains available.',
+                    'service_note' => 'Coming soon paid social ad workflow. It is intentionally not runnable in the public catalog yet.',
                 ],
             ],
             [

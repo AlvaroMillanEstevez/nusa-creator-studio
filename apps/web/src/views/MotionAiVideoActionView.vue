@@ -18,7 +18,7 @@ import {
   type MotionAiVideoSourceMode,
   type ProjectAction,
 } from '@/types/project'
-import { generationDisplayName } from '@/utils/generations'
+import { generationSelectorLabel, isMotionCampaignCompatible, positiveInt, workflowOriginForGeneration } from '@/utils/workflowLineage'
 
 const route = useRoute()
 const router = useRouter()
@@ -124,11 +124,7 @@ const productImageRequired = computed(() => usesProductImage.value)
 const campaignRequired = computed(() => sourceMode.value === 'campaign_assisted')
 const productImageHelperText = 'Required for image-to-video. The selected image becomes the starting frame; exact logo, text or product-detail preservation is not guaranteed yet.'
 const campaignGenerations = computed(() =>
-  generations.value.filter(
-    (item) =>
-      item.status === 'completed' &&
-      ['generate_affiliate_campaign', 'generate_video_to_campaign', 'generate_product_video_script', 'generate_auto_video_ad'].includes(item.job_type),
-  ),
+  generations.value.filter(isMotionCampaignCompatible),
 )
 const voiceoverGenerations = computed(() =>
   generations.value.filter((item) => item.status === 'completed' && item.job_type === 'generate_ai_voiceover'),
@@ -227,6 +223,7 @@ async function loadPage(): Promise<void> {
     generations.value = Array.isArray(generationResponse.data) ? generationResponse.data : []
     actions.value = Array.isArray(actionResponse.data) ? actionResponse.data : []
     initializeForm(loadedProject)
+    applyQueryPreselection()
   } catch (error: unknown) {
     loadError.value = error instanceof ApiError ? error.message : 'We could not load Motion AI Video setup.'
   } finally {
@@ -325,7 +322,29 @@ async function submit(): Promise<void> {
 }
 
 function generationLabel(generation: CreatorGeneration): string {
-  return generationDisplayName(generation, project.value)
+  return generationSelectorLabel(generation, project.value)
+}
+
+function applyQueryPreselection(): void {
+  const querySourceMode = Array.isArray(route.query.sourceMode) ? route.query.sourceMode[0] : route.query.sourceMode
+
+  if (querySourceMode === 'campaign_assisted') {
+    const campaignGenerationId = positiveInt(Array.isArray(route.query.campaignGenerationId) ? route.query.campaignGenerationId[0] : route.query.campaignGenerationId)
+    const generation = campaignGenerationId === null
+      ? null
+      : campaignGenerations.value.find((item) => item.id === campaignGenerationId) ?? null
+
+    if (generation !== null) {
+      sourceMode.value = 'campaign_assisted'
+      selectedCampaignGenerationId.value = generation.id
+    }
+  }
+
+  if (querySourceMode === 'text_prompt' || querySourceMode === 'image_first_frame') {
+    if (sourceModeOptions.value.some((option) => option.value === querySourceMode)) {
+      sourceMode.value = querySourceMode
+    }
+  }
 }
 
 function firstString(values: unknown[]): string | null {
@@ -434,10 +453,11 @@ onMounted(loadPage)
                     <div v-if="selectedCampaignGeneration" class="mt-3 rounded-2xl border border-emerald-900/50 bg-neutral-950/50 p-3 text-sm leading-6 text-emerald-100/80">
                       <span class="block font-semibold text-emerald-200">Selected campaign context</span>
                       <span class="block text-neutral-300">{{ campaignPreview(selectedCampaignGeneration) }}</span>
-                      <span class="block text-xs text-neutral-500">Nusa summarizes the campaign into creative direction. Raw campaign JSON is not shown here.</span>
+                      <span class="mt-1 block text-xs font-semibold text-emerald-200">{{ workflowOriginForGeneration(selectedCampaignGeneration).label }}</span>
+                      <span class="block text-xs text-neutral-500">Nusa summarizes the campaign into text-based creative direction. No video bytes are sent from this mode.</span>
                     </div>
                     <p v-if="campaignGenerations.length === 0" class="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-400">
-                      No saved campaign generations yet. Generate a Product Content Kit first, or use text description mode.
+                      No compatible Product Content Kit or Analyze Footage generations yet. Create one first, or use text description mode.
                     </p>
                   </div>
 

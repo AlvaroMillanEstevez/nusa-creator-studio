@@ -3,14 +3,18 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
-import { betaWorkflows, laterWorkflowKeys, type BetaWorkflowDefinition } from '@/config/workflows'
+import {
+  availableWorkflowDefinitions,
+  comingSoonWorkflowDefinitions,
+  type BetaWorkflowDefinition,
+} from '@/config/workflows'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getCreatorTools } from '@/services/tools'
 import { useAuthStore } from '@/stores/auth'
 import type { CreatorTool, ToolStatus } from '@/types/tool'
 
-type WorkflowCardStatus = ToolStatus | 'beta_next'
+type WorkflowCardStatus = ToolStatus | 'coming_soon'
 
 interface BetaWorkflowCard {
   key: string
@@ -27,13 +31,7 @@ interface BetaWorkflowCard {
   outputs: string[]
 }
 
-interface LaterWorkflowCard {
-  key: string
-  title: string
-}
-
 interface WorkflowToolData {
-  category: string
   status: ToolStatus
   credit_cost: number
   credit_cost_label: string | null
@@ -50,22 +48,19 @@ const toolsByKey = computed(() =>
   new Map(visibleTools.value.map((tool) => [tool.key, tool])),
 )
 
-const workflowCards = computed<BetaWorkflowCard[]>(() =>
-  betaWorkflows.map((workflow) => workflowCard(workflow)),
+const availableWorkflowCards = computed<BetaWorkflowCard[]>(() =>
+  availableWorkflowDefinitions.map((workflow) => workflowCard(workflow)),
 )
 
-const laterWorkflowCards = computed<LaterWorkflowCard[]>(() =>
-  laterWorkflowKeys.map((key) => ({
-    key,
-    title: t('workflows.later.' + key),
-  })),
+const comingSoonWorkflowCards = computed<BetaWorkflowCard[]>(() =>
+  comingSoonWorkflowDefinitions.map((workflow) => workflowCard(workflow)),
 )
 
 function workflowCard(workflow: BetaWorkflowDefinition): BetaWorkflowCard {
   const tool = workflow.sourceToolKey === null ? null : toolsByKey.value.get(workflow.sourceToolKey)
   const toolData = toolDataFor(tool)
-  const isBetaNext = workflow.status === 'beta_next'
-  const status = isBetaNext ? 'beta_next' : toolData.status
+  const isComingSoon = workflow.status === 'coming_soon'
+  const status = isComingSoon ? 'coming_soon' : toolData.status
   const canStart = workflow.status === 'available' && toolData.status === 'available'
   const targetPath = '/dashboard?tool=' + encodeURIComponent(workflow.dashboardToolKey)
 
@@ -82,11 +77,11 @@ function workflowCard(workflow: BetaWorkflowDefinition): BetaWorkflowCard {
         ? targetPath
         : { path: '/login', query: { redirect: targetPath } }
       : null,
-    creditCostLabel: isBetaNext
+    creditCostLabel: isComingSoon
       ? t('workflows.creditPlanned')
       : toolData.credit_cost_label ?? (toolData.credit_cost > 0 ? t('workflows.fromCredits', { credits: toolData.credit_cost }) : t('tools.creditCostComingSoon')),
-    badgeLabel: isBetaNext
-      ? t('workflows.plannedClosedBeta')
+    badgeLabel: isComingSoon
+      ? t('common.comingSoon')
       : toolData.badge_label ?? t('common.available'),
     recommendedInputs: workflow.recommendedInputKeys.map((key) => t('workflows.inputs.' + key)),
     outputs: workflow.outputKeys.map((key) => t('workflows.outputItems.' + key)),
@@ -95,7 +90,6 @@ function workflowCard(workflow: BetaWorkflowDefinition): BetaWorkflowCard {
 
 function toolDataFor(tool: CreatorTool | null | undefined): WorkflowToolData {
   return {
-    category: tool?.category ?? 'workflow',
     status: tool?.status ?? 'coming_soon',
     credit_cost: tool?.credit_cost ?? 0,
     credit_cost_label: tool?.credit_cost_label ?? null,
@@ -108,10 +102,6 @@ function statusClasses(status: WorkflowCardStatus): string {
     return 'border-emerald-800 bg-emerald-950 text-emerald-300'
   }
 
-  if (status === 'beta_next') {
-    return 'border-violet-800 bg-violet-950 text-violet-200'
-  }
-
   if (status === 'maintenance') {
     return 'border-amber-800 bg-amber-950 text-amber-300'
   }
@@ -120,10 +110,6 @@ function statusClasses(status: WorkflowCardStatus): string {
 }
 
 function statusLabel(card: BetaWorkflowCard): string {
-  if (card.status === 'beta_next') {
-    return t('workflows.comingNext')
-  }
-
   if (card.status === 'available') {
     return t('common.available')
   }
@@ -194,7 +180,7 @@ onMounted(() => {
       </div>
 
       <template v-else>
-        <section class="mt-10" data-testid="beta-workflow-section">
+        <section class="mt-10" data-testid="available-workflow-section">
           <div class="max-w-3xl">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
               {{ t('workflows.mainWorkflows') }}
@@ -206,12 +192,12 @@ onMounted(() => {
           </div>
 
           <div class="mt-6 grid gap-4 md:grid-cols-2">
-            <template v-for="workflow in workflowCards" :key="workflow.key">
+            <template v-for="workflow in availableWorkflowCards" :key="workflow.key">
               <RouterLink
                 v-if="workflow.canStart && workflow.destination"
                 :to="workflow.destination"
                 :data-testid="'workflow-card-' + workflow.key"
-                data-workflow-card="main"
+                data-workflow-card="available"
                 class="nusa-card-interactive nusa-focus-ring group block rounded-[2rem] p-5 transition"
               >
                 <div class="flex items-start justify-between gap-4">
@@ -244,7 +230,7 @@ onMounted(() => {
                   </div>
                 </div>
 
-                <div class="mt-5 flex items-center justify-between border-t border-neutral-800 pt-4">
+                <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-800 pt-4">
                   <span class="text-xs font-medium text-neutral-400">
                     {{ workflow.creditCostLabel }}
                   </span>
@@ -258,9 +244,9 @@ onMounted(() => {
               <article
                 v-else
                 :data-testid="'workflow-card-' + workflow.key"
-                data-workflow-card="main"
+                data-workflow-card="available"
                 aria-disabled="true"
-                class="nusa-card-soft rounded-[2rem] p-5 opacity-85"
+                class="nusa-card-soft rounded-[2rem] p-5 opacity-90"
               >
                 <div class="flex items-start justify-between gap-4">
                   <div class="min-w-0">
@@ -276,46 +262,50 @@ onMounted(() => {
                     {{ statusLabel(workflow) }}
                   </span>
                 </div>
-
                 <p class="mt-4 text-sm leading-6 text-neutral-400">{{ workflow.description }}</p>
-                <p class="mt-3 text-sm leading-6 text-neutral-500">{{ workflow.longDescription }}</p>
-
-                <div class="mt-5 grid gap-3 text-xs sm:grid-cols-2">
-                  <div class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
-                    <p class="font-semibold text-neutral-300">{{ t('workflows.recommendedInputs') }}</p>
-                    <p class="mt-1 leading-5 text-neutral-500">{{ workflow.recommendedInputs.join(', ') }}</p>
-                  </div>
-                  <div class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
-                    <p class="font-semibold text-neutral-300">{{ t('workflows.outputsLabel') }}</p>
-                    <p class="mt-1 leading-5 text-neutral-500">{{ workflow.outputs.join(', ') }}</p>
-                  </div>
-                </div>
-
-                <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-neutral-800 pt-4 text-xs text-neutral-500">
-                  <span>{{ workflow.creditCostLabel }}</span>
-                  <span aria-hidden="true">&bull;</span>
-                  <span>{{ t('workflows.plannedClosedBeta') }}</span>
-                </div>
+                <p class="mt-5 text-xs font-medium text-neutral-500">{{ workflow.creditCostLabel }}</p>
               </article>
             </template>
           </div>
         </section>
 
-        <section class="mt-10 rounded-[2rem] border border-neutral-800 bg-neutral-950/50 p-5" data-testid="later-workflow-section">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-            {{ t('workflows.laterTitle') }}
-          </p>
-          <p class="mt-2 text-sm leading-6 text-neutral-500">
-            {{ t('workflows.laterBody') }}
-          </p>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <span
-              v-for="workflow in laterWorkflowCards"
+        <section class="mt-12" data-testid="coming-soon-workflow-section">
+          <div class="max-w-3xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              {{ t('workflows.laterTitle') }}
+            </p>
+            <p class="mt-2 text-sm leading-6 text-neutral-500">
+              {{ t('workflows.laterBody') }}
+            </p>
+          </div>
+
+          <div class="mt-5 grid gap-4 md:grid-cols-2">
+            <article
+              v-for="workflow in comingSoonWorkflowCards"
               :key="workflow.key"
-              class="rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-xs font-semibold text-neutral-400"
+              :data-testid="'workflow-card-' + workflow.key"
+              data-workflow-card="coming-soon"
+              aria-disabled="true"
+              class="nusa-card-soft rounded-[2rem] p-5 opacity-85"
             >
-              {{ workflow.title }}
-            </span>
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                    {{ workflow.category }}
+                  </p>
+                  <h3 class="mt-2 break-words text-xl font-semibold text-neutral-200">{{ workflow.title }}</h3>
+                </div>
+                <span class="shrink-0 rounded-full border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs font-semibold text-neutral-300">
+                  {{ t('common.comingSoon') }}
+                </span>
+              </div>
+
+              <p class="mt-4 text-sm leading-6 text-neutral-400">{{ workflow.description }}</p>
+              <p class="mt-3 text-sm leading-6 text-neutral-500">{{ workflow.longDescription }}</p>
+              <p class="mt-5 border-t border-neutral-800 pt-4 text-xs font-medium text-neutral-500">
+                {{ workflow.creditCostLabel }}
+              </p>
+            </article>
           </div>
         </section>
       </template>

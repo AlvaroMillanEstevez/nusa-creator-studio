@@ -35,7 +35,7 @@ class VideoToCampaignGenerationService
             user: $user,
             jobType: 'generate_video_to_campaign',
             creditCost: $this->tools->creditCost('video_to_campaign'),
-            creditReason: 'Video-to-Campaign generation',
+            creditReason: 'Analyze Footage with AI generation',
             dispatch: fn (int $generationId) => GenerateVideoToCampaignJob::dispatch($generationId),
             inputPayload: $this->inputPayload($project, $sourceVideo, $options),
             provider: $provider,
@@ -72,6 +72,7 @@ class VideoToCampaignGenerationService
                 'raw_product_video',
                 'campaign_source_video',
                 'video_reference',
+                'edited_video_result',
                 'general',
             ])
             ->latest('created_at')
@@ -99,6 +100,10 @@ class VideoToCampaignGenerationService
         return array_merge($projectInput, [
             'project_title' => $project->title,
             'project_type' => $project->type,
+            'origin_workflow' => 'analyze_footage',
+            'origin_mode' => 'video_analysis',
+            'origin_label' => 'Analyze Footage with AI · Video analysis',
+            'source_workflow' => $this->sourceWorkflow($sourceVideo),
             'source_video_asset_id' => $sourceVideo->getKey(),
             'source_video_duration_seconds' => $this->durationSeconds($sourceVideo),
             'source_video_asset' => $this->assetSummary($sourceVideo),
@@ -133,6 +138,22 @@ class VideoToCampaignGenerationService
                 'source_video_asset_id' => 'The selected source video is too long for real video analysis.',
             ]);
         }
+    }
+
+    private function sourceWorkflow(MediaAsset $asset): string
+    {
+        $metadata = is_array($asset->metadata) ? $asset->metadata : [];
+        $workflow = $metadata['workflow'] ?? $metadata['workflow_key'] ?? null;
+
+        if (in_array($workflow, ['motion-ai-video', 'motion_ai_video'], true)) {
+            return 'motion_ai_video';
+        }
+
+        if (in_array($workflow, ['auto-video-editor', 'auto_video_editor'], true)) {
+            return 'auto_video_editor';
+        }
+
+        return 'uploaded_footage';
     }
 
     private function durationSeconds(MediaAsset $asset): ?float

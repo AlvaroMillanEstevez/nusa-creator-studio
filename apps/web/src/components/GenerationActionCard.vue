@@ -45,7 +45,7 @@ const copy = computed<GenerationActionCopy>(() => {
     return {
       title: 'Configure Motion AI Video',
       description:
-        'Choose a product image, optional scenario and script source to create a render-ready motion plan. Real motion video rendering comes next.',
+        'Choose text, campaign context or product imagery to generate Motion AI Video from the dedicated setup page.',
       button: props.hasGeneration ? 'Create another motion plan' : 'Configure Motion AI Video',
       loadingButton: 'Opening Motion AI Video...',
     }

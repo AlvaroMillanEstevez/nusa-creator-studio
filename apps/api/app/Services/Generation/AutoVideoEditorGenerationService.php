@@ -37,7 +37,7 @@ class AutoVideoEditorGenerationService
 
         if (! $sourceVideo instanceof MediaAsset) {
             throw ValidationException::withMessages([
-                'source_video_to_campaign_generation_id' => 'Selected campaign does not include video analysis data. Choose a Video-to-Campaign Insight or use Manual edit setup.',
+                'source_video_to_campaign_generation_id' => 'Selected campaign does not include video analysis data. Choose an Analyze Footage result or use Manual edit setup.',
             ]);
         }
         $voiceoverGeneration = $this->voiceoverGeneration($project, $user, $options);
@@ -89,7 +89,7 @@ class AutoVideoEditorGenerationService
 
         if ($id === null || $id === '') {
             throw ValidationException::withMessages([
-                'source_video_to_campaign_generation_id' => 'Choose a Video-to-Campaign Insight or use Manual edit setup.',
+                'source_video_to_campaign_generation_id' => 'Choose an Analyze Footage result or use Manual edit setup.',
             ]);
         }
 
@@ -113,7 +113,7 @@ class AutoVideoEditorGenerationService
 
         if (! $isVideoAnalysis || ! CampaignWorkflowMetadata::isAutoVideoEditorEligible($output)) {
             throw ValidationException::withMessages([
-                'source_video_to_campaign_generation_id' => 'Selected campaign does not include video analysis data. Choose a Video-to-Campaign Insight or use Manual edit setup.',
+                'source_video_to_campaign_generation_id' => 'Selected campaign does not include video analysis data. Choose an Analyze Footage result or use Manual edit setup.',
             ]);
         }
 

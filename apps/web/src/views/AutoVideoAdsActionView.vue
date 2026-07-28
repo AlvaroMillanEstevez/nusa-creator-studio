@@ -372,7 +372,7 @@ onMounted(loadPage)
             </div>
 
             <div class="nusa-card-premium rounded-[2rem] p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ isRealCapableBeta ? 'Real beta' : 'Mock beta' }}</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ isRealCapableBeta ? 'Render beta' : 'Planning preview' }}</p>
               <p class="mt-2 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
                 Costs {{ creditCost }} credits. {{ isRealCapableBeta ? 'Generates the paid ad and renders a final MP4 when the Shotstack beta provider is enabled.' : 'Creates a structured ad plan only — not a final MP4 render.' }}
               </p>

@@ -26,10 +26,9 @@ import {
   type CreatorGeneration,
   type CreatorProject,
   type GenerateAutoVideoEditPayload,
-  type GenerationResult,
   type ProjectAction,
 } from '@/types/project'
-import { generationDisplayName } from '@/utils/generations'
+import { generationSelectorLabel, isFootageAnalysisGeneration, mediaAssetOriginLabel, positiveInt, sourceVideoAssetIdFromAnalysis } from '@/utils/workflowLineage'
 import { MEDIA_ACCEPT, MEDIA_MAX_SIZE_BYTES, validateMediaFile } from '@/utils/mediaValidation'
 
 const { t } = useTranslations()
@@ -89,8 +88,8 @@ const projectId = computed(() => {
 })
 const autoEditorAction = computed(() => actions.value.find((item) => item.key === 'generate_auto_video_edit') ?? null)
 const voiceoverAction = computed(() => actions.value.find((item) => item.key === 'generate_voiceover_from_script') ?? null)
-const videoCampaignGenerations = computed(() => generations.value.filter(isEligibleVideoCampaignGeneration))
-const unavailableCampaignGenerations = computed(() => generations.value.filter((item) => item.status === 'completed' && ['generate_affiliate_campaign', 'generate_video_to_campaign'].includes(item.job_type) && !isEligibleVideoCampaignGeneration(item)))
+const videoCampaignGenerations = computed(() => generations.value.filter(isFootageAnalysisGeneration))
+const unavailableCampaignGenerations = computed(() => generations.value.filter((item) => item.status === 'completed' && ['generate_affiliate_campaign', 'generate_video_to_campaign'].includes(item.job_type) && !isFootageAnalysisGeneration(item)))
 const voiceoverGenerations = computed(() => generations.value.filter((item) => item.job_type === 'generate_ai_voiceover' && item.status === 'completed'))
 const sourceVideos = computed(() => mediaAssets.value.filter((asset) => asset.type === 'video'))
 const voiceoverAudioAssets = computed(() => mediaAssets.value.filter((asset) => asset.type === 'audio' && ['voiceover_audio', 'audio_track'].includes(asset.usage_role ?? 'audio_track')))
@@ -193,36 +192,69 @@ function initializeSelection(): void {
   selectedVoiceoverAudioAssetId.value = voiceoverAudioAssets.value[0]?.id ?? null
   sourceMode.value = selectedAnalysisId.value === null ? 'manual_edit' : 'ai_video_analysis'
   voiceoverMode.value = selectedVoiceoverGenerationId.value !== null ? 'generation' : 'none'
+  applyQueryPreselection()
   applyAnalysisDefaults()
   applyVoiceoverDefaults()
 }
 
-function hasUsableEditPlan(result: GenerationResult | null): boolean {
-  if (!isVideoToCampaignResult(result)) {
-    return false
+function applyQueryPreselection(): void {
+  const queryEditMode = Array.isArray(route.query.editMode) ? route.query.editMode[0] : route.query.editMode
+  const queryAnalysisId = positiveInt(Array.isArray(route.query.analysisGenerationId) ? route.query.analysisGenerationId[0] : route.query.analysisGenerationId)
+  const querySourceVideoId = positiveInt(Array.isArray(route.query.sourceVideoAssetId) ? route.query.sourceVideoAssetId[0] : route.query.sourceVideoAssetId)
+  const queryVoiceoverId = positiveInt(Array.isArray(route.query.voiceoverGenerationId) ? route.query.voiceoverGenerationId[0] : route.query.voiceoverGenerationId)
+
+  if (querySourceVideoId !== null && sourceVideos.value.some((asset) => asset.id === querySourceVideoId)) {
+    selectedVideoAssetId.value = querySourceVideoId
   }
 
-  const sourceVideoAssetId = result.source_video_asset_id ?? result.provider_metadata?.source_video_asset_id ?? null
-  const hasSourceVideo = typeof sourceVideoAssetId === 'number' && Number.isFinite(sourceVideoAssetId)
-  const hasEditPlan = (Array.isArray(result.recommended_cuts) && result.recommended_cuts.length > 0)
-    || (Array.isArray(result.edit_plan?.timeline) && result.edit_plan.timeline.length > 0)
-  const mode = result.campaign_input_mode ?? result.provider_metadata?.campaign_input_mode ?? null
-  const explicitlyEligible = result.auto_video_editor_eligible === true
-    || result.provider_metadata?.auto_video_editor_eligible === true
+  if (queryAnalysisId !== null) {
+    const analysis = videoCampaignGenerations.value.find((item) => item.id === queryAnalysisId) ?? null
 
-  return hasSourceVideo && hasEditPlan && (mode === 'video_analysis' || explicitlyEligible)
-}
+    if (analysis !== null) {
+      selectedAnalysisId.value = analysis.id
+      sourceMode.value = 'ai_video_analysis'
+      const analysisSourceVideoId = sourceVideoAssetIdFromAnalysis(analysis)
 
-function isEligibleVideoCampaignGeneration(generation: CreatorGeneration): boolean {
-  if (generation.job_type !== 'generate_video_to_campaign' || generation.status !== 'completed') {
-    return false
+      if (analysisSourceVideoId !== null && sourceVideos.value.some((asset) => asset.id === analysisSourceVideoId)) {
+        selectedVideoAssetId.value = analysisSourceVideoId
+      }
+    }
   }
 
-  return hasUsableEditPlan(generationOutput(generation))
+  if (queryVoiceoverId !== null && voiceoverGenerations.value.some((item) => item.id === queryVoiceoverId)) {
+    selectedVoiceoverGenerationId.value = queryVoiceoverId
+    voiceoverMode.value = 'generation'
+  }
+
+  if (queryEditMode === 'manual_edit') {
+    sourceMode.value = 'manual_edit'
+  } else if (queryEditMode === 'ai_video_analysis') {
+    sourceMode.value = 'ai_video_analysis'
+  }
 }
 
 function generationLabel(generation: CreatorGeneration): string {
-  return generationDisplayName(generation, project.value)
+  return generationSelectorLabel(generation, project.value)
+}
+
+function assetOptionLabel(asset: MediaAsset): string {
+  return [asset.original_name ?? 'Project video #' + String(asset.id), asset.size_label, mediaAssetOriginLabel(asset)]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+function analyzeFootageRoute(assetId: number | null = selectedVideoAssetId.value) {
+  const query: Record<string, string> = { returnWorkflow: 'auto_video_editor' }
+
+  if (assetId !== null) {
+    query.sourceVideoAssetId = String(assetId)
+  }
+
+  return {
+    name: 'project-video-to-campaign-action',
+    params: { projectId: projectId.value },
+    query,
+  }
 }
 
 function firstString(value: unknown): string | null {
@@ -629,7 +661,7 @@ onMounted(loadPage)
 
               <div class="mt-5 space-y-3">
                 <label class="flex items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
-                  <input v-model="sourceMode" type="radio" value="ai_video_analysis" class="mt-1 accent-emerald-400" data-testid="auto-video-source-mode" :disabled="videoCampaignGenerations.length === 0">
+                  <input v-model="sourceMode" type="radio" value="ai_video_analysis" class="mt-1 accent-emerald-400" data-testid="auto-video-source-mode" >
                   <span>
                     <span class="block font-semibold text-neutral-100">Use AI video analysis</span>
                     <span class="mt-1 block text-xs leading-5 text-neutral-500">Use a previous video analysis with detected product moments and recommended cuts.</span>
@@ -640,6 +672,21 @@ onMounted(loadPage)
                     {{ generationLabel(item) }}
                   </option>
                 </select>
+                <div
+                  v-else-if="sourceMode === 'ai_video_analysis'"
+                  class="rounded-2xl border border-dashed border-sky-900/60 bg-sky-950/20 p-4 text-sm leading-6 text-sky-100/80"
+                  data-testid="auto-video-no-analysis-state"
+                >
+                  <p class="font-semibold text-sky-100">{{ t('projectActions.noVideoAnalysisYet') }}</p>
+                  <p class="mt-1 text-sky-100/70">{{ t('projectActions.analyzeFootageFirstBody') }}</p>
+                  <RouterLink
+                    :to="analyzeFootageRoute()"
+                    class="mt-3 inline-flex min-h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+                    data-testid="auto-video-analyze-footage-empty-cta"
+                  >
+                    {{ t('projectActions.analyzeFootage') }}
+                  </RouterLink>
+                </div>
                 <p v-if="sourceMode === 'ai_video_analysis' && unavailableCampaignGenerations.length" class="rounded-2xl border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-5 text-amber-100/80" data-testid="auto-video-ineligible-campaign-note">
                   This content kit was created from text or images, so it does not include video cuts. Upload a source video or run Analyze footage first.
                 </p>
@@ -653,10 +700,18 @@ onMounted(loadPage)
                 </label>
                 <select v-if="sourceMode === 'manual_edit' && sourceVideos.length" v-model.number="selectedVideoAssetId" class="nusa-select" data-testid="auto-video-manual-source-select">
                   <option v-for="asset in sourceVideos" :key="asset.id" :value="asset.id">
-                    {{ asset.original_name ?? 'Uploaded video' }} · {{ asset.size_label ?? 'size unavailable' }}
+                    {{ assetOptionLabel(asset) }}
                   </option>
                 </select>
                 <p v-else-if="sourceMode === 'manual_edit'" class="rounded-2xl border border-dashed border-neutral-800 p-4 text-sm text-neutral-500">{{ t('videoWorkflows.noVideoAssets') }}</p>
+                <RouterLink
+                  v-if="sourceMode === 'manual_edit' && selectedVideoAssetId !== null"
+                  :to="analyzeFootageRoute(selectedVideoAssetId)"
+                  class="inline-flex min-h-10 items-center justify-center rounded-2xl border border-sky-800 bg-sky-950/30 px-4 text-sm font-semibold text-sky-100 transition hover:border-sky-500 hover:bg-sky-900/40"
+                  data-testid="auto-video-analyze-selected-video"
+                >
+                  Analyze this video with AI
+                </RouterLink>
               </div>
 
               <label class="nusa-card-soft mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-dashed px-4 py-7 text-center transition hover:border-cyan-300/40">

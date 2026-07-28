@@ -162,6 +162,7 @@ class ProjectActionService
             'raw_product_video',
             'campaign_source_video',
             'video_reference',
+            'edited_video_result',
             'general',
         ], 'video');
         $existingVideoCampaigns = $this->generationCount($project, 'generate_video_to_campaign');
@@ -172,7 +173,7 @@ class ProjectActionService
                 key: 'source_video',
                 label: 'Source product video',
                 satisfied: $hasSourceVideo,
-                helpText: 'Choose or upload a raw product video for the campaign analysis.',
+                helpText: 'Choose or upload product footage for AI analysis.',
                 suggestedUsageRole: 'campaign_source_video',
             ),
         ];
@@ -180,14 +181,14 @@ class ProjectActionService
         return $this->action(
             user: $user,
             key: 'generate_video_to_campaign',
-            title: 'Analyze product footage',
-            description: 'Turn source product footage into hooks, narration, captions, recommended cuts and an edit plan.',
+            title: 'Analyze Footage with AI',
+            description: 'Analyze product footage to identify key moments, campaign angles, narration, captions and an edit plan.',
             serviceTier: 'advanced',
             outputType: 'assisted_media',
             tool: $tool,
             status: 'configure',
             actionMode: 'configure',
-            primaryLabel: $existingVideoCampaigns > 0 ? 'Generate another video analysis kit' : 'Generate video analysis kit',
+            primaryLabel: $existingVideoCampaigns > 0 ? 'Analyze new footage' : 'Analyze footage with AI',
             primaryAction: 'configure_video_to_campaign',
             requirements: $requirements,
             recommendedAssets: $this->recommendedAssets($project, [
@@ -195,11 +196,12 @@ class ProjectActionService
                 'raw_product_video',
                 'source_video',
                 'video_reference',
+                'edited_video_result',
                 'general',
             ]),
             missingRequirementsCount: $hasSourceVideo ? 0 : 1,
             reason: $hasSourceVideo
-                ? 'A project video is available for campaign analysis.'
+                ? 'A project video is available for footage analysis.'
                 : 'Upload or choose a product video in the setup flow.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-video-campaign",
             creditCost: $tool?->credit_cost,
@@ -217,6 +219,7 @@ class ProjectActionService
             'raw_product_video',
             'campaign_source_video',
             'video_reference',
+            'edited_video_result',
             'general',
         ], 'video');
         $voiceoverSources = $project->generations
@@ -230,9 +233,9 @@ class ProjectActionService
             $this->requirement(
                 type: 'source_generation',
                 key: 'video_campaign_analysis',
-                label: 'Video campaign analysis',
+                label: 'AI footage analysis',
                 satisfied: $hasReusableAnalysis,
-                helpText: 'Reuse a completed Video-to-Campaign result when available.',
+                helpText: 'Reuse a completed Analyze Footage result when available.',
             ),
             $this->requirement(
                 type: 'media_asset',
@@ -256,7 +259,7 @@ class ProjectActionService
             user: $user,
             key: 'generate_auto_video_edit',
             title: 'Auto Video Editor',
-            description: 'Combine product footage, video campaign context and optional voiceover into an edit-ready vertical video plan.',
+            description: 'Turn raw or AI-generated product footage into an edited creator video using manual setup or a previous AI footage analysis.',
             serviceTier: 'premium',
             outputType: 'video',
             tool: $tool,
@@ -274,13 +277,14 @@ class ProjectActionService
                 'raw_product_video',
                 'source_video',
                 'video_reference',
+                'edited_video_result',
                 'voiceover_audio',
                 'audio_track',
             ]),
             missingRequirementsCount: ($hasReusableAnalysis || $hasSourceVideo) ? 0 : 1,
             reason: $hasReusableAnalysis
-                ? 'Can reuse existing video campaign analysis.'
-                : ($hasSourceVideo ? 'Manual edit setup is available from a raw source video.' : 'Choose a Video-to-Campaign Insight or raw product video in setup.'),
+                ? 'Can reuse an existing footage analysis.'
+                : ($hasSourceVideo ? 'Analyze footage first, or use manual edit setup.' : 'Choose a completed Analyze Footage result or raw product video in setup.'),
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-auto-video-edit",
             creditCost: $tool?->credit_cost,
         );
@@ -299,6 +303,7 @@ class ProjectActionService
             'raw_product_video',
             'campaign_source_video',
             'video_reference',
+            'edited_video_result',
             'general',
         ], 'video');
         $campaignSources = $this->completedGenerations($project, 'generate_affiliate_campaign')
@@ -409,9 +414,7 @@ class ProjectActionService
         $hasProductImage = $this->hasAssetRole($project, 'product_image', 'image')
             || $project->mediaAssets->contains(fn ($asset): bool => $asset->type === 'image');
         $hasCampaign = $this->completedGenerations($project, 'generate_affiliate_campaign')->isNotEmpty()
-            || $this->completedGenerations($project, 'generate_video_to_campaign')->isNotEmpty()
-            || $this->completedGenerations($project, 'generate_product_video_script')->isNotEmpty()
-            || $this->completedGenerations($project, 'generate_auto_video_ad')->isNotEmpty();
+            || $this->completedGenerations($project, 'generate_video_to_campaign')->isNotEmpty();
         $requirements = [
             $this->requirement(
                 type: 'input',
@@ -425,7 +428,7 @@ class ProjectActionService
                 key: 'campaign_script',
                 label: 'Saved campaign',
                 satisfied: $hasCampaign,
-                helpText: 'Optional. Use a Product Content Kit, video analysis or ad generation as campaign context.',
+                helpText: 'Optional. Use a Product Content Kit or Analyze Footage result as campaign context.',
             ),
             $this->requirement(
                 type: 'media_asset',
@@ -451,7 +454,7 @@ class ProjectActionService
             user: $user,
             key: 'start_motion_video',
             title: 'Motion AI Video',
-            description: 'Create text-to-video or campaign-to-video motion clips, with optional product image context.',
+            description: 'Generate premium AI product footage from a description, a saved campaign or a product image.',
             serviceTier: 'premium',
             outputType: 'video',
             tool: $tool,
@@ -467,7 +470,7 @@ class ProjectActionService
                 'brand_reference',
             ]),
             missingRequirementsCount: 0,
-            reason: 'Open setup to choose text, campaign or image-context source mode.',
+            reason: 'Open setup to choose text, campaign-assisted or product image source mode.',
             actionEndpoint: "/api/v1/projects/{$project->id}/generate-motion-ai-video",
             creditCost: $tool?->credit_cost,
             providerCapabilities: $capabilities,
@@ -723,10 +726,78 @@ class ProjectActionService
                     'title' => $this->sourceTitle($generation, $payload),
                     'created_at' => $generation->created_at?->toISOString(),
                     'excerpt' => Str::limit($text, 180, ''),
+                    'origin_workflow' => $this->originWorkflow($generation),
+                    'origin_mode' => $this->originMode($generation, $payload),
+                    'origin_label' => $this->originLabel($generation, $payload),
+                    'source_video_asset_id' => is_numeric(data_get($payload, 'source_video_asset_id')) ? (int) data_get($payload, 'source_video_asset_id') : null,
                 ];
             })
             ->values()
             ->all();
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function originWorkflow(Generation $generation): string
+    {
+        return match ($generation->job_type) {
+            'generate_affiliate_campaign' => 'product_content_kit',
+            'generate_video_to_campaign' => 'analyze_footage',
+            'generate_motion_ai_video' => 'motion_ai_video',
+            'generate_auto_video_edit' => 'auto_video_editor',
+            'generate_ai_voiceover' => 'voiceover',
+            default => 'unknown',
+        };
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function originMode(Generation $generation, array $payload): ?string
+    {
+        $mode = data_get($generation->input_payload, 'campaign_input_mode')
+            ?? data_get($payload, 'campaign_input_mode')
+            ?? data_get($payload, 'provider_metadata.campaign_input_mode')
+            ?? data_get($generation->input_payload, 'source_mode');
+
+        return is_string($mode) && trim($mode) !== '' ? trim($mode) : null;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function originLabel(Generation $generation, array $payload): string
+    {
+        if ($generation->job_type === 'generate_video_to_campaign') {
+            return 'Analyze Footage with AI · Video analysis';
+        }
+
+        if ($generation->job_type === 'generate_motion_ai_video') {
+            return 'Motion AI Video · Generated footage';
+        }
+
+        if ($generation->job_type === 'generate_auto_video_edit') {
+            return 'Auto Video Editor · Edited video';
+        }
+
+        if ($generation->job_type === 'generate_ai_voiceover') {
+            $sourceWorkflow = data_get($generation->input_payload, 'source_workflow');
+
+            return $sourceWorkflow === 'analyze_footage'
+                ? 'Voiceover · From Analyze Footage with AI'
+                : 'Voiceover';
+        }
+
+        if ($generation->job_type === 'generate_affiliate_campaign') {
+            $mode = $this->originMode($generation, $payload);
+
+            if ($mode === 'image_assisted') {
+                return 'Product Content Kit · Product image';
+            }
+
+            if ($mode === 'video_analysis') {
+                return 'Analyze Footage with AI · Video analysis';
+            }
+
+            return 'Product Content Kit · Project brief';
+        }
+
+        return 'Saved generation';
     }
 
     /** @param array<string, mixed> $payload */

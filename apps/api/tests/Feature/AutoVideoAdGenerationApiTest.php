@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\CreditTransactionType;
 use App\Jobs\GenerateAutoVideoAdJob;
+use App\Models\CreatorTool;
 use App\Models\CreditTransaction;
 use App\Models\Generation;
 use App\Models\MediaAsset;
@@ -16,6 +17,20 @@ use Tests\TestCase;
 class AutoVideoAdGenerationApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        CreatorTool::query()->where('key', 'auto_video_ads')->update([
+            'status' => 'available',
+            'route' => '/dashboard?tool=auto_video_ads',
+            'implementation_stage' => 'beta',
+            'credit_cost' => 12,
+            'credit_cost_label' => '12 credits',
+            'badge_label' => 'Internal test',
+        ]);
+    }
 
     public function test_guest_cannot_generate_auto_video_ad(): void
     {

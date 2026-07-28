@@ -22,7 +22,7 @@ class CreatorToolApiTest extends TestCase
         $this->assertDatabaseCount('creator_tools', 12);
     }
 
-    public function test_creator_tool_seeder_repairs_stale_active_workflow_statuses(): void
+    public function test_creator_tool_seeder_repairs_stale_workflow_statuses(): void
     {
         CreatorTool::query()->whereIn('key', ['auto_video_ads', 'motion_ai_video'])->update([
             'status' => 'disabled',
@@ -37,12 +37,12 @@ class CreatorToolApiTest extends TestCase
 
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'auto_video_ads',
-            'status' => 'available',
-            'route' => '/dashboard?tool=auto_video_ads',
-            'implementation_stage' => 'beta',
-            'credit_cost' => 12,
-            'credit_cost_label' => '12 credits',
-            'badge_label' => 'Real beta',
+            'status' => 'coming_soon',
+            'route' => null,
+            'implementation_stage' => 'future',
+            'credit_cost' => 0,
+            'credit_cost_label' => 'Credit cost coming soon',
+            'badge_label' => 'Coming soon',
         ]);
 
         $this->assertDatabaseHas('creator_tools', [
@@ -95,23 +95,23 @@ class CreatorToolApiTest extends TestCase
             'key' => 'auto_video_editor',
             'service_tier' => 'premium',
             'output_type' => 'video',
-            'implementation_stage' => 'beta',
+            'implementation_stage' => 'real_provider',
         ]);
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'auto_video_ads',
             'service_tier' => 'premium',
             'output_type' => 'ad_plan',
-            'implementation_stage' => 'beta',
-            'status' => 'available',
+            'implementation_stage' => 'future',
+            'status' => 'coming_soon',
         ]);
         $this->assertDatabaseHas('creator_tools', [
             'key' => 'motion_ai_video',
             'service_tier' => 'premium',
             'output_type' => 'video',
-            'implementation_stage' => 'mock',
+            'implementation_stage' => 'real_provider',
             'status' => 'available',
             'credit_cost' => 3,
-            'badge_label' => 'Mock beta',
+            'badge_label' => 'Available now',
         ]);
     }
 
@@ -187,7 +187,7 @@ class CreatorToolApiTest extends TestCase
 
         $autoVideoAds = collect($response->json('data'))->firstWhere('key', 'auto_video_ads');
 
-        $this->assertSame('available', $autoVideoAds['status']);
+        $this->assertSame('coming_soon', $autoVideoAds['status']);
         $this->assertSame('ad_plan', $autoVideoAds['output_type']);
     }
 

@@ -289,7 +289,7 @@ class VideoWorkflowGenerationApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('source_video_to_campaign_generation_id')
             ->assertJsonFragment([
-                'Selected campaign does not include video analysis data. Choose a Video-to-Campaign Insight or use Manual edit setup.',
+                'Selected campaign does not include video analysis data. Choose an Analyze Footage result or use Manual edit setup.',
             ]);
 
         Queue::assertNothingPushed();
@@ -574,7 +574,7 @@ class VideoWorkflowGenerationApiTest extends TestCase
 
         $this->assertIsArray($autoEditor);
         $this->assertSame('premium', $autoEditor['service_tier']);
-        $this->assertSame('Can reuse existing video campaign analysis.', $autoEditor['reason']);
+        $this->assertSame('Can reuse an existing footage analysis.', $autoEditor['reason']);
         $this->assertNotEmpty($autoEditor['recommended_sources']);
     }
 

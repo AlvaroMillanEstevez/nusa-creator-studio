@@ -232,13 +232,13 @@ const defaultActions: ProjectActionsResponse = {
     {
       key: 'start_motion_video',
       title: 'Motion AI Video',
-      description: 'Create motion-video concepts from product images.',
+      description: 'Generate premium AI product footage from a description, a saved campaign or a product image.',
       service_tier: 'premium',
       output_type: 'video',
       status: 'configure',
       required_source: 'media_asset',
       source_generation_id: null,
-      reason: 'Open setup to choose the product image, optional scenario and script source.',
+      reason: 'Open setup to choose text, campaign-assisted or product image source mode.',
       action_endpoint: '/api/v1/projects/42/generate-motion-ai-video',
       tool_key: 'motion_ai_video',
       tool_status: 'available',
@@ -280,6 +280,11 @@ async function mountProjectDetail(
       { path: '/voiceover/new', component: { template: '<div />' } },
       { path: '/fashion-try-on/new', component: { template: '<div />' } },
       { path: '/motion-video/new', component: { template: '<div />' } },
+      { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
       { path: '/projects/:id', component: ProjectDetailView },
     ],
   })
@@ -425,7 +430,7 @@ describe('ProjectDetailView', () => {
     expect(renderedText).toContain('Campaña para pequeños creadores en España')
     expect(renderedText).toContain('Diseñado para creadores que necesitan automatización')
     expect(renderedText).not.toContain('Continue with selected result')
-    expect(renderedText).toContain('Create voiceover')
+    expect(renderedText).toContain('Create Motion AI Video')
     expect(wrapper.find('[data-testid="project-action-hub"]').exists()).toBe(true)
     expect(renderedText).not.toMatch(/Ã¡|Ã±|Â¿|Â¡/)
   })
@@ -798,6 +803,8 @@ describe('ProjectDetailView', () => {
     expect(text).toContain('Motion AI Video')
     expect(text).toContain('Timeline notes')
     expect(text).toContain('Visual sequence')
+    expect(text).toContain('Next workflow')
+    expect(text).toContain('Return to project')
     expect(text).toContain('Internal diagnostics')
     expect(text).toContain('Video preview is not available for this generation')
     expect(text).not.toContain('Generated video placeholder')
@@ -870,7 +877,7 @@ describe('ProjectDetailView', () => {
               route: '/dashboard?tool=motion_ai_video',
               credit_cost: 3,
               credit_cost_label: '3 credits',
-              badge_label: 'New mock',
+              badge_label: 'Available now',
               is_recommended: false,
               sort_order: 60,
             },
@@ -949,7 +956,7 @@ describe('ProjectDetailView', () => {
               route: '/fashion-try-on/new',
               credit_cost: 2,
               credit_cost_label: '2 credits',
-              badge_label: 'New mock',
+              badge_label: 'Available now',
               is_recommended: false,
               sort_order: 50,
             },
@@ -1052,7 +1059,7 @@ describe('ProjectDetailView', () => {
               route: '/voiceover/new',
               credit_cost: 1,
               credit_cost_label: '1 credit',
-              badge_label: 'New mock',
+              badge_label: 'Available now',
               is_recommended: false,
               sort_order: 40,
             },

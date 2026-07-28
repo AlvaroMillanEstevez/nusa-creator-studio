@@ -104,6 +104,7 @@ async function mountCampaignResult(props: Record<string, unknown> = {}, initialP
       { path: '/', component: { template: '<div />' } },
       { path: '/pricing', component: { template: '<div />' } },
       { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
     ],
   })
@@ -197,19 +198,19 @@ describe('CampaignGenerationResult', () => {
 
     expect(wrapper.get('[data-testid="campaign-workflow-notice"]').text()).toContain('This campaign includes video analysis and can be used in Auto Video Editor.')
   })
-  it('routes narration voiceover CTA to the dedicated setup page with return context', async () => {
-    const { wrapper, router } = await mountCampaignResult({
+  it('routes the next workflow CTA to Motion AI Video with safe campaign preselection', async () => {
+    const { wrapper } = await mountCampaignResult({
       projectId: 77,
       generationId: 901,
       voiceoverAction,
     })
 
-    await wrapper.get('[data-testid="generate-narration-voiceover"]').trigger('click')
-    await flushPromises()
+    const motionLink = wrapper.get('[data-testid="campaign-create-motion-video"]')
 
-    expect(router.currentRoute.value.name).toBe('project-voiceover-action')
-    expect(router.currentRoute.value.params.projectId).toBe('77')
-    expect(router.currentRoute.value.query.source_generation_id).toBe('901')
-    expect(router.currentRoute.value.query.return_to).toBe('/projects/77/generations/901')
+    expect(motionLink.text()).toContain('Create Motion AI Video')
+    expect(motionLink.attributes('href')).toBe(
+      '/projects/77/actions/motion-ai-video?sourceMode=campaign_assisted&campaignGenerationId=901',
+    )
+    expect(wrapper.find('[data-testid="generate-narration-voiceover"]').exists()).toBe(false)
   })
 })

@@ -21,7 +21,7 @@ const toolIntentLabels: Record<string, string> = {
   auto_video_ads: 'Auto Video Ads',
   affiliate_campaign: 'Product Content Kit',
   video_enhancer: 'Video Enhancer / Caption Pack',
-  video_to_campaign: 'Product Content Kit · Video analysis',
+  video_to_campaign: 'Analyze Footage with AI',
   product_to_video: 'Product-to-Video Script Pack',
   ai_voiceover: 'AI Voiceover',
   fashion_try_on: 'Fashion Try-On',

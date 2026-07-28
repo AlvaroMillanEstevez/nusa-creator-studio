@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\CreditTransactionType;
 use App\Jobs\GenerateAutoVideoAdJob;
+use App\Models\CreatorTool;
 use App\Models\CreditTransaction;
 use App\Models\Generation;
 use App\Models\MediaAsset;
@@ -40,6 +41,15 @@ class ShotstackAutoVideoAdProviderTest extends TestCase
         config()->set('auto_video_editor.shotstack.render_timeout_seconds', 1);
         config()->set('auto_video_editor.provider_assets.public_base_url', 'https://assets.nusa.test');
         config()->set('auto_video_editor.provider_assets.ttl_minutes', 30);
+
+        CreatorTool::query()->where('key', 'auto_video_ads')->update([
+            'status' => 'available',
+            'route' => '/dashboard?tool=auto_video_ads',
+            'implementation_stage' => 'beta',
+            'credit_cost' => 12,
+            'credit_cost_label' => '12 credits',
+            'badge_label' => 'Internal test',
+        ]);
 
         Cache::flush();
         Storage::fake('media-test');

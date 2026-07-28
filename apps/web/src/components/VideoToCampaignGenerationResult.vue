@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import type {
+  CreatorGeneration,
   ProjectAction,
   VideoToCampaignCut,
   VideoToCampaignEditPlanItem,
@@ -17,7 +18,69 @@ const props = defineProps<{
   projectId?: number | string | null
   generationId?: number | string | null
   voiceoverAction?: ProjectAction | null
+  linkedVoiceoverGeneration?: CreatorGeneration | null
 }>()
+
+const projectRoute = computed(() => {
+  return props.projectId === null || props.projectId === undefined ? '/dashboard' : `/projects/${String(props.projectId)}`
+})
+const autoVideoEditorRoute = computed(() => {
+  if (props.projectId === null || props.projectId === undefined || props.generationId === null || props.generationId === undefined) {
+    return null
+  }
+
+  const query: Record<string, string> = {
+    editMode: 'ai_video_analysis',
+    analysisGenerationId: String(props.generationId),
+  }
+
+  const sourceVideoAssetId = props.result.source_video_asset_id ?? props.result.provider_metadata?.source_video_asset_id ?? null
+
+  if (typeof sourceVideoAssetId === 'number' && Number.isFinite(sourceVideoAssetId)) {
+    query.sourceVideoAssetId = String(sourceVideoAssetId)
+  }
+
+  if (props.linkedVoiceoverGeneration !== null && props.linkedVoiceoverGeneration !== undefined) {
+    query.voiceoverGenerationId = String(props.linkedVoiceoverGeneration.id)
+  }
+
+  return {
+    name: 'project-auto-video-editor-action',
+    params: { projectId: String(props.projectId) },
+    query,
+  }
+})
+const motionAiVideoRoute = computed(() => {
+  if (props.projectId === null || props.projectId === undefined || props.generationId === null || props.generationId === undefined) {
+    return null
+  }
+
+  return {
+    name: 'project-motion-ai-video-action',
+    params: { projectId: String(props.projectId) },
+    query: {
+      sourceMode: 'campaign_assisted',
+      campaignGenerationId: String(props.generationId),
+    },
+  }
+})
+const linkedVoiceoverRoute = computed(() => {
+  if (props.projectId === null || props.projectId === undefined || props.linkedVoiceoverGeneration === null || props.linkedVoiceoverGeneration === undefined) {
+    return null
+  }
+
+  return `/projects/${String(props.projectId)}/generations/${String(props.linkedVoiceoverGeneration.id)}`
+})
+const narrationScript = computed(() => props.result.narration_voice_script.trim())
+const voiceoverCostLabel = computed(() => {
+  const cost = props.voiceoverAction?.credit_cost
+
+  if (typeof cost !== 'number') {
+    return null
+  }
+
+  return cost === 1 ? '1 credit' : `${cost} credits`
+})
 
 const voiceoverRoute = computed(() => {
   if (props.projectId === null || props.projectId === undefined || props.generationId === null || props.generationId === undefined) {
@@ -30,6 +93,7 @@ const voiceoverRoute = computed(() => {
     query: {
       source_generation_id: String(props.generationId),
       return_to: `/projects/${String(props.projectId)}/generations/${String(props.generationId)}`,
+      source_workflow: 'analyze_footage',
     },
   }
 })
@@ -42,7 +106,7 @@ const providerBadge = computed(() => {
   }
 
   if (provider === 'mock') {
-    return 'Mock preview'
+    return 'Video analysis'
   }
 
   return null
@@ -194,7 +258,7 @@ function hasEditTimelineContent(item: VideoToCampaignEditPlanItem): boolean {
   <div class="space-y-5" data-testid="video-to-campaign-result">
     <section class="nusa-card-premium rounded-[2rem] p-5">
       <div class="flex flex-wrap items-center gap-2">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Product Content Kit · Video analysis</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Analyze Footage with AI · Video analysis</p>
         <span
           v-if="providerBadge"
           class="rounded-full border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-[11px] font-semibold text-emerald-300"
@@ -202,30 +266,80 @@ function hasEditTimelineContent(item: VideoToCampaignEditPlanItem): boolean {
           {{ providerBadge }}
         </span>
       </div>
-      <h2 class="mt-3 text-2xl font-bold">Product Content Kit from video</h2>
+      <h2 class="mt-3 text-2xl font-bold">Footage analysis ready</h2>
       <p class="mt-4 text-sm leading-7 text-neutral-200">{{ result.video_summary }}</p>
       <p class="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm leading-6 text-neutral-300">
         {{ result.campaign_angle }}
       </p>
     </section>
 
-    <section class="nusa-card-premium rounded-[2rem] p-5">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Narration voice</p>
-          <h3 class="mt-2 text-xl font-semibold">Voiceover-ready script</h3>
-        </div>
+    <section class="nusa-card-premium rounded-[2rem] p-5" data-testid="video-analysis-next-actions">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Next workflow</p>
+      <h3 class="mt-2 text-xl font-semibold">Continue with this footage analysis</h3>
+      <p class="mt-2 text-sm leading-6 text-neutral-400">
+        Use the detected product moments and edit plan in Auto Video Editor, or turn this analysis into Motion AI creative direction. No generation starts until you confirm in the next setup screen.
+      </p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-3">
         <RouterLink
-          v-if="voiceoverRoute && voiceoverAction?.user_has_access !== false"
-          :to="voiceoverRoute"
-          class="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
-          data-testid="create-voiceover-from-video-campaign"
+          v-if="autoVideoEditorRoute"
+          :to="autoVideoEditorRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-center text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+          data-testid="analysis-continue-auto-editor"
         >
-          Create voiceover from this campaign
+          Continue to Auto Video Editor
+        </RouterLink>
+        <RouterLink
+          v-if="motionAiVideoRoute"
+          :to="motionAiVideoRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl border border-sky-800 bg-sky-950/30 px-4 text-center text-sm font-semibold text-sky-100 transition hover:border-sky-500 hover:bg-sky-900/40"
+          data-testid="analysis-create-motion-video"
+        >
+          Create Motion AI Video
+        </RouterLink>
+        <RouterLink
+          :to="projectRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-center text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30"
+          data-testid="analysis-return-project"
+        >
+          Return to project
         </RouterLink>
       </div>
-      <p class="mt-4 whitespace-pre-line rounded-2xl bg-neutral-950/70 p-4 text-sm leading-7 text-neutral-100">
-        {{ result.narration_voice_script }}
+    </section>
+
+    <section class="nusa-card-premium rounded-[2rem] p-5" data-testid="analysis-optional-voiceover">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Optional voiceover</p>
+          <h3 class="mt-2 text-xl font-semibold">Narration from this analysis</h3>
+        </div>
+        <RouterLink
+          v-if="voiceoverRoute && narrationScript && !linkedVoiceoverRoute && voiceoverAction?.user_has_access !== false"
+          :to="voiceoverRoute"
+          class="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+          data-testid="create-voiceover-from-video-analysis"
+        >
+          Create voiceover
+        </RouterLink>
+      </div>
+      <p class="mt-2 text-sm leading-6 text-neutral-400">
+        Create a voiceover from the narration prepared by this footage analysis. This is explicit and charged only when you click Create voiceover.
+      </p>
+      <RouterLink
+        v-if="linkedVoiceoverRoute"
+        :to="linkedVoiceoverRoute"
+        class="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl border border-emerald-800 bg-emerald-950/40 px-4 text-sm font-semibold text-emerald-100 transition hover:border-emerald-500 hover:bg-emerald-900/50"
+        data-testid="analysis-linked-voiceover"
+      >
+        Linked voiceover ready
+      </RouterLink>
+      <p v-if="voiceoverCostLabel" class="mt-3 text-xs font-semibold text-emerald-300">
+        Voiceover cost: {{ voiceoverCostLabel }}
+      </p>
+      <p v-if="narrationScript" class="mt-4 whitespace-pre-line rounded-2xl bg-neutral-950/70 p-4 text-sm leading-7 text-neutral-100">
+        {{ narrationScript }}
+      </p>
+      <p v-else class="mt-4 rounded-2xl border border-amber-900/50 bg-amber-950/20 p-3 text-sm leading-6 text-amber-100/80" data-testid="analysis-missing-voiceover-script">
+        This analysis did not create a usable narration script, so voiceover generation is disabled for this result.
       </p>
     </section>
 

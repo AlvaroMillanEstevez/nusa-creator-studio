@@ -397,6 +397,10 @@ export interface ProjectActionRecommendedSource {
   title: string
   created_at: string | null
   excerpt: string
+  origin_workflow?: string | null
+  origin_mode?: string | null
+  origin_label?: string | null
+  source_video_asset_id?: number | null
 }
 
 export interface ProjectActionRecommendedAsset {

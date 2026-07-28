@@ -153,7 +153,7 @@ describe('ProjectDetailView workspace project', () => {
     expect(text).toContain('A compact desk light for mobile-first creators.')
     expect(text).toContain('TikTok affiliate creators')
     expect(text).toContain('Generate another Product Content Kit')
-    expect(text).toContain('View Product Content Kit')
+    expect(text).toContain('View latest Product Content Kit')
     expect(text).toContain('Generation history')
     expect(text).not.toContain('Turn one product into your next campaign')
     expect(text).not.toContain('Upload source files')
@@ -163,7 +163,7 @@ describe('ProjectDetailView workspace project', () => {
     expect(wrapper.find('[data-testid="generation-result-link"]').attributes('href')).toBe(
       '/projects/77/generations/501',
     )
-    expect(wrapper.find('[data-testid="view-generated-campaign"]').attributes('href')).toBe(
+    expect(wrapper.find('[data-testid="view-latest-product_content_kit"]').attributes('href')).toBe(
       '/projects/77/generations/501',
     )
 

@@ -175,6 +175,11 @@ async function mountPollingView(detailResponses: CreatorGeneration[]) {
       { path: '/account', component: { template: '<div />' } },
       { path: '/login', component: { template: '<div />' } },
       { path: '/register', component: { template: '<div />' } },
+      { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
       { path: '/projects/:id', component: ProjectDetailView },
     ],
   })
@@ -193,10 +198,14 @@ async function mountPollingView(detailResponses: CreatorGeneration[]) {
 function generateButton(wrapper: ReturnType<typeof mount>) {
   const button = wrapper
     .findAll('button')
-    .find((candidate) => candidate.text().includes('Generate campaign'))
+    .find((candidate) =>
+      ['Generate campaign', 'Create Product Content Kit', 'Generate another Product Content Kit'].some((label) =>
+        candidate.text().includes(label),
+      ),
+    )
 
   if (!button) {
-    throw new Error('Generate campaign button was not rendered.')
+    throw new Error('Product Content Kit generation button was not rendered.')
   }
 
   return button

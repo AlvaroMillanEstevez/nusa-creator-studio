@@ -25,194 +25,36 @@ const authenticatedUser: AuthUser = {
   created_at: null,
 }
 
-const tools: CreatorTool[] = [
-  {
-    key: 'affiliate_campaign',
-    title: 'Affiliate Campaign Generator',
-    short_description: 'Generate a complete campaign pack.',
-    long_description: 'Turn a brief into structured TikTok campaign content.',
-    category: 'campaign_creation',
+function tool(overrides: Partial<CreatorTool> & Pick<CreatorTool, 'key' | 'title'>): CreatorTool {
+  const { key, title, ...rest } = overrides
+
+  return {
+    key,
+    title,
+    short_description: 'Tool description.',
+    long_description: 'Long tool description.',
+    category: 'workflow',
     service_tier: 'basic',
     output_type: 'script_pack',
-    implementation_stage: 'mock',
+    implementation_stage: 'real_provider',
     status: 'available',
-    route: '/campaigns/new',
+    route: '/dashboard',
     credit_cost: 1,
     credit_cost_label: '1 credit',
     badge_label: 'Available now',
-    is_recommended: true,
+    is_recommended: false,
     sort_order: 10,
-  },
-  {
-    key: 'ai_voiceover',
-    title: 'AI Voiceover',
-    short_description: 'Generate voiceover scripts and narration notes.',
-    long_description: 'Turn a script or product brief into an audio-ready narration plan.',
-    category: 'audio',
-    service_tier: 'advanced',
-    output_type: 'audio',
-    implementation_stage: 'real_provider',
-    status: 'available',
-    route: '/voiceover/new',
-    credit_cost: 1,
-    credit_cost_label: '1 credit',
-    badge_label: 'Core beta',
-    is_recommended: false,
-    sort_order: 20,
-  },
-  {
-    key: 'video_to_campaign',
-    title: 'Video-to-Campaign',
-    short_description: 'Analyze raw product footage and turn it into a campaign plan.',
-    long_description: 'Turn product footage into campaign hooks, narration, captions and an edit plan.',
-    category: 'assisted_media',
-    service_tier: 'advanced',
-    output_type: 'assisted_media',
-    implementation_stage: 'beta',
-    status: 'available',
-    route: '/dashboard?tool=video_to_campaign',
-    credit_cost: 2,
-    credit_cost_label: '2 credits',
-    badge_label: 'Core beta',
-    is_recommended: false,
-    sort_order: 25,
-  },
-  {
-    key: 'video_enhancer',
-    title: 'Video Enhancer / Caption Pack',
-    short_description: 'Polish an existing video.',
-    long_description: null,
-    category: 'video_production',
-    service_tier: 'advanced',
-    output_type: 'assisted_media',
-    implementation_stage: 'mock',
-    status: 'maintenance',
-    route: '/video-enhancer/new',
-    credit_cost: 1,
-    credit_cost_label: '1 credit',
-    badge_label: 'Maintenance',
-    is_recommended: false,
-    sort_order: 30,
-  },
-  {
-    key: 'fashion_try_on',
-    title: 'Fashion Try-On',
-    short_description: 'Create try-on concepts.',
-    long_description: null,
-    category: 'fashion',
-    service_tier: 'premium',
-    output_type: 'image',
-    implementation_stage: 'future',
-    status: 'coming_soon',
-    route: '/fashion-try-on/new',
-    credit_cost: 2,
-    credit_cost_label: '2 credits preview',
-    badge_label: 'Preview workflow',
-    is_recommended: false,
-    sort_order: 35,
-  },
-  {
-    key: 'motion_ai_video',
-    title: 'Motion AI Video',
-    short_description: 'Create motion-video concepts from product images, scenarios and campaign scripts.',
-    long_description: 'Mock beta workflow that creates render-ready image-to-video plans.',
-    category: 'ai_video',
-    service_tier: 'premium',
-    output_type: 'video',
-    implementation_stage: 'mock',
-    status: 'available',
-    route: '/dashboard?tool=motion_ai_video',
-    credit_cost: 3,
-    credit_cost_label: '3 credits',
-    badge_label: 'Mock beta',
-    is_recommended: false,
-    sort_order: 38,
-  },
-  {
-    key: 'auto_video_editor',
-    title: 'Auto Video Editor',
-    short_description: 'Create an edit-ready vertical video plan.',
-    long_description: 'Turn product footage, campaign context and optional voiceover into an edit plan.',
-    category: 'ai_video',
-    service_tier: 'premium',
-    output_type: 'video',
-    implementation_stage: 'beta',
-    status: 'available',
-    route: '/dashboard?tool=auto_video_editor',
-    credit_cost: 2,
-    credit_cost_label: '2 credits',
-    badge_label: 'New mock',
-    is_recommended: false,
-    sort_order: 37,
-  },
-  {
-    key: 'auto_video_ads',
-    title: 'Auto Video Ads',
-    short_description: 'Create paid ad creative plans.',
-    long_description: 'Generate paid ad creative plans from campaign content and product assets.',
-    category: 'paid_ads',
-    service_tier: 'premium',
-    output_type: 'ad_plan',
-    implementation_stage: 'mock',
-    status: 'available',
-    route: '/dashboard?tool=auto_video_ads',
-    credit_cost: 2,
-    credit_cost_label: '2 credits',
-    badge_label: 'Mock beta',
-    is_recommended: false,
-    sort_order: 38,
-  },
-  {
-    key: 'future_tool',
-    title: 'Future studio tool',
-    short_description: 'Coming later.',
-    long_description: null,
-    category: 'future',
-    service_tier: 'premium',
-    output_type: 'avatar',
-    implementation_stage: 'mock',
-    status: 'available',
-    route: null,
-    credit_cost: 0,
-    credit_cost_label: 'Credit cost coming soon',
-    badge_label: 'Coming soon',
-    is_recommended: false,
-    sort_order: 39,
-  },
-  {
-    key: 'ai_avatar_presenter',
-    title: 'AI Avatar Presenter',
-    short_description: 'Create product presenter videos using an AI avatar and voice.',
-    long_description: 'Future premium workflow for avatar-led product ads.',
-    category: 'avatar',
-    service_tier: 'premium',
-    output_type: 'avatar',
-    implementation_stage: 'mock',
-    status: 'available',
-    route: null,
-    credit_cost: 0,
-    credit_cost_label: 'Credit cost coming soon',
-    badge_label: 'Future',
-    is_recommended: false,
-    sort_order: 39,
-  },
-  {
-    key: 'hidden_tool',
-    title: 'Disabled internal tool',
-    short_description: 'Should never be displayed.',
-    long_description: null,
-    category: 'internal',
-    service_tier: 'basic',
-    output_type: 'text_insight',
-    implementation_stage: 'future',
-    status: 'disabled',
-    route: '/hidden',
-    credit_cost: 0,
-    credit_cost_label: null,
-    badge_label: null,
-    is_recommended: false,
-    sort_order: 40,
-  },
+    ...rest,
+  }
+}
+
+const tools: CreatorTool[] = [
+  tool({ key: 'affiliate_campaign', title: 'Product Content Kit', service_tier: 'basic', credit_cost: 1, credit_cost_label: '1 credit' }),
+  tool({ key: 'video_to_campaign', title: 'Analyze Footage with AI', service_tier: 'advanced', credit_cost: 2, credit_cost_label: '2 credits' }),
+  tool({ key: 'motion_ai_video', title: 'Motion AI Video', service_tier: 'premium', credit_cost: 3, credit_cost_label: '3 credits' }),
+  tool({ key: 'auto_video_editor', title: 'Auto Video Editor', service_tier: 'premium', credit_cost: 2, credit_cost_label: '2 credits base' }),
+  tool({ key: 'auto_video_ads', title: 'Auto Video Ads', service_tier: 'premium', status: 'coming_soon', route: null, credit_cost: 0, credit_cost_label: 'Credit cost coming soon', badge_label: 'Coming soon' }),
+  tool({ key: 'ai_voiceover', title: 'AI Voiceover', service_tier: 'advanced', output_type: 'audio', credit_cost: 1, credit_cost_label: '1 credit' }),
 ]
 
 async function mountToolsView(
@@ -226,16 +68,10 @@ async function mountToolsView(
       { path: '/', component: placeholder },
       { path: '/tools', component: ToolsView },
       { path: '/dashboard', component: placeholder },
-      { path: '/media', component: placeholder },
       { path: '/pricing', component: placeholder },
       { path: '/account', component: placeholder },
       { path: '/login', component: placeholder },
       { path: '/register', component: placeholder },
-      { path: '/campaigns/new', component: placeholder },
-      { path: '/video-enhancer/new', component: placeholder },
-      { path: '/voiceover/new', component: placeholder },
-      { path: '/fashion-try-on/new', component: placeholder },
-      { path: '/motion-video/new', component: placeholder },
     ],
   })
 
@@ -264,134 +100,60 @@ describe('ToolsView', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders exactly the four closed-beta workflow cards', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+  it('shows the final available workflow catalog in the product order', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ data: tools }))
 
     const wrapper = await mountToolsView(fetchMock)
-    const workflowCards = wrapper.findAll('[data-workflow-card="main"]')
+    const availableCards = wrapper.findAll('[data-workflow-card="available"]')
+    const titles = availableCards.map((card) => card.find('h3').text())
 
-    expect(wrapper.text()).toContain('Create from one product workspace')
-    expect(workflowCards).toHaveLength(4)
-    expect(wrapper.get('[data-testid="workflow-card-product_content_kit"]').text()).toContain('Product Content Kit')
-    expect(wrapper.get('[data-testid="workflow-card-auto_video_editor"]').text()).toContain('Auto Video Editor')
-    expect(wrapper.get('[data-testid="workflow-card-auto_video_ads"]').text()).toContain('Auto Video Ads')
-    expect(wrapper.get('[data-testid="workflow-card-motion_ai_video"]').text()).toContain('Motion AI Video')
+    expect(wrapper.get('[data-testid="available-workflow-section"]').text()).toContain('Available workflows')
+    expect(titles).toEqual([
+      'Product Content Kit',
+      'Analyze Footage with AI',
+      'Motion AI Video',
+      'Auto Video Editor',
+    ])
+    expect(wrapper.text()).not.toContain('AI Voiceover')
+    expect(wrapper.text()).not.toContain('Supporting tools')
+    expect(wrapper.text()).not.toContain('Mock beta')
     expect(fetchMock).toHaveBeenCalledWith(
       API_BASE_URL + '/tools',
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
   })
 
-  it('does not render supporting or legacy tools as main workflow cards', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+  it('keeps Auto Video Ads as the only coming soon workflow', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ data: tools }))
 
     const wrapper = await mountToolsView(fetchMock)
-    const mainSection = wrapper.get('[data-testid="beta-workflow-section"]')
+    const comingSoonCards = wrapper.findAll('[data-workflow-card="coming-soon"]')
 
-    expect(wrapper.find('[data-testid="workflow-card-video_to_campaign"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="workflow-card-media_library"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="workflow-card-hook_generator"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="workflow-card-caption_hashtag_pack"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="workflow-card-script_variations"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="tool-card-video_to_campaign"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="tool-card-media_library"]').exists()).toBe(false)
-    expect(mainSection.text()).not.toContain('Video-to-Campaign Insight')
-    expect(mainSection.text()).not.toContain('Hook Generator')
-    expect(mainSection.text()).not.toContain('Caption & Hashtag Pack')
-    expect(mainSection.text()).not.toContain('Script Variations')
-    expect(mainSection.text()).not.toContain('Media Library')
-    expect(wrapper.text()).not.toContain('Basic')
-    expect(wrapper.text()).not.toContain('Advanced')
-    expect(wrapper.text()).not.toContain('Premium')
+    expect(comingSoonCards).toHaveLength(1)
+    expect(comingSoonCards[0]?.text()).toContain('Auto Video Ads')
+    expect(comingSoonCards[0]?.element.tagName).toBe('ARTICLE')
+    expect(comingSoonCards[0]?.attributes('aria-disabled')).toBe('true')
+    expect(comingSoonCards[0]?.text()).toContain('Coming soon')
   })
 
-  it('frames Product Content Kit and Auto Video Editor with the right inputs and outputs', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+  it('links available workflows for authenticated users', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ data: tools }))
 
     const wrapper = await mountToolsView(fetchMock)
-    const productKit = wrapper.get('[data-testid="workflow-card-product_content_kit"]')
-    const autoEditor = wrapper.get('[data-testid="workflow-card-auto_video_editor"]')
 
-    expect(productKit.text()).toContain('From brief, product image or product video')
-    expect(productKit.text()).toContain('Brief, Product image, Product video')
-    expect(productKit.text()).toContain('Hooks')
-    expect(autoEditor.text()).toContain('raw product footage')
-    expect(autoEditor.text()).toContain('organic creator video')
-    expect(autoEditor.text()).toContain('Video analysis')
-  })
-
-  it('links active workflows for authenticated users including Motion AI Video', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    const wrapper = await mountToolsView(fetchMock)
-    const productKit = wrapper.get('[data-testid="workflow-card-product_content_kit"]')
-    const autoEditor = wrapper.get('[data-testid="workflow-card-auto_video_editor"]')
-    const ads = wrapper.get('[data-testid="workflow-card-auto_video_ads"]')
-    const motion = wrapper.get('[data-testid="workflow-card-motion_ai_video"]')
-
-    expect(productKit.element.tagName).toBe('A')
-    expect(productKit.attributes('href')).toBe('/dashboard?tool=product_content_kit')
-    expect(autoEditor.element.tagName).toBe('A')
-    expect(autoEditor.attributes('href')).toBe('/dashboard?tool=auto_video_editor')
-    expect(ads.element.tagName).toBe('A')
-    expect(ads.attributes('href')).toBe('/dashboard?tool=auto_video_ads')
-    expect(ads.text()).toContain('Mock beta')
-    expect(motion.element.tagName).toBe('A')
-    expect(motion.attributes('href')).toBe('/dashboard?tool=motion_ai_video')
-    expect(motion.text()).toContain('Mock beta')
+    expect(wrapper.get('[data-testid="workflow-card-product_content_kit"]').attributes('href')).toBe('/dashboard?tool=product_content_kit')
+    expect(wrapper.get('[data-testid="workflow-card-analyze_footage"]').attributes('href')).toBe('/dashboard?tool=video_to_campaign')
+    expect(wrapper.get('[data-testid="workflow-card-motion_ai_video"]').attributes('href')).toBe('/dashboard?tool=motion_ai_video')
+    expect(wrapper.get('[data-testid="workflow-card-auto_video_editor"]').attributes('href')).toBe('/dashboard?tool=auto_video_editor')
   })
 
   it('sends guests through login with the intended workflow destination', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ data: tools }))
 
     const wrapper = await mountToolsView(fetchMock, null)
-    const productKit = wrapper.get('[data-testid="workflow-card-product_content_kit"]')
 
-    expect(productKit.attributes('href')).toBe('/login?redirect=/dashboard?tool=product_content_kit')
-    expect(productKit.text()).toContain('Log in to start')
-  })
-
-  it('keeps the later roadmap small and separate from main workflows', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ data: tools }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    const wrapper = await mountToolsView(fetchMock)
-    const later = wrapper.get('[data-testid="later-workflow-section"]')
-
-    expect(later.text()).toContain('Fashion Studio')
-    expect(later.text()).toContain('Product Photo Studio')
-    expect(later.text()).toContain('Brand Kit')
-    expect(later.text()).toContain('Content Calendar')
-    expect(later.text()).not.toContain('Product Content Kit')
+    expect(wrapper.get('[data-testid="workflow-card-motion_ai_video"]').attributes('href')).toBe('/login?redirect=/dashboard?tool=motion_ai_video')
+    expect(wrapper.get('[data-testid="workflow-card-motion_ai_video"]').text()).toContain('Log in to start')
   })
 
   it('shows a friendly retry state when the catalog cannot load', async () => {
@@ -405,9 +167,7 @@ describe('ToolsView', () => {
     const wrapper = await mountToolsView(fetchMock)
 
     expect(wrapper.get('[role="alert"]').text()).toContain('Tools unavailable')
-    expect(wrapper.get('[role="alert"]').text()).toContain(
-      'Something went wrong. Please try again.',
-    )
+    expect(wrapper.get('[role="alert"]').text()).toContain('Something went wrong. Please try again.')
     expect(wrapper.get('[role=alert] button').text()).toBe('Try again')
   })
 })

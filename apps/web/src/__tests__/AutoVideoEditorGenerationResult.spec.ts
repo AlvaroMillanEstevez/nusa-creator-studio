@@ -5,6 +5,10 @@ import { mount } from '@vue/test-utils'
 import AutoVideoEditorGenerationResult from '@/components/AutoVideoEditorGenerationResult.vue'
 import type { AutoVideoEditorResult } from '@/types/project'
 
+const routerLinkStub = {
+  template: '<a><slot /></a>',
+}
+
 const result: AutoVideoEditorResult = {
   source_summary: 'Shotstack rendered a beta vertical edit from source footage.',
   selected_video_analysis_reference: {
@@ -139,6 +143,7 @@ describe('AutoVideoEditorGenerationResult', () => {
 
     const wrapper = mount(AutoVideoEditorGenerationResult, {
       props: { result, generationId: 77 },
+      global: { stubs: { RouterLink: routerLinkStub } },
     })
 
     const recipe = wrapper.get('[data-testid="auto-video-audio-edit-summary"]').text()

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 
 import { useTranslations } from '@/i18n'
-import { useAuthStore } from '@/stores/auth'
 import type {
   CampaignGenerationResult,
   CampaignHook,
@@ -21,9 +20,6 @@ const props = defineProps<{
 
 
 const { t } = useTranslations()
-const router = useRouter()
-const route = useRoute()
-const auth = useAuthStore()
 const copyStatus = ref<'idle' | 'copied' | 'unavailable'>('idle')
 const narrationText = ref('')
 
@@ -83,41 +79,23 @@ const hasProviderMetadata = computed(
   () => providerMetadata.value !== null && Object.keys(providerMetadata.value).length > 0,
 )
 const narrationTrimmed = computed(() => narrationText.value.trim())
-const hasInternalOrUnlimitedAccess = computed(() => {
-  const user = auth.user
-
-  return user?.is_unlimited === true ||
-    user?.role === 'admin' ||
-    user?.role === 'internal_creator' ||
-    user?.plan_key === 'internal_unlimited'
+const projectRoute = computed(() => {
+  return props.projectId === undefined || props.projectId === null ? '/dashboard' : `/projects/${String(props.projectId)}`
 })
-const isVoiceoverUpgrade = computed(() =>
-  props.voiceoverAction?.upgrade_required === true || props.voiceoverAction?.action_mode === 'upgrade',
-)
-const isVoiceoverUnavailable = computed(() =>
-  props.voiceoverAction?.status === 'coming_soon' ||
-  props.voiceoverAction?.status === 'unavailable' ||
-  props.voiceoverAction?.action_mode === 'coming_soon',
-)
-const canShowVoiceoverCta = computed(() => props.projectId !== undefined && props.projectId !== null)
-const voiceoverCostLabel = computed(() => {
-  const action = props.voiceoverAction
-
-  if (!action || action.credit_cost === null) {
-    return ''
+const motionAiVideoRoute = computed(() => {
+  if (props.projectId === undefined || props.projectId === null || props.generationId === undefined || props.generationId === null) {
+    return null
   }
 
-  if (hasInternalOrUnlimitedAccess.value && action.user_has_access !== false) {
-    return t('campaignResult.noCreditCharge')
+  return {
+    name: 'project-motion-ai-video-action',
+    params: { projectId: String(props.projectId) },
+    query: {
+      sourceMode: 'campaign_assisted',
+      campaignGenerationId: String(props.generationId),
+    },
   }
-
-  if (action.credit_cost === 0) {
-    return t('campaignResult.noCreditCharge')
-  }
-
-  return t('campaignResult.costsCredits', { credits: action.credit_cost })
 })
-
 
 function sceneTime(scene: CampaignScriptScene): string {
   return scene.time_range ?? scene.timestamp ?? ''
@@ -140,35 +118,6 @@ async function copyVoiceoverScript(): Promise<void> {
   } catch {
     copyStatus.value = 'unavailable'
   }
-}
-
-function voiceoverActionLocation() {
-  const query: Record<string, string> = {}
-
-  if (props.generationId !== undefined && props.generationId !== null) {
-    query.source_generation_id = String(props.generationId)
-  }
-
-  query.return_to = route.fullPath
-
-  return {
-    name: 'project-voiceover-action',
-    params: { projectId: String(props.projectId) },
-    query,
-  }
-}
-
-async function openVoiceoverSetup(): Promise<void> {
-  if (isVoiceoverUpgrade.value) {
-    await router.push(props.voiceoverAction?.primary_cta?.route ?? '/pricing')
-    return
-  }
-
-  if (!props.projectId || isVoiceoverUnavailable.value) {
-    return
-  }
-
-  await router.push(voiceoverActionLocation())
 }
 
 watch(voiceoverScript, (next) => {
@@ -195,6 +144,31 @@ watch(voiceoverScript, (next) => {
           <span class="font-semibold text-neutral-100">{{ t('campaignResult.audience') }}:</span>
           {{ result.target_audience_summary }}
         </p>
+      </div>
+    </section>
+
+    <section class="nusa-card-premium rounded-[2rem] p-5" data-testid="campaign-next-actions">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Next workflow</p>
+      <h3 class="mt-2 text-xl font-semibold">Turn this kit into video</h3>
+      <p class="mt-2 text-sm leading-6 text-neutral-400">
+        Reuse this campaign context in Motion AI Video. Nusa will preselect campaign-assisted mode, but generation only starts after you review and press Generate.
+      </p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <RouterLink
+          v-if="motionAiVideoRoute"
+          :to="motionAiVideoRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+          data-testid="campaign-create-motion-video"
+        >
+          Create Motion AI Video
+        </RouterLink>
+        <RouterLink
+          :to="projectRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30"
+          data-testid="campaign-return-project"
+        >
+          Return to project
+        </RouterLink>
       </div>
     </section>
 
@@ -257,23 +231,9 @@ watch(voiceoverScript, (next) => {
             </p>
           </div>
 
-          <p v-if="voiceoverCostLabel" class="text-xs font-semibold text-emerald-300">
-            {{ voiceoverCostLabel }}
-          </p>
           <p v-if="copyStatus === 'unavailable'" class="text-xs text-amber-300">
             {{ t('campaignResult.copyUnavailable') }}
           </p>
-
-          <button
-            v-if="canShowVoiceoverCta"
-            type="button"
-            :disabled="!isVoiceoverUpgrade && isVoiceoverUnavailable"
-            class="flex min-h-11 w-full items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 sm:w-auto"
-            data-testid="generate-narration-voiceover"
-            @click="openVoiceoverSetup"
-          >
-            {{ isVoiceoverUpgrade ? t('campaignResult.upgradeSubscription') : t('campaignResult.generateAiVoiceover') }}
-          </button>
         </div>
       </details>
 

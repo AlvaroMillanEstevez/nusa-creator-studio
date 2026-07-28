@@ -74,6 +74,22 @@ const latestVoiceoverGeneration = computed(() =>
   ) ?? null,
 )
 
+const latestVideoAnalysisGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_video_to_campaign' && item.status === 'completed',
+  ) ?? null,
+)
+const latestMotionAiVideoGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_motion_ai_video' && item.status === 'completed',
+  ) ?? null,
+)
+const latestAutoVideoEditorGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_auto_video_edit' && item.status === 'completed',
+  ) ?? null,
+)
+
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollingGenerationId: number | null = null
 let pollCount = 0
@@ -448,6 +464,9 @@ onBeforeUnmount(stopPolling)
             :selected-generation="generation"
             :latest-campaign-generation="latestCampaignGeneration"
             :latest-voiceover-generation="latestVoiceoverGeneration"
+            :latest-video-analysis-generation="latestVideoAnalysisGeneration"
+            :latest-motion-ai-video-generation="latestMotionAiVideoGeneration"
+            :latest-auto-video-editor-generation="latestAutoVideoEditorGeneration"
             :campaign-generation-count="campaignGenerationCount"
             :refresh-key="actionRefreshKey"
             :is-generating="isGenerating"
@@ -511,6 +530,7 @@ onBeforeUnmount(stopPolling)
             :show-queue-worker-hint="showQueueWorkerHint"
             :media-assets="projectAssets"
             :project-id="project.id"
+            :project-generations="generationHistory"
           />
 
           <ProjectActionHub
@@ -518,6 +538,9 @@ onBeforeUnmount(stopPolling)
             :selected-generation="generation"
             :latest-campaign-generation="latestCampaignGeneration"
             :latest-voiceover-generation="latestVoiceoverGeneration"
+            :latest-video-analysis-generation="latestVideoAnalysisGeneration"
+            :latest-motion-ai-video-generation="latestMotionAiVideoGeneration"
+            :latest-auto-video-editor-generation="latestAutoVideoEditorGeneration"
             :campaign-generation-count="campaignGenerationCount"
             :refresh-key="actionRefreshKey"
             :is-generating="isGenerating"

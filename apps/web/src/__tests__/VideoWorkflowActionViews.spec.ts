@@ -255,8 +255,8 @@ function routerFor() {
       { path: '/projects/:id', component: { template: '<div />' } },
       { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
-      { path: '/projects/:projectId/actions/video-to-campaign', component: VideoToCampaignActionView },
-      { path: '/projects/:projectId/actions/auto-video-editor', component: AutoVideoEditorActionView },
+      { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: VideoToCampaignActionView },
+      { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: AutoVideoEditorActionView },
       { path: '/pricing', component: { template: '<div />' } },
       { path: '/dashboard', component: { template: '<div />' } },
       { path: '/tools', component: { template: '<div />' } },
@@ -336,7 +336,7 @@ describe('video workflow action views', () => {
   it('renders Video-to-Campaign source setup and validates missing source video', async () => {
     const { wrapper } = await mountView(VideoToCampaignActionView, '/projects/42/actions/video-to-campaign', [])
 
-    expect(wrapper.text()).toContain('Product Content Kit · Video analysis')
+    expect(wrapper.text()).toContain('Analyze Footage with AI')
     expect(wrapper.text()).toContain('Upload or choose product video')
     expect(wrapper.text()).toContain('No project assets yet. Upload one here to continue.')
 
@@ -413,7 +413,7 @@ describe('video workflow action views', () => {
     expect(wrapper.text()).toContain('Rendering your video. This can take a few minutes depending on video length and provider processing time.')
     expect(wrapper.text()).toContain('Total credits: 2')
     expect(wrapper.get('[data-testid="auto-video-cta-input"]').element).toHaveProperty('value', 'Check the details.')
-    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Product Content Kit · Video analysis · Pocket Light')
+    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Analyze Footage with AI · Video analysis')
     expect(wrapper.get('[data-testid="auto-video-voiceover-select"]').text()).toContain('Voiceover · Pocket Light · 20s')
     const durationSelect = wrapper.get<HTMLSelectElement>('[data-testid="auto-video-duration-select"]')
 
@@ -538,7 +538,7 @@ describe('video workflow action views', () => {
 
     expect(wrapper.text()).toContain('Use AI video analysis')
     expect(wrapper.text()).toContain('This content kit was created from text or images, so it does not include video cuts.')
-    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Product Content Kit · Video analysis · Pocket Light')
+    expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).toContain('Analyze Footage with AI · Video analysis')
     expect(wrapper.get('[data-testid="auto-video-analysis-select"]').text()).not.toContain('Image-assisted content kit')
   })
 

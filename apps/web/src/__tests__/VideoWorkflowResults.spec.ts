@@ -34,6 +34,7 @@ function router() {
       { path: '/projects/:id', name: 'project-detail', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
     ],
   })
@@ -133,7 +134,7 @@ describe('video workflow result rendering', () => {
     expect(wrapper.find('a[href="/projects/42/actions/video-to-campaign"]').exists()).toBe(true)
   })
 
-  it('renders Video-to-Campaign output and voiceover CTA', async () => {
+  it('renders Analyze Footage output and optional voiceover CTA', async () => {
     const appRouter = router()
     await appRouter.push('/')
     await appRouter.isReady()
@@ -179,7 +180,7 @@ describe('video workflow result rendering', () => {
 
     expect(wrapper.get('[data-testid="video-to-campaign-result"]').text()).toContain('Mock summary from source footage.')
     expect(wrapper.text()).toContain('Start with the clearest product shot.')
-    expect(wrapper.get('[data-testid="create-voiceover-from-video-campaign"]').attributes('href')).toContain('/projects/42/actions/voiceover')
+    expect(wrapper.get('[data-testid="create-voiceover-from-video-analysis"]').attributes('href')).toContain('/projects/42/actions/voiceover')
   })
 
   it('renders Gemini Video-to-Campaign output safely', async () => {
@@ -280,8 +281,8 @@ describe('video workflow result rendering', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="video-to-campaign-result"]').text()).toContain('Product Content Kit from video')
-    expect(wrapper.text()).toContain('Voiceover-ready script')
+    expect(wrapper.get('[data-testid="video-to-campaign-result"]').text()).toContain('Analyze Footage with AI · Video analysis')
+    expect(wrapper.text()).toContain('Narration from this analysis')
     expect(wrapper.text()).not.toContain('Detected product moments')
     expect(wrapper.text()).not.toContain('Scene observations')
     expect(wrapper.text()).not.toContain('Recommended cuts')
@@ -369,6 +370,11 @@ describe('video workflow result rendering', () => {
             usage_notes: ['Plan only.'],
             provider_metadata: { provider: 'mock' },
           },
+        },
+      },
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
         },
       },
     })
@@ -543,6 +549,11 @@ describe('video workflow result rendering', () => {
           },
         },
       },
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
+        },
+      },
     })
 
     await flushPromises()
@@ -680,6 +691,11 @@ describe('video workflow result rendering', () => {
             usage_notes: ['Rendered video stored privately.'],
             provider_metadata: { provider: 'shotstack', mode: 'real', render_id: 'render_test_456' },
           },
+        },
+      },
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
         },
       },
     })

@@ -11,6 +11,7 @@ import type {
   CreatorGeneration,
   ProjectAction,
   ProjectActionsResponse,
+  GenerationResult,
 } from '@/types/project'
 
 function action(overrides: Partial<ProjectAction> & Pick<ProjectAction, 'key'>): ProjectAction {
@@ -44,19 +45,33 @@ function action(overrides: Partial<ProjectAction> & Pick<ProjectAction, 'key'>):
   }
 }
 
-const selectedCampaignGeneration: CreatorGeneration = {
+function generation(overrides: Partial<CreatorGeneration> & Pick<CreatorGeneration, 'id' | 'job_type'>): CreatorGeneration {
+  const { id, job_type, ...rest } = overrides
+
+  return {
+    id,
+    user_id: 1,
+    project_id: 42,
+    job_type,
+    provider: 'mock',
+    status: 'completed',
+    cost_usd: '0.0000',
+    credits_charged: 1,
+    input_payload: null,
+    output_payload: null,
+    error_message: null,
+    request_payload: null,
+    result_payload: null,
+    started_at: '2026-07-08T01:00:00.000000Z',
+    finished_at: '2026-07-08T01:00:00.000000Z',
+    created_at: '2026-07-08T01:00:00.000000Z',
+    ...rest,
+  }
+}
+
+const campaignGeneration = generation({
   id: 9,
-  user_id: 1,
-  project_id: 42,
   job_type: 'generate_affiliate_campaign',
-  provider: 'mock',
-  status: 'completed',
-  cost_usd: '0.0000',
-  credits_charged: 1,
-  input_payload: null,
-  output_payload: null,
-  error_message: null,
-  request_payload: null,
   result_payload: {
     hooks: ['Hook'],
     voiceover_ready_script: 'Voiceover-ready script from the selected campaign.',
@@ -65,230 +80,168 @@ const selectedCampaignGeneration: CreatorGeneration = {
     hashtags: ['#Creator'],
     cta: 'Review details.',
     notes: ['Use real footage.'],
-  },
-  started_at: '2026-07-08T01:00:00.000000Z',
-  finished_at: '2026-07-08T01:00:00.000000Z',
-  created_at: '2026-07-08T01:00:00.000000Z',
-}
+  } as unknown as GenerationResult,
+})
 
-const selectedVoiceoverGeneration: CreatorGeneration = {
-  ...selectedCampaignGeneration,
-  id: 22,
-  job_type: 'generate_ai_voiceover',
-  result_payload: null,
-}
+const videoAnalysisGeneration = generation({
+  id: 31,
+  job_type: 'generate_video_to_campaign',
+  result_payload: {
+    campaign_input_mode: 'video_analysis',
+    auto_video_editor_eligible: true,
+    source_video_asset_id: 88,
+    video_summary: 'Detected useful product footage.',
+    campaign_angle: 'Show the product in use.',
+    narration_voice_script: 'Short analysis narration.',
+    hooks: ['See this feature'],
+    captions: ['Useful caption'],
+    hashtags: ['#nusa'],
+    cta_options: ['See details'],
+    observed_product_features: [],
+    detected_product_moments: [],
+    scene_observations: [],
+    recommended_cuts: [{ start_seconds: 2, end_seconds: 5, reason: 'Stable product shot.' }],
+    edit_plan: {
+      title: 'AI footage edit plan',
+      target_duration_seconds: 20,
+      opening: 'Open on product reveal.',
+      middle: 'Show use.',
+      closing: 'End with CTA.',
+      timeline: [{ start_seconds: 0, end_seconds: 3, instruction: 'Use stable product shot.' }],
+    },
+    compliance_notes: [],
+    usage_notes: [],
+    provider_metadata: { campaign_input_mode: 'video_analysis', source_video_asset_id: 88 },
+  } as unknown as GenerationResult,
+})
+
+const motionGeneration = generation({
+  id: 44,
+  job_type: 'generate_motion_ai_video',
+  result_payload: {
+    final_video_asset_id: 104,
+    motion_summary: {
+      creative_angle: 'Premium product reveal',
+      source_mode: 'text_prompt',
+      source_type: 'text_prompt',
+      duration: 8,
+      aspect_ratio: 'vertical_9_16',
+      visual_style: 'premium_brand',
+      motion_style: 'slow_push_in',
+    },
+    generation_prompt: { prompt: 'Prompt', negative_prompt: null },
+    scene_plan: [],
+    script_plan: { voiceover_ready_script: '', caption_lines: [], CTA_line: 'See details' },
+    motion_settings: {},
+    asset_plan: { product_image_asset_id: null, scenario_image_asset_id: null, voiceover_generation_id: null },
+    provider_readiness: { provider: 'google_veo', status: 'ready', notes: [] },
+    compliance_notes: [],
+    metadata: { mode: 'real', final_video_asset_id: 104 },
+    provider_metadata: { provider: 'google_veo', final_video_asset_id: 104 },
+  } as unknown as GenerationResult,
+})
+
+const autoEditorGeneration = generation({
+  id: 55,
+  job_type: 'generate_auto_video_edit',
+  result_payload: {
+    final_video_placeholder: { provider: 'shotstack', status: 'done', message: 'Rendered.' },
+    edit_decision_list: [],
+    timeline: [],
+    clip_sequence: [],
+    captions_plan: { caption_count: 0, sample_captions: [] },
+    audio_mix_plan: { mix_notes: [], source_audio_mode: 'low_source', voiceover_mix: 'voiceover_dominant' },
+    source_summary: 'Edited result.',
+    selected_video_analysis_reference: { type: 'analysis', note: 'Analysis used.' },
+    selected_voiceover_reference: { type: 'none', note: 'No voiceover.' },
+    cost_breakdown: { base_editor_cost: 2, video_analysis_cost: 0, voiceover_cost: 0, total_credits: 2, base_editor_note: '', video_analysis_note: '', voiceover_note: '' },
+    compliance_notes: [],
+    usage_notes: [],
+  } as unknown as GenerationResult,
+})
 
 const baseActions: ProjectActionsResponse = {
   data: [
     action({
       key: 'generate_campaign',
-      title: 'Generate campaign',
+      title: 'Product Content Kit',
       description: 'Create campaign content.',
-      service_tier: 'basic',
-      output_type: 'script_pack',
-      primary_cta: { label: 'Generate another campaign version', route: null, action: 'generate_campaign' },
       action_endpoint: '/api/v1/projects/42/generate-campaign',
+      primary_cta: { label: 'Generate campaign', route: null, action: 'generate_campaign' },
       tool_key: 'affiliate_campaign',
     }),
     action({
-      key: 'generate_voiceover_from_script',
-      title: 'Create voiceover',
-      description: 'Generate an AI voiceover using a completed script.',
-      service_tier: 'advanced',
-      output_type: 'audio',
-      primary_cta: { label: 'Create another voiceover', route: null, action: 'generate_voiceover' },
-      required_source: 'source_generation',
-      source_generation_id: 9,
-      action_endpoint: '/api/v1/projects/42/generate-voiceover',
-      tool_key: 'ai_voiceover',
-      recommended_sources: [
-        {
-          generation_id: 9,
-          job_type: 'generate_affiliate_campaign',
-          title: 'Campaign script source',
-          created_at: '2026-07-08T01:00:00.000000Z',
-          excerpt: 'Voiceover-ready script from the selected campaign.',
-        },
-      ],
-    }),
-    action({
       key: 'generate_video_to_campaign',
-      title: 'Generate campaign from video',
-      description: 'Turn source footage into a campaign.',
+      title: 'Analyze Footage with AI',
+      description: 'Analyze product footage.',
       service_tier: 'advanced',
-      output_type: 'assisted_media',
       status: 'configure',
       action_mode: 'configure',
       credit_cost: 2,
-      primary_cta: { label: 'Generate video campaign', route: null, action: 'configure_video_to_campaign' },
-      required_source: 'media_asset',
-      action_endpoint: '/api/v1/projects/42/generate-video-campaign',
+      primary_cta: { label: 'Analyze footage with AI', route: null, action: 'configure_video_to_campaign' },
       tool_key: 'video_to_campaign',
-      reason: 'A project video is available for campaign analysis.',
-      recommended_assets: [
-        {
-          media_asset_id: 88,
-          type: 'video',
-          usage_role: 'campaign_source_video',
-          original_name: 'raw-product-demo.mp4',
-          mime_type: 'video/mp4',
-          created_at: '2026-07-08T01:00:00.000000Z',
-        },
-      ],
-    }),
-    action({
-      key: 'generate_auto_video_edit',
-      title: 'Auto Video Editor',
-      description: 'Create an edit-ready vertical video plan.',
-      service_tier: 'premium',
-      output_type: 'video',
-      status: 'configure',
-      action_mode: 'configure',
-      credit_cost: 2,
-      primary_cta: { label: 'Configure edit plan', route: null, action: 'configure_auto_video_editor' },
-      required_source: 'source_generation',
-      action_endpoint: '/api/v1/projects/42/generate-auto-video-edit',
-      tool_key: 'auto_video_editor',
-      reason: 'Can reuse existing video campaign analysis.',
-      recommended_sources: [
-        {
-          generation_id: 31,
-          job_type: 'generate_video_to_campaign',
-          title: 'Reusable edit plan',
-          created_at: '2026-07-08T02:00:00.000000Z',
-          excerpt: 'Reusable narration.',
-        },
-      ],
-    }),
-    action({
-      key: 'start_fashion_try_on',
-      title: 'Start Fashion Try-On',
-      description: 'Use project assets for try-on.',
-      service_tier: 'premium',
-      output_type: 'image',
-      status: 'coming_soon',
-      action_mode: 'coming_soon',
-      credit_cost: 2,
-      primary_cta: { label: 'Coming soon', route: null, action: null },
-      required_source: 'media_asset',
-      action_endpoint: '/api/v1/projects/42/generate-fashion-try-on',
-      tool_key: 'fashion_try_on',
-      requirements: [
-        {
-          type: 'media_asset',
-          key: 'model_reference',
-          label: 'Model reference image',
-          satisfied: false,
-          help_text: 'Upload a clear model/person reference image in the launcher.',
-          suggested_usage_role: 'model_reference',
-        },
-        {
-          type: 'media_asset',
-          key: 'garment_reference',
-          label: 'Garment reference image',
-          satisfied: false,
-          help_text: 'Upload a clear garment/product reference image in the launcher.',
-          suggested_usage_role: 'garment_reference',
-        },
-      ],
-      missing_requirements_count: 2,
+      reason: 'A project video is available for footage analysis.',
     }),
     action({
       key: 'start_motion_video',
       title: 'Motion AI Video',
-      description: 'Create motion-video concepts from product images.',
+      description: 'Generate premium AI product footage.',
       service_tier: 'premium',
-      output_type: 'video',
       status: 'configure',
       action_mode: 'configure',
       credit_cost: 3,
       primary_cta: { label: 'Configure Motion AI Video', route: '/projects/42/actions/motion-ai-video', action: 'configure_motion_ai_video' },
-      required_source: 'media_asset',
-      action_endpoint: '/api/v1/projects/42/generate-motion-ai-video',
       tool_key: 'motion_ai_video',
-      requirements: [
-        {
-          type: 'media_asset',
-          key: 'product_image',
-          label: 'Product image',
-          satisfied: false,
-          help_text: 'Upload or choose a clear product image for the motion video source.',
-          suggested_usage_role: 'product_image',
-        },
-      ],
-      missing_requirements_count: 1,
+    }),
+    action({
+      key: 'generate_auto_video_edit',
+      title: 'Auto Video Editor',
+      description: 'Turn product footage into an edited creator video.',
+      service_tier: 'premium',
+      status: 'configure',
+      action_mode: 'configure',
+      credit_cost: 2,
+      primary_cta: { label: 'Configure edit plan', route: null, action: 'configure_auto_video_editor' },
+      tool_key: 'auto_video_editor',
+      reason: 'Analyze footage first, or use manual edit setup.',
     }),
     action({
       key: 'create_video_ad',
       title: 'Auto Video Ads',
-      description: 'Create a paid ad creative plan.',
+      description: 'Create paid ad creative plans.',
       service_tier: 'premium',
-      output_type: 'ad_plan',
-      status: 'configure',
-      action_mode: 'configure',
-      credit_cost: 2,
-      primary_cta: { label: 'Configure ad plan', route: null, action: 'configure_auto_video_ad' },
-      required_source: 'media_asset',
-      action_endpoint: '/api/v1/projects/42/generate-auto-video-ad',
-      tool_key: 'auto_video_ads',
-      tool_status: 'available',
-      reason: 'Ready to create an ad plan from project visuals.',
-    }),
-    action({
-      key: 'avatar_presenter',
-      title: 'Avatar Presenter',
-      description: 'Turn a script into an avatar presenter later.',
-      service_tier: 'premium',
-      output_type: 'avatar',
       status: 'coming_soon',
       action_mode: 'coming_soon',
       credit_cost: null,
       primary_cta: { label: 'Coming soon', route: null, action: null },
-      required_source: 'source_generation',
-      tool_status: null,
+      tool_key: 'auto_video_ads',
+      tool_status: 'coming_soon',
+    }),
+    action({
+      key: 'generate_voiceover_from_script',
+      title: 'Create voiceover',
+      description: 'Internal compatibility action.',
+      service_tier: 'advanced',
+      output_type: 'audio',
+      tool_key: 'ai_voiceover',
     }),
   ],
 }
 
 const campaignResponse: CampaignGenerationResponse = {
-  data: {
-    id: 12,
-    user_id: 1,
-    project_id: 42,
-    job_type: 'generate_affiliate_campaign',
-    provider: 'mock',
-    status: 'queued',
-    cost_usd: '0.0000',
-    credits_charged: 1,
-    input_payload: null,
-    output_payload: null,
-    error_message: null,
-    request_payload: null,
-    result_payload: null,
-    started_at: null,
-    finished_at: null,
-    created_at: '2026-07-08T01:05:00.000000Z',
-  },
+  data: generation({ id: 12, job_type: 'generate_affiliate_campaign', status: 'queued' }) as CampaignGenerationResponse['data'],
   meta: { credits_balance: 19 },
 }
 
-
-async function mountHub(
-  actions: ProjectActionsResponse = baseActions,
-  selectedGeneration: CreatorGeneration | null = selectedCampaignGeneration,
-  initialPath = '/',
-) {
+async function mountHub(props: Partial<InstanceType<typeof ProjectActionHub>['$props']> = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/pricing', component: { template: '<div />' } },
-      { path: '/media', component: { template: '<div />' } },
       { path: '/projects/:projectId/generations/:generationId', name: 'generation-result', component: { template: '<div />' } },
-      { path: '/projects/:projectId/actions/voiceover', name: 'project-voiceover-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
-      { path: '/projects/:projectId/actions/auto-video-ads', name: 'project-auto-video-ads-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
     ],
   })
@@ -297,26 +250,31 @@ async function mountHub(
     const method = init?.method ?? 'GET'
 
     if (url.endsWith('/projects/42/actions')) {
-      return Response.json(actions)
+      return Response.json(baseActions)
     }
 
     if (url.endsWith('/projects/42/generate-campaign') && method === 'POST') {
       return Response.json(campaignResponse, { status: 201 })
     }
 
-
     return Response.json({}, { status: 404 })
   })
+
   vi.stubGlobal('fetch', fetchMock)
   vi.stubGlobal('scrollTo', vi.fn<() => void>())
 
-  await router.push(initialPath)
+  await router.push('/')
   await router.isReady()
 
   const wrapper = mount(ProjectActionHub, {
     props: {
       projectId: 42,
-      selectedGeneration,
+      selectedGeneration: campaignGeneration,
+      latestCampaignGeneration: campaignGeneration,
+      latestVideoAnalysisGeneration: videoAnalysisGeneration,
+      latestMotionAiVideoGeneration: motionGeneration,
+      latestAutoVideoEditorGeneration: autoEditorGeneration,
+      ...props,
     },
     global: {
       plugins: [createPinia(), router],
@@ -326,48 +284,46 @@ async function mountHub(
 
   return { wrapper, fetchMock, router }
 }
+
 describe('ProjectActionHub', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('separates main beta workflows from supporting tools without tier language', async () => {
+  it('matches the final workflow order and removes top-level supporting tools', async () => {
     const { wrapper } = await mountHub()
+    const availableCards = wrapper.findAll('[data-testid^="project-action-"]').filter((card) => card.text().includes('Available now') || !card.text().includes('Coming soon'))
     const text = wrapper.text()
 
-    expect(text).toContain('Main workflows')
-    expect(text).toContain('Supporting tools')
-    expect(text).not.toContain('Basic workflow')
-    expect(text).not.toContain('Advanced workflow')
-    expect(text).not.toContain('Premium workflow')
-    expect(text).toContain('1 credit')
-    expect(text).toContain('2 credits')
-    expect(text).toContain('Included in your plan')
+    expect(wrapper.get('[data-testid="project-available-workflow-section"]').text()).toContain('Available workflows')
     expect(wrapper.get('[data-testid="project-action-generate_campaign"]').text()).toContain('Product Content Kit')
-    expect(wrapper.get('[data-testid="project-action-generate_auto_video_edit"]').text()).toContain('Auto Video Editor')
-    expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Auto Video Ads')
-    expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Generate Ad Plan')
+    expect(wrapper.get('[data-testid="project-action-generate_video_to_campaign"]').text()).toContain('Analyze Footage with AI')
     expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Motion AI Video')
-    expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Configure Motion AI Video')
-    expect(wrapper.get('[data-testid="project-action-generate_video_to_campaign"]').text()).toContain('Analyze product footage')
-    expect(wrapper.get('[data-testid="project-action-generate_voiceover_from_script"]').text()).toContain('Create voiceover')
-    expect(wrapper.get('[data-testid="project-support-media-library"]').text()).toContain('Manage media assets')
-    expect(wrapper.find('[data-testid="project-action-start_fashion_try_on"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="project-action-avatar_presenter"]').exists()).toBe(false)
-    expect(text).not.toContain('Upload a clear model/person reference image in the launcher.')
-    expect(text).not.toContain('Upload a clear garment/product reference image in the launcher.')
+    expect(wrapper.get('[data-testid="project-action-generate_auto_video_edit"]').text()).toContain('Auto Video Editor')
+    expect(availableCards.length).toBeGreaterThanOrEqual(4)
+    expect(text).not.toContain('Supporting tools')
+    expect(text).not.toContain('Create voiceover')
+    expect(text).not.toContain('Mock beta')
   })
 
-  it('runs the direct campaign action and emits the new generation', async () => {
+  it('keeps Auto Video Ads as the only coming soon workspace action', async () => {
+    const { wrapper } = await mountHub()
+    const comingSoon = wrapper.get('[data-testid="project-coming_soon-workflow-section"]')
+    const ads = wrapper.get('[data-testid="project-action-create_video_ad"]')
+
+    expect(comingSoon.text()).toContain('Auto Video Ads')
+    expect(comingSoon.text()).toContain('Coming soon')
+    expect(ads.find('button').attributes('disabled')).toBeDefined()
+  })
+
+  it('runs Product Content Kit explicitly and links to the latest kit', async () => {
     const { wrapper, fetchMock } = await mountHub()
+    const campaignCard = wrapper.get('[data-testid="project-action-generate_campaign"]')
 
-    const campaignButton = wrapper
-      .get('[data-testid="project-action-generate_campaign"]')
-      .find('button')
+    expect(campaignCard.text()).toContain('View latest Product Content Kit')
+    expect(wrapper.get('[data-testid="view-latest-product_content_kit"]').attributes('href')).toBe('/projects/42/generations/9')
 
-    expect(campaignButton.text()).toContain('Generate another Product Content Kit')
-    expect(wrapper.get('[data-testid="view-generated-campaign"]').attributes('href')).toBe('/projects/42/generations/9')
-    await campaignButton.trigger('click')
+    await campaignCard.find('button').trigger('click')
     await flushPromises()
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -377,127 +333,36 @@ describe('ProjectActionHub', () => {
     expect(wrapper.emitted('generated')?.[0]).toEqual([campaignResponse])
   })
 
-  it('keeps later modules out while showing active beta workflows', async () => {
-    const { wrapper } = await mountHub()
-
-    expect(wrapper.find('[data-testid="project-action-start_fashion_try_on"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="project-action-avatar_presenter"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="project-action-create_video_ad"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="project-action-create_video_ad"]').text()).toContain('Generate Ad Plan')
-    expect(wrapper.find('[data-testid="project-action-start_motion_video"]').exists()).toBe(true)
-  })
-
-  it('routes Motion AI Video to the dedicated action setup page', async () => {
+  it('opens Motion AI Video with campaign-assisted preselection from a compatible campaign', async () => {
     const { wrapper, router } = await mountHub()
 
-    await wrapper
-      .get('[data-testid="project-action-start_motion_video"]')
-      .find('button')
-      .trigger('click')
+    await wrapper.get('[data-testid="project-action-start_motion_video"]').find('button').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('project-motion-ai-video-action')
-    expect(router.currentRoute.value.params.projectId).toBe('42')
-  })
-  it('routes voiceover actions to the dedicated setup page with selected source context', async () => {
-    const { wrapper, fetchMock, router } = await mountHub(
-      baseActions,
-      selectedCampaignGeneration,
-      '/projects/42/generations/9',
-    )
-
-    const voiceoverButton = wrapper
-      .get('[data-testid="project-action-generate_voiceover_from_script"]')
-      .find('button')
-
-    expect(voiceoverButton.text()).toContain('Create another voiceover')
-    await voiceoverButton.trigger('click')
-    await flushPromises()
-
-    expect(router.currentRoute.value.name).toBe('project-voiceover-action')
-    expect(router.currentRoute.value.params.projectId).toBe('42')
-    expect(router.currentRoute.value.query.source_generation_id).toBe('9')
-    expect(router.currentRoute.value.query.return_to).toBe('/projects/42/generations/9')
-    expect(wrapper.find('[data-testid="project-action-launcher"]').exists()).toBe(false)
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      API_BASE_URL + '/projects/42/generate-voiceover',
-      expect.anything(),
-    )
+    expect(router.currentRoute.value.query.sourceMode).toBe('campaign_assisted')
+    expect(router.currentRoute.value.query.campaignGenerationId).toBe('9')
   })
 
-  it('routes voiceover setup without source query when no saved source exists', async () => {
-    const noSourceActions: ProjectActionsResponse = {
-      data: baseActions.data.map((item) => item.key === 'generate_voiceover_from_script'
-        ? {
-            ...item,
-            status: 'configure',
-            action_mode: 'configure',
-            source_generation_id: null,
-            recommended_sources: [],
-            primary_cta: { label: 'Create voiceover', route: null, action: 'generate_voiceover' },
-          }
-        : item),
-    }
-    const { wrapper, router } = await mountHub(noSourceActions, null)
+  it('links latest Motion AI Video MP4 to Analyze Footage without generating', async () => {
+    const { wrapper } = await mountHub()
+    const link = wrapper.get('[data-testid="project-secondary-motion_ai_video"]')
 
-    await wrapper
-      .get('[data-testid="project-action-generate_voiceover_from_script"]')
-      .find('button')
-      .trigger('click')
-    await flushPromises()
-
-    expect(router.currentRoute.value.name).toBe('project-voiceover-action')
-    expect(router.currentRoute.value.query.source_generation_id).toBeUndefined()
+    expect(link.text()).toContain('Analyze this video with AI')
+    expect(link.attributes('href')).toContain('/projects/42/actions/video-to-campaign')
+    expect(link.attributes('href')).toContain('sourceVideoAssetId=104')
+    expect(link.attributes('href')).toContain('fromGenerationId=44')
   })
 
-  it('shows a latest voiceover link when a completed voiceover generation is available', async () => {
-    const { wrapper } = await mountHub(baseActions, selectedCampaignGeneration)
+  it('opens Auto Video Editor with analysis preselection when a footage analysis exists', async () => {
+    const { wrapper, router } = await mountHub({ selectedGeneration: videoAnalysisGeneration })
 
-    await wrapper.setProps({ latestVoiceoverGeneration: { ...selectedVoiceoverGeneration, status: 'completed' } })
-    await flushPromises()
-
-    expect(wrapper.get('[data-testid="view-latest-voiceover"]').attributes('href')).toBe('/projects/42/generations/22')
-    expect(wrapper.text()).toContain('View latest voiceover')
-  })
-
-
-
-  it('routes supporting video analysis and Auto Video Editor actions to dedicated setup pages', async () => {
-    const { wrapper, router } = await mountHub()
-
-    await wrapper
-      .get('[data-testid="project-action-generate_video_to_campaign"]')
-      .find('button')
-      .trigger('click')
-    await flushPromises()
-
-    expect(router.currentRoute.value.name).toBe('project-video-to-campaign-action')
-    expect(router.currentRoute.value.params.projectId).toBe('42')
-
-    await router.push('/')
-    await flushPromises()
-
-    await wrapper
-      .get('[data-testid="project-action-generate_auto_video_edit"]')
-      .find('button')
-      .trigger('click')
+    await wrapper.get('[data-testid="project-action-generate_auto_video_edit"]').find('button').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('project-auto-video-editor-action')
-    expect(router.currentRoute.value.params.projectId).toBe('42')
-
-    await router.push('/')
-    await flushPromises()
-
-    await wrapper
-      .get('[data-testid="project-action-create_video_ad"]')
-      .find('button')
-      .trigger('click')
-    await flushPromises()
-
-    expect(router.currentRoute.value.name).toBe('project-auto-video-ads-action')
-    expect(router.currentRoute.value.params.projectId).toBe('42')
-    expect(wrapper.text()).toContain('Can reuse existing video campaign analysis.')
+    expect(router.currentRoute.value.query.editMode).toBe('ai_video_analysis')
+    expect(router.currentRoute.value.query.analysisGenerationId).toBe('31')
+    expect(router.currentRoute.value.query.sourceVideoAssetId).toBe('88')
   })
-
 })

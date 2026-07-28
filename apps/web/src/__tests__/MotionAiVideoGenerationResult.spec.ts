@@ -89,6 +89,10 @@ const result: MotionVideoResult = {
   },
 }
 
+const routerLinkStub = {
+  template: '<a><slot /></a>',
+}
+
 const realResult: MotionVideoResult = {
   ...result,
   motion_summary: {
@@ -146,6 +150,7 @@ describe('MotionAiVideoGenerationResult', () => {
   it('renders motion summary, timeline notes and post-production suggestions without fake video controls', () => {
     const wrapper = mount(MotionAiVideoGenerationResult, {
       props: { result },
+      global: { stubs: { RouterLink: routerLinkStub } },
     })
 
     expect(wrapper.text()).toContain('Motion AI Video')
@@ -179,6 +184,7 @@ describe('MotionAiVideoGenerationResult', () => {
 
     const wrapper = mount(MotionAiVideoGenerationResult, {
       props: { result: captionsDisabled },
+      global: { stubs: { RouterLink: routerLinkStub } },
     })
 
     expect(wrapper.text()).toContain('Captions preparedNo')
@@ -203,6 +209,7 @@ describe('MotionAiVideoGenerationResult', () => {
 
     const wrapper = mount(MotionAiVideoGenerationResult, {
       props: { result: realResult },
+      global: { stubs: { RouterLink: routerLinkStub } },
     })
     await flushPromises()
 

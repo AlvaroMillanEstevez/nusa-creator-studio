@@ -76,8 +76,6 @@ class MotionAiVideoGenerationService
             allowedJobTypes: [
                 'generate_affiliate_campaign',
                 'generate_video_to_campaign',
-                'generate_product_video_script',
-                'generate_auto_video_ad',
             ],
         );
 
@@ -237,12 +235,18 @@ class MotionAiVideoGenerationService
             'project_title' => $project->title,
             'project_type' => $project->type,
             'generation_type' => 'motion_ai_video',
+            'origin_workflow' => 'motion_ai_video',
+            'origin_label' => 'Motion AI Video · Generated footage',
             'source_mode' => $sourceMode,
             'product_image_asset_id' => $productImage?->getKey(),
             'product_image_asset' => $productImage instanceof MediaAsset ? $this->assetSummary($productImage) : null,
             'scenario_image_asset_id' => $scenarioImage?->getKey(),
             'scenario_image_asset' => $scenarioImage instanceof MediaAsset ? $this->assetSummary($scenarioImage) : null,
             'campaign_generation_id' => $campaignGeneration?->getKey(),
+            'source_campaign_generation_id' => $campaignGeneration instanceof Generation && $campaignGeneration->job_type === 'generate_affiliate_campaign' ? $campaignGeneration->getKey() : null,
+            'source_analysis_generation_id' => $campaignGeneration instanceof Generation && $campaignGeneration->job_type === 'generate_video_to_campaign' ? $campaignGeneration->getKey() : null,
+            'source_workflow' => $campaignGeneration instanceof Generation ? $this->campaignOriginWorkflow($campaignGeneration) : null,
+            'source_origin_label' => $campaignGeneration instanceof Generation ? $this->campaignOriginLabel($campaignGeneration) : null,
             'campaign_generation_summary' => $campaignGeneration instanceof Generation
                 ? $this->campaignGenerationSummary($campaignGeneration)
                 : null,
@@ -307,12 +311,36 @@ class MotionAiVideoGenerationService
             || (is_array(data_get($summary, 'script.scenes')) && data_get($summary, 'script.scenes') !== []);
     }
 
+    private function campaignOriginWorkflow(Generation $generation): string
+    {
+        return $generation->job_type === 'generate_video_to_campaign'
+            ? 'analyze_footage'
+            : 'product_content_kit';
+    }
+
+    private function campaignOriginLabel(Generation $generation): string
+    {
+        if ($generation->job_type === 'generate_video_to_campaign') {
+            return 'Analyze Footage with AI · Video analysis';
+        }
+
+        $mode = data_get($generation->input_payload, 'campaign_input_mode')
+            ?? data_get($generation->output_payload, 'campaign_input_mode')
+            ?? data_get($generation->output_payload, 'provider_metadata.campaign_input_mode');
+
+        return $mode === 'image_assisted'
+            ? 'Product Content Kit · Product image'
+            : 'Product Content Kit · Project brief';
+    }
+
     /** @return array<string, mixed> */
     private function campaignGenerationSummary(Generation $generation): array
     {
         $output = is_array($generation->output_payload) ? $generation->output_payload : [];
         $summary = [
             'job_type' => $generation->job_type,
+            'origin_workflow' => $this->campaignOriginWorkflow($generation),
+            'origin_label' => $this->campaignOriginLabel($generation),
             'created_at' => $generation->created_at?->toISOString(),
             'campaign_title' => $this->firstString([
                 data_get($output, 'campaign_title'),

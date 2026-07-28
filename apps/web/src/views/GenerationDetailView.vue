@@ -12,6 +12,7 @@ import {
   getCreatorProject,
   getGeneration,
   getProjectActions,
+  getProjectGenerations,
 } from '@/services/projects'
 import { listProjectMediaAssets } from '@/services/media'
 import type { MediaAsset } from '@/types/media'
@@ -28,6 +29,7 @@ const project = ref<CreatorProject | null>(null)
 const generation = ref<CreatorGeneration | null>(null)
 const projectAssets = ref<MediaAsset[]>([])
 const actions = ref<ProjectAction[]>([])
+const generationHistory = ref<CreatorGeneration[]>([])
 const isLoading = ref(true)
 const loadError = ref('')
 const loadErrorStatus = ref<number | null>(null)
@@ -60,10 +62,30 @@ const voiceoverAction = computed(() =>
 const campaignGenerationCount = computed(() =>
   generation.value?.job_type === 'generate_affiliate_campaign' ? 1 : 0,
 )
+const latestCampaignGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_affiliate_campaign' && item.status === 'completed',
+  ) ?? (generation.value?.job_type === 'generate_affiliate_campaign' && generation.value.status === 'completed' ? generation.value : null),
+)
+const latestVideoAnalysisGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_video_to_campaign' && item.status === 'completed',
+  ) ?? (generation.value?.job_type === 'generate_video_to_campaign' && generation.value.status === 'completed' ? generation.value : null),
+)
+const latestMotionAiVideoGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_motion_ai_video' && item.status === 'completed',
+  ) ?? (generation.value?.job_type === 'generate_motion_ai_video' && generation.value.status === 'completed' ? generation.value : null),
+)
+const latestAutoVideoEditorGeneration = computed(() =>
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_auto_video_edit' && item.status === 'completed',
+  ) ?? (generation.value?.job_type === 'generate_auto_video_edit' && generation.value.status === 'completed' ? generation.value : null),
+)
 const latestVoiceoverGeneration = computed(() =>
-  generation.value?.job_type === 'generate_ai_voiceover' && generation.value.status === 'completed'
-    ? generation.value
-    : null,
+  generationHistory.value.find(
+    (item) => item.job_type === 'generate_ai_voiceover' && item.status === 'completed',
+  ) ?? (generation.value?.job_type === 'generate_ai_voiceover' && generation.value.status === 'completed' ? generation.value : null),
 )
 const actionRefreshKey = computed(() =>
   `${project.value?.id ?? 'none'}:${generation.value?.id ?? 'none'}:${generation.value?.status ?? 'none'}:${actionRefreshNonce.value}`,
@@ -142,11 +164,12 @@ async function loadGenerationDetail(): Promise<void> {
   loadErrorStatus.value = null
 
   try {
-    const [loadedProject, loadedGeneration, loadedAssets, actionResponse] = await Promise.all([
+    const [loadedProject, loadedGeneration, loadedAssets, actionResponse, generationResponse] = await Promise.all([
       getCreatorProject(projectId.value),
       getGeneration(generationId.value),
       listProjectMediaAssets(projectId.value),
       getProjectActions(projectId.value),
+      getProjectGenerations(projectId.value),
     ])
 
     if (loadedGeneration.project_id !== loadedProject.id) {
@@ -156,6 +179,7 @@ async function loadGenerationDetail(): Promise<void> {
     }
 
     project.value = loadedProject
+    generationHistory.value = Array.isArray(generationResponse.data) ? generationResponse.data : []
     generation.value = loadedGeneration
     startPollingIfNeeded(loadedGeneration)
     projectAssets.value = loadedAssets.data
@@ -277,14 +301,18 @@ onBeforeUnmount(stopPolling)
           :media-assets="projectAssets"
           :project-id="project.id"
           :voiceover-action="voiceoverAction"
+          :project-generations="generationHistory"
         />
 
         <ProjectActionHub
           class="mt-8"
           :project-id="project.id"
           :selected-generation="generation"
-          :latest-campaign-generation="generation.job_type === 'generate_affiliate_campaign' ? generation : null"
+          :latest-campaign-generation="latestCampaignGeneration"
           :latest-voiceover-generation="latestVoiceoverGeneration"
+          :latest-video-analysis-generation="latestVideoAnalysisGeneration"
+          :latest-motion-ai-video-generation="latestMotionAiVideoGeneration"
+          :latest-auto-video-editor-generation="latestAutoVideoEditorGeneration"
           :campaign-generation-count="campaignGenerationCount"
           :refresh-key="actionRefreshKey"
           @generated="handleGenerated"

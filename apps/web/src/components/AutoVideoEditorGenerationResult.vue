@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import { fetchMediaBlob } from '@/services/media'
 import type {
@@ -13,6 +14,7 @@ import { formatLabel } from '@/utils/formatters'
 const props = defineProps<{
   result: AutoVideoEditorResult
   generationId?: number | string | null
+  projectId?: number | string | null
 }>()
 
 interface TimelineClipViewItem {
@@ -34,6 +36,19 @@ const isPreviewLoading = ref(false)
 const isDownloadingVideo = ref(false)
 const videoError = ref('')
 const downloadError = ref('')
+const projectRoute = computed(() => {
+  return props.projectId === null || props.projectId === undefined ? '/dashboard' : `/projects/${String(props.projectId)}`
+})
+const createAnotherEditRoute = computed(() => {
+  if (props.projectId === null || props.projectId === undefined) {
+    return '/dashboard'
+  }
+
+  return {
+    name: 'project-auto-video-editor-action',
+    params: { projectId: String(props.projectId) },
+  }
+})
 const downloadFilename = computed(() => {
   const id = props.generationId ?? result.value.final_video_asset_id ?? 'video'
 
@@ -375,6 +390,30 @@ onBeforeUnmount(() => {
       <p v-if="downloadError" role="alert" class="mt-3 rounded-2xl border border-rose-900/60 bg-rose-950/30 p-3 text-sm text-rose-100" data-testid="auto-video-download-error">
         {{ downloadError }}
       </p>
+    </section>
+
+    <section class="nusa-card-premium rounded-[2rem] p-5" data-testid="auto-video-next-actions">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Next action</p>
+      <h3 class="mt-2 text-xl font-semibold">Keep this edit moving</h3>
+      <p class="mt-2 text-sm leading-6 text-neutral-400">
+        Download from the preview above when the MP4 is ready, return to the project, or configure another edit. No render starts from these links.
+      </p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <RouterLink
+          :to="projectRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-center text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+          data-testid="auto-video-return-project"
+        >
+          Return to project
+        </RouterLink>
+        <RouterLink
+          :to="createAnotherEditRoute"
+          class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-center text-sm font-semibold text-neutral-200 transition hover:border-emerald-500 hover:bg-emerald-950/30"
+          data-testid="auto-video-create-another-edit"
+        >
+          Create another edit
+        </RouterLink>
+      </div>
     </section>
 
     <section v-if="timelineSummaryItems.length" class="nusa-card-premium rounded-[2rem] p-5" data-testid="auto-video-timeline-summary">
