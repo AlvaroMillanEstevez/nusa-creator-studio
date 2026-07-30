@@ -8,6 +8,8 @@ use App\Models\Project;
 use App\Models\User;
 use Database\Seeders\CreatorToolSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use ReflectionClass;
 use Tests\TestCase;
 
 class CreatorToolApiTest extends TestCase
@@ -113,6 +115,66 @@ class CreatorToolApiTest extends TestCase
             'credit_cost' => 3,
             'badge_label' => 'Available now',
         ]);
+    }
+
+    public function test_seeded_tool_output_types_are_allowed_by_application_and_database_constraint_migration(): void
+    {
+        Http::fake();
+
+        $this->seed(CreatorToolSeeder::class);
+
+        $seededOutputTypes = CreatorTool::query()
+            ->whereNotNull('output_type')
+            ->distinct()
+            ->pluck('output_type')
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertContains('ad_plan', $seededOutputTypes);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'auto_video_ads',
+            'output_type' => 'ad_plan',
+        ]);
+        $this->assertDatabaseHas('creator_tools', [
+            'key' => 'fashion_try_on',
+            'output_type' => 'image',
+        ]);
+
+        $this->assertSame([], array_values(array_diff($seededOutputTypes, CreatorTool::OUTPUT_TYPES)));
+
+        $migration = require database_path('migrations/2026_07_30_000000_expand_creator_tools_output_type_constraint.php');
+        $reflection = new ReflectionClass($migration);
+        $constraintOutputTypes = $reflection->getReflectionConstant('CURRENT_OUTPUT_TYPES')->getValue();
+
+        $this->assertSame([], array_values(array_diff(CreatorTool::OUTPUT_TYPES, $constraintOutputTypes)));
+        $this->assertSame([], array_values(array_diff($seededOutputTypes, $constraintOutputTypes)));
+
+        Http::assertNothingSent();
+    }
+
+    public function test_historical_creator_tool_output_types_remain_accepted(): void
+    {
+        foreach ([
+            'text_insight',
+            'script_pack',
+            'assisted_media',
+            'audio',
+            'image',
+            'video',
+            'avatar',
+            'mixed_media',
+        ] as $index => $outputType) {
+            CreatorTool::factory()->create([
+                'key' => "historical-output-type-{$index}",
+                'output_type' => $outputType,
+            ]);
+
+            $this->assertDatabaseHas('creator_tools', [
+                'key' => "historical-output-type-{$index}",
+                'output_type' => $outputType,
+            ]);
+        }
     }
 
     public function test_future_avatar_tools_are_seeded_as_premium_future_tools(): void
