@@ -4,9 +4,13 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import {
-  availableWorkflowDefinitions,
   comingSoonWorkflowDefinitions,
+  workflowDashboardPath,
+  workflowDefinitionsForFamily,
+  workflowFamilyDefinitions,
   type BetaWorkflowDefinition,
+  type WorkflowFamilyDefinition,
+  type WorkflowFamilyKey,
 } from '@/config/workflows'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
@@ -22,6 +26,7 @@ interface BetaWorkflowCard {
   description: string
   longDescription: string
   category: string
+  familyKey: WorkflowFamilyKey
   status: WorkflowCardStatus
   canStart: boolean
   destination: RouteLocationRaw | null
@@ -38,6 +43,11 @@ interface WorkflowToolData {
   badge_label: string | null
 }
 
+interface WorkflowFamilySection {
+  family: WorkflowFamilyDefinition
+  cards: BetaWorkflowCard[]
+}
+
 const tools = ref<CreatorTool[]>([])
 const isLoading = ref(true)
 const error = ref('')
@@ -48,8 +58,14 @@ const toolsByKey = computed(() =>
   new Map(visibleTools.value.map((tool) => [tool.key, tool])),
 )
 
-const availableWorkflowCards = computed<BetaWorkflowCard[]>(() =>
-  availableWorkflowDefinitions.map((workflow) => workflowCard(workflow)),
+const availableWorkflowSections = computed<WorkflowFamilySection[]>(() =>
+  workflowFamilyDefinitions
+    .filter((family) => family.key !== 'coming_soon')
+    .map((family) => ({
+      family,
+      cards: workflowDefinitionsForFamily(family.key, ['available']).map((workflow) => workflowCard(workflow)),
+    }))
+    .filter((section) => section.cards.length > 0),
 )
 
 const comingSoonWorkflowCards = computed<BetaWorkflowCard[]>(() =>
@@ -62,7 +78,7 @@ function workflowCard(workflow: BetaWorkflowDefinition): BetaWorkflowCard {
   const isComingSoon = workflow.status === 'coming_soon'
   const status = isComingSoon ? 'coming_soon' : toolData.status
   const canStart = workflow.status === 'available' && toolData.status === 'available'
-  const targetPath = '/dashboard?tool=' + encodeURIComponent(workflow.dashboardToolKey)
+  const targetPath = workflowDashboardPath(workflow)
 
   return {
     key: workflow.key,
@@ -70,6 +86,7 @@ function workflowCard(workflow: BetaWorkflowDefinition): BetaWorkflowCard {
     description: t('workflows.' + workflow.key + '.shortDescription'),
     longDescription: t('workflows.' + workflow.key + '.longDescription'),
     category: t('workflows.categories.' + workflow.categoryKey),
+    familyKey: workflow.familyKey,
     status,
     canStart,
     destination: canStart
@@ -180,19 +197,24 @@ onMounted(() => {
       </div>
 
       <template v-else>
-        <section class="mt-10" data-testid="available-workflow-section">
+        <section
+          v-for="section in availableWorkflowSections"
+          :key="section.family.key"
+          class="mt-10"
+          :data-testid="'workflow-family-' + section.family.key"
+        >
           <div class="max-w-3xl">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-              {{ t('workflows.mainWorkflows') }}
+              {{ t(section.family.titleKey) }}
             </p>
-            <h2 class="mt-2 text-2xl font-semibold">{{ t('workflows.toolsTitle') }}</h2>
+            <h2 class="mt-2 text-2xl font-semibold">{{ t(section.family.titleKey) }}</h2>
             <p class="mt-3 text-sm leading-6 text-neutral-400">
-              {{ t('workflows.toolsBody') }}
+              {{ t(section.family.descriptionKey) }}
             </p>
           </div>
 
-          <div class="mt-6 grid gap-4 md:grid-cols-2">
-            <template v-for="workflow in availableWorkflowCards" :key="workflow.key">
+          <div class="mt-6 grid gap-4 md:grid-cols-2" data-testid="available-workflow-section">
+            <template v-for="workflow in section.cards" :key="workflow.key">
               <RouterLink
                 v-if="workflow.canStart && workflow.destination"
                 :to="workflow.destination"
@@ -272,10 +294,10 @@ onMounted(() => {
         <section class="mt-12" data-testid="coming-soon-workflow-section">
           <div class="max-w-3xl">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
-              {{ t('workflows.laterTitle') }}
+              {{ t('workflows.families.coming_soon.title') }}
             </p>
             <p class="mt-2 text-sm leading-6 text-neutral-500">
-              {{ t('workflows.laterBody') }}
+              {{ t('workflows.families.coming_soon.description') }}
             </p>
           </div>
 

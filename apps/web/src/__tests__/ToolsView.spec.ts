@@ -101,21 +101,25 @@ describe('ToolsView', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows the final available workflow catalog in the product order', async () => {
+  it('groups available workflows into Creator Content and Commerce Studio', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ data: tools }))
 
     const wrapper = await mountToolsView(fetchMock)
     const availableCards = wrapper.findAll('[data-workflow-card="available"]')
     const titles = availableCards.map((card) => card.find('h3').text())
 
-    expect(wrapper.get('[data-testid="available-workflow-section"]').text()).toContain('Available workflows')
+    expect(wrapper.get('[data-testid="workflow-family-creator_content"]').text()).toContain('Creator Content')
+    expect(wrapper.get('[data-testid="workflow-family-commerce_studio"]').text()).toContain('Commerce Studio')
     expect(titles).toEqual([
       'Product Content Kit',
       'Analyze Footage with AI',
-      'AI Fashion Try-On',
       'Motion AI Video',
       'Auto Video Editor',
+      'AI Fashion Try-On',
     ])
+    expect(wrapper.findAll('[data-testid="workflow-card-ai_fashion_try_on"]')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('Try-On Variations')
+    expect(wrapper.text()).not.toContain('Create your own AI model')
     expect(wrapper.text()).not.toContain('AI Voiceover')
     expect(wrapper.text()).not.toContain('Supporting tools')
     expect(wrapper.text()).not.toContain('Mock beta')
@@ -147,6 +151,7 @@ describe('ToolsView', () => {
     expect(wrapper.get('[data-testid="workflow-card-analyze_footage"]').attributes('href')).toBe('/dashboard?tool=video_to_campaign')
     expect(wrapper.get('[data-testid="workflow-card-motion_ai_video"]').attributes('href')).toBe('/dashboard?tool=motion_ai_video')
     expect(wrapper.get('[data-testid="workflow-card-auto_video_editor"]').attributes('href')).toBe('/dashboard?tool=auto_video_editor')
+    expect(wrapper.get('[data-testid="workflow-card-ai_fashion_try_on"]').attributes('href')).toBe('/dashboard?tool=ai_fashion_try_on')
   })
 
   it('sends guests through login with the intended workflow destination', async () => {
@@ -155,6 +160,7 @@ describe('ToolsView', () => {
     const wrapper = await mountToolsView(fetchMock, null)
 
     expect(wrapper.get('[data-testid="workflow-card-motion_ai_video"]').attributes('href')).toBe('/login?redirect=/dashboard?tool=motion_ai_video')
+    expect(wrapper.get('[data-testid="workflow-card-ai_fashion_try_on"]').attributes('href')).toBe('/login?redirect=/dashboard?tool=ai_fashion_try_on')
     expect(wrapper.get('[data-testid="workflow-card-motion_ai_video"]').text()).toContain('Log in to start')
   })
 

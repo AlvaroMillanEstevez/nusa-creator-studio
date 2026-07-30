@@ -65,7 +65,7 @@ class GeneratedFashionTryOnImageMediaService
             'size_bytes' => strlen($imageBinary),
             'metadata' => array_filter(array_merge([
                 'generated' => true,
-                'workflow' => 'fashion-try-on',
+                'workflow' => 'fashion_try_on',
                 'workflow_key' => 'fashion_try_on',
                 'provider' => 'fashn',
                 'generation_id' => $generationId,

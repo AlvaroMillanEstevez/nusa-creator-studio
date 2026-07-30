@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
@@ -23,7 +23,7 @@ function workspaceResponse(id: number, title: string): Response {
   })
 }
 
-async function mountView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) {
+async function mountView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>, path = '/projects/new') {
   const placeholder = { template: '<div />' }
   const router = createRouter({
     history: createMemoryHistory(),
@@ -34,16 +34,21 @@ async function mountView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) {
       { path: '/dashboard', component: placeholder },
       { path: '/media', component: placeholder },
       { path: '/account', component: placeholder },
-      { path: '/projects/new', component: NewProjectWorkspaceView },
+      { path: '/projects/new', component: NewProjectWorkspaceView, name: 'project-create' },
       { path: '/projects/:id', component: placeholder, name: 'project-detail' },
+      { path: '/projects/:projectId/actions/video-to-campaign', component: placeholder, name: 'project-video-to-campaign-action' },
+      { path: '/projects/:projectId/actions/fashion-try-on', component: placeholder, name: 'project-fashion-try-on-action' },
+      { path: '/projects/:projectId/actions/motion-ai-video', component: placeholder, name: 'project-motion-ai-video-action' },
+      { path: '/projects/:projectId/actions/auto-video-editor', component: placeholder, name: 'project-auto-video-editor-action' },
     ],
   })
 
   vi.stubGlobal('fetch', fetchMock)
-  await router.push('/projects/new')
+  await router.push(path)
   await router.isReady()
 
   const wrapper = mount(NewProjectWorkspaceView, {
+    attachTo: document.body,
     global: { plugins: [createPinia(), router] },
   })
 
@@ -52,8 +57,19 @@ async function mountView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) {
   return { wrapper, router }
 }
 
+const scrollIntoViewMock = vi.fn<() => void>()
+
 describe('NewProjectWorkspaceView', () => {
+  beforeEach(() => {
+    scrollIntoViewMock.mockClear()
+    Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoViewMock,
+    })
+  })
+
   afterEach(() => {
+    document.body.innerHTML = ''
     vi.unstubAllGlobals()
   })
 
@@ -170,7 +186,7 @@ describe('NewProjectWorkspaceView', () => {
     )
   })
 
-  it('validates required workspace fields before submit', async () => {
+  it('validates required workspace fields and focuses the first invalid control', async () => {
     const fetchMock = vi.fn<typeof fetch>()
     const { wrapper } = await mountView(fetchMock)
 
@@ -181,6 +197,28 @@ describe('NewProjectWorkspaceView', () => {
     expect(wrapper.text()).toContain('Add a product or service name.')
     expect(wrapper.text()).toContain('Add project context so actions have enough brief detail.')
     expect(wrapper.text()).toContain('Describe the target audience.')
+    expect(wrapper.get('#project-title').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.get('#project-title').attributes('aria-describedby')).toBe('project-title-error')
+    expect(scrollIntoViewMock).toHaveBeenCalled()
+    expect(document.activeElement).toBe(wrapper.get('#project-title').element)
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('preserves AI Fashion Try-On workflow intent after workspace creation', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(workspaceResponse(80, 'Fashion drop launch'))
+    const { wrapper, router } = await mountView(fetchMock, '/projects/new?workflow=ai_fashion_try_on')
+
+    expect(wrapper.text()).toContain('Commerce Studio')
+    expect(wrapper.text()).toContain('AI Fashion Try-On')
+
+    await wrapper.get('#project-title').setValue('Fashion drop launch')
+    await wrapper.get('#product-name').setValue('Oversized linen shirt')
+    await wrapper.get('#project-context').setValue('A lightweight shirt for creator outfit content.')
+    await wrapper.get('#target-audience').setValue('Fashion creators preparing marketplace content')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/projects/80/actions/fashion-try-on')
   })
 })

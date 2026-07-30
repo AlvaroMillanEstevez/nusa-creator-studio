@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import SearchableCombobox from '@/components/SearchableCombobox.vue'
+import { resolveWorkflowDefinition, workflowRouteForProject } from '@/config/workflows'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { createWorkspaceProject } from '@/services/projects'
@@ -14,11 +15,14 @@ import {
   workspacePlatformOptions,
   type WorkspaceFormPayload,
 } from '@/types/project'
+import { focusFirstInvalidField } from '@/utils/forms'
 
 type FormField = keyof WorkspaceFormPayload | 'title'
 type FormErrors = Partial<Record<FormField, string>>
 
+const route = useRoute()
 const router = useRouter()
+const formElement = ref<HTMLFormElement | null>(null)
 const isSubmitting = ref(false)
 const submitError = ref('')
 const fieldErrors = ref<FormErrors>({})
@@ -51,6 +55,20 @@ const productCategoryOptions = [
   'Local brand',
   'Other',
 ]
+
+
+const workflowIntent = computed(() => {
+  const value = route.query.workflow ?? route.query.tool
+  const workflow = resolveWorkflowDefinition(value)
+
+  return workflow?.status === 'available' ? workflow : null
+})
+const workflowIntentLabel = computed(() =>
+  workflowIntent.value === null ? '' : t('workflows.' + workflowIntent.value.key + '.title'),
+)
+const workflowIntentFamily = computed(() =>
+  workflowIntent.value === null ? '' : t('workflows.families.' + workflowIntent.value.familyKey + '.title'),
+)
 
 const form = reactive<WorkspaceFormPayload & { title: string }>({
   title: '',
@@ -108,6 +126,7 @@ async function submitWorkspace(): Promise<void> {
   submitError.value = ''
 
   if (!validateForm()) {
+    void focusFirstInvalidField(formElement.value)
     return
   }
 
@@ -137,12 +156,17 @@ async function submitWorkspace(): Promise<void> {
       title,
     )
 
-    await router.push({ name: 'project-detail', params: { id: project.id } })
+    await router.push(
+      workflowIntent.value === null
+        ? { name: 'project-detail', params: { id: project.id } }
+        : workflowRouteForProject(workflowIntent.value, project.id),
+    )
   } catch (error: unknown) {
     submitError.value =
       error instanceof ApiError
         ? error.message
         : t('projectWorkspace.errors.createFailed')
+    void focusFirstInvalidField(formElement.value)
   } finally {
     isSubmitting.value = false
   }
@@ -165,9 +189,16 @@ async function submitWorkspace(): Promise<void> {
         <p class="mt-4 rounded-2xl border border-emerald-900/50 bg-emerald-950/20 p-4 text-sm leading-6 text-emerald-100/80">
           {{ t('projectWorkspace.reusableBriefHelp') }}
         </p>
+        <p
+          v-if="workflowIntent"
+          class="mt-3 rounded-2xl border border-sky-900/50 bg-sky-950/20 p-4 text-sm leading-6 text-sky-100/80"
+          data-testid="project-workflow-intent"
+        >
+          {{ t('projectWorkspace.workflowIntentHelp', { family: workflowIntentFamily, workflow: workflowIntentLabel }) }}
+        </p>
       </section>
 
-      <form class="nusa-form-card mt-8 space-y-8 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitWorkspace">
+      <form ref="formElement" class="nusa-form-card mt-8 space-y-8 rounded-[2rem] p-5 sm:p-6" novalidate @submit.prevent="submitWorkspace">
         <section class="space-y-5">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">

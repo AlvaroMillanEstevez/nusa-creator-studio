@@ -3,7 +3,15 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
-import { betaWorkflows } from '@/config/workflows'
+import {
+  resolveWorkflowDefinition,
+  workflowCreateProjectRoute,
+  workflowDefinitionsForFamily,
+  workflowFamilyDefinitions,
+  workflowRouteForProject,
+  type BetaWorkflowDefinition,
+  type WorkflowFamilyDefinition,
+} from '@/config/workflows'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { getDashboardSummary } from '@/services/dashboard'
@@ -16,39 +24,35 @@ const dashboard = ref<DashboardSummary | null>(null)
 const isLoading = ref(true)
 const loadError = ref('')
 
-const toolIntentLabels: Record<string, string> = {
-  product_content_kit: 'Product Content Kit',
-  auto_video_ads: 'Auto Video Ads',
-  affiliate_campaign: 'Product Content Kit',
-  video_enhancer: 'Video Enhancer / Caption Pack',
-  video_to_campaign: 'Analyze Footage with AI',
-  product_to_video: 'Product-to-Video Script Pack',
-  ai_voiceover: 'AI Voiceover',
-  fashion_try_on: 'Fashion Try-On',
-  motion_ai_video: 'Motion AI Video',
-  auto_video_editor: 'Auto Video Editor',
+interface DashboardWorkflowCard {
+  key: string
+  title: string
+  description: string
+  status: string
 }
 
-const toolIntent = computed(() => {
-  const value = Array.isArray(route.query.tool) ? route.query.tool[0] : route.query.tool
+interface DashboardWorkflowSection {
+  family: WorkflowFamilyDefinition
+  cards: DashboardWorkflowCard[]
+}
 
-  if (typeof value !== 'string' || !(value in toolIntentLabels)) {
-    return null
-  }
+const toolIntent = computed<BetaWorkflowDefinition | null>(() => resolveWorkflowDefinition(route.query.tool))
+const toolIntentLabel = computed(() => toolIntent.value === null ? '' : t('workflows.' + toolIntent.value.key + '.title'))
+const toolIntentFamilyLabel = computed(() => toolIntent.value === null ? '' : t('workflows.families.' + toolIntent.value.familyKey + '.title'))
+const toolIntentDashboardKey = computed(() => toolIntent.value?.dashboardToolKey ?? '')
 
-  return {
-    key: value,
-    label: toolIntentLabels[value],
-  }
-})
-
-const dashboardWorkflowCards = computed(() =>
-  betaWorkflows.map((workflow) => ({
-    key: workflow.key,
-    title: t('workflows.' + workflow.key + '.title'),
-    description: t('workflows.' + workflow.key + '.shortDescription'),
-    status: workflow.status === 'available' ? t('common.available') : t('workflows.plannedClosedBeta'),
-  })),
+const dashboardWorkflowSections = computed<DashboardWorkflowSection[]>(() =>
+  workflowFamilyDefinitions
+    .map((family) => ({
+      family,
+      cards: workflowDefinitionsForFamily(family.key).map((workflow) => ({
+        key: workflow.key,
+        title: t('workflows.' + workflow.key + '.title'),
+        description: t('workflows.' + workflow.key + '.shortDescription'),
+        status: workflow.status === 'available' ? t('common.available') : t('workflows.plannedClosedBeta'),
+      })),
+    }))
+    .filter((section) => section.cards.length > 0),
 )
 
 const statCards = computed(() => {
@@ -73,6 +77,12 @@ const statCards = computed(() => {
     { label: t('dashboard.stats.motionAiVideo'), value: stats.motion_ai_video_projects },
   ]
 })
+
+function projectRoute(projectId: number): ReturnType<typeof workflowRouteForProject> | string {
+  return toolIntent.value === null
+    ? '/projects/' + String(projectId)
+    : workflowRouteForProject(toolIntent.value, projectId)
+}
 
 function statusClass(status: string): string {
   if (status === 'completed') {
@@ -164,28 +174,28 @@ onMounted(loadDashboard)
       </section>
 
       <template v-else-if="dashboard">
-        <section v-if="toolIntent" class="nusa-card-premium mt-10 rounded-[2rem] p-5 sm:p-6">
+        <section v-if="toolIntent" class="nusa-card-premium mt-10 rounded-[2rem] p-5 sm:p-6" data-testid="dashboard-selected-workflow">
           <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                {{ t('dashboard.selectedWorkflow') }}
+                {{ t('dashboard.selectedWorkflow') }} · {{ toolIntentFamilyLabel }}
               </p>
               <h1 class="mt-3 text-3xl font-bold leading-tight sm:text-4xl">
-                {{ t('dashboard.startWithWorkflow', { workflow: toolIntent.label }) }}
+                {{ t('dashboard.startWithWorkflow', { workflow: toolIntentLabel }) }}
               </h1>
               <p class="mt-4 max-w-2xl text-sm leading-6 text-neutral-400">
-                {{ t('dashboard.chooseProjectWorkspaceToContinue', { workflow: toolIntent.label }) }}
+                {{ t('dashboard.chooseProjectWorkspaceToContinue', { workflow: toolIntentLabel }) }}
               </p>
             </div>
             <div class="flex flex-col gap-3 sm:flex-row">
               <RouterLink
-                to="/projects/new"
+                :to="workflowCreateProjectRoute(toolIntent)"
                 class="nusa-button-primary nusa-focus-ring inline-flex min-h-12 items-center justify-center rounded-2xl px-5 text-sm font-black text-neutral-950 transition hover:brightness-105"
               >
                 {{ t('dashboard.createNewProject') }}
               </RouterLink>
               <RouterLink
-                :to="'/dashboard?tool=' + toolIntent.key + '#analytics'"
+                :to="'/dashboard?tool=' + toolIntentDashboardKey + '#analytics'"
                 class="nusa-focus-ring inline-flex min-h-12 items-center justify-center rounded-2xl border border-neutral-700 px-5 text-sm font-semibold text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-800"
               >
                 {{ t('dashboard.viewWorkspaceActivity') }}
@@ -213,22 +223,33 @@ onMounted(loadDashboard)
             </RouterLink>
           </div>
 
-          <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <article
-              v-for="workflow in dashboardWorkflowCards"
-              :key="workflow.key"
-              class="nusa-card-soft rounded-2xl p-4"
-              :data-testid="'dashboard-workflow-' + workflow.key"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <h3 class="text-sm font-semibold text-neutral-100">{{ workflow.title }}</h3>
-                <span class="shrink-0 rounded-full border border-neutral-700 bg-neutral-900 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-                  {{ workflow.status }}
-                </span>
-              </div>
-              <p class="mt-3 text-xs leading-5 text-neutral-500">{{ workflow.description }}</p>
-            </article>
-          </div>
+          <section
+            v-for="section in dashboardWorkflowSections"
+            :key="section.family.key"
+            class="mt-5"
+            :data-testid="'dashboard-workflow-family-' + section.family.key"
+          >
+            <div class="mb-3">
+              <h3 class="text-sm font-semibold text-neutral-100">{{ t(section.family.titleKey) }}</h3>
+              <p class="mt-1 text-xs leading-5 text-neutral-500">{{ t(section.family.descriptionKey) }}</p>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <article
+                v-for="workflow in section.cards"
+                :key="workflow.key"
+                class="nusa-card-soft rounded-2xl p-4"
+                :data-testid="'dashboard-workflow-' + workflow.key"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <h4 class="text-sm font-semibold text-neutral-100">{{ workflow.title }}</h4>
+                  <span class="shrink-0 rounded-full border border-neutral-700 bg-neutral-900 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+                    {{ workflow.status }}
+                  </span>
+                </div>
+                <p class="mt-3 text-xs leading-5 text-neutral-500">{{ workflow.description }}</p>
+              </article>
+            </div>
+          </section>
         </section>
 
         <section class="mt-9">
@@ -239,7 +260,7 @@ onMounted(loadDashboard)
               </p>
               <h2 class="mt-2 text-2xl font-semibold">{{ toolIntent ? t('dashboard.chooseExistingProject') : t('dashboard.recentProjects') }}</h2>
               <p class="mt-2 text-sm leading-6 text-neutral-500">
-                {{ toolIntent ? t('dashboard.chooseProjectWorkspaceToContinue', { workflow: toolIntent.label }) : t('dashboard.openWorkspaceToContinue') }}
+                {{ toolIntent ? t('dashboard.chooseProjectWorkspaceToContinue', { workflow: toolIntentLabel }) : t('dashboard.openWorkspaceToContinue') }}
               </p>
             </div>
             <span v-if="dashboard.recent_projects.length" class="text-xs text-neutral-500">
@@ -253,7 +274,7 @@ onMounted(loadDashboard)
               {{ t('dashboard.noProjectsBody') }}
             </p>
             <RouterLink
-              to="/projects/new"
+              :to="toolIntent ? workflowCreateProjectRoute(toolIntent) : '/projects/new'"
               class="mt-5 inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
             >
               {{ t('dashboard.createFirstProject') }}
@@ -264,7 +285,7 @@ onMounted(loadDashboard)
             <RouterLink
               v-for="project in dashboard.recent_projects"
               :key="project.id"
-              :to="'/projects/' + project.id"
+              :to="projectRoute(project.id)"
               class="nusa-card-interactive nusa-focus-ring flex min-h-52 flex-col rounded-[2rem] p-5 transition"
             >
               <div class="flex items-start justify-between gap-3">

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
@@ -34,7 +34,16 @@ const capabilities: FashionTryOnProviderCapabilities = {
   standard_garment_photo_types: ['auto', 'flat_lay', 'model'],
   standard_modes: ['balanced', 'performance', 'quality'],
   premium_presets: ['premium_fast', 'premium_balanced', 'premium_quality'],
+  active_packages: ['single_result'],
+  default_package: 'single_result',
+  future_packages: ['variations', 'catalog_pack', 'catalog_video_pack'],
+  active_person_sources: ['user_upload'],
+  default_person_source: 'user_upload',
+  future_person_sources: ['nusa_ai_model', 'custom_ai_model'],
   maximum_outputs: 1,
+  max_outputs_enabled: 1,
+  multi_output_supported: true,
+  multi_output_generation_enabled: false,
   consent_required: true,
   person_image_required: true,
   product_image_required: true,
@@ -130,22 +139,44 @@ function successfulFetch(responseDelay?: Promise<Response>): ReturnType<typeof v
   })
 }
 
+const scrollIntoViewMock = vi.fn<() => void>()
+
 describe('FashionTryOnActionView', () => {
+  beforeEach(() => {
+    scrollIntoViewMock.mockClear()
+    Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoViewMock,
+    })
+  })
+
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('renders Standard setup, disabled Premium, category and consent requirements', async () => {
+  it('renders packages, person sources, disabled Premium and local validation without locking the button', async () => {
     const { wrapper } = await mountView(successfulFetch())
 
     expect(wrapper.text()).toContain('AI Fashion Try-On')
+    expect(wrapper.text()).toContain('Choose your Try-On package')
+    expect(wrapper.text()).toContain('Single Try-On')
+    expect(wrapper.get('[data-testid="fashion-package-variations"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="fashion-package-catalog_pack"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="fashion-person-source-nusa_ai_model"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="fashion-person-source-custom_ai_model"]').attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('Standard')
     expect(wrapper.text()).toContain('Premium')
     expect(wrapper.get('[data-testid="fashion-tier-premium"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-testid="fashion-category-select"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="fashion-consent-checkbox"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="fashion-generate-button"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="fashion-generate-button"]').attributes('disabled')).toBeUndefined()
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
     expect(wrapper.text()).toContain('Choose or upload one person photo first.')
+    expect(wrapper.get('[data-testid="fashion-generate-button"]').attributes('disabled')).toBeUndefined()
+    expect(scrollIntoViewMock).toHaveBeenCalled()
   })
 
   it('submits a canonical Standard payload once and redirects to generation detail', async () => {
@@ -182,6 +213,8 @@ describe('FashionTryOnActionView', () => {
     }
     const [, request] = submitCall
     expect(JSON.parse(String(request?.body))).toEqual({
+      package_key: 'single_result',
+      person_source: 'user_upload',
       tier: 'standard',
       person_image_asset_id: 101,
       product_image_asset_id: 202,
@@ -201,7 +234,10 @@ describe('FashionTryOnActionView', () => {
       '/projects/42/actions/fashion-try-on?personImageAssetId=abc&productImageAssetId=-9',
     )
 
-    expect(wrapper.get('[data-testid="fashion-generate-button"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="fashion-generate-button"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.text()).toContain('Choose or upload one person photo first.')
   })
 })

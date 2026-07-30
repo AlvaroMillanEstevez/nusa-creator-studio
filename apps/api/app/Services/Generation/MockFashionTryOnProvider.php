@@ -30,6 +30,8 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
         $garmentAsset = $this->asset($input, 'garment_reference');
 
         $tier = FashionTryOnCapabilities::normalizeTier(is_string($input['tier'] ?? null) ? $input['tier'] : null);
+        $packageKey = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
+        $personSource = FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null);
         $category = is_string($input['category'] ?? null) ? $input['category'] : 'auto';
 
         $localized = match (strtolower($this->value($input, 'language', 'english', 40))) {
@@ -84,6 +86,8 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
         };
 
         return array_merge([
+            'package_key' => $packageKey,
+            'person_source' => $personSource,
             'tier' => $tier,
             'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
             'selected_person_image' => $modelAsset,
@@ -95,9 +99,18 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
             ],
             'provider_request_summary' => [
                 'provider' => 'mock',
+                'package_key' => $packageKey,
+                'person_source' => $personSource,
                 'tier' => $tier,
                 'output_count' => 0,
                 'real_provider_call_made' => false,
+            ],
+            'generation_summary' => [
+                'quality' => ucfirst($tier),
+                'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
+                'package_key' => $packageKey,
+                'person_source' => $personSource,
+                'output_count' => 0,
             ],
             'image_quality_recommendations' => [
                 'Use a clear person photo where the body and outfit area are visible.',

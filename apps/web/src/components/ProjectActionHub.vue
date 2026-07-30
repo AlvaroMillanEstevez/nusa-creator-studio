@@ -2,7 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
-import { availableWorkflowDefinitions, comingSoonWorkflowDefinitions, type BetaWorkflowDefinition } from '@/config/workflows'
+import {
+  workflowDefinitionsForFamily,
+  workflowFamilyDefinitions,
+  type BetaWorkflowDefinition,
+  type WorkflowFamilyDefinition,
+} from '@/config/workflows'
 import { useTranslations } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { generateCampaignProject, getProjectActions } from '@/services/projects'
@@ -53,6 +58,11 @@ interface WorkflowActionCard {
   action: ProjectAction
 }
 
+interface WorkflowActionSection {
+  family: WorkflowFamilyDefinition
+  cards: WorkflowActionCard[]
+}
+
 const hasInternalOrUnlimitedAccess = computed(() => {
   const user = auth.user
 
@@ -62,30 +72,16 @@ const hasInternalOrUnlimitedAccess = computed(() => {
     user?.plan_key === 'internal_unlimited'
 })
 
-const availableActionCards = computed<WorkflowActionCard[]>(() =>
-  availableWorkflowDefinitions
-    .map((workflow) => workflowActionCard(workflow))
-    .filter((card): card is WorkflowActionCard => card !== null),
+const actionSections = computed<WorkflowActionSection[]>(() =>
+  workflowFamilyDefinitions
+    .map((family) => ({
+      family,
+      cards: workflowDefinitionsForFamily(family.key)
+        .map((workflow) => workflowActionCard(workflow))
+        .filter((card): card is WorkflowActionCard => card !== null),
+    }))
+    .filter((section) => section.cards.length > 0),
 )
-const comingSoonActionCards = computed<WorkflowActionCard[]>(() =>
-  comingSoonWorkflowDefinitions
-    .map((workflow) => workflowActionCard(workflow))
-    .filter((card): card is WorkflowActionCard => card !== null),
-)
-const actionSections = computed(() => [
-  {
-    key: 'available',
-    title: t('projectActions.availableWorkflows'),
-    description: t('projectActions.availableWorkflowsBody'),
-    cards: availableActionCards.value,
-  },
-  {
-    key: 'coming_soon',
-    title: t('projectActions.comingSoonWorkflows'),
-    description: t('projectActions.comingSoonWorkflowsBody'),
-    cards: comingSoonActionCards.value,
-  },
-].filter((section) => section.cards.length > 0))
 
 function workflowActionCard(workflow: BetaWorkflowDefinition): WorkflowActionCard | null {
   const action = actionForWorkflow(workflow)
@@ -592,14 +588,14 @@ watch(
       </div>
 
       <div v-else class="mt-6 space-y-7">
-        <section v-for="section in actionSections" :key="section.key" :data-testid="`project-${section.key}-workflow-section`">
+        <section v-for="section in actionSections" :key="section.family.key" :data-testid="`project-${section.family.key}-workflow-section`">
           <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 class="text-sm font-semibold text-neutral-100">
-                {{ section.title }}
+                {{ t(section.family.titleKey) }}
               </h3>
               <p class="mt-1 text-xs leading-5 text-neutral-500">
-                {{ section.description }}
+                {{ t(section.family.descriptionKey) }}
               </p>
             </div>
           </div>

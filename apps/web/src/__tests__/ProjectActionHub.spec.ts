@@ -206,6 +206,18 @@ const baseActions: ProjectActionsResponse = {
       reason: 'Analyze footage first, or use manual edit setup.',
     }),
     action({
+      key: 'start_fashion_try_on',
+      title: 'AI Fashion Try-On',
+      description: 'Create one realistic fashion try-on image.',
+      service_tier: 'premium',
+      output_type: 'image',
+      status: 'configure',
+      action_mode: 'configure',
+      credit_cost: 2,
+      primary_cta: { label: 'Set up Fashion Try-On', route: '/projects/42/actions/fashion-try-on', action: 'configure_fashion_try_on' },
+      tool_key: 'fashion_try_on',
+    }),
+    action({
       key: 'create_video_ad',
       title: 'Auto Video Ads',
       description: 'Create paid ad creative plans.',
@@ -243,6 +255,7 @@ async function mountHub(props: Partial<InstanceType<typeof ProjectActionHub>['$p
       { path: '/projects/:projectId/actions/video-to-campaign', name: 'project-video-to-campaign-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/auto-video-editor', name: 'project-auto-video-editor-action', component: { template: '<div />' } },
       { path: '/projects/:projectId/actions/motion-ai-video', name: 'project-motion-ai-video-action', component: { template: '<div />' } },
+      { path: '/projects/:projectId/actions/fashion-try-on', name: 'project-fashion-try-on-action', component: { template: '<div />' } },
     ],
   })
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
@@ -295,12 +308,18 @@ describe('ProjectActionHub', () => {
     const availableCards = wrapper.findAll('[data-testid^="project-action-"]').filter((card) => card.text().includes('Available now') || !card.text().includes('Coming soon'))
     const text = wrapper.text()
 
-    expect(wrapper.get('[data-testid="project-available-workflow-section"]').text()).toContain('Available workflows')
-    expect(wrapper.get('[data-testid="project-action-generate_campaign"]').text()).toContain('Product Content Kit')
-    expect(wrapper.get('[data-testid="project-action-generate_video_to_campaign"]').text()).toContain('Analyze Footage with AI')
-    expect(wrapper.get('[data-testid="project-action-start_motion_video"]').text()).toContain('Motion AI Video')
-    expect(wrapper.get('[data-testid="project-action-generate_auto_video_edit"]').text()).toContain('Auto Video Editor')
-    expect(availableCards.length).toBeGreaterThanOrEqual(4)
+    const creatorSection = wrapper.get('[data-testid="project-creator_content-workflow-section"]')
+    const commerceSection = wrapper.get('[data-testid="project-commerce_studio-workflow-section"]')
+
+    expect(creatorSection.text()).toContain('Creator Content')
+    expect(creatorSection.text()).toContain('Product Content Kit')
+    expect(creatorSection.text()).toContain('Analyze Footage with AI')
+    expect(creatorSection.text()).toContain('Motion AI Video')
+    expect(creatorSection.text()).toContain('Auto Video Editor')
+    expect(commerceSection.text()).toContain('Commerce Studio')
+    expect(commerceSection.text()).toContain('AI Fashion Try-On')
+    expect(wrapper.findAll('[data-testid="project-action-start_fashion_try_on"]')).toHaveLength(1)
+    expect(availableCards.length).toBeGreaterThanOrEqual(5)
     expect(text).not.toContain('Supporting tools')
     expect(text).not.toContain('Create voiceover')
     expect(text).not.toContain('Mock beta')
@@ -364,5 +383,19 @@ describe('ProjectActionHub', () => {
     expect(router.currentRoute.value.query.editMode).toBe('ai_video_analysis')
     expect(router.currentRoute.value.query.analysisGenerationId).toBe('31')
     expect(router.currentRoute.value.query.sourceVideoAssetId).toBe('88')
+  })
+
+
+  it('opens AI Fashion Try-On without starting a generation', async () => {
+    const { wrapper, router, fetchMock } = await mountHub()
+
+    await wrapper.get('[data-testid="project-action-start_fashion_try_on"]').find('button').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('project-fashion-try-on-action')
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      API_BASE_URL + '/projects/42/generate-fashion-try-on',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 })

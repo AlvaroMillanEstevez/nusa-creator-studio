@@ -32,6 +32,8 @@ class FashionTryOnGenerationService
             throw new DomainException('Only project workspaces can generate AI Fashion Try-On results.');
         }
 
+        $packageKey = $this->activePackage($options);
+        $personSource = $this->activePersonSource($options);
         $tier = FashionTryOnCapabilities::normalizeTier(is_string($options['tier'] ?? null) ? $options['tier'] : null);
 
         if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && ! FashionTryOnCapabilities::premiumEnabledForUser($user)) {
@@ -69,7 +71,7 @@ class FashionTryOnGenerationService
             creditCost: $creditCost,
             creditReason: $this->creditReason($tier, $provider),
             dispatch: fn (int $generationId) => GenerateFashionTryOnJob::dispatch($generationId),
-            inputPayload: $this->inputPayload($project, $tier, $provider, $personImage, $productImage, $options),
+            inputPayload: $this->inputPayload($project, $packageKey, $personSource, $tier, $provider, $personImage, $productImage, $options),
             provider: $provider,
         );
     }
@@ -87,12 +89,44 @@ class FashionTryOnGenerationService
         }
 
         return $this->generate($project, $user, [
+            'package_key' => FashionTryOnCapabilities::PACKAGE_SINGLE_RESULT,
+            'person_source' => FashionTryOnCapabilities::PERSON_SOURCE_USER_UPLOAD,
             'tier' => FashionTryOnCapabilities::TIER_STANDARD,
             'person_image_asset_id' => $person->getKey(),
             'product_image_asset_id' => $product->getKey(),
             'category' => 'auto',
             'person_image_permission_confirmed' => true,
         ]);
+    }
+
+    /** @param array<string, mixed> $options */
+    private function activePackage(array $options): string
+    {
+        $value = is_string($options['package_key'] ?? null) ? $options['package_key'] : null;
+
+        if ($value !== null && ! in_array($value, FashionTryOnCapabilities::ACTIVE_PACKAGES, true)) {
+            throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
+                'stage' => 'validate_package',
+                'field' => 'package_key',
+            ]);
+        }
+
+        return FashionTryOnCapabilities::normalizePackage($value);
+    }
+
+    /** @param array<string, mixed> $options */
+    private function activePersonSource(array $options): string
+    {
+        $value = is_string($options['person_source'] ?? null) ? $options['person_source'] : null;
+
+        if ($value !== null && ! in_array($value, FashionTryOnCapabilities::ACTIVE_PERSON_SOURCES, true)) {
+            throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
+                'stage' => 'validate_person_source',
+                'field' => 'person_source',
+            ]);
+        }
+
+        return FashionTryOnCapabilities::normalizePersonSource($value);
     }
 
     /**
@@ -149,7 +183,7 @@ class FashionTryOnGenerationService
      * @param  array<string, mixed>  $options
      * @return array<string, mixed>
      */
-    private function inputPayload(Project $project, string $tier, string $provider, MediaAsset $personImage, MediaAsset $productImage, array $options): array
+    private function inputPayload(Project $project, string $packageKey, string $personSource, string $tier, string $provider, MediaAsset $personImage, MediaAsset $productImage, array $options): array
     {
         $projectInput = is_array($project->input_payload) ? $project->input_payload : [];
         $category = is_string($options['category'] ?? null) ? $options['category'] : 'auto';
@@ -159,6 +193,8 @@ class FashionTryOnGenerationService
             'origin_workflow' => 'ai_fashion_try_on',
             'origin_label' => 'AI Fashion Try-On',
             'provider' => $provider,
+            'package_key' => $packageKey,
+            'person_source' => $personSource,
             'tier' => $tier,
             'person_image_asset_id' => $personImage->getKey(),
             'product_image_asset_id' => $productImage->getKey(),

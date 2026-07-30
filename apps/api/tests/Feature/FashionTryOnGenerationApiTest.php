@@ -59,7 +59,15 @@ class FashionTryOnGenerationApiTest extends TestCase
             ->assertJsonPath('data.mock_mode', true)
             ->assertJsonPath('data.standard_enabled', true)
             ->assertJsonPath('data.premium_enabled', false)
-            ->assertJsonPath('data.maximum_outputs', 1);
+            ->assertJsonPath('data.maximum_outputs', 1)
+            ->assertJsonPath('data.active_packages.0', 'single_result')
+            ->assertJsonPath('data.default_package', 'single_result')
+            ->assertJsonPath('data.future_packages.0', 'variations')
+            ->assertJsonPath('data.active_person_sources.0', 'user_upload')
+            ->assertJsonPath('data.default_person_source', 'user_upload')
+            ->assertJsonPath('data.future_person_sources.0', 'nusa_ai_model')
+            ->assertJsonPath('data.max_outputs_enabled', 1)
+            ->assertJsonPath('data.multi_output_generation_enabled', false);
 
         $encoded = json_encode($response->json(), JSON_THROW_ON_ERROR);
         $this->assertStringNotContainsString('api_key', $encoded);
@@ -108,6 +116,63 @@ class FashionTryOnGenerationApiTest extends TestCase
         Queue::assertNothingPushed();
         $this->assertSame(5, $user->refresh()->credits_balance);
         $this->assertDatabaseCount('generations', 0);
+    }
+
+    public function test_future_packages_person_sources_and_output_counts_are_rejected_before_charge(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'package_key' => 'variations',
+            ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('package_key');
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'person_source' => 'nusa_ai_model',
+            ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('person_source');
+
+        foreach (['num_samples', 'num_images', 'output_count'] as $field) {
+            $this->actingAs($user)
+                ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                    $field => 2,
+                ]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($field);
+        }
+
+        Queue::assertNothingPushed();
+        $this->assertSame(5, $user->refresh()->credits_balance);
+        $this->assertDatabaseCount('generations', 0);
+        $this->assertDatabaseCount('credit_transactions', 0);
+    }
+
+    public function test_single_result_package_and_user_upload_person_source_are_accepted(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['credits_balance' => 5]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'package_key' => 'single_result',
+                'person_source' => 'user_upload',
+            ]))
+            ->assertCreated()
+            ->json('data.id');
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $this->assertSame('single_result', $generation->input_payload['package_key']);
+        $this->assertSame('user_upload', $generation->input_payload['person_source']);
+        Queue::assertPushed(GenerateFashionTryOnJob::class);
     }
 
     public function test_foreign_non_image_and_missing_storage_assets_are_rejected_before_charge(): void
@@ -164,6 +229,13 @@ class FashionTryOnGenerationApiTest extends TestCase
         $transaction = CreditTransaction::query()->where('generation_id', $generationId)->firstOrFail();
 
         $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame('single_result', $generation->input_payload['package_key']);
+        $this->assertSame('user_upload', $generation->input_payload['person_source']);
+        $this->assertSame('single_result', $generation->output_payload['package_key']);
+        $this->assertSame('user_upload', $generation->output_payload['person_source']);
+        $this->assertSame(0, $generation->output_payload['provider_request_summary']['output_count']);
+        $this->assertArrayNotHasKey('final_image_asset_ids', $generation->output_payload);
+        $this->assertArrayNotHasKey('rendered_image_assets', $generation->output_payload);
         $this->assertSame('not_generated', $generation->output_payload['generated_image']['status']);
         $this->assertSame('Preview plan only — no try-on image was generated.', $generation->output_payload['generated_image']['message']);
         $this->assertArrayNotHasKey('final_image_asset_id', $generation->output_payload);
@@ -280,7 +352,22 @@ class FashionTryOnGenerationApiTest extends TestCase
         $this->assertSame('response_header', $generation->output_payload['provider_metadata']['provider_credits_source']);
         $this->assertArrayHasKey('actual_provider_cost_usd', $generation->output_payload['provider_metadata']);
         $this->assertNull($generation->output_payload['provider_metadata']['actual_provider_cost_usd']);
+        $this->assertSame('single_result', $generation->input_payload['package_key']);
+        $this->assertSame('user_upload', $generation->input_payload['person_source']);
+        $this->assertSame('single_result', $generation->output_payload['package_key']);
+        $this->assertSame('user_upload', $generation->output_payload['person_source']);
         $this->assertSame($asset->id, $generation->output_payload['final_image_asset_id']);
+        $this->assertSame([$asset->id], $generation->output_payload['final_image_asset_ids']);
+        $this->assertSame($asset->id, $generation->output_payload['rendered_image_asset']['id']);
+        $this->assertSame($asset->id, $generation->output_payload['rendered_image_assets'][0]['id']);
+        $this->assertSame(0, $generation->output_payload['rendered_image_assets'][0]['output_index']);
+        $this->assertSame(1, $generation->output_payload['generation_summary']['output_count']);
+        $this->assertSame('single_result', $asset->metadata['package_key']);
+        $this->assertSame('user_upload', $asset->metadata['person_source']);
+        $this->assertSame('fashion_try_on', $asset->metadata['workflow']);
+        $this->assertSame($generationId, $asset->metadata['generation_id']);
+        $this->assertSame(0, $asset->metadata['output_index']);
+        $this->assertSame(1, $asset->metadata['output_count']);
         $this->assertSame('image/png', $asset->mime_type);
         Storage::disk('media-test')->assertExists($asset->path);
         $this->assertSame(1, CreditTransaction::query()->where('generation_id', $generationId)->where('type', CreditTransactionType::Usage->value)->count());

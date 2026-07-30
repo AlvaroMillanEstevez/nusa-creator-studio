@@ -134,6 +134,19 @@ export const fashionTryOnTierOptions = [
   { value: 'premium', label: 'Premium', description: 'Higher detail and broader wearable support. Coming after Standard validation.' },
 ] as const
 
+export const fashionTryOnPackageOptions = [
+  { value: 'single_result', label: 'Single Try-On', status: 'available', description: 'Create one realistic fashion try-on image from a person photo and a clothing product photo.' },
+  { value: 'variations', label: 'Try-On Variations', status: 'coming_soon', description: 'Generate several try-on variations so you can choose the best result.' },
+  { value: 'catalog_pack', label: 'E-commerce Catalog Pack', status: 'coming_soon', description: 'Prepare a product image set for online stores and marketplaces using the selected try-on result.' },
+  { value: 'catalog_video_pack', label: 'Catalog Pack + Short Video', status: 'coming_soon', description: 'Create a catalog image pack and continue with a short promotional product video.' },
+] as const
+
+export const fashionTryOnPersonSourceOptions = [
+  { value: 'user_upload', label: 'Upload a person photo', status: 'available', description: 'Upload or select a photo that you have permission to use.' },
+  { value: 'nusa_ai_model', label: 'Choose a Nusa AI model', status: 'coming_soon', description: 'Choose from a curated set of AI-generated fashion models.' },
+  { value: 'custom_ai_model', label: 'Create your own AI model', status: 'coming_soon', description: 'Create a reusable AI fashion model for future product catalog work.' },
+] as const
+
 export const fashionTryOnCategoryOptions = [
   { value: 'auto', label: 'Auto detect' },
   { value: 'tops', label: 'Top' },
@@ -359,6 +372,8 @@ export type AutoVideoAdTone = (typeof autoVideoAdToneOptions)[number]['value']
 export type AutoVideoAdVisualStyle = (typeof autoVideoAdVisualStyleOptions)[number]['value']
 export type AutoVideoAdHookStyle = (typeof autoVideoAdHookStyleOptions)[number]['value']
 export type FashionTryOnTier = (typeof fashionTryOnTierOptions)[number]['value']
+export type FashionTryOnPackageKey = (typeof fashionTryOnPackageOptions)[number]['value']
+export type FashionTryOnPersonSource = (typeof fashionTryOnPersonSourceOptions)[number]['value']
 export type FashionTryOnCategory = (typeof fashionTryOnCategoryOptions)[number]['value']
 export type FashionTryOnGarmentPhotoType = (typeof fashionTryOnGarmentPhotoTypeOptions)[number]['value']
 export type FashionTryOnStandardMode = (typeof fashionTryOnStandardModeOptions)[number]['value']
@@ -483,7 +498,16 @@ export interface FashionTryOnProviderCapabilities {
   standard_garment_photo_types: FashionTryOnGarmentPhotoType[] | string[]
   standard_modes: FashionTryOnStandardMode[] | string[]
   premium_presets: string[]
+  active_packages?: FashionTryOnPackageKey[] | string[]
+  default_package?: FashionTryOnPackageKey | string
+  future_packages?: FashionTryOnPackageKey[] | string[]
+  active_person_sources?: FashionTryOnPersonSource[] | string[]
+  default_person_source?: FashionTryOnPersonSource | string
+  future_person_sources?: FashionTryOnPersonSource[] | string[]
   maximum_outputs: number
+  max_outputs_enabled?: number
+  multi_output_supported?: boolean
+  multi_output_generation_enabled?: boolean
   consent_required: boolean
   person_image_required: boolean
   product_image_required: boolean
@@ -699,6 +723,8 @@ export interface GenerateMotionAiVideoPayload {
 }
 
 export interface GenerateFashionTryOnPayload {
+  package_key?: FashionTryOnPackageKey | string
+  person_source?: FashionTryOnPersonSource | string
   tier?: FashionTryOnTier
   person_image_asset_id: number
   product_image_asset_id: number
@@ -982,6 +1008,7 @@ export interface FashionTryOnRenderedImageAsset {
   download_url: string | null
   mime_type: string | null
   size_bytes: number | null
+  output_index?: number | null
 }
 
 export interface FashionTryOnProviderMetadata {
@@ -994,15 +1021,23 @@ export interface FashionTryOnProviderMetadata {
   estimated_provider_cost_usd?: number | null
   actual_provider_cost_usd?: number | null
   provider_latency_ms?: number | null
+  package_key?: FashionTryOnPackageKey | string | null
+  person_source?: FashionTryOnPersonSource | string | null
   tier?: FashionTryOnTier | string | null
   quality_preset?: string | null
   output_count?: number | null
+  safe_error_category?: string | null
+  provider_error_name?: string | null
+  provider_error_message?: string | null
+  failure_reason?: string | null
   [key: string]: unknown
 }
 
 export interface FashionTryOnResult {
   try_on_title: string
   concept_summary: string
+  package_key?: FashionTryOnPackageKey | string | null
+  person_source?: FashionTryOnPersonSource | string | null
   tier?: FashionTryOnTier | string | null
   quality_preset?: string | null
   category?: FashionTryOnCategory | string | null
@@ -1012,9 +1047,11 @@ export interface FashionTryOnResult {
   selected_product_image?: FashionTryOnSelectedImageSummary
   generated_image: FashionTryOnGeneratedImage
   final_image_asset_id?: number | null
+  final_image_asset_ids?: number[]
   final_image_stream_url?: string | null
   final_image_download_url?: string | null
   rendered_image_asset?: FashionTryOnRenderedImageAsset | null
+  rendered_image_assets?: FashionTryOnRenderedImageAsset[]
   generation_summary?: Record<string, string | number | null>
   provider_metadata?: FashionTryOnProviderMetadata | null
   provider_request_summary?: Record<string, unknown>

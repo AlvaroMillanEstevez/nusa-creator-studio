@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AiVoiceoverGenerationResult from '@/components/AiVoiceoverGenerationResult.vue'
 import AutoVideoEditorGenerationResult from '@/components/AutoVideoEditorGenerationResult.vue'
@@ -11,6 +11,7 @@ import MotionAiVideoGenerationResult from '@/components/MotionAiVideoGenerationR
 import ProductToVideoGenerationResult from '@/components/ProductToVideoGenerationResult.vue'
 import VideoEnhancerGenerationResult from '@/components/VideoEnhancerGenerationResult.vue'
 import VideoToCampaignGenerationResult from '@/components/VideoToCampaignGenerationResult.vue'
+import { useTranslations } from '@/i18n'
 import type { MediaAsset } from '@/types/media'
 import {
   generationOutput,
@@ -37,6 +38,15 @@ const props = defineProps<{
   voiceoverAction?: ProjectAction | null
   projectGenerations?: CreatorGeneration[]
 }>()
+
+interface FailureAction {
+  key: string
+  label: string
+  to: RouteLocationRaw
+  primary: boolean
+}
+
+const { t } = useTranslations()
 
 const result = computed(() =>
   props.generation === null ? null : generationOutput(props.generation),
@@ -190,8 +200,124 @@ const processingDescription = computed(() => {
 
   return 'We are creating your result. You can stay on this page; the result updates automatically.'
 })
+
+const fashionFailureCategories = [
+  'fashn_pose_not_detected',
+  'fashn_image_load_failed',
+  'fashn_input_validation',
+  'fashn_content_moderation',
+  'fashn_auth_failed',
+  'fashn_insufficient_credits',
+  'fashn_provider_unavailable',
+  'fashn_poll_timeout',
+  'fashn_output_invalid',
+] as const
+
+type FashionFailureCategory = (typeof fashionFailureCategories)[number]
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function metadataString(metadata: Record<string, unknown>, key: string): string | null {
+  const value = metadata[key]
+
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
+}
+
+const failurePayload = computed(() => isRecord(result.value) ? result.value : null)
+const failureMetadata = computed<Record<string, unknown>>(() => {
+  const metadata = failurePayload.value?.provider_metadata
+
+  return isRecord(metadata) ? metadata : {}
+})
+const fashionSafeFailureCategory = computed<FashionFailureCategory | null>(() => {
+  const category = metadataString(failureMetadata.value, 'safe_error_category')
+
+  if (fashionFailureCategories.includes(category as FashionFailureCategory)) {
+    return category as FashionFailureCategory
+  }
+
+  if (metadataString(failureMetadata.value, 'provider_error_name') === 'PoseError') {
+    return 'fashn_pose_not_detected'
+  }
+
+  return null
+})
+const fashionFailureCopy = computed(() => {
+  if (!isFashionTryOnGeneration.value) {
+    return null
+  }
+
+  const category = fashionSafeFailureCategory.value
+
+  if (category !== null) {
+    return {
+      title: t(`fashionTryOn.failure.categories.${category}.title`),
+      message: t(`fashionTryOn.failure.categories.${category}.message`),
+    }
+  }
+
+  return {
+    title: t('fashionTryOn.failure.genericTitle'),
+    message: t('fashionTryOn.failure.genericMessage'),
+  }
+})
+const fashionActionRoute = computed<RouteLocationRaw>(() => {
+  const id = props.projectId ?? props.generation?.project_id
+
+  return id === null || id === undefined
+    ? '/dashboard'
+    : { name: 'project-fashion-try-on-action', params: { projectId: String(id) } }
+})
+const fashionPersonPhotoRoute = computed<RouteLocationRaw>(() => {
+  const id = props.projectId ?? props.generation?.project_id
+
+  return id === null || id === undefined
+    ? '/dashboard'
+    : { name: 'project-fashion-try-on-action', params: { projectId: String(id) }, query: { focus: 'person_photo' } }
+})
+const fashionProductPhotoRoute = computed<RouteLocationRaw>(() => {
+  const id = props.projectId ?? props.generation?.project_id
+
+  return id === null || id === undefined
+    ? '/dashboard'
+    : { name: 'project-fashion-try-on-action', params: { projectId: String(id) }, query: { focus: 'product_photo' } }
+})
+const fashionFailureActions = computed<FailureAction[]>(() => {
+  const editAction: FailureAction = {
+    key: 'edit',
+    label: t('fashionTryOn.failure.editSettings'),
+    to: fashionActionRoute.value,
+    primary: fashionSafeFailureCategory.value !== 'fashn_pose_not_detected',
+  }
+  const personAction: FailureAction = {
+    key: 'person',
+    label: t('fashionTryOn.failure.choosePerson'),
+    to: fashionPersonPhotoRoute.value,
+    primary: fashionSafeFailureCategory.value === 'fashn_pose_not_detected',
+  }
+  const productAction: FailureAction = {
+    key: 'product',
+    label: t('fashionTryOn.failure.chooseProduct'),
+    to: fashionProductPhotoRoute.value,
+    primary: false,
+  }
+  const returnAction: FailureAction = {
+    key: 'return',
+    label: t('fashionTryOn.failure.returnToProject'),
+    to: projectWorkspaceRoute.value,
+    primary: false,
+  }
+
+  return fashionSafeFailureCategory.value === 'fashn_pose_not_detected'
+    ? [personAction, editAction, productAction, returnAction]
+    : [editAction, personAction, productAction, returnAction]
+})
 const failedTitle = computed(() =>
-  isVideoToCampaignGeneration.value
+  fashionFailureCopy.value !== null
+    ? fashionFailureCopy.value.title
+    : isVideoToCampaignGeneration.value
     ? 'Video analysis failed. Your credits were refunded if they were charged.'
     : isAutoVideoEditorGeneration.value
       ? 'Video rendering failed. Your credits were refunded if they were charged.'
@@ -202,7 +328,9 @@ const failedTitle = computed(() =>
           : 'Generation failed. Please try again.',
 )
 const failedDescription = computed(() =>
-  isMotionAiVideoGeneration.value
+  fashionFailureCopy.value !== null
+    ? fashionFailureCopy.value.message
+    : isMotionAiVideoGeneration.value
     ? 'No fake output was created. We kept technical provider details out of the UI so private data stays safe. Edit the settings and try again when you are ready.'
     : isVideoProcessingWorkflow.value
       ? 'The provider did not return a usable result. We kept the technical details out of the UI so private provider data stays safe.'
@@ -265,7 +393,20 @@ const retryActionLabel = computed(() =>
     <p class="mt-2 text-sm leading-6 text-rose-200">
       {{ failedDescription }}
     </p>
-    <div v-if="isMediaProcessingWorkflow" class="mt-5 grid gap-3 sm:grid-cols-2">
+    <div v-if="isFashionTryOnGeneration" class="mt-5 grid gap-3 sm:grid-cols-2" data-testid="fashion-failure-actions">
+      <RouterLink
+        v-for="action in fashionFailureActions"
+        :key="action.key"
+        :to="action.to"
+        class="flex min-h-11 items-center justify-center rounded-2xl px-4 text-center text-sm font-semibold transition"
+        :class="action.primary
+          ? 'bg-white text-neutral-950 hover:bg-emerald-300'
+          : 'border border-neutral-700 text-neutral-100 hover:border-emerald-500 hover:bg-emerald-950/30'"
+      >
+        {{ action.label }}
+      </RouterLink>
+    </div>
+    <div v-else-if="isMediaProcessingWorkflow" class="mt-5 grid gap-3 sm:grid-cols-2">
       <RouterLink
         :to="projectWorkspaceRoute"
         class="flex min-h-11 items-center justify-center rounded-2xl border border-neutral-700 px-4 text-sm font-semibold text-neutral-100 transition hover:border-emerald-500 hover:bg-emerald-950/30"

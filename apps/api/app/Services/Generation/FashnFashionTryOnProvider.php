@@ -42,6 +42,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         $generationId = (int) ($input['generation_id'] ?? 0);
         $project = $this->project($input, $user);
         $tier = FashionTryOnCapabilities::normalizeTier(is_string($input['tier'] ?? null) ? $input['tier'] : null);
+        $packageKey = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
+        $personSource = FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null);
 
         if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && ! FashionTryOnCapabilities::premiumEnabledForUser($user)) {
             throw FashionTryOnProviderException::invalidInput('fashn_premium_disabled', [
@@ -99,10 +101,14 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                     'provider_model' => $providerModel,
                     'provider_prediction_id' => $predictionId,
                     'provider_status' => 'completed',
+                    'package_key' => $packageKey,
                     'tier' => $tier,
+                    'person_source' => $personSource,
                     'quality_preset' => $this->presetLabel($tier, $input),
                     'person_image_asset_id' => $personImage->getKey(),
                     'product_image_asset_id' => $productImage->getKey(),
+                    'output_index' => 0,
+                    'output_count' => 1,
                 ],
             );
         } catch (Throwable $exception) {
@@ -117,6 +123,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             'workflow' => 'fashion_try_on',
             'generation_id' => $generationId ?: null,
             'project_id' => $project->getKey(),
+            'package_key' => $packageKey,
+            'person_source' => $personSource,
             'tier' => $tier,
             'provider_model' => $providerModel,
             'provider_prediction_id' => $predictionId,
@@ -131,6 +139,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             providerCredits: $providerCredits,
             providerCreditsSource: is_string($providerCreditsSource) ? $providerCreditsSource : 'unavailable',
             providerLatencyMs: $providerLatencyMs,
+            packageKey: $packageKey,
+            personSource: $personSource,
             personImage: $personImage,
             productImage: $productImage,
             finalImage: $finalImage,
@@ -183,6 +193,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             'workflow' => 'fashion_try_on',
             'generation_id' => $generationId ?: null,
             'project_id' => $project->getKey(),
+            'package_key' => FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null),
+            'person_source' => FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null),
             'tier' => $tier,
             'model' => $this->modelForTier($tier),
             'person_image_asset_id' => $personImage->getKey(),
@@ -218,6 +230,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         $input['provider_prediction_id'] = $predictionId;
         $input['provider_model'] = $model;
         $input['provider'] = 'fashn';
+        $input['package_key'] = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
+        $input['person_source'] = FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null);
         $input['tier'] = $tier;
         $input['provider_submit_status'] = $submit['status'] ?? 'starting';
         $input['provider_submit_latency_ms'] = $submit['submit_latency_ms'] ?? null;
@@ -333,6 +347,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         int|float|null $providerCredits,
         string $providerCreditsSource,
         int $providerLatencyMs,
+        string $packageKey,
+        string $personSource,
         MediaAsset $personImage,
         MediaAsset $productImage,
         MediaAsset $finalImage,
@@ -344,6 +360,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         return [
             'try_on_title' => 'AI Fashion Try-On result',
             'concept_summary' => 'A real AI fashion try-on image was generated and stored as a private project asset.',
+            'package_key' => $packageKey,
+            'person_source' => $personSource,
             'tier' => $tier,
             'quality_preset' => $this->presetLabel($tier, $input),
             'category' => $category,
@@ -357,18 +375,30 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             'final_image_asset_id' => $finalImage->getKey(),
             'final_image_stream_url' => route('media-assets.stream', ['mediaAsset' => $finalImage->getKey()], false),
             'final_image_download_url' => route('media-assets.download', ['mediaAsset' => $finalImage->getKey()], false),
+            'final_image_asset_ids' => [$finalImage->getKey()],
             'rendered_image_asset' => [
                 'id' => $finalImage->getKey(),
                 'stream_url' => route('media-assets.stream', ['mediaAsset' => $finalImage->getKey()], false),
                 'download_url' => route('media-assets.download', ['mediaAsset' => $finalImage->getKey()], false),
                 'mime_type' => $mimeType,
                 'size_bytes' => $finalImage->size_bytes,
+                'output_index' => 0,
             ],
+            'rendered_image_assets' => [[
+                'id' => $finalImage->getKey(),
+                'stream_url' => route('media-assets.stream', ['mediaAsset' => $finalImage->getKey()], false),
+                'download_url' => route('media-assets.download', ['mediaAsset' => $finalImage->getKey()], false),
+                'mime_type' => $mimeType,
+                'size_bytes' => $finalImage->size_bytes,
+                'output_index' => 0,
+            ]],
             'generation_summary' => [
                 'quality' => ucfirst($tier),
                 'category' => $category,
                 'output_format' => $mimeType,
                 'output_count' => 1,
+                'package_key' => $packageKey,
+                'person_source' => $personSource,
             ],
             'provider_metadata' => [
                 'provider' => 'fashn',
@@ -380,6 +410,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                 'estimated_provider_cost_usd' => $estimatedCost,
                 'actual_provider_cost_usd' => null,
                 'provider_latency_ms' => $providerLatencyMs,
+                'package_key' => $packageKey,
+                'person_source' => $personSource,
                 'tier' => $tier,
                 'quality_preset' => $this->presetLabel($tier, $input),
                 'output_count' => 1,

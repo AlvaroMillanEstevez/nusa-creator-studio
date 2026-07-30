@@ -62,7 +62,7 @@ describe('FashionTryOnGenerationResult', () => {
     expect(text).toContain('No fashion image was generated in mock mode')
     expect(text).toContain('Quality checklist')
     expect(text).not.toContain('Download image')
-    expect(text).not.toContain('Animate with Motion AI Video')
+    expect(text).not.toContain('Continue with premium video')
     expect(fetchMediaBlobMock).not.toHaveBeenCalled()
   })
 
@@ -82,13 +82,23 @@ describe('FashionTryOnGenerationResult', () => {
       final_image_asset_id: 501,
       final_image_stream_url: '/api/v1/media-assets/501/stream',
       final_image_download_url: '/api/v1/media-assets/501/download',
+      final_image_asset_ids: [501],
       rendered_image_asset: {
         id: 501,
         stream_url: '/api/v1/media-assets/501/stream',
         download_url: '/api/v1/media-assets/501/download',
         mime_type: 'image/png',
         size_bytes: 1024,
+        output_index: 0,
       },
+      rendered_image_assets: [{
+        id: 501,
+        stream_url: '/api/v1/media-assets/501/stream',
+        download_url: '/api/v1/media-assets/501/download',
+        mime_type: 'image/png',
+        size_bytes: 1024,
+        output_index: 0,
+      }],
       provider_metadata: {
         provider: 'fashn',
         provider_model: 'tryon-v1.6',
@@ -99,6 +109,9 @@ describe('FashionTryOnGenerationResult', () => {
         quality: 'Standard',
         category: 'tops',
         output_format: 'png',
+        output_count: 1,
+        package_key: 'single_result',
+        person_source: 'user_upload',
       },
       compliance_notes: [],
     }
@@ -111,8 +124,40 @@ describe('FashionTryOnGenerationResult', () => {
     expect(wrapper.find('[data-testid="fashion-result-image"]').attributes('src')).toBe('blob://fashion-result')
     expect(text).toContain('Download image')
     expect(text).toContain('Generate another version')
-    expect(text).toContain('Animate with Motion AI Video')
+    expect(text).toContain('Continue with premium video')
+    expect(text).toContain('Additional Motion AI Video credits required')
+    expect(text).toContain('No video is included in the Try-On result')
+    expect(wrapper.find('[data-testid="fashion-motion-continuation"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="fashion-internal-diagnostics"]').exists()).toBe(false)
     expect(text).not.toContain('pred_123')
+  })
+
+
+  it('normalizes historical singular image results for preview and Motion continuation', async () => {
+    fetchMediaBlobMock.mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
+
+    const result: FashionTryOnResult = {
+      try_on_title: 'Historical try-on result',
+      concept_summary: 'Older payload with only singular image fields.',
+      tier: 'standard',
+      generated_image: {
+        status: 'rendered',
+        message: 'Image rendered successfully.',
+        provider: 'fashn',
+      },
+      final_image_asset_id: 777,
+      final_image_stream_url: '/api/v1/media-assets/777/stream',
+      final_image_download_url: '/api/v1/media-assets/777/download',
+      compliance_notes: [],
+    }
+
+    const wrapper = mountResult(result, { generationId: 88 })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="fashion-result-image"]').attributes('src')).toBe('blob://fashion-result')
+    expect(wrapper.text()).toContain('Single Try-On')
+    expect(wrapper.text()).toContain('Uploaded photo')
+    expect(wrapper.get('[data-testid="fashion-continue-motion"]').attributes('href')).toContain('productImageAssetId')
+    expect(wrapper.get('[data-testid="fashion-continue-motion"]').attributes('href')).toContain('777')
   })
 })
