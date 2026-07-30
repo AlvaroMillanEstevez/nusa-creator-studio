@@ -396,6 +396,216 @@ class FashionTryOnGenerationApiTest extends TestCase
         });
     }
 
+    public function test_fashn_runtime_error_shapes_are_normalized_without_array_to_string_warnings(): void
+    {
+        $this->enableFashn('secret-fashn-key');
+        $client = app(FashnFashionTryOnClient::class);
+        $longMessage = str_repeat('Provider says pose could not be detected safely. ', 12)
+            .'secret-fashn-key data:image/png;base64,'.base64_encode($this->pngBytes()).' /home/koke/projects/private/media/person.png';
+
+        foreach ([
+            'image_object' => [
+                'body' => ['status' => 'failed', 'error' => ['name' => 'ImageLoadError', 'message' => 'Could not load the garment image.']],
+                'category' => 'fashn_image_load_failed',
+                'name' => 'ImageLoadError',
+                'message' => 'Could not load',
+            ],
+            'pose_object' => [
+                'body' => ['status' => 'failed', 'error' => ['name' => 'PoseError', 'message' => 'Pose could not be detected.']],
+                'category' => 'fashn_pose_not_detected',
+                'name' => 'PoseError',
+                'message' => 'Pose could not',
+            ],
+            'moderation_object' => [
+                'body' => ['status' => 'failed', 'error' => ['name' => 'ModerationError', 'message' => 'Content safety policy blocked the image.']],
+                'category' => 'fashn_content_moderation',
+                'name' => 'ModerationError',
+                'message' => 'Content safety',
+            ],
+            'plain_string_error' => [
+                'body' => ['status' => 'failed', 'error' => 'Garment image could not be loaded.'],
+                'category' => 'fashn_image_load_failed',
+                'name' => null,
+                'message' => 'Garment image',
+            ],
+            'null_error' => [
+                'body' => ['status' => 'failed', 'error' => null],
+                'category' => 'fashn_unknown_error',
+                'name' => null,
+                'message' => 'Provider did not provide',
+            ],
+            'nested_error_arrays' => [
+                'body' => ['status' => 'failed', 'errors' => [['detail' => ['message' => 'Rate limit exceeded for provider.']]]],
+                'category' => 'fashn_provider_unavailable',
+                'name' => null,
+                'message' => 'Rate limit',
+            ],
+            'numeric_error' => [
+                'body' => ['status' => 'failed', 'error' => 12345],
+                'category' => 'fashn_processing_failed',
+                'name' => null,
+                'message' => '12345',
+            ],
+            'boolean_error' => [
+                'body' => ['status' => 'failed', 'error' => false],
+                'category' => 'fashn_processing_failed',
+                'name' => null,
+                'message' => 'false',
+            ],
+            'detail_message_fallback' => [
+                'body' => ['status' => 'failed', 'detail' => ['message' => 'Unauthorized: Invalid token.']],
+                'category' => 'fashn_auth_failed',
+                'name' => null,
+                'message' => 'Unauthorized',
+            ],
+            'name_precedence_over_message' => [
+                'body' => ['status' => 'failed', 'error' => ['name' => 'ImageLoadError', 'message' => 'The person was not detected clearly.']],
+                'category' => 'fashn_image_load_failed',
+                'name' => 'ImageLoadError',
+                'message' => 'person was not',
+            ],
+            'bounded_and_redacted_message' => [
+                'body' => ['status' => 'failed', 'error' => ['name' => 'PoseError', 'message' => $longMessage]],
+                'category' => 'fashn_pose_not_detected',
+                'name' => 'PoseError',
+                'message' => 'Provider says pose',
+            ],
+        ] as $caseName => $case) {
+            $predictionId = 'pred_'.$caseName;
+            Http::fake([
+                "https://api.fashn.ai/v1/status/{$predictionId}" => Http::response($case['body'], 200),
+            ]);
+
+            try {
+                $client->waitForCompletion($predictionId, ['generation_id' => 999]);
+                $this->fail("Expected failed prediction exception for {$caseName}.");
+            } catch (FashionTryOnProviderException $exception) {
+                $this->assertSame('fashn_processing_failed', $exception->reason, $caseName);
+                $this->assertSame($case['category'], $exception->context['safe_error_category'], $caseName);
+                $this->assertSame($predictionId, $exception->context['provider_prediction_id'], $caseName);
+                $this->assertSame('failed', $exception->context['provider_status'], $caseName);
+                $this->assertStringContainsString($case['message'], $exception->context['provider_error_message'], $caseName);
+                $this->assertLessThanOrEqual(240, mb_strlen($exception->context['provider_error_message']), $caseName);
+
+                if ($case['name'] === null) {
+                    $this->assertArrayNotHasKey('provider_error_name', array_filter($exception->context), $caseName);
+                } else {
+                    $this->assertSame($case['name'], $exception->context['provider_error_name'], $caseName);
+                }
+
+                $encodedContext = json_encode($exception->context, JSON_THROW_ON_ERROR);
+                $this->assertStringNotContainsString('secret-fashn-key', $encodedContext, $caseName);
+                $this->assertStringNotContainsString('data:image/png;base64', $encodedContext, $caseName);
+                $this->assertStringNotContainsString('/home/koke/projects/private', $encodedContext, $caseName);
+            }
+
+            Http::assertSentCount(1);
+            Http::assertNotSent(fn (Request $request): bool => $request->method() === 'POST');
+        }
+    }
+
+    public function test_fashn_api_level_error_shapes_are_normalized_without_prediction_id_or_retry(): void
+    {
+        $this->enableFashn('secret-fashn-key');
+        Log::spy();
+        Http::fake([
+            'https://api.fashn.ai/v1/run' => Http::response([
+                'error' => 'UnauthorizedAccess',
+                'message' => 'Unauthorized: Invalid token secret-fashn-key data:image/png;base64,'.base64_encode($this->pngBytes()).' /home/koke/projects/private/media/person.png',
+            ], 401),
+        ]);
+
+        try {
+            app(FashnFashionTryOnClient::class)->submit(['model_name' => 'tryon-v1.6', 'inputs' => []], ['generation_id' => 999]);
+            $this->fail('Expected API-level provider exception.');
+        } catch (FashionTryOnProviderException $exception) {
+            $this->assertSame('fashn_auth_failed', $exception->reason);
+            $this->assertSame('fashn_auth_failed', $exception->context['safe_error_category']);
+            $this->assertSame('UnauthorizedAccess', $exception->context['provider_error_name']);
+            $this->assertStringContainsString('Unauthorized: Invalid token', $exception->context['provider_error_message']);
+            $this->assertArrayNotHasKey('provider_prediction_id', $exception->context);
+
+            $encodedContext = json_encode($exception->context, JSON_THROW_ON_ERROR);
+            $this->assertStringNotContainsString('secret-fashn-key', $encodedContext);
+            $this->assertStringNotContainsString('data:image/png;base64', $encodedContext);
+            $this->assertStringNotContainsString('/home/koke/projects/private', $encodedContext);
+        }
+
+        Http::assertSentCount(1);
+        Log::shouldHaveReceived('warning')->once()->withArgs(function (string $message, array $context): bool {
+            $encodedContext = json_encode($context, JSON_THROW_ON_ERROR);
+
+            return $message === 'FASHN submit failed.'
+                && ($context['safe_error_category'] ?? null) === 'fashn_auth_failed'
+                && ($context['provider_error_name'] ?? null) === 'UnauthorizedAccess'
+                && ! array_key_exists('provider_prediction_id', $context)
+                && ! str_contains($encodedContext, 'secret-fashn-key')
+                && ! str_contains($encodedContext, 'data:image/png;base64')
+                && ! str_contains($encodedContext, '/home/koke/projects/private');
+        });
+    }
+
+    public function test_fashn_runtime_failed_prediction_persists_safe_metadata_refunds_and_is_not_resubmitted(): void
+    {
+        Queue::fake();
+        $this->enableFashn('secret-fashn-key');
+        $user = User::factory()->admin()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+        Http::fake([
+            'https://api.fashn.ai/v1/run' => Http::response(['id' => 'pred_runtime_fail', 'status' => 'starting'], 200),
+            'https://api.fashn.ai/v1/status/pred_runtime_fail' => Http::response([
+                'id' => 'pred_runtime_fail',
+                'status' => 'failed',
+                'error' => [
+                    'name' => 'ImageLoadError',
+                    'message' => 'Could not load garment image from provider input.',
+                ],
+            ], 200),
+        ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product))
+            ->assertCreated()
+            ->assertJsonPath('data.provider', 'fashn')
+            ->assertJsonPath('meta.credits_balance', 8)
+            ->json('data.id');
+
+        try {
+            $this->runJob($generationId);
+            $this->fail('Expected provider failed prediction exception.');
+        } catch (FashionTryOnProviderException $caught) {
+            (new GenerateFashionTryOnJob($generationId))->failed($caught);
+            (new GenerateFashionTryOnJob($generationId))->failed($caught);
+        }
+
+        $this->runJob($generationId);
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $metadata = $generation->output_payload['provider_metadata'];
+
+        $this->assertSame(Generation::STATUS_FAILED, $generation->status);
+        $this->assertNotNull($generation->finished_at);
+        $this->assertSame('pred_runtime_fail', $generation->input_payload['provider_prediction_id']);
+        $this->assertSame('pred_runtime_fail', $metadata['provider_prediction_id']);
+        $this->assertSame('fashn_processing_failed', $metadata['failure_reason']);
+        $this->assertSame('fashn_image_load_failed', $metadata['safe_error_category']);
+        $this->assertSame('ImageLoadError', $metadata['provider_error_name']);
+        $this->assertSame('Could not load garment image from provider input.', $metadata['provider_error_message']);
+        $this->assertSame(10, $user->refresh()->credits_balance);
+        $this->assertSame(0, MediaAsset::query()->where('usage_role', 'fashion_try_on_result')->count());
+        $this->assertSame(1, CreditTransaction::query()->where('generation_id', $generationId)->where('type', CreditTransactionType::Usage->value)->count());
+        $this->assertSame(1, CreditTransaction::query()->where('generation_id', $generationId)->where('type', CreditTransactionType::Refund->value)->count());
+
+        Http::assertSentCount(2);
+        Http::assertSent(function (Request $request): bool {
+            return $request->method() === 'POST' && str_ends_with($request->url(), '/run');
+        });
+        Http::assertSent(function (Request $request): bool {
+            return $request->method() === 'GET' && str_ends_with($request->url(), '/status/pred_runtime_fail');
+        });
+    }
+
     private function enableTool(): void
     {
         CreatorTool::query()->updateOrCreate(['key' => 'fashion_try_on'], [

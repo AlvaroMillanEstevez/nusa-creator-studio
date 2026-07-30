@@ -76,6 +76,9 @@ class GenerationFailureService
             'http_status' => is_numeric($exception->context['http_status'] ?? null) ? (int) $exception->context['http_status'] : null,
             'render_id' => is_string($exception->context['render_id'] ?? null) ? $exception->context['render_id'] : null,
             'provider_prediction_id' => is_string($exception->context['provider_prediction_id'] ?? null) ? $exception->context['provider_prediction_id'] : null,
+            'provider_error_name' => is_string($exception->context['provider_error_name'] ?? null) ? $exception->context['provider_error_name'] : null,
+            'provider_error_code' => is_string($exception->context['provider_error_code'] ?? null) ? $exception->context['provider_error_code'] : null,
+            'provider_error_message' => is_string($exception->context['provider_error_message'] ?? null) ? $exception->context['provider_error_message'] : null,
         ];
 
         return [
