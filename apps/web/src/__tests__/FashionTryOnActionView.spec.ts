@@ -32,9 +32,17 @@ const knownPremiumPresets: FashionTryOnPremiumPresetCapability[] = [
     num_images: 1,
     recommended: false,
     nusa_credit_cost: null,
+    configured_nusa_credit_cost: null,
+    per_output_credit_cost: null,
     pricing_configured: false,
     enabled: false,
     disabled_reason: 'premium_disabled',
+    validation_status: 'premium_disabled',
+    beta: true,
+    output_count: 1,
+    current_max_outputs: 1,
+    variations_pricing_ready: true,
+    variations_enabled: false,
   },
   {
     key: 'balanced_2k',
@@ -47,9 +55,17 @@ const knownPremiumPresets: FashionTryOnPremiumPresetCapability[] = [
     num_images: 1,
     recommended: true,
     nusa_credit_cost: null,
+    configured_nusa_credit_cost: null,
+    per_output_credit_cost: null,
     pricing_configured: false,
     enabled: false,
     disabled_reason: 'premium_disabled',
+    validation_status: 'premium_disabled',
+    beta: true,
+    output_count: 1,
+    current_max_outputs: 1,
+    variations_pricing_ready: true,
+    variations_enabled: false,
   },
   {
     key: 'quality_4k',
@@ -62,18 +78,29 @@ const knownPremiumPresets: FashionTryOnPremiumPresetCapability[] = [
     num_images: 1,
     recommended: false,
     nusa_credit_cost: null,
+    configured_nusa_credit_cost: null,
+    per_output_credit_cost: null,
     pricing_configured: false,
     enabled: false,
     disabled_reason: 'premium_disabled',
+    validation_status: 'premium_disabled',
+    beta: true,
+    output_count: 1,
+    current_max_outputs: 1,
+    variations_pricing_ready: true,
+    variations_enabled: false,
   },
 ]
 
 const enabledPremiumPresets: FashionTryOnPremiumPresetCapability[] = knownPremiumPresets.map((preset) => ({
   ...preset,
-  nusa_credit_cost: preset.key === 'fast_1k' ? 1 : preset.key === 'quality_4k' ? 5 : 3,
+  nusa_credit_cost: preset.key === 'fast_1k' ? 3 : preset.key === 'quality_4k' ? 11 : 7,
+  configured_nusa_credit_cost: preset.key === 'fast_1k' ? 3 : preset.key === 'quality_4k' ? 11 : 7,
+  per_output_credit_cost: preset.key === 'fast_1k' ? 3 : preset.key === 'quality_4k' ? 11 : 7,
   pricing_configured: true,
-  enabled: true,
-  disabled_reason: null,
+  enabled: preset.key !== 'quality_4k',
+  disabled_reason: preset.key === 'quality_4k' ? 'premium_quality_validation_pending' : null,
+  validation_status: preset.key === 'quality_4k' ? 'final_provider_validation_pending' : 'beta_validated',
 }))
 
 const capabilities: FashionTryOnProviderCapabilities = {
@@ -87,9 +114,16 @@ const capabilities: FashionTryOnProviderCapabilities = {
   premium_supported: true,
   premium_enabled: false,
   premium_real_available_for_user: false,
-  premium_pricing_configured: false,
+  premium_pricing_configured: true,
   premium_default_preset: 'balanced_2k',
+  premium_quality_enabled: false,
   premium_output_count: 1,
+  standard_credit_cost: 2,
+  standard_per_output_credit_cost: 2,
+  standard_output_count: 1,
+  current_max_outputs: 1,
+  variations_pricing_ready: true,
+  variations_enabled: false,
   standard_categories: ['auto', 'tops', 'bottoms', 'one-pieces'],
   standard_garment_photo_types: ['auto', 'flat_lay', 'model'],
   standard_modes: ['balanced', 'performance', 'quality'],
@@ -152,8 +186,9 @@ const premiumCapabilities: FashionTryOnProviderCapabilities = {
   premium_enabled: true,
   premium_real_available_for_user: true,
   premium_pricing_configured: true,
-  premium_presets: ['fast_1k', 'balanced_2k', 'quality_4k'],
-  available_premium_presets: enabledPremiumPresets,
+  premium_quality_enabled: false,
+  premium_presets: ['fast_1k', 'balanced_2k'],
+  available_premium_presets: enabledPremiumPresets.filter((preset) => preset.enabled),
   known_premium_presets: enabledPremiumPresets,
 }
 
@@ -320,8 +355,10 @@ describe('FashionTryOnActionView', () => {
     expect(wrapper.find('[data-testid="fashion-premium-settings"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="fashion-category-select"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="fashion-advanced-toggle"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Balanced 2K')
-    expect(wrapper.text()).toContain('3 credits')
+    expect(wrapper.text()).toContain('Premium Balanced')
+    expect(wrapper.text()).toContain('7 credits')
+    expect(wrapper.text()).toContain('Final provider validation pending')
+    expect(wrapper.get('[data-testid="fashion-premium-preset-quality_4k"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-testid="fashion-premium-preset-fast_1k"]').trigger('click')
     await wrapper.get('[data-testid="fashion-premium-prompt"]').setValue('Keep the garment color accurate and use clean catalog lighting.')

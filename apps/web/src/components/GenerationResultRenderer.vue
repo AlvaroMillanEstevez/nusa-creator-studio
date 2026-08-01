@@ -470,6 +470,8 @@ const retryActionLabel = computed(() =>
       :result="fashionTryOnResult"
       :project-id="projectId ?? generation.project_id"
       :generation-id="generation.id"
+      :credits-charged="generation.credits_charged"
+      :created-at="generation.created_at"
     />
     <MotionAiVideoGenerationResult
       v-else-if="motionVideoResult"

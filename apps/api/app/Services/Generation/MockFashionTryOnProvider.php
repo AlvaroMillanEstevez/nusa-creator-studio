@@ -33,6 +33,11 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
         $packageKey = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
         $personSource = FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null);
         $category = is_string($input['category'] ?? null) ? $input['category'] : 'auto';
+        $configuredNusaCreditCost = FashionTryOnCapabilities::configuredCreditCost($input['configured_nusa_credit_cost'] ?? $input['nusa_credit_cost'] ?? null);
+        $perOutputCreditCost = FashionTryOnCapabilities::configuredCreditCost($input['per_output_credit_cost'] ?? $configuredNusaCreditCost);
+        $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+            ? FashionTryOnCapabilities::premiumPreset(FashionTryOnCapabilities::premiumPresetKeyFromInput($input))
+            : null;
 
         $localized = match (strtolower($this->value($input, 'language', 'english', 40))) {
             'indonesian' => $this->localized(
@@ -90,6 +95,11 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
             'person_source' => $personSource,
             'tier' => $tier,
             'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
+            'premium_preset' => $premiumPreset['key'] ?? null,
+            'nusa_credit_cost' => $configuredNusaCreditCost,
+            'configured_nusa_credit_cost' => $configuredNusaCreditCost,
+            'per_output_credit_cost' => $perOutputCreditCost,
+            'output_count' => $tier === FashionTryOnCapabilities::TIER_PREMIUM ? FashionTryOnCapabilities::PREMIUM_OUTPUT_COUNT : FashionTryOnCapabilities::STANDARD_OUTPUT_COUNT,
             'selected_person_image' => $modelAsset,
             'selected_product_image' => $garmentAsset,
             'input_readiness' => [
@@ -102,15 +112,23 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 'package_key' => $packageKey,
                 'person_source' => $personSource,
                 'tier' => $tier,
+                'premium_preset' => $premiumPreset['key'] ?? null,
                 'output_count' => 0,
                 'real_provider_call_made' => false,
             ],
             'generation_summary' => [
                 'quality' => ucfirst($tier),
+                'preset' => $tier === FashionTryOnCapabilities::TIER_PREMIUM ? ($premiumPreset['label'] ?? null) : null,
+                'premium_preset' => $premiumPreset['key'] ?? null,
+                'provider_resolution' => $premiumPreset['resolution_label'] ?? null,
+                'provider_generation_mode' => $premiumPreset['quality_label'] ?? null,
                 'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
                 'package_key' => $packageKey,
                 'person_source' => $personSource,
                 'output_count' => 0,
+                'nusa_credit_cost' => $configuredNusaCreditCost,
+                'configured_nusa_credit_cost' => $configuredNusaCreditCost,
+                'per_output_credit_cost' => $perOutputCreditCost,
             ],
             'image_quality_recommendations' => [
                 'Use a clear person photo where the body and outfit area are visible.',

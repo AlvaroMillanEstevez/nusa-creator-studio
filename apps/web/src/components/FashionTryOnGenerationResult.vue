@@ -7,12 +7,14 @@ import { fetchMediaBlob } from '@/services/media'
 import { useAuthStore } from '@/stores/auth'
 import { fashionTryOnPremiumPresetOptions } from '@/types/project'
 import type { FashionTryOnRenderedImageAsset, FashionTryOnResult } from '@/types/project'
-import { formatLabel } from '@/utils/formatters'
+import { formatDate, formatLabel } from '@/utils/formatters'
 
 const props = defineProps<{
   result: FashionTryOnResult
   projectId?: number | string | null
   generationId?: number | string | null
+  creditsCharged?: number | null
+  createdAt?: string | null
 }>()
 
 interface SummaryItem {
@@ -67,6 +69,31 @@ const providerResolution = computed(() => stringValue(
     ?? props.result.generation_summary?.resolution,
   '',
 ))
+const configuredNusaCreditCost = computed(() => numberValue(
+  props.result.configured_nusa_credit_cost
+    ?? props.result.generation_summary?.configured_nusa_credit_cost
+    ?? props.result.nusa_credit_cost
+    ?? props.result.generation_summary?.nusa_credit_cost,
+))
+const chargedCreditCount = computed(() => numberValue(props.creditsCharged))
+const creditSummaryLabel = computed(() => {
+  if (chargedCreditCount.value === 0 && (configuredNusaCreditCost.value ?? 0) > 0) {
+    return t('fashionTryOn.result.includedWithInternalAccess')
+  }
+
+  const cost = chargedCreditCount.value ?? configuredNusaCreditCost.value
+
+  if (cost === null) {
+    return null
+  }
+
+  if (cost === 0) {
+    return t('fashionTryOn.noCreditCharge')
+  }
+
+  return `${cost} ${cost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: cost })}`
+})
+const createdAtLabel = computed(() => props.createdAt ? formatDate(props.createdAt) : null)
 const isPremiumResult = computed(() => tierKey.value === 'premium' || premiumPresetKey.value !== '')
 const outputCount = computed(() => {
   const summaryCount = numberValue(props.result.generation_summary?.output_count)
@@ -142,6 +169,8 @@ const summaryItems = computed<SummaryItem[]>(() => [
   { label: 'Quality', value: props.result.generation_summary?.quality ?? formatLabel(tierKey.value) },
   { label: t('fashionTryOn.result.preset'), value: isPremiumResult.value ? premiumPresetLabel(premiumPresetKey.value) : null },
   { label: t('fashionTryOn.result.providerResolution'), value: providerResolution.value === '' ? null : providerResolution.value.toUpperCase() },
+  { label: t('fashionTryOn.result.nusaCreditCost'), value: creditSummaryLabel.value },
+  { label: t('fashionTryOn.result.createdAt'), value: createdAtLabel.value },
   { label: 'Category', value: props.result.generation_summary?.category ?? props.result.category },
   { label: 'Person photo', value: assetLabel(props.result.selected_person_image) },
   { label: 'Product photo', value: assetLabel(props.result.selected_product_image) },

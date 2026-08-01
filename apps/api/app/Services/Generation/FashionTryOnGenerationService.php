@@ -49,6 +49,24 @@ class FashionTryOnGenerationService
             }
 
             $premiumPreset = $this->premiumPreset($options);
+
+            if (! FashionTryOnCapabilities::premiumPresetEnabledForUser($user, $premiumPreset)) {
+                $disabledReason = FashionTryOnCapabilities::premiumPresetDisabledReason($user, $premiumPreset) ?? 'premium_disabled';
+                $errorCode = match ($disabledReason) {
+                    'premium_quality_validation_pending' => 'fashn_premium_quality_validation_pending',
+                    'premium_pricing_unconfigured' => 'fashn_premium_pricing_unconfigured',
+                    default => 'fashn_premium_disabled',
+                };
+
+                throw FashionTryOnProviderException::invalidInput($errorCode, [
+                    'provider' => FashionTryOnCapabilities::selectedProviderForUser($user),
+                    'stage' => 'validate_premium_preset_availability',
+                    'tier' => $tier,
+                    'premium_preset' => $premiumPreset,
+                    'disabled_reason' => $disabledReason,
+                ]);
+            }
+
             $providerSeed = $this->providerSeed($options);
             $premiumPrompt = FashionTryOnCapabilities::sanitizePremiumPrompt($options['premium_prompt'] ?? $options['prompt'] ?? null);
         }
@@ -68,6 +86,7 @@ class FashionTryOnGenerationService
             ]);
         }
 
+        $requestedOutputCount = $this->requestedOutputCount($options);
         $personImage = $this->resolveRequestAsset($project, $user, $options, 'person_image_asset_id', 'person_image');
         $productImage = $this->resolveRequestAsset($project, $user, $options, 'product_image_asset_id', 'product_image');
         $provider = $this->providers->selectedProviderForUser($user);
@@ -93,6 +112,7 @@ class FashionTryOnGenerationService
                 providerSeed: $providerSeed,
                 premiumPrompt: $premiumPrompt,
                 creditCost: $creditCost,
+                requestedOutputCount: $requestedOutputCount,
             ),
             provider: $provider,
         );
@@ -202,6 +222,26 @@ class FashionTryOnGenerationService
             ->first();
     }
 
+    /** @param array<string, mixed> $options */
+    private function requestedOutputCount(array $options): int
+    {
+        $value = $options['requested_output_count'] ?? null;
+
+        if ($value === null || $value === '') {
+            return FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS;
+        }
+
+        if (! is_numeric($value) || (int) $value !== FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS) {
+            throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
+                'stage' => 'validate_requested_output_count',
+                'field' => 'requested_output_count',
+                'current_max_outputs' => FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS,
+            ]);
+        }
+
+        return (int) $value;
+    }
+
     private function creditCost(User $user, string $tier, ?string $premiumPreset): int
     {
         if ($tier === FashionTryOnCapabilities::TIER_PREMIUM) {
@@ -256,6 +296,7 @@ class FashionTryOnGenerationService
         ?int $providerSeed,
         ?string $premiumPrompt,
         int $creditCost,
+        int $requestedOutputCount,
     ): array {
         $projectInput = is_array($project->input_payload) ? $project->input_payload : [];
         $category = is_string($options['category'] ?? null) ? $options['category'] : 'auto';
@@ -272,6 +313,13 @@ class FashionTryOnGenerationService
             'person_image_permission_confirmed' => true,
             'consent_confirmed_at' => now()->toISOString(),
             'nusa_credit_cost' => $creditCost,
+            'configured_nusa_credit_cost' => $creditCost,
+            'per_output_credit_cost' => $requestedOutputCount > 0 ? (int) floor($creditCost / $requestedOutputCount) : $creditCost,
+            'requested_output_count' => $requestedOutputCount,
+            'output_count' => $requestedOutputCount,
+            'current_max_outputs' => FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS,
+            'variations_pricing_ready' => FashionTryOnCapabilities::variationsPricingReady(),
+            'variations_enabled' => FashionTryOnCapabilities::variationsEnabled(),
             'assets' => [
                 'model_reference' => $this->assetSummary($personImage),
                 'garment_reference' => $this->assetSummary($productImage),
@@ -296,6 +344,9 @@ class FashionTryOnGenerationService
                 'provider_generation_mode' => $preset['generation_mode'],
                 'expected_provider_credits' => $preset['expected_provider_credits'],
                 'output_count' => FashionTryOnCapabilities::PREMIUM_OUTPUT_COUNT,
+                'requested_output_count' => $requestedOutputCount,
+                'configured_nusa_credit_cost' => FashionTryOnCapabilities::premiumCreditCost($premiumPreset),
+                'per_output_credit_cost' => FashionTryOnCapabilities::premiumCreditCost($premiumPreset),
                 'premium_pricing_configured' => FashionTryOnCapabilities::premiumCreditCost($premiumPreset) !== null,
             ]);
         } else {

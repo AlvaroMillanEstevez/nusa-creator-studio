@@ -80,7 +80,7 @@ const actionCapabilities = computed(() => {
   return isFashionTryOnCapabilities(value) ? value : null
 })
 const capabilities = computed(() => actionCapabilities.value ?? fetchedCapabilities.value)
-const standardCreditCost = computed(() => fashionAction.value?.credit_cost ?? 2)
+const standardCreditCost = computed(() => capabilities.value?.standard_credit_cost ?? fashionAction.value?.credit_cost ?? 2)
 const isUpgradeRequired = computed(() => fashionAction.value?.upgrade_required === true || fashionAction.value?.action_mode === 'upgrade')
 const standardEnabled = computed(() => capabilities.value?.standard_enabled !== false)
 const premiumPresetChoices = computed<FashionTryOnPremiumPresetCapability[]>(() => {
@@ -101,10 +101,18 @@ const premiumPresetChoices = computed<FashionTryOnPremiumPresetCapability[]>(() 
     expected_provider_credits: option.value === 'fast_1k' ? 1 : option.value === 'quality_4k' ? 5 : 3,
     num_images: 1,
     recommended: option.value === 'balanced_2k',
-    nusa_credit_cost: null,
-    pricing_configured: false,
+    nusa_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
+    configured_nusa_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
+    per_output_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
+    pricing_configured: true,
     enabled: false,
-    disabled_reason: 'premium_disabled',
+    disabled_reason: option.value === 'quality_4k' ? 'premium_quality_validation_pending' : 'premium_disabled',
+    validation_status: option.value === 'quality_4k' ? 'final_provider_validation_pending' : 'beta_validated',
+    beta: true,
+    output_count: 1,
+    current_max_outputs: 1,
+    variations_pricing_ready: true,
+    variations_enabled: false,
   }))
 })
 const selectedPremiumPreset = computed(() => premiumPresetChoices.value.find((option) => option.key === premiumPreset.value) ?? null)
@@ -117,7 +125,10 @@ const providerLabel = computed(() => {
 
   return tier.value === 'premium' ? t('fashionTryOn.providerFashnPremium') : t('fashionTryOn.providerFashnStandard')
 })
-const selectedTierOption = computed(() => fashionTryOnTierOptions.find((option) => option.value === tier.value) ?? fashionTryOnTierOptions[0])
+const selectedTierLabel = computed(() => tier.value === 'premium' ? t('fashionTryOn.premiumBeta') : t('fashionTryOn.standardTier'))
+const selectedPresetLabel = computed(() => selectedPremiumPreset.value === null ? '' : premiumPresetLabel(selectedPremiumPreset.value))
+const selectedPresetResolution = computed(() => selectedPremiumPreset.value?.resolution_label ?? '')
+const outputCountLabel = computed(() => t('fashionTryOn.oneOutputImage'))
 const effectiveCreditCost = computed(() => tier.value === 'premium'
   ? selectedPremiumPreset.value?.nusa_credit_cost ?? 0
   : standardCreditCost.value)
@@ -249,6 +260,18 @@ function premiumPresetCostLabel(preset: FashionTryOnPremiumPresetCapability): st
   }
 
   return `${preset.nusa_credit_cost} ${preset.nusa_credit_cost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: preset.nusa_credit_cost })}`
+}
+
+function premiumPresetDisabledCopy(preset: FashionTryOnPremiumPresetCapability): string {
+  if (preset.disabled_reason === 'premium_quality_validation_pending' || preset.validation_status === 'final_provider_validation_pending') {
+    return t('fashionTryOn.finalProviderValidationPending')
+  }
+
+  if (preset.disabled_reason === 'premium_pricing_unconfigured') {
+    return t('fashionTryOn.premiumPricingUnavailable')
+  }
+
+  return t('fashionTryOn.premiumValidation')
 }
 
 function selectPackage(value: FashionTryOnPackageKey): void {
@@ -535,8 +558,8 @@ onMounted(loadPage)
                 >
                   <span class="flex items-start justify-between gap-3">
                     <span>
-                      <span class="block text-lg font-semibold text-white">{{ option.label }}</span>
-                      <span class="mt-2 block text-sm leading-6 text-neutral-400">{{ option.value === 'premium' ? t('fashionTryOn.premiumTierDescription') : option.description }}</span>
+                      <span class="block text-lg font-semibold text-white">{{ option.value === 'premium' ? t('fashionTryOn.premiumBeta') : t('fashionTryOn.standardTier') }}</span>
+                      <span class="mt-2 block text-sm leading-6 text-neutral-400">{{ option.value === 'premium' ? t('fashionTryOn.premiumTierDescription') : t('fashionTryOn.standardTierDescription') }}</span>
                     </span>
                     <span class="rounded-full border border-neutral-700 px-3 py-1 text-xs font-semibold text-neutral-300">
                       {{ option.value === 'premium' && !premiumEnabled ? t('fashionTryOn.premiumValidation') : tier === option.value ? t('common.selected') : t('common.choose') }}
@@ -672,9 +695,14 @@ onMounted(loadPage)
                         <span v-if="preset.recommended" class="rounded-full bg-emerald-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-950">{{ t('fashionTryOn.recommended') }}</span>
                       </span>
                       <span class="mt-2 block text-xs leading-5 text-neutral-400">{{ premiumPresetDescription(preset) }}</span>
+                      <span v-if="!preset.enabled" class="mt-3 block text-xs font-semibold leading-5 text-amber-200" :data-testid="`fashion-premium-preset-disabled-${preset.key}`">
+                        {{ premiumPresetDisabledCopy(preset) }}
+                      </span>
                     </span>
                     <span class="flex flex-wrap gap-2 text-[11px] font-semibold">
                       <span class="rounded-full border border-neutral-700 px-2.5 py-1 text-neutral-300">{{ preset.resolution_label }}</span>
+                      <span class="rounded-full border border-neutral-700 px-2.5 py-1 text-neutral-300">{{ preset.quality_label }}</span>
+                      <span class="rounded-full border border-neutral-700 px-2.5 py-1 text-neutral-300">{{ t('fashionTryOn.oneOutputImage') }}</span>
                       <span class="rounded-full border border-neutral-700 px-2.5 py-1 text-neutral-300">{{ premiumPresetCostLabel(preset) }}</span>
                     </span>
                   </span>
@@ -768,9 +796,12 @@ onMounted(loadPage)
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ tier === 'premium' ? '8' : '9' }} · {{ t('fashionTryOn.costStep') }}</p>
-                <h2 class="mt-2 text-xl font-semibold">{{ selectedTierOption.label }} · {{ t('fashionTryOn.packages.' + packageKey + '.label') }}</h2>
+                <h2 class="mt-2 text-xl font-semibold">{{ selectedTierLabel }} · {{ t('fashionTryOn.packages.' + packageKey + '.label') }}</h2>
                 <p class="mt-2 text-sm leading-6 text-neutral-400">
                   {{ tier === 'premium' ? t('fashionTryOn.premiumCostBody') : t('fashionTryOn.costBody') }}
+                </p>
+                <p v-if="tier === 'premium' && selectedPremiumPreset" class="mt-2 text-sm leading-6 text-neutral-300" data-testid="fashion-premium-cost-summary">
+                  {{ selectedPresetLabel }} · {{ selectedPresetResolution }} · {{ outputCountLabel }} · {{ creditCostLabel }}
                 </p>
               </div>
               <span class="w-fit rounded-full border border-neutral-700 bg-neutral-950 px-3 py-1 text-xs font-semibold text-neutral-300">
@@ -790,7 +821,8 @@ onMounted(loadPage)
               data-testid="fashion-generate-button"
             >
               <span v-if="isSubmitting" class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950" aria-hidden="true" />
-              {{ generateButtonLabel }}
+              <span>{{ generateButtonLabel }}</span>
+              <span class="text-xs font-semibold opacity-70">· {{ creditCostLabel }}</span>
             </button>
             <p v-if="formBlockingReason && !isUpgradeRequired" class="mt-3 text-xs leading-5 text-neutral-500" data-testid="fashion-blocking-reason">
               {{ formBlockingReason }}

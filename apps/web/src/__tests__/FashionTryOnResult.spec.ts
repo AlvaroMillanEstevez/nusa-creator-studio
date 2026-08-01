@@ -140,6 +140,8 @@ describe('FashionTryOnGenerationResult', () => {
       concept_summary: 'A Premium try-on image saved privately in Nusa.',
       tier: 'premium',
       premium_preset: 'balanced_2k',
+      configured_nusa_credit_cost: 7,
+      nusa_credit_cost: 7,
       generated_image: {
         status: 'rendered',
         message: 'Image rendered successfully.',
@@ -171,17 +173,21 @@ describe('FashionTryOnGenerationResult', () => {
         premium_preset: 'balanced_2k',
         provider_resolution: '2k',
         output_count: 1,
+        configured_nusa_credit_cost: 7,
+        nusa_credit_cost: 7,
       },
       compliance_notes: [],
     }
 
-    const wrapper = mountResult(result)
+    const wrapper = mountResult(result, { creditsCharged: 0, createdAt: '2026-07-08T10:30:00.000000Z' })
     await flushPromises()
 
     const text = wrapper.text()
     expect(text).toContain('Premium try-on result')
-    expect(text).toContain('Balanced 2K')
+    expect(text).toContain('Premium Balanced')
     expect(text).toContain('2K')
+    expect(text).toContain('Included with internal access')
+    expect(text).toContain('Created')
     expect(text).not.toContain('tryon-max')
     expect(text).not.toContain('123456')
 

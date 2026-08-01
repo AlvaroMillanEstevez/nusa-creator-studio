@@ -131,13 +131,13 @@ export const fashionPlatformOptions = [
 
 export const fashionTryOnTierOptions = [
   { value: 'standard', label: 'Standard', description: 'Fast, reliable clothing try-on for everyday content.' },
-  { value: 'premium', label: 'Premium', description: 'Higher detail and broader wearable support. Coming after Standard validation.' },
+  { value: 'premium', label: 'Premium Beta', description: 'Higher-detail fashion output with broader wearable support and optional styling instructions.' },
 ] as const
 
 export const fashionTryOnPremiumPresetOptions = [
-  { value: 'fast_1k', label: 'Fast 1K', description: 'Lower provider cost and faster Premium validation renders.' },
-  { value: 'balanced_2k', label: 'Balanced 2K', description: 'Recommended Premium balance of quality and cost.' },
-  { value: 'quality_4k', label: 'Quality 4K', description: 'Highest Premium quality preset for detailed review.' },
+  { value: 'fast_1k', label: 'Premium Fast', description: '1K fast Premium result for lower-cost beta validation.' },
+  { value: 'balanced_2k', label: 'Premium Balanced', description: '2K balanced Premium result. Recommended for beta quality checks.' },
+  { value: 'quality_4k', label: 'Premium Quality', description: '4K quality preset for highest-detail validation.' },
 ] as const
 
 export const fashionTryOnPackageOptions = [
@@ -505,6 +505,13 @@ export interface FashionTryOnProviderCapabilities {
   premium_pricing_configured?: boolean
   premium_default_preset?: FashionTryOnPremiumPresetKey | string
   premium_output_count?: number
+  premium_quality_enabled?: boolean
+  standard_credit_cost?: number | null
+  standard_per_output_credit_cost?: number | null
+  standard_output_count?: number
+  current_max_outputs?: number
+  variations_pricing_ready?: boolean
+  variations_enabled?: boolean
   standard_categories: FashionTryOnCategory[] | string[]
   standard_garment_photo_types: FashionTryOnGarmentPhotoType[] | string[]
   standard_modes: FashionTryOnStandardMode[] | string[]
@@ -540,9 +547,17 @@ export interface FashionTryOnPremiumPresetCapability {
   num_images: number
   recommended: boolean
   nusa_credit_cost: number | null
+  configured_nusa_credit_cost?: number | null
+  per_output_credit_cost?: number | null
   pricing_configured: boolean
   enabled: boolean
   disabled_reason: string | null
+  validation_status?: string | null
+  beta?: boolean
+  output_count?: number
+  current_max_outputs?: number
+  variations_pricing_ready?: boolean
+  variations_enabled?: boolean
 }
 
 export interface FashionTryOnCapabilitiesResponse {
@@ -1081,6 +1096,10 @@ export interface FashionTryOnResult {
   premium_preset?: FashionTryOnPremiumPresetKey | string | null
   quality_preset?: string | null
   category?: FashionTryOnCategory | string | null
+  nusa_credit_cost?: number | null
+  configured_nusa_credit_cost?: number | null
+  per_output_credit_cost?: number | null
+  output_count?: number | null
   model_reference_summary?: string
   garment_reference_summary?: string
   selected_person_image?: FashionTryOnSelectedImageSummary

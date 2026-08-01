@@ -33,6 +33,10 @@ class FashionTryOnCapabilities
 
     public const PREMIUM_OUTPUT_COUNT = 1;
 
+    public const STANDARD_OUTPUT_COUNT = 1;
+
+    public const CURRENT_MAX_OUTPUTS = 1;
+
     public const MAX_PROVIDER_SEED = 4294967295;
 
     /** @var list<string> */
@@ -136,11 +140,15 @@ class FashionTryOnCapabilities
             'real_rendering_enabled' => self::realEnabledForUser($user),
             'standard_supported' => true,
             'standard_enabled' => (bool) config('fashion_try_on.fashn.standard_enabled', true),
+            'standard_credit_cost' => self::standardCreditCost(),
+            'standard_per_output_credit_cost' => self::standardCreditCost(),
+            'standard_output_count' => self::STANDARD_OUTPUT_COUNT,
             'premium_supported' => true,
             'premium_enabled' => self::premiumEnabledForUser($user),
             'premium_real_available_for_user' => self::premiumRealAvailableForUser($user),
             'premium_pricing_configured' => self::premiumPricingConfigured(),
             'premium_default_preset' => self::defaultPremiumPresetKey(),
+            'premium_quality_enabled' => self::premiumQualityEnabled(),
             'premium_output_count' => self::PREMIUM_OUTPUT_COUNT,
             'premium_presets' => array_column($availablePremiumPresets, 'key'),
             'available_premium_presets' => $availablePremiumPresets,
@@ -154,10 +162,13 @@ class FashionTryOnCapabilities
             'active_person_sources' => self::ACTIVE_PERSON_SOURCES,
             'default_person_source' => self::PERSON_SOURCE_USER_UPLOAD,
             'future_person_sources' => self::FUTURE_PERSON_SOURCES,
-            'maximum_outputs' => 1,
-            'max_outputs_enabled' => 1,
+            'maximum_outputs' => self::CURRENT_MAX_OUTPUTS,
+            'max_outputs_enabled' => self::CURRENT_MAX_OUTPUTS,
+            'current_max_outputs' => self::CURRENT_MAX_OUTPUTS,
             'multi_output_supported' => true,
             'multi_output_generation_enabled' => false,
+            'variations_pricing_ready' => self::variationsPricingReady(),
+            'variations_enabled' => self::variationsEnabled(),
             'consent_required' => true,
             'person_image_required' => true,
             'product_image_required' => true,
@@ -197,11 +208,20 @@ class FashionTryOnCapabilities
         return self::normalizePremiumPreset(is_string($value) ? $value : null);
     }
 
+    public static function standardCreditCost(): int
+    {
+        return self::configuredCreditCost(config('fashion_try_on.credit_costs.standard')) ?? 2;
+    }
+
     public static function premiumCreditCost(?string $preset): ?int
     {
         $key = self::normalizePremiumPreset($preset);
-        $value = config('fashion_try_on.credit_costs.premium_presets.'.$key);
 
+        return self::configuredCreditCost(config('fashion_try_on.credit_costs.premium_presets.'.$key));
+    }
+
+    public static function configuredCreditCost(mixed $value): ?int
+    {
         return is_numeric($value) ? max(0, (int) $value) : null;
     }
 
@@ -216,6 +236,11 @@ class FashionTryOnCapabilities
         return true;
     }
 
+    public static function premiumQualityEnabled(): bool
+    {
+        return (bool) config('fashion_try_on.fashn.premium_quality_enabled', false);
+    }
+
     public static function premiumRealAvailableForUser(?User $user = null): bool
     {
         return self::realEnabledForUser($user)
@@ -228,8 +253,41 @@ class FashionTryOnCapabilities
             return false;
         }
 
-        return self::userCanUsePremiumWithoutConfiguredPricing($user)
-            || count(array_filter(self::premiumPresetKeys(), fn (string $preset): bool => self::premiumCreditCost($preset) !== null)) > 0;
+        return count(array_filter(
+            self::premiumPresetKeys(),
+            fn (string $preset): bool => self::premiumPresetEnabledForUser($user, $preset),
+        )) > 0;
+    }
+
+    public static function premiumPresetEnabledForUser(?User $user, string $preset): bool
+    {
+        return self::premiumPresetDisabledReason($user, $preset) === null;
+    }
+
+    public static function premiumPresetDisabledReason(?User $user, string $preset): ?string
+    {
+        if (! self::premiumRealAvailableForUser($user)) {
+            return 'premium_disabled';
+        }
+
+        if ($preset === self::PREMIUM_PRESET_QUALITY_4K && ! self::premiumQualityEnabled()) {
+            return 'premium_quality_validation_pending';
+        }
+
+        if (self::premiumCreditCost($preset) === null && ! self::userCanUsePremiumWithoutConfiguredPricing($user)) {
+            return 'premium_pricing_unconfigured';
+        }
+
+        return null;
+    }
+
+    public static function premiumPresetValidationStatus(string $preset): string
+    {
+        if ($preset === self::PREMIUM_PRESET_QUALITY_4K && ! self::premiumQualityEnabled()) {
+            return 'final_provider_validation_pending';
+        }
+
+        return 'beta_validated';
     }
 
     public static function userCanUsePremiumWithoutConfiguredPricing(?User $user): bool
@@ -237,22 +295,38 @@ class FashionTryOnCapabilities
         return $user !== null && $user->hasUnlimitedAccess();
     }
 
+    public static function variationsPricingReady(): bool
+    {
+        return true;
+    }
+
+    public static function variationsEnabled(): bool
+    {
+        return false;
+    }
+
     /** @return list<array<string, mixed>> */
     public static function knownPremiumPresetsForUser(?User $user = null): array
     {
         return array_values(array_map(function (array $preset) use ($user): array {
-            $cost = self::premiumCreditCost($preset['key']);
+            $key = (string) $preset['key'];
+            $cost = self::premiumCreditCost($key);
             $pricingConfigured = $cost !== null;
-            $enabled = self::premiumRealAvailableForUser($user)
-                && ($pricingConfigured || self::userCanUsePremiumWithoutConfiguredPricing($user));
+            $disabledReason = self::premiumPresetDisabledReason($user, $key);
 
             return $preset + [
                 'nusa_credit_cost' => $cost,
+                'configured_nusa_credit_cost' => $cost,
+                'per_output_credit_cost' => $cost,
                 'pricing_configured' => $pricingConfigured,
-                'enabled' => $enabled,
-                'disabled_reason' => $enabled
-                    ? null
-                    : (self::premiumRealAvailableForUser($user) ? 'premium_pricing_unconfigured' : 'premium_disabled'),
+                'enabled' => $disabledReason === null,
+                'disabled_reason' => $disabledReason,
+                'validation_status' => self::premiumPresetValidationStatus($key),
+                'beta' => true,
+                'output_count' => self::PREMIUM_OUTPUT_COUNT,
+                'current_max_outputs' => self::CURRENT_MAX_OUTPUTS,
+                'variations_pricing_ready' => self::variationsPricingReady(),
+                'variations_enabled' => self::variationsEnabled(),
             ];
         }, self::premiumPresets()));
     }

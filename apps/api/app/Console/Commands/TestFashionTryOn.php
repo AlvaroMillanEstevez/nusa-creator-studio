@@ -60,6 +60,14 @@ class TestFashionTryOn extends Command
                 return self::FAILURE;
             }
 
+            if ($tier === FashionTryOnCapabilities::TIER_PREMIUM
+                && $this->premiumPresetOption() === FashionTryOnCapabilities::PREMIUM_PRESET_QUALITY_4K
+                && ! FashionTryOnCapabilities::premiumQualityEnabled()) {
+                $this->error('Premium Quality 4K is visible but gated. Set FASHN_PREMIUM_QUALITY_ENABLED=true only after controlled provider validation.');
+
+                return self::FAILURE;
+            }
+
             $personImage = $this->assets->resolveProjectImage($user, $project, $this->requiredIntegerOption('person-image-asset-id'), 'person_image');
             $productImage = $this->assets->resolveProjectImage($user, $project, $this->requiredIntegerOption('product-image-asset-id'), 'product_image');
             $input = $this->buildInputPayload($project, $tier, $personImage, $productImage);
@@ -251,6 +259,7 @@ class TestFashionTryOn extends Command
             'tier' => $tier,
             'model' => (string) ($payload['model_name'] ?? 'unknown'),
             'premium_enabled' => ((bool) config('fashion_try_on.fashn.premium_enabled', false)) ? 'true' : 'false',
+            'premium_quality_enabled' => FashionTryOnCapabilities::premiumQualityEnabled() ? 'true' : 'false',
             'premium_preset' => $preset['key'] ?? null,
             'resolution' => $inputs['resolution'] ?? null,
             'quality_mode' => $inputs['generation_mode'] ?? $inputs['mode'] ?? 'unknown',

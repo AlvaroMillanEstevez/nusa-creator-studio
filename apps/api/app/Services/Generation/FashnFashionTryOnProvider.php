@@ -415,6 +415,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         $actualCost = FashionTryOnCapabilities::estimatedProviderCostUsd($actualProviderCredits);
         $category = $tier === FashionTryOnCapabilities::TIER_STANDARD ? $this->payloads->standardCategory($input) : null;
         $qualityPreset = $this->presetLabel($tier, $input);
+        $configuredNusaCreditCost = FashionTryOnCapabilities::configuredCreditCost($input['configured_nusa_credit_cost'] ?? $input['nusa_credit_cost'] ?? null);
+        $perOutputCreditCost = FashionTryOnCapabilities::configuredCreditCost($input['per_output_credit_cost'] ?? $configuredNusaCreditCost);
 
         return array_filter([
             'try_on_title' => 'AI Fashion Try-On result',
@@ -425,6 +427,10 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             'quality_preset' => $qualityPreset,
             'premium_preset' => $premiumPreset['key'] ?? null,
             'category' => $category,
+            'nusa_credit_cost' => $configuredNusaCreditCost,
+            'configured_nusa_credit_cost' => $configuredNusaCreditCost,
+            'per_output_credit_cost' => $perOutputCreditCost,
+            'output_count' => 1,
             'selected_person_image' => $this->assetSummary($personImage),
             'selected_product_image' => $this->assetSummary($productImage),
             'generated_image' => [
@@ -461,6 +467,9 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                 'category' => $category,
                 'output_format' => $mimeType,
                 'output_count' => 1,
+                'nusa_credit_cost' => $configuredNusaCreditCost,
+                'configured_nusa_credit_cost' => $configuredNusaCreditCost,
+                'per_output_credit_cost' => $perOutputCreditCost,
                 'package_key' => $packageKey,
                 'person_source' => $personSource,
             ], fn (mixed $value): bool => $value !== null && $value !== ''),

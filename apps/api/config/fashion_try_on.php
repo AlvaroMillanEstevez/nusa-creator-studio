@@ -7,11 +7,11 @@ return [
     'public_enabled' => (bool) env('FASHION_TRY_ON_PUBLIC_ENABLED', true),
 
     'credit_costs' => [
-        'standard' => env('FASHION_TRY_ON_STANDARD_CREDIT_COST'),
+        'standard' => env('FASHION_TRY_ON_STANDARD_CREDIT_COST', 2),
         'premium_presets' => [
-            'fast_1k' => env('FASHION_TRY_ON_PREMIUM_FAST_1K_CREDIT_COST'),
-            'balanced_2k' => env('FASHION_TRY_ON_PREMIUM_BALANCED_2K_CREDIT_COST'),
-            'quality_4k' => env('FASHION_TRY_ON_PREMIUM_QUALITY_4K_CREDIT_COST'),
+            'fast_1k' => env('FASHN_PREMIUM_FAST_1K_NUSA_CREDIT_COST', env('FASHION_TRY_ON_PREMIUM_FAST_1K_CREDIT_COST', 3)),
+            'balanced_2k' => env('FASHN_PREMIUM_BALANCED_2K_NUSA_CREDIT_COST', env('FASHION_TRY_ON_PREMIUM_BALANCED_2K_CREDIT_COST', 7)),
+            'quality_4k' => env('FASHN_PREMIUM_QUALITY_4K_NUSA_CREDIT_COST', env('FASHION_TRY_ON_PREMIUM_QUALITY_4K_CREDIT_COST', 11)),
         ],
     ],
 
@@ -27,6 +27,7 @@ return [
         'standard_segmentation_free' => (bool) env('FASHN_STANDARD_SEGMENTATION_FREE', true),
 
         'premium_enabled' => (bool) env('FASHN_PREMIUM_ENABLED', false),
+        'premium_quality_enabled' => (bool) env('FASHN_PREMIUM_QUALITY_ENABLED', false),
         'premium_model' => env('FASHN_PREMIUM_MODEL', 'tryon-max'),
         'premium_default_preset' => env('FASHN_PREMIUM_DEFAULT_PRESET', 'balanced_2k'),
         'premium_prompt_max_characters' => (int) env('FASHN_PREMIUM_PROMPT_MAX_CHARACTERS', 500),
