@@ -2,8 +2,8 @@
 
 namespace App\Services\Generation;
 
+use App\Exceptions\FashionTryOn\FashionTryOnProviderException;
 use App\Support\FashionTryOnCapabilities;
-use Illuminate\Support\Str;
 
 class FashnFashionTryOnPayloadBuilder
 {
@@ -37,19 +37,36 @@ class FashnFashionTryOnPayloadBuilder
     public function premium(array $input, string $personImageDataUri, string $productImageDataUri): array
     {
         $preset = $this->premiumPreset($input);
+        $seed = FashionTryOnCapabilities::normalizeProviderSeed($input['provider_seed'] ?? null);
+
+        if ($seed === null) {
+            throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
+                'provider' => 'fashn',
+                'stage' => 'build_premium_payload',
+                'field' => 'provider_seed',
+            ]);
+        }
+
+        $inputs = [
+            'model_image' => $personImageDataUri,
+            'product_image' => $productImageDataUri,
+            'resolution' => $preset['resolution'],
+            'generation_mode' => $preset['generation_mode'],
+            'seed' => $seed,
+            'num_images' => FashionTryOnCapabilities::PREMIUM_OUTPUT_COUNT,
+            'output_format' => $this->outputFormat(),
+            'return_base64' => true,
+        ];
+
+        $prompt = $this->premiumPrompt($input);
+
+        if ($prompt !== null) {
+            $inputs['prompt'] = $prompt;
+        }
 
         return [
             'model_name' => (string) config('fashion_try_on.fashn.premium_model', 'tryon-max'),
-            'inputs' => array_filter([
-                'model_image' => $personImageDataUri,
-                'product_image' => $productImageDataUri,
-                'prompt' => $this->premiumPrompt($input),
-                'resolution' => $preset['resolution'],
-                'generation_mode' => $preset['generation_mode'],
-                'num_images' => 1,
-                'output_format' => $this->outputFormat(),
-                'return_base64' => $this->returnBase64(),
-            ], fn (mixed $value): bool => $value !== null && $value !== ''),
+            'inputs' => $inputs,
         ];
     }
 
@@ -95,33 +112,21 @@ class FashnFashionTryOnPayloadBuilder
      */
     public function premiumPreset(array $input): array
     {
-        $key = is_string($input['quality_preset'] ?? null)
-            ? $input['quality_preset']
-            : 'premium_fast';
-        $presets = FashionTryOnCapabilities::premiumPresets();
-
-        return $presets[$key] ?? $presets['premium_fast'];
+        return FashionTryOnCapabilities::premiumPreset(FashionTryOnCapabilities::premiumPresetKeyFromInput($input));
     }
 
     /** @param array<string, mixed> $input */
     public function premiumPrompt(array $input): ?string
     {
-        $prompt = $input['prompt'] ?? null;
-
-        if (! is_string($prompt)) {
-            return null;
-        }
-
-        $prompt = trim($prompt);
-
-        return $prompt === '' ? null : Str::limit($prompt, 700, '');
+        return FashionTryOnCapabilities::sanitizePremiumPrompt($input['premium_prompt'] ?? $input['prompt'] ?? null);
     }
 
     private function outputFormat(): string
     {
         $format = strtolower((string) config('fashion_try_on.fashn.output_format', 'png'));
+        $format = $format === 'jpg' ? 'jpeg' : $format;
 
-        return in_array($format, ['png', 'jpeg', 'jpg', 'webp'], true) ? $format : 'png';
+        return in_array($format, ['png', 'jpeg'], true) ? $format : 'png';
     }
 
     private function returnBase64(): bool

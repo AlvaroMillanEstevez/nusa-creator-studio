@@ -35,13 +35,22 @@ class FashionTryOnGenerationService
         $packageKey = $this->activePackage($options);
         $personSource = $this->activePersonSource($options);
         $tier = FashionTryOnCapabilities::normalizeTier(is_string($options['tier'] ?? null) ? $options['tier'] : null);
+        $premiumPreset = null;
+        $providerSeed = null;
+        $premiumPrompt = null;
 
-        if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && ! FashionTryOnCapabilities::premiumEnabledForUser($user)) {
-            throw FashionTryOnProviderException::invalidInput('fashn_premium_disabled', [
-                'provider' => FashionTryOnCapabilities::selectedProviderForUser($user),
-                'stage' => 'validate_tier',
-                'tier' => $tier,
-            ]);
+        if ($tier === FashionTryOnCapabilities::TIER_PREMIUM) {
+            if (! FashionTryOnCapabilities::premiumRealAvailableForUser($user)) {
+                throw FashionTryOnProviderException::invalidInput('fashn_premium_disabled', [
+                    'provider' => FashionTryOnCapabilities::selectedProviderForUser($user),
+                    'stage' => 'validate_tier',
+                    'tier' => $tier,
+                ]);
+            }
+
+            $premiumPreset = $this->premiumPreset($options);
+            $providerSeed = $this->providerSeed($options);
+            $premiumPrompt = FashionTryOnCapabilities::sanitizePremiumPrompt($options['premium_prompt'] ?? $options['prompt'] ?? null);
         }
 
         if ($tier === FashionTryOnCapabilities::TIER_STANDARD && ! (bool) config('fashion_try_on.fashn.standard_enabled', true)) {
@@ -62,16 +71,29 @@ class FashionTryOnGenerationService
         $personImage = $this->resolveRequestAsset($project, $user, $options, 'person_image_asset_id', 'person_image');
         $productImage = $this->resolveRequestAsset($project, $user, $options, 'product_image_asset_id', 'product_image');
         $provider = $this->providers->selectedProviderForUser($user);
-        $creditCost = $this->creditCost($tier, is_string($options['quality_preset'] ?? null) ? $options['quality_preset'] : null);
+        $creditCost = $this->creditCost($user, $tier, $premiumPreset);
 
         return $this->submissions->submit(
             project: $project,
             user: $user,
             jobType: 'generate_fashion_try_on',
             creditCost: $creditCost,
-            creditReason: $this->creditReason($tier, $provider),
+            creditReason: $this->creditReason($tier, $provider, $premiumPreset),
             dispatch: fn (int $generationId) => GenerateFashionTryOnJob::dispatch($generationId),
-            inputPayload: $this->inputPayload($project, $packageKey, $personSource, $tier, $provider, $personImage, $productImage, $options),
+            inputPayload: $this->inputPayload(
+                project: $project,
+                packageKey: $packageKey,
+                personSource: $personSource,
+                tier: $tier,
+                provider: $provider,
+                personImage: $personImage,
+                productImage: $productImage,
+                options: $options,
+                premiumPreset: $premiumPreset,
+                providerSeed: $providerSeed,
+                premiumPrompt: $premiumPrompt,
+                creditCost: $creditCost,
+            ),
             provider: $provider,
         );
     }
@@ -129,6 +151,30 @@ class FashionTryOnGenerationService
         return FashionTryOnCapabilities::normalizePersonSource($value);
     }
 
+    /** @param array<string, mixed> $options */
+    private function premiumPreset(array $options): string
+    {
+        $value = $options['premium_preset'] ?? $options['quality_preset'] ?? null;
+        $preset = is_string($value) ? $value : FashionTryOnCapabilities::defaultPremiumPresetKey();
+
+        if (! in_array($preset, FashionTryOnCapabilities::premiumPresetKeys(), true)) {
+            throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
+                'stage' => 'validate_premium_preset',
+                'field' => 'premium_preset',
+            ]);
+        }
+
+        return $preset;
+    }
+
+    /** @param array<string, mixed> $options */
+    private function providerSeed(array $options): int
+    {
+        $provided = FashionTryOnCapabilities::normalizeProviderSeed($options['provider_seed'] ?? null);
+
+        return $provided ?? FashionTryOnCapabilities::generateProviderSeed();
+    }
+
     /**
      * @param  array<string, mixed>  $options
      */
@@ -156,39 +202,64 @@ class FashionTryOnGenerationService
             ->first();
     }
 
-    private function creditCost(string $tier, ?string $preset): int
+    private function creditCost(User $user, string $tier, ?string $premiumPreset): int
     {
-        $toolCost = $this->tools->creditCost('fashion_try_on');
-
         if ($tier === FashionTryOnCapabilities::TIER_PREMIUM) {
-            $presetCost = $preset !== null ? config('fashion_try_on.credit_costs.premium_presets.'.$preset) : null;
-            $premiumCost = $presetCost ?? config('fashion_try_on.credit_costs.premium');
+            $presetCost = FashionTryOnCapabilities::premiumCreditCost($premiumPreset);
 
-            return is_numeric($premiumCost) ? max(0, (int) $premiumCost) : $toolCost;
+            if ($presetCost !== null) {
+                return $presetCost;
+            }
+
+            if (FashionTryOnCapabilities::userCanUsePremiumWithoutConfiguredPricing($user)) {
+                return 0;
+            }
+
+            throw FashionTryOnProviderException::invalidInput('fashn_premium_pricing_unconfigured', [
+                'provider' => FashionTryOnCapabilities::selectedProviderForUser($user),
+                'stage' => 'validate_premium_pricing',
+                'tier' => $tier,
+                'premium_preset' => $premiumPreset,
+            ]);
         }
 
         $standardCost = config('fashion_try_on.credit_costs.standard');
 
-        return is_numeric($standardCost) ? max(0, (int) $standardCost) : $toolCost;
+        return is_numeric($standardCost) ? max(0, (int) $standardCost) : $this->tools->creditCost('fashion_try_on');
     }
 
-    private function creditReason(string $tier, string $provider): string
+    private function creditReason(string $tier, string $provider, ?string $premiumPreset): string
     {
+        $suffix = $tier === FashionTryOnCapabilities::TIER_PREMIUM && $premiumPreset !== null
+            ? ' '.$premiumPreset
+            : '';
+
         return $provider === 'fashn'
-            ? 'AI Fashion Try-On '.Str::title($tier).' generation'
-            : 'Mock AI Fashion Try-On '.Str::title($tier).' preparation';
+            ? 'AI Fashion Try-On '.Str::title($tier).$suffix.' generation'
+            : 'Mock AI Fashion Try-On '.Str::title($tier).$suffix.' preparation';
     }
 
     /**
      * @param  array<string, mixed>  $options
      * @return array<string, mixed>
      */
-    private function inputPayload(Project $project, string $packageKey, string $personSource, string $tier, string $provider, MediaAsset $personImage, MediaAsset $productImage, array $options): array
-    {
+    private function inputPayload(
+        Project $project,
+        string $packageKey,
+        string $personSource,
+        string $tier,
+        string $provider,
+        MediaAsset $personImage,
+        MediaAsset $productImage,
+        array $options,
+        ?string $premiumPreset,
+        ?int $providerSeed,
+        ?string $premiumPrompt,
+        int $creditCost,
+    ): array {
         $projectInput = is_array($project->input_payload) ? $project->input_payload : [];
         $category = is_string($options['category'] ?? null) ? $options['category'] : 'auto';
-
-        return array_filter(array_merge($projectInput, [
+        $payload = array_merge($projectInput, [
             'source_workflow' => 'ai_fashion_try_on',
             'origin_workflow' => 'ai_fashion_try_on',
             'origin_label' => 'AI Fashion Try-On',
@@ -198,15 +269,9 @@ class FashionTryOnGenerationService
             'tier' => $tier,
             'person_image_asset_id' => $personImage->getKey(),
             'product_image_asset_id' => $productImage->getKey(),
-            'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
-            'garment_photo_type' => is_string($options['garment_photo_type'] ?? null) ? $options['garment_photo_type'] : null,
-            'standard_mode' => is_string($options['standard_mode'] ?? null) ? $options['standard_mode'] : null,
-            'quality_preset' => is_string($options['quality_preset'] ?? null) ? $options['quality_preset'] : null,
-            'prompt' => $tier === FashionTryOnCapabilities::TIER_PREMIUM && is_string($options['prompt'] ?? null)
-                ? Str::limit(trim($options['prompt']), 700, '')
-                : null,
             'person_image_permission_confirmed' => true,
             'consent_confirmed_at' => now()->toISOString(),
+            'nusa_credit_cost' => $creditCost,
             'assets' => [
                 'model_reference' => $this->assetSummary($personImage),
                 'garment_reference' => $this->assetSummary($productImage),
@@ -219,7 +284,29 @@ class FashionTryOnGenerationService
                 'product_name' => $projectInput['product_name'] ?? null,
                 'target_audience' => $projectInput['target_audience'] ?? null,
             ],
-        ]), fn (mixed $value): bool => $value !== null && $value !== '');
+        ]);
+
+        if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && $premiumPreset !== null && $providerSeed !== null) {
+            $preset = FashionTryOnCapabilities::premiumPreset($premiumPreset);
+            $payload = array_merge($payload, [
+                'premium_preset' => $premiumPreset,
+                'premium_prompt' => $premiumPrompt,
+                'provider_seed' => $providerSeed,
+                'provider_resolution' => $preset['resolution'],
+                'provider_generation_mode' => $preset['generation_mode'],
+                'expected_provider_credits' => $preset['expected_provider_credits'],
+                'output_count' => FashionTryOnCapabilities::PREMIUM_OUTPUT_COUNT,
+                'premium_pricing_configured' => FashionTryOnCapabilities::premiumCreditCost($premiumPreset) !== null,
+            ]);
+        } else {
+            $payload = array_merge($payload, [
+                'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
+                'garment_photo_type' => is_string($options['garment_photo_type'] ?? null) ? $options['garment_photo_type'] : null,
+                'standard_mode' => is_string($options['standard_mode'] ?? null) ? $options['standard_mode'] : null,
+            ]);
+        }
+
+        return array_filter($payload, fn (mixed $value): bool => $value !== null && $value !== '');
     }
 
     /** @return array<string, mixed> */

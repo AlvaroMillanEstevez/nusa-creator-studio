@@ -5,7 +5,7 @@ import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import { API_BASE_URL } from '@/services/api'
-import type { CreatorProject, FashionTryOnProviderCapabilities, ProjectActionsResponse } from '@/types/project'
+import type { CreatorProject, FashionTryOnPremiumPresetCapability, FashionTryOnProviderCapabilities, ProjectActionsResponse } from '@/types/project'
 import FashionTryOnActionView from '@/views/FashionTryOnActionView.vue'
 
 const project: CreatorProject = {
@@ -20,6 +20,62 @@ const project: CreatorProject = {
   updated_at: '2026-07-07T00:00:00.000000Z',
 }
 
+const knownPremiumPresets: FashionTryOnPremiumPresetCapability[] = [
+  {
+    key: 'fast_1k',
+    label: 'Premium Fast',
+    resolution: '1k',
+    resolution_label: '1K',
+    generation_mode: 'fast',
+    quality_label: 'Fast',
+    expected_provider_credits: 1,
+    num_images: 1,
+    recommended: false,
+    nusa_credit_cost: null,
+    pricing_configured: false,
+    enabled: false,
+    disabled_reason: 'premium_disabled',
+  },
+  {
+    key: 'balanced_2k',
+    label: 'Premium Balanced',
+    resolution: '2k',
+    resolution_label: '2K',
+    generation_mode: 'balanced',
+    quality_label: 'Balanced',
+    expected_provider_credits: 3,
+    num_images: 1,
+    recommended: true,
+    nusa_credit_cost: null,
+    pricing_configured: false,
+    enabled: false,
+    disabled_reason: 'premium_disabled',
+  },
+  {
+    key: 'quality_4k',
+    label: 'Premium Quality',
+    resolution: '4k',
+    resolution_label: '4K',
+    generation_mode: 'quality',
+    quality_label: 'Quality',
+    expected_provider_credits: 5,
+    num_images: 1,
+    recommended: false,
+    nusa_credit_cost: null,
+    pricing_configured: false,
+    enabled: false,
+    disabled_reason: 'premium_disabled',
+  },
+]
+
+const enabledPremiumPresets: FashionTryOnPremiumPresetCapability[] = knownPremiumPresets.map((preset) => ({
+  ...preset,
+  nusa_credit_cost: preset.key === 'fast_1k' ? 1 : preset.key === 'quality_4k' ? 5 : 3,
+  pricing_configured: true,
+  enabled: true,
+  disabled_reason: null,
+}))
+
 const capabilities: FashionTryOnProviderCapabilities = {
   provider: 'mock',
   mock_mode: true,
@@ -30,10 +86,16 @@ const capabilities: FashionTryOnProviderCapabilities = {
   standard_enabled: true,
   premium_supported: true,
   premium_enabled: false,
+  premium_real_available_for_user: false,
+  premium_pricing_configured: false,
+  premium_default_preset: 'balanced_2k',
+  premium_output_count: 1,
   standard_categories: ['auto', 'tops', 'bottoms', 'one-pieces'],
   standard_garment_photo_types: ['auto', 'flat_lay', 'model'],
   standard_modes: ['balanced', 'performance', 'quality'],
-  premium_presets: ['premium_fast', 'premium_balanced', 'premium_quality'],
+  premium_presets: [],
+  available_premium_presets: [],
+  known_premium_presets: knownPremiumPresets,
   active_packages: ['single_result'],
   default_package: 'single_result',
   future_packages: ['variations', 'catalog_pack', 'catalog_video_pack'],
@@ -50,9 +112,10 @@ const capabilities: FashionTryOnProviderCapabilities = {
   supported_mime_types: ['image/jpeg', 'image/png', 'image/webp'],
 }
 
-const actions: ProjectActionsResponse = {
-  data: [
-    {
+function projectActions(providerCapabilities: FashionTryOnProviderCapabilities = capabilities): ProjectActionsResponse {
+  return {
+    data: [
+      {
       key: 'start_fashion_try_on',
       title: 'AI Fashion Try-On',
       description: 'Combine a person photo with a clothing product image.',
@@ -73,9 +136,25 @@ const actions: ProjectActionsResponse = {
       action_endpoint: '/api/v1/projects/42/generate-fashion-try-on',
       tool_key: 'fashion_try_on',
       tool_status: 'available',
-      provider_capabilities: capabilities,
-    },
-  ],
+        provider_capabilities: providerCapabilities,
+      },
+    ],
+  }
+}
+
+
+const premiumCapabilities: FashionTryOnProviderCapabilities = {
+  ...capabilities,
+  provider: 'fashn',
+  mock_mode: false,
+  real_rendering_enabled: true,
+  standard_enabled: true,
+  premium_enabled: true,
+  premium_real_available_for_user: true,
+  premium_pricing_configured: true,
+  premium_presets: ['fast_1k', 'balanced_2k', 'quality_4k'],
+  available_premium_presets: enabledPremiumPresets,
+  known_premium_presets: enabledPremiumPresets,
 }
 
 const ProjectAssetInputStub = {
@@ -124,13 +203,18 @@ async function mountView(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>, path
   return { wrapper, router }
 }
 
-function successfulFetch(responseDelay?: Promise<Response>): ReturnType<typeof vi.fn<typeof fetch>> {
+function successfulFetch(
+  responseDelay?: Promise<Response>,
+  providerCapabilities: FashionTryOnProviderCapabilities = capabilities,
+): ReturnType<typeof vi.fn<typeof fetch>> {
+  const actionResponse = projectActions(providerCapabilities)
+
   return vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
     const method = init?.method ?? 'GET'
 
-    if (url.endsWith('/projects/42/actions')) return Response.json(actions)
-    if (url.endsWith('/fashion-try-on/capabilities')) return Response.json({ data: capabilities })
+    if (url.endsWith('/projects/42/actions')) return Response.json(actionResponse)
+    if (url.endsWith('/fashion-try-on/capabilities')) return Response.json({ data: providerCapabilities })
     if (url.endsWith('/projects/42/generate-fashion-try-on') && method === 'POST') {
       return responseDelay ?? Response.json({ data: { id: 700 } }, { status: 201 })
     }
@@ -221,10 +305,57 @@ describe('FashionTryOnActionView', () => {
       category: 'tops',
       garment_photo_type: 'flat_lay',
       standard_mode: 'quality',
-      quality_preset: null,
-      prompt: null,
       person_image_permission_confirmed: true,
     })
+    expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/700')
+  })
+
+  it('submits a canonical Premium preset payload without Standard or raw provider fields', async () => {
+    const fetchMock = successfulFetch(undefined, premiumCapabilities)
+    const { wrapper, router } = await mountView(fetchMock)
+
+    await wrapper.get('[data-testid="fashion-tier-premium"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="fashion-premium-settings"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="fashion-category-select"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="fashion-advanced-toggle"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Balanced 2K')
+    expect(wrapper.text()).toContain('3 credits')
+
+    await wrapper.get('[data-testid="fashion-premium-preset-fast_1k"]').trigger('click')
+    await wrapper.get('[data-testid="fashion-premium-prompt"]').setValue('Keep the garment color accurate and use clean catalog lighting.')
+    await wrapper.get('[data-testid="select-model_reference"]').trigger('click')
+    await wrapper.get('[data-testid="select-garment_reference"]').trigger('click')
+    await wrapper.get('[data-testid="fashion-consent-checkbox"]').setValue(true)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const submitCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+      return url === API_BASE_URL + '/projects/42/generate-fashion-try-on' && init?.method === 'POST'
+    })
+
+    if (submitCall === undefined) {
+      throw new Error('Fashion Try-On Premium submit call was not captured.')
+    }
+
+    const [, request] = submitCall
+    expect(JSON.parse(String(request?.body))).toEqual({
+      package_key: 'single_result',
+      person_source: 'user_upload',
+      tier: 'premium',
+      person_image_asset_id: 101,
+      product_image_asset_id: 202,
+      premium_preset: 'fast_1k',
+      premium_prompt: 'Keep the garment color accurate and use clean catalog lighting.',
+      person_image_permission_confirmed: true,
+    })
+    expect(String(request?.body)).not.toContain('quality_preset')
+    expect(String(request?.body)).not.toContain('standard_mode')
+    expect(String(request?.body)).not.toContain('generation_mode')
+    expect(String(request?.body)).not.toContain('seed')
     expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/700')
   })
 

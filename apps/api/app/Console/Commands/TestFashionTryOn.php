@@ -20,16 +20,17 @@ class TestFashionTryOn extends Command
 {
     protected $signature = 'nusa:test-fashion-try-on
         {--tier=standard : standard or premium}
+        {--preset= : Premium preset: fast_1k, balanced_2k, quality_4k}
+        {--prompt= : Optional Premium styling instruction; never printed}
+        {--seed= : Optional diagnostic unsigned 32-bit Premium seed}
         {--project-id= : Project ID containing the private image assets}
         {--person-image-asset-id= : Person/model image MediaAsset ID}
         {--product-image-asset-id= : Clothing/product image MediaAsset ID}
         {--category=auto : Standard category: auto, tops, bottoms, one-pieces}
-        {--preset= : Premium preset key, prepared but disabled until validation}
-        {--prompt= : Optional Premium styling instruction; not printed}
         {--dry-run : Only resolve assets and print a safe provider request summary}
         {--yes : Required before making a real provider call}';
 
-    protected $description = 'Safely dry-run or manually test the FASHN AI Fashion Try-On Standard provider path';
+    protected $description = 'Safely dry-run or manually test the FASHN AI Fashion Try-On provider path';
 
     public function __construct(
         private readonly FashionTryOnAssetResolver $assets,
@@ -53,8 +54,8 @@ class TestFashionTryOn extends Command
             $user = $project->user()->firstOrFail();
             $tier = $this->tier();
 
-            if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && ! FashionTryOnCapabilities::premiumEnabledForUser($user)) {
-                $this->error('Premium is prepared but disabled. Set FASHN_PREMIUM_ENABLED=true only after Standard has been validated.');
+            if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && ! (bool) config('fashion_try_on.fashn.premium_enabled', false)) {
+                $this->error('Premium is prepared but disabled. Set FASHN_PREMIUM_ENABLED=true only for controlled validation.');
 
                 return self::FAILURE;
             }
@@ -63,7 +64,7 @@ class TestFashionTryOn extends Command
             $productImage = $this->assets->resolveProjectImage($user, $project, $this->requiredIntegerOption('product-image-asset-id'), 'product_image');
             $input = $this->buildInputPayload($project, $tier, $personImage, $productImage);
             $payload = $this->fashn->providerPayload($tier, $input, $personImage, $productImage);
-            $summary = $this->summary($project, $tier, $personImage, $productImage, $payload);
+            $summary = $this->summary($project, $tier, $personImage, $productImage, $payload, $input);
         } catch (FashionTryOnProviderException $exception) {
             $this->error('Fashion Try-On setup failed safely: '.$exception->reason);
 
@@ -146,9 +147,7 @@ class TestFashionTryOn extends Command
 
     private function tier(): string
     {
-        $tier = FashionTryOnCapabilities::normalizeTier((string) $this->option('tier'));
-
-        return $tier;
+        return FashionTryOnCapabilities::normalizeTier((string) $this->option('tier'));
     }
 
     private function requiredIntegerOption(string $name): int
@@ -165,59 +164,122 @@ class TestFashionTryOn extends Command
         return (int) $value;
     }
 
+    private function premiumPresetOption(): string
+    {
+        $value = $this->option('preset');
+        $preset = is_string($value) && trim($value) !== ''
+            ? trim($value)
+            : FashionTryOnCapabilities::defaultPremiumPresetKey();
+
+        if (! in_array($preset, FashionTryOnCapabilities::premiumPresetKeys(), true)) {
+            throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
+                'stage' => 'cli_option_validation',
+                'option' => 'preset',
+            ]);
+        }
+
+        return $preset;
+    }
+
+    private function seedOption(): int
+    {
+        $value = $this->option('seed');
+
+        if ($value === null || $value === '') {
+            return FashionTryOnCapabilities::generateProviderSeed();
+        }
+
+        $seed = FashionTryOnCapabilities::normalizeProviderSeed($value);
+
+        if ($seed === null) {
+            throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
+                'stage' => 'cli_option_validation',
+                'option' => 'seed',
+            ]);
+        }
+
+        return $seed;
+    }
+
     /**
      * @return array<string, mixed>
      */
     private function buildInputPayload(Project $project, string $tier, MediaAsset $personImage, MediaAsset $productImage): array
     {
-        return [
+        $input = [
             'project_id' => $project->getKey(),
             'user_id' => $project->user_id,
+            'package_key' => FashionTryOnCapabilities::PACKAGE_SINGLE_RESULT,
+            'person_source' => FashionTryOnCapabilities::PERSON_SOURCE_USER_UPLOAD,
             'tier' => $tier,
             'person_image_asset_id' => $personImage->getKey(),
             'product_image_asset_id' => $productImage->getKey(),
-            'category' => (string) $this->option('category'),
-            'quality_preset' => $this->option('preset') ? (string) $this->option('preset') : null,
-            'prompt' => $this->option('prompt') ? (string) $this->option('prompt') : null,
             'person_image_permission_confirmed' => true,
         ];
+
+        if ($tier === FashionTryOnCapabilities::TIER_PREMIUM) {
+            $input['premium_preset'] = $this->premiumPresetOption();
+            $input['premium_prompt'] = FashionTryOnCapabilities::sanitizePremiumPrompt($this->option('prompt'));
+            $input['provider_seed'] = $this->seedOption();
+
+            return array_filter($input, fn (mixed $value): bool => $value !== null && $value !== '');
+        }
+
+        $input['category'] = (string) $this->option('category');
+
+        return $input;
     }
 
     /**
      * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    private function summary(Project $project, string $tier, MediaAsset $personImage, MediaAsset $productImage, array $payload): array
+    private function summary(Project $project, string $tier, MediaAsset $personImage, MediaAsset $productImage, array $payload, array $input): array
     {
         $inputs = is_array($payload['inputs'] ?? null) ? $payload['inputs'] : [];
         $network = $this->client->safeNetworkSummary();
         $capabilities = FashionTryOnCapabilities::forUser($project->user);
+        $preset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+            ? FashionTryOnCapabilities::premiumPreset(FashionTryOnCapabilities::premiumPresetKeyFromInput($input))
+            : null;
+        $presetCost = is_array($preset) ? FashionTryOnCapabilities::premiumCreditCost($preset['key']) : null;
+        $expectedProviderCredits = is_array($preset) ? (int) $preset['expected_provider_credits'] : null;
 
-        return [
+        return array_filter([
             'provider' => 'fashn',
             'tier' => $tier,
             'model' => (string) ($payload['model_name'] ?? 'unknown'),
-            'public_enabled' => $capabilities['public_enabled'] ? 'true' : 'false',
-            'real_rendering_enabled_for_user' => FashionTryOnCapabilities::selectedProviderForUser($project->user) === 'fashn' ? 'true' : 'false',
+            'premium_enabled' => ((bool) config('fashion_try_on.fashn.premium_enabled', false)) ? 'true' : 'false',
+            'premium_preset' => $preset['key'] ?? null,
+            'resolution' => $inputs['resolution'] ?? null,
+            'quality_mode' => $inputs['generation_mode'] ?? $inputs['mode'] ?? 'unknown',
+            'output_count' => $inputs['num_samples'] ?? $inputs['num_images'] ?? 1,
             'person_image_asset_id' => $personImage->getKey(),
             'person_mime' => $personImage->mime_type,
             'person_size_bytes' => $personImage->size_bytes,
             'product_image_asset_id' => $productImage->getKey(),
             'product_mime' => $productImage->mime_type,
             'product_size_bytes' => $productImage->size_bytes,
-            'category' => $inputs['category'] ?? 'premium_not_applicable',
-            'provider_quality_mode_or_preset' => $inputs['mode'] ?? $inputs['generation_mode'] ?? 'unknown',
-            'output_count' => $inputs['num_samples'] ?? $inputs['num_images'] ?? 1,
+            'category' => $inputs['category'] ?? null,
+            'prompt_provided' => isset($input['premium_prompt']) ? 'true' : 'false',
+            'seed' => $inputs['seed'] ?? null,
             'return_base64' => ($inputs['return_base64'] ?? false) ? 'true' : 'false',
             'payload_byte_size' => strlen(json_encode($payload, JSON_UNESCAPED_SLASHES) ?: ''),
+            'expected_provider_credits' => $expectedProviderCredits,
+            'estimated_provider_cost_usd' => FashionTryOnCapabilities::estimatedProviderCostUsd($expectedProviderCredits) ?? 'unavailable',
+            'nusa_credit_pricing_configured' => $presetCost !== null ? 'true' : 'false',
+            'nusa_credit_cost' => $presetCost ?? 'unset',
+            'public_enabled' => $capabilities['public_enabled'] ? 'true' : 'false',
+            'real_provider_configured_for_user' => FashionTryOnCapabilities::selectedProviderForUser($project->user) === 'fashn' ? 'true' : 'false',
+            'api_key_configured' => config('fashion_try_on.fashn.api_key') ? 'true' : 'false',
+            'real_call_allowed' => (FashionTryOnCapabilities::selectedProviderForUser($project->user) === 'fashn' && config('fashion_try_on.fashn.api_key') && ($tier === FashionTryOnCapabilities::TIER_STANDARD || (bool) config('fashion_try_on.fashn.premium_enabled', false))) ? 'true' : 'false',
             'connect_timeout_seconds' => $network['connect_timeout_seconds'],
             'request_timeout_seconds' => $network['request_timeout_seconds'],
             'poll_interval_seconds' => $network['poll_interval_seconds'],
             'max_poll_attempts' => $network['max_poll_attempts'],
-            'estimated_provider_credits' => 'unavailable before provider response',
-            'estimated_provider_cost_usd_per_credit' => config('fashion_try_on.fashn.estimated_cost_usd_per_credit') ?? 'unset',
-            'api_key_configured' => config('fashion_try_on.fashn.api_key') ? 'true' : 'false',
-            'real_call_allowed' => (FashionTryOnCapabilities::selectedProviderForUser($project->user) === 'fashn' && config('fashion_try_on.fashn.api_key')) ? 'true' : 'false',
-        ];
+            'submit_endpoint_host' => $network['endpoint_host'],
+            'submit_endpoint_path' => $network['submit_endpoint_path'],
+        ], fn (mixed $value): bool => $value !== null && $value !== '');
     }
 }

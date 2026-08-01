@@ -58,7 +58,17 @@ class FashionTryOnGenerationApiTest extends TestCase
             ->assertJsonPath('data.provider', 'mock')
             ->assertJsonPath('data.mock_mode', true)
             ->assertJsonPath('data.standard_enabled', true)
+            ->assertJsonPath('data.premium_supported', true)
             ->assertJsonPath('data.premium_enabled', false)
+            ->assertJsonPath('data.premium_real_available_for_user', false)
+            ->assertJsonPath('data.premium_pricing_configured', false)
+            ->assertJsonPath('data.premium_default_preset', 'balanced_2k')
+            ->assertJsonPath('data.premium_output_count', 1)
+            ->assertJsonPath('data.available_premium_presets', [])
+            ->assertJsonPath('data.known_premium_presets.0.key', 'fast_1k')
+            ->assertJsonPath('data.known_premium_presets.0.enabled', false)
+            ->assertJsonPath('data.known_premium_presets.1.key', 'balanced_2k')
+            ->assertJsonPath('data.known_premium_presets.1.expected_provider_credits', 3)
             ->assertJsonPath('data.maximum_outputs', 1)
             ->assertJsonPath('data.active_packages.0', 'single_result')
             ->assertJsonPath('data.default_package', 'single_result')
@@ -287,7 +297,7 @@ class FashionTryOnGenerationApiTest extends TestCase
         $this->assertSame(1, data_get($standard, 'inputs.num_samples'));
 
         $premium = $provider->providerPayload('premium', $this->payload($person, $product, [
-            'quality_preset' => 'premium_balanced', 'prompt' => 'Clean catalogue look',
+            'premium_preset' => 'balanced_2k', 'premium_prompt' => 'Clean catalogue look', 'provider_seed' => 123456,
         ]), $person, $product);
 
         $this->assertSame('tryon-max', $premium['model_name']);
@@ -296,10 +306,16 @@ class FashionTryOnGenerationApiTest extends TestCase
         $this->assertArrayNotHasKey('garment_image', $premium['inputs']);
         $this->assertSame('2k', data_get($premium, 'inputs.resolution'));
         $this->assertSame('balanced', data_get($premium, 'inputs.generation_mode'));
+        $this->assertSame(123456, data_get($premium, 'inputs.seed'));
         $this->assertSame(1, data_get($premium, 'inputs.num_images'));
+        $this->assertArrayNotHasKey('category', $premium['inputs']);
+        $this->assertArrayNotHasKey('garment_photo_type', $premium['inputs']);
+        $this->assertArrayNotHasKey('segmentation_free', $premium['inputs']);
+        $this->assertArrayNotHasKey('mode', $premium['inputs']);
+        $this->assertArrayNotHasKey('num_samples', $premium['inputs']);
     }
 
-    public function test_premium_tier_is_rejected_while_disabled_and_client_cannot_submit_model_name(): void
+    public function test_premium_tier_is_rejected_while_disabled_and_client_cannot_submit_provider_controls(): void
     {
         Queue::fake();
         $user = User::factory()->create(['credits_balance' => 5]);
@@ -311,12 +327,19 @@ class FashionTryOnGenerationApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonPath('code', 'fashn_premium_disabled');
 
-        $generationId = $this->actingAs($user)
-            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, ['model_name' => 'tryon-max']))
-            ->assertCreated()
-            ->json('data.id');
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'model_name' => 'tryon-max',
+                'resolution' => '4k',
+                'generation_mode' => 'quality',
+                'seed' => 123,
+                'return_base64' => true,
+            ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['model_name', 'resolution', 'generation_mode', 'seed', 'return_base64']);
 
-        $this->assertArrayNotHasKey('model_name', Generation::query()->findOrFail($generationId)->input_payload);
+        Queue::assertNothingPushed();
+        $this->assertDatabaseCount('generations', 0);
     }
 
     public function test_real_fashn_standard_completion_persists_prediction_and_stores_private_image(): void
@@ -351,7 +374,7 @@ class FashionTryOnGenerationApiTest extends TestCase
         $this->assertSame(7, $generation->output_payload['provider_metadata']['provider_credits_used']);
         $this->assertSame('response_header', $generation->output_payload['provider_metadata']['provider_credits_source']);
         $this->assertArrayHasKey('actual_provider_cost_usd', $generation->output_payload['provider_metadata']);
-        $this->assertNull($generation->output_payload['provider_metadata']['actual_provider_cost_usd']);
+        $this->assertSame(0.525, $generation->output_payload['provider_metadata']['actual_provider_cost_usd']);
         $this->assertSame('single_result', $generation->input_payload['package_key']);
         $this->assertSame('user_upload', $generation->input_payload['person_source']);
         $this->assertSame('single_result', $generation->output_payload['package_key']);
@@ -383,6 +406,154 @@ class FashionTryOnGenerationApiTest extends TestCase
                 && is_string(data_get($data, 'inputs.garment_image'))
                 && data_get($data, 'inputs.product_image') === null
                 && data_get($data, 'inputs.num_samples') === 1;
+        });
+    }
+
+    public function test_premium_pricing_must_be_configured_for_normal_paid_generation(): void
+    {
+        Queue::fake();
+        $this->enablePremiumFashn();
+        $user = User::factory()->admin()->create(['credits_balance' => 20]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'tier' => 'premium',
+                'premium_preset' => 'fast_1k',
+            ]))
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'fashn_premium_pricing_unconfigured');
+
+        Queue::assertNothingPushed();
+        $this->assertSame(20, $user->refresh()->credits_balance);
+        $this->assertDatabaseCount('generations', 0);
+    }
+
+    public function test_internal_unlimited_can_create_premium_validation_generation_without_configured_price(): void
+    {
+        Queue::fake();
+        $this->enablePremiumFashn();
+        $user = User::factory()->internalCreator()->create(['credits_balance' => 0]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'tier' => 'premium',
+                'premium_preset' => 'fast_1k',
+                'premium_prompt' => '  tuck in the shirt  ',
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.credits_charged', 0)
+            ->json('data.id');
+
+        $generation = Generation::query()->findOrFail($generationId);
+        $this->assertSame('premium', $generation->input_payload['tier']);
+        $this->assertSame('fast_1k', $generation->input_payload['premium_preset']);
+        $this->assertSame('tuck in the shirt', $generation->input_payload['premium_prompt']);
+        $this->assertSame(1, $generation->input_payload['expected_provider_credits']);
+        $this->assertSame(0, $generation->credits_charged);
+        $this->assertArrayHasKey('provider_seed', $generation->input_payload);
+        $this->assertIsInt($generation->input_payload['provider_seed']);
+        Queue::assertPushed(GenerateFashionTryOnJob::class);
+    }
+
+    public function test_real_fashn_premium_completion_uses_tryon_max_one_output_and_safe_metadata(): void
+    {
+        Queue::fake();
+        $this->enablePremiumFashn();
+        config()->set('fashion_try_on.credit_costs.premium_presets.fast_1k', 6);
+        $user = User::factory()->admin()->create(['credits_balance' => 20]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+        $output = 'data:image/png;base64,'.base64_encode($this->pngBytes());
+        $extraOutput = 'data:image/png;base64,'.base64_encode($this->pngBytes());
+
+        Http::fake([
+            'https://api.fashn.ai/v1/run' => Http::response(['id' => 'pred_premium_123', 'status' => 'starting'], 200),
+            'https://api.fashn.ai/v1/status/pred_premium_123' => Http::response(['id' => 'pred_premium_123', 'status' => 'completed', 'output' => [$output, $extraOutput]], 200, ['x-fashn-credits-used' => '1']),
+        ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'tier' => 'premium',
+                'premium_preset' => 'fast_1k',
+                'premium_prompt' => '  Open the jacket and keep product visible.  ',
+                'category' => 'tops',
+                'garment_photo_type' => 'flat_lay',
+                'standard_mode' => 'quality',
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.provider', 'fashn')
+            ->assertJsonPath('data.credits_charged', 6)
+            ->assertJsonPath('meta.credits_balance', 14)
+            ->json('data.id');
+
+        $generationBeforeJob = Generation::query()->findOrFail($generationId);
+        $persistedSeed = $generationBeforeJob->input_payload['provider_seed'];
+        $this->assertIsInt($persistedSeed);
+        $this->assertSame('fast_1k', $generationBeforeJob->input_payload['premium_preset']);
+        $this->assertSame('Open the jacket and keep product visible.', $generationBeforeJob->input_payload['premium_prompt']);
+        $this->assertSame('1k', $generationBeforeJob->input_payload['provider_resolution']);
+        $this->assertSame('fast', $generationBeforeJob->input_payload['provider_generation_mode']);
+        $this->assertSame(1, $generationBeforeJob->input_payload['expected_provider_credits']);
+        $this->assertSame(6, $generationBeforeJob->input_payload['nusa_credit_cost']);
+        $this->assertArrayNotHasKey('category', $generationBeforeJob->input_payload);
+        $this->assertArrayNotHasKey('standard_mode', $generationBeforeJob->input_payload);
+
+        $this->runJob($generationId);
+        $generation = Generation::query()->findOrFail($generationId);
+        $asset = MediaAsset::query()->where('usage_role', 'fashion_try_on_result')->firstOrFail();
+
+        $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame('pred_premium_123', $generation->input_payload['provider_prediction_id']);
+        $this->assertSame($persistedSeed, $generation->input_payload['provider_seed']);
+        $this->assertSame('tryon-max', $generation->input_payload['provider_model']);
+        $this->assertSame('premium', $generation->output_payload['tier']);
+        $this->assertSame('fast_1k', $generation->output_payload['premium_preset']);
+        $this->assertSame([$asset->id], $generation->output_payload['final_image_asset_ids']);
+        $this->assertSame($asset->id, $generation->output_payload['rendered_image_assets'][0]['id']);
+        $this->assertCount(1, $generation->output_payload['rendered_image_assets']);
+        $this->assertSame(1, $generation->output_payload['generation_summary']['output_count']);
+        $this->assertSame('1K', $generation->output_payload['generation_summary']['provider_resolution']);
+        $this->assertSame('Fast', $generation->output_payload['generation_summary']['provider_generation_mode']);
+        $this->assertSame(1, $generation->output_payload['provider_metadata']['expected_provider_credits']);
+        $this->assertSame(1, $generation->output_payload['provider_metadata']['actual_provider_credits']);
+        $this->assertSame('response_header', $generation->output_payload['provider_metadata']['provider_credits_source']);
+        $this->assertSame($persistedSeed, $generation->output_payload['provider_metadata']['provider_seed']);
+        $this->assertSame(2, $generation->output_payload['provider_metadata']['observed_provider_output_count']);
+        $this->assertSame('provider_returned_more_outputs_than_requested_first_output_used', $generation->output_payload['provider_metadata']['provider_output_warning']);
+        $this->assertSame('premium', $asset->metadata['tier']);
+        $this->assertSame('fast_1k', $asset->metadata['premium_preset']);
+        $this->assertSame('1k', $asset->metadata['provider_resolution']);
+        $this->assertSame('fast', $asset->metadata['provider_generation_mode']);
+        $this->assertSame($persistedSeed, $asset->metadata['provider_seed']);
+        $this->assertSame(1, $asset->metadata['expected_provider_credits']);
+        $this->assertArrayNotHasKey('premium_prompt', $asset->metadata);
+        $this->assertArrayNotHasKey('prompt', $asset->metadata);
+        $this->assertSame(1, CreditTransaction::query()->where('generation_id', $generationId)->where('type', CreditTransactionType::Usage->value)->where('amount', 6)->count());
+
+        Http::assertSentCount(2);
+        Http::assertSent(function (Request $request) use ($persistedSeed): bool {
+            $data = $request->data();
+
+            return $request->method() === 'POST'
+                && str_ends_with($request->url(), '/run')
+                && data_get($data, 'model_name') === 'tryon-max'
+                && is_string(data_get($data, 'inputs.model_image'))
+                && is_string(data_get($data, 'inputs.product_image'))
+                && data_get($data, 'inputs.garment_image') === null
+                && data_get($data, 'inputs.category') === null
+                && data_get($data, 'inputs.garment_photo_type') === null
+                && data_get($data, 'inputs.segmentation_free') === null
+                && data_get($data, 'inputs.mode') === null
+                && data_get($data, 'inputs.num_samples') === null
+                && data_get($data, 'inputs.num_images') === 1
+                && data_get($data, 'inputs.resolution') === '1k'
+                && data_get($data, 'inputs.generation_mode') === 'fast'
+                && data_get($data, 'inputs.seed') === $persistedSeed
+                && data_get($data, 'inputs.prompt') === 'Open the jacket and keep product visible.';
         });
     }
 
@@ -726,6 +897,17 @@ class FashionTryOnGenerationApiTest extends TestCase
         config()->set('fashion_try_on.fashn.premium_enabled', false);
         config()->set('fashion_try_on.fashn.poll_interval_seconds', 0);
         config()->set('fashion_try_on.fashn.max_poll_attempts', 1);
+    }
+
+    private function enablePremiumFashn(string $apiKey = 'fashn-test-key'): void
+    {
+        $this->enableFashn($apiKey);
+        config()->set('fashion_try_on.fashn.premium_enabled', true);
+        config()->set('fashion_try_on.fashn.premium_model', 'tryon-max');
+        config()->set('fashion_try_on.fashn.premium_default_preset', 'balanced_2k');
+        config()->set('fashion_try_on.credit_costs.premium_presets.fast_1k', null);
+        config()->set('fashion_try_on.credit_costs.premium_presets.balanced_2k', null);
+        config()->set('fashion_try_on.credit_costs.premium_presets.quality_4k', null);
     }
 
     private function workspaceProject(User $user, array $overrides = []): Project

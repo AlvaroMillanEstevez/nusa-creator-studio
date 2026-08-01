@@ -44,8 +44,11 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         $tier = FashionTryOnCapabilities::normalizeTier(is_string($input['tier'] ?? null) ? $input['tier'] : null);
         $packageKey = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
         $personSource = FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null);
+        $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+            ? FashionTryOnCapabilities::premiumPreset($this->premiumPresetKey($input))
+            : null;
 
-        if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && ! FashionTryOnCapabilities::premiumEnabledForUser($user)) {
+        if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && ! FashionTryOnCapabilities::premiumRealAvailableForUser($user)) {
             throw FashionTryOnProviderException::invalidInput('fashn_premium_disabled', [
                 'provider' => 'fashn',
                 'stage' => 'validate_tier',
@@ -74,19 +77,22 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             'stage' => 'poll',
             'provider_prediction_id' => $predictionId,
         ]);
-        [$imageBinary, $mimeType] = $this->imageBinary($completion['output'], $context + [
+        [$imageBinary, $mimeType, $observedOutputCount] = $this->imageBinary($completion['output'], $context + [
             'stage' => 'decode_output',
             'provider_prediction_id' => $predictionId,
         ]);
         $providerModel = $this->modelForTier($tier);
-        $providerCredits = $completion['provider_credits_used'] ?? null;
-        if ($providerCredits === null && $submit !== null) {
-            $providerCredits = $submit['provider_credits_used'] ?? null;
+        $actualProviderCredits = $completion['provider_credits_used'] ?? null;
+        if ($actualProviderCredits === null && $submit !== null) {
+            $actualProviderCredits = $submit['provider_credits_used'] ?? null;
         }
         $providerCreditsSource = $completion['provider_credits_source'] ?? 'unavailable';
         if ($providerCreditsSource === 'unavailable' && $submit !== null) {
             $providerCreditsSource = $submit['provider_credits_source'] ?? 'unavailable';
         }
+        $expectedProviderCredits = is_array($premiumPreset)
+            ? (int) $premiumPreset['expected_provider_credits']
+            : null;
         $providerLatencyMs = (int) round((microtime(true) - $startedAt) * 1000);
 
         try {
@@ -104,11 +110,20 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                     'package_key' => $packageKey,
                     'tier' => $tier,
                     'person_source' => $personSource,
+                    'premium_preset' => $premiumPreset['key'] ?? null,
+                    'provider_resolution' => $premiumPreset['resolution'] ?? null,
+                    'provider_generation_mode' => $premiumPreset['generation_mode'] ?? null,
+                    'provider_seed' => $tier === FashionTryOnCapabilities::TIER_PREMIUM ? FashionTryOnCapabilities::normalizeProviderSeed($input['provider_seed'] ?? null) : null,
+                    'expected_provider_credits' => $expectedProviderCredits,
+                    'actual_provider_credits' => is_numeric($actualProviderCredits) ? $actualProviderCredits + 0 : null,
+                    'provider_credits_source' => is_string($providerCreditsSource) ? $providerCreditsSource : 'unavailable',
                     'quality_preset' => $this->presetLabel($tier, $input),
                     'person_image_asset_id' => $personImage->getKey(),
                     'product_image_asset_id' => $productImage->getKey(),
                     'output_index' => 0,
                     'output_count' => 1,
+                    'observed_provider_output_count' => $observedOutputCount,
+                    'provider_returned_extra_outputs' => $observedOutputCount > 1,
                 ],
             );
         } catch (Throwable $exception) {
@@ -126,9 +141,11 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             'package_key' => $packageKey,
             'person_source' => $personSource,
             'tier' => $tier,
+            'premium_preset' => $premiumPreset['key'] ?? null,
             'provider_model' => $providerModel,
             'provider_prediction_id' => $predictionId,
             'final_image_asset_id' => $finalImage->getKey(),
+            'observed_provider_output_count' => $observedOutputCount,
         ]);
 
         return $this->outputPayload(
@@ -136,7 +153,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             tier: $tier,
             providerModel: $providerModel,
             predictionId: $predictionId,
-            providerCredits: $providerCredits,
+            actualProviderCredits: is_numeric($actualProviderCredits) ? $actualProviderCredits + 0 : null,
+            expectedProviderCredits: $expectedProviderCredits,
             providerCreditsSource: is_string($providerCreditsSource) ? $providerCreditsSource : 'unavailable',
             providerLatencyMs: $providerLatencyMs,
             packageKey: $packageKey,
@@ -145,6 +163,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             productImage: $productImage,
             finalImage: $finalImage,
             mimeType: $mimeType,
+            observedOutputCount: $observedOutputCount,
         );
     }
 
@@ -188,6 +207,10 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
      */
     private function context(array $input, Project $project, int $generationId, string $tier, MediaAsset $personImage, MediaAsset $productImage): array
     {
+        $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+            ? FashionTryOnCapabilities::premiumPreset($this->premiumPresetKey($input))
+            : null;
+
         return [
             'provider' => 'fashn',
             'workflow' => 'fashion_try_on',
@@ -196,10 +219,13 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             'package_key' => FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null),
             'person_source' => FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null),
             'tier' => $tier,
+            'premium_preset' => $premiumPreset['key'] ?? null,
+            'provider_resolution' => $premiumPreset['resolution'] ?? null,
+            'provider_generation_mode' => $premiumPreset['generation_mode'] ?? null,
             'model' => $this->modelForTier($tier),
             'person_image_asset_id' => $personImage->getKey(),
             'product_image_asset_id' => $productImage->getKey(),
-            'category' => $input['category'] ?? null,
+            'category' => $tier === FashionTryOnCapabilities::TIER_STANDARD ? ($input['category'] ?? null) : null,
         ];
     }
 
@@ -243,11 +269,12 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
 
     /**
      * @param  array<string, mixed>  $context
-     * @return array{0: string, 1: string}
+     * @return array{0: string, 1: string, 2: int}
      */
     private function imageBinary(mixed $output, array $context): array
     {
         $value = $this->firstOutputValue($output);
+        $observedOutputCount = $this->observedOutputCount($output);
 
         if (! is_string($value) || trim($value) === '') {
             throw FashionTryOnProviderException::invalidResponse('fashn_output_invalid', $context + [
@@ -257,11 +284,11 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
 
         $value = trim($value);
 
-        if (preg_match('/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+\/=\\r\\n]+)$/', $value, $matches) === 1) {
-            $decoded = base64_decode(preg_replace('/\\s+/', '', $matches[2]) ?? '', true);
+        if (preg_match('/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+\/=\r\n]+)$/', $value, $matches) === 1) {
+            $decoded = base64_decode(preg_replace('/\s+/', '', $matches[2]) ?? '', true);
 
             if (is_string($decoded) && $decoded !== '') {
-                return [$decoded, $matches[1]];
+                return [$decoded, $matches[1], $observedOutputCount];
             }
         }
 
@@ -269,7 +296,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             $binary = $this->client->download($value, $context + ['stage' => 'download_output']);
             $mimeType = $this->detectMimeType($binary);
 
-            return [$binary, $mimeType];
+            return [$binary, $mimeType, $observedOutputCount];
         }
 
         throw FashionTryOnProviderException::invalidResponse('fashn_output_invalid', $context + [
@@ -300,6 +327,25 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         return null;
     }
 
+    private function observedOutputCount(mixed $output): int
+    {
+        if (is_string($output)) {
+            return 1;
+        }
+
+        if (! is_array($output)) {
+            return 0;
+        }
+
+        foreach (['image', 'url', 'uri', 'base64', 'data'] as $key) {
+            if (isset($output[$key])) {
+                return 1;
+            }
+        }
+
+        return count($output);
+    }
+
     private function detectMimeType(string $binary): string
     {
         $detectedMime = function_exists('finfo_buffer')
@@ -324,10 +370,16 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
     }
 
     /** @param array<string, mixed> $input */
+    private function premiumPresetKey(array $input): string
+    {
+        return FashionTryOnCapabilities::premiumPresetKeyFromInput($input);
+    }
+
+    /** @param array<string, mixed> $input */
     private function presetLabel(string $tier, array $input): string
     {
         if ($tier === FashionTryOnCapabilities::TIER_PREMIUM) {
-            $preset = $this->payloads->premiumPreset($input);
+            $preset = FashionTryOnCapabilities::premiumPreset($this->premiumPresetKey($input));
 
             return is_string($preset['label'] ?? null) ? $preset['label'] : 'Premium';
         }
@@ -344,7 +396,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         string $tier,
         string $providerModel,
         string $predictionId,
-        int|float|null $providerCredits,
+        int|float|null $actualProviderCredits,
+        ?int $expectedProviderCredits,
         string $providerCreditsSource,
         int $providerLatencyMs,
         string $packageKey,
@@ -353,17 +406,24 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         MediaAsset $productImage,
         MediaAsset $finalImage,
         string $mimeType,
+        int $observedOutputCount,
     ): array {
-        $estimatedCost = $this->estimatedProviderCost($providerCredits);
-        $category = $this->payloads->standardCategory($input);
+        $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+            ? FashionTryOnCapabilities::premiumPreset($this->premiumPresetKey($input))
+            : null;
+        $estimatedCost = FashionTryOnCapabilities::estimatedProviderCostUsd($expectedProviderCredits ?? $actualProviderCredits);
+        $actualCost = FashionTryOnCapabilities::estimatedProviderCostUsd($actualProviderCredits);
+        $category = $tier === FashionTryOnCapabilities::TIER_STANDARD ? $this->payloads->standardCategory($input) : null;
+        $qualityPreset = $this->presetLabel($tier, $input);
 
-        return [
+        return array_filter([
             'try_on_title' => 'AI Fashion Try-On result',
             'concept_summary' => 'A real AI fashion try-on image was generated and stored as a private project asset.',
             'package_key' => $packageKey,
             'person_source' => $personSource,
             'tier' => $tier,
-            'quality_preset' => $this->presetLabel($tier, $input),
+            'quality_preset' => $qualityPreset,
+            'premium_preset' => $premiumPreset['key'] ?? null,
             'category' => $category,
             'selected_person_image' => $this->assetSummary($personImage),
             'selected_product_image' => $this->assetSummary($productImage),
@@ -392,30 +452,43 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                 'size_bytes' => $finalImage->size_bytes,
                 'output_index' => 0,
             ]],
-            'generation_summary' => [
+            'generation_summary' => array_filter([
                 'quality' => ucfirst($tier),
+                'preset' => $qualityPreset,
+                'premium_preset' => $premiumPreset['key'] ?? null,
+                'provider_resolution' => $premiumPreset['resolution_label'] ?? null,
+                'provider_generation_mode' => $premiumPreset['quality_label'] ?? null,
                 'category' => $category,
                 'output_format' => $mimeType,
                 'output_count' => 1,
                 'package_key' => $packageKey,
                 'person_source' => $personSource,
-            ],
-            'provider_metadata' => [
+            ], fn (mixed $value): bool => $value !== null && $value !== ''),
+            'provider_metadata' => array_filter([
                 'provider' => 'fashn',
                 'provider_model' => $providerModel,
                 'provider_prediction_id' => $predictionId,
                 'provider_status' => 'completed',
-                'provider_credits_used' => $providerCredits,
+                'provider_credits_used' => $actualProviderCredits,
+                'actual_provider_credits' => $actualProviderCredits,
+                'expected_provider_credits' => $expectedProviderCredits,
                 'provider_credits_source' => $providerCreditsSource,
                 'estimated_provider_cost_usd' => $estimatedCost,
-                'actual_provider_cost_usd' => null,
+                'actual_provider_cost_usd' => $actualCost,
                 'provider_latency_ms' => $providerLatencyMs,
                 'package_key' => $packageKey,
                 'person_source' => $personSource,
                 'tier' => $tier,
-                'quality_preset' => $this->presetLabel($tier, $input),
+                'quality_preset' => $qualityPreset,
+                'premium_preset' => $premiumPreset['key'] ?? null,
+                'provider_resolution' => $premiumPreset['resolution'] ?? null,
+                'provider_generation_mode' => $premiumPreset['generation_mode'] ?? null,
+                'provider_seed' => $tier === FashionTryOnCapabilities::TIER_PREMIUM ? FashionTryOnCapabilities::normalizeProviderSeed($input['provider_seed'] ?? null) : null,
                 'output_count' => 1,
-            ],
+                'observed_provider_output_count' => $observedOutputCount,
+                'provider_returned_extra_outputs' => $observedOutputCount > 1,
+                'provider_output_warning' => $observedOutputCount > 1 ? 'provider_returned_more_outputs_than_requested_first_output_used' : null,
+            ], fn (mixed $value): bool => $value !== null && $value !== ''),
             'suggested_next_actions' => [
                 'Animate with Motion AI Video',
                 'Download image',
@@ -426,20 +499,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                 'Review the output for fit, identity and product accuracy before publishing.',
                 'Avoid implying exact sizing, body changes or guaranteed results.',
             ],
-        ];
-    }
-
-    private function estimatedProviderCost(int|float|null $providerCredits): ?float
-    {
-        $rate = config('fashion_try_on.fashn.estimated_cost_usd_per_credit');
-
-        if (! is_numeric($rate)) {
-            return null;
-        }
-
-        $credits = is_numeric($providerCredits) ? (float) $providerCredits : 1.0;
-
-        return round($credits * (float) $rate, 6);
+        ], fn (mixed $value): bool => $value !== null && $value !== '');
     }
 
     /** @return array<string, mixed> */

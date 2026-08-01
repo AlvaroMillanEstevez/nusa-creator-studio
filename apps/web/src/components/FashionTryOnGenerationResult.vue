@@ -1,10 +1,11 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { useTranslations } from '@/i18n'
 import { fetchMediaBlob } from '@/services/media'
 import { useAuthStore } from '@/stores/auth'
+import { fashionTryOnPremiumPresetOptions } from '@/types/project'
 import type { FashionTryOnRenderedImageAsset, FashionTryOnResult } from '@/types/project'
 import { formatLabel } from '@/utils/formatters'
 
@@ -46,6 +47,27 @@ const personSource = computed(() => stringValue(
     ?? props.result.generation_summary?.person_source,
   'user_upload',
 ))
+const tierKey = computed(() => stringValue(
+  props.result.tier
+    ?? props.result.provider_metadata?.tier
+    ?? props.result.generation_summary?.tier,
+  'standard',
+))
+const premiumPresetKey = computed(() => stringValue(
+  props.result.premium_preset
+    ?? props.result.provider_metadata?.premium_preset
+    ?? props.result.generation_summary?.premium_preset
+    ?? props.result.quality_preset
+    ?? props.result.provider_metadata?.quality_preset,
+  '',
+))
+const providerResolution = computed(() => stringValue(
+  props.result.provider_metadata?.provider_resolution
+    ?? props.result.generation_summary?.provider_resolution
+    ?? props.result.generation_summary?.resolution,
+  '',
+))
+const isPremiumResult = computed(() => tierKey.value === 'premium' || premiumPresetKey.value !== '')
 const outputCount = computed(() => {
   const summaryCount = numberValue(props.result.generation_summary?.output_count)
     ?? numberValue(props.result.provider_metadata?.output_count)
@@ -65,9 +87,35 @@ const downloadUrl = computed(() => selectedImage.value?.download_url ?? props.re
 const hasRenderedImage = computed(() => props.result.generated_image.status === 'rendered' && normalizedImages.value.length > 0)
 const isMockResult = computed(() => props.result.generated_image.provider === 'mock' || props.result.generated_image.status !== 'rendered')
 const projectRoute = computed(() => props.projectId === null || props.projectId === undefined ? '/dashboard' : `/projects/${String(props.projectId)}`)
-const generateAnotherRoute = computed(() => props.projectId === null || props.projectId === undefined
-  ? '/dashboard'
-  : { name: 'project-fashion-try-on-action', params: { projectId: String(props.projectId) } })
+const generateAnotherRoute = computed(() => {
+  if (props.projectId === null || props.projectId === undefined) {
+    return '/dashboard'
+  }
+
+  const query: Record<string, string> = {}
+
+  if (props.result.selected_person_image?.id !== undefined) {
+    query.personImageAssetId = String(props.result.selected_person_image.id)
+  }
+
+  if (props.result.selected_product_image?.id !== undefined) {
+    query.productImageAssetId = String(props.result.selected_product_image.id)
+  }
+
+  if (isPremiumResult.value) {
+    query.tier = 'premium'
+
+    if (premiumPresetKey.value !== '') {
+      query.premiumPreset = premiumPresetKey.value
+    }
+  }
+
+  return {
+    name: 'project-fashion-try-on-action',
+    params: { projectId: String(props.projectId) },
+    query,
+  }
+})
 const animateRoute = computed(() => {
   if (props.projectId === null || props.projectId === undefined || finalImageAssetId.value === null || isMockResult.value) {
     return null
@@ -91,7 +139,9 @@ const animateRoute = computed(() => {
 const summaryItems = computed<SummaryItem[]>(() => [
   { label: t('fashionTryOn.result.package'), value: packageLabel(packageKey.value) },
   { label: t('fashionTryOn.result.personSource'), value: personSourceLabel(personSource.value) },
-  { label: 'Quality', value: props.result.generation_summary?.quality ?? props.result.tier },
+  { label: 'Quality', value: props.result.generation_summary?.quality ?? formatLabel(tierKey.value) },
+  { label: t('fashionTryOn.result.preset'), value: isPremiumResult.value ? premiumPresetLabel(premiumPresetKey.value) : null },
+  { label: t('fashionTryOn.result.providerResolution'), value: providerResolution.value === '' ? null : providerResolution.value.toUpperCase() },
   { label: 'Category', value: props.result.generation_summary?.category ?? props.result.category },
   { label: 'Person photo', value: assetLabel(props.result.selected_person_image) },
   { label: 'Product photo', value: assetLabel(props.result.selected_product_image) },
@@ -116,6 +166,12 @@ const diagnosticsItems = computed<SummaryItem[]>(() => {
     { label: 'Estimated provider cost', value: metadata.estimated_provider_cost_usd },
     { label: 'Actual provider cost', value: metadata.actual_provider_cost_usd ?? 'Unavailable' },
     { label: 'Provider latency', value: metadata.provider_latency_ms ? `${metadata.provider_latency_ms}ms` : null },
+    { label: 'Premium preset', value: metadata.premium_preset ?? premiumPresetKey.value },
+    { label: 'Provider resolution', value: metadata.provider_resolution },
+    { label: 'Generation mode', value: metadata.provider_generation_mode },
+    { label: 'Provider seed', value: metadata.provider_seed },
+    { label: 'Expected provider credits', value: metadata.expected_provider_credits },
+    { label: 'Actual provider credits', value: metadata.actual_provider_credits },
     { label: 'Package', value: packageKey.value },
     { label: 'Person source', value: personSource.value },
     { label: 'Final image asset', value: finalImageAssetId.value },
@@ -205,6 +261,16 @@ function personSourceLabel(value: string): string {
   return knownLabels[value] ?? formatLabel(value)
 }
 
+function premiumPresetLabel(value: string): string | null {
+  if (value === '') {
+    return null
+  }
+
+  const local = fashionTryOnPremiumPresetOptions.find((option) => option.value === value)
+
+  return local?.label ?? formatLabel(value)
+}
+
 function assetLabel(asset: FashionTryOnResult['selected_person_image']): string | null {
   if (!asset) {
     return null
@@ -288,7 +354,7 @@ onBeforeUnmount(revokePreview)
           <p class="mt-3 text-sm leading-7 text-neutral-300">{{ result.concept_summary }}</p>
         </div>
         <span class="w-fit rounded-full border border-emerald-800 bg-emerald-950/60 px-3 py-1 text-xs font-semibold text-emerald-200">
-          {{ formatLabel(result.tier ?? 'standard') }} &middot; {{ outputCountLabel }}
+          {{ formatLabel(tierKey) }} &middot; {{ outputCountLabel }}
         </span>
       </div>
 

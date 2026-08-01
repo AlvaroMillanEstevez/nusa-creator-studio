@@ -1,4 +1,4 @@
-﻿import en from './en'
+import en from './en'
 
 export default {
   ...en,
@@ -261,6 +261,7 @@ export default {
     loadFailed: 'Kami tidak dapat memuat setup AI Fashion Try-On.',
     providerMock: 'Rencana preview mock',
     providerFashnStandard: 'FASHN Standard',
+    providerFashnPremium: 'FASHN Premium',
     oneOutputImage: 'satu gambar output',
     packageStep: 'Paket',
     packageTitle: 'Pilih paket Try-On',
@@ -290,6 +291,18 @@ export default {
     permissionBody: 'Saya mengonfirmasi bahwa saya punya izin untuk menggunakan foto orang ini untuk AI fashion try-on.',
     costStep: 'Biaya dan generate',
     costBody: 'Satu klik eksplisit membuat satu generation. Single Try-On menghasilkan tepat satu gambar; mock mode hanya membuat rencana persiapan.',
+    premiumCostBody: 'Preset Premium dikontrol oleh Nusa. Biaya berasal dari capability server yang aktif; browser tidak mengirim pengaturan provider bebas.',
+    noCreditCharge: 'Tanpa charge kredit',
+    internalValidationNoCharge: 'Validasi internal: tanpa charge',
+    premiumPricingUnavailable: 'Harga belum dikonfigurasi',
+    premiumTierDescription: 'Validasi FASHN tryon-max dengan detail lebih tinggi dan satu gambar output, hanya aktif saat Premium diaktifkan untuk user ini.',
+    premiumPresetStep: 'Preset Premium',
+    premiumPresetTitle: 'Pilih preset kualitas Premium',
+    premiumPresetBody: 'Preset dipetakan di server ke resolusi dan mode kualitas tetap. Pilih target validasi yang ingin dijalankan.',
+    premiumPromptLabel: 'Instruksi styling',
+    premiumPromptPlaceholder: 'Opsional: pose model natural, pertahankan warna pakaian, lighting katalog bersih...',
+    premiumPromptHelp: 'Opsional. Jangan masukkan klaim, data pribadi, atau pengaturan provider. Nusa menyimpannya hanya di input generation.',
+    recommended: 'Direkomendasikan',
     availableNow: 'Tersedia sekarang',
     premiumValidation: 'Setelah validasi Premium',
     selected: 'Dipilih',
@@ -307,6 +320,11 @@ export default {
       catalog_pack: { label: 'E-commerce Catalog Pack', description: 'Siapkan set gambar produk untuk toko online dan marketplace.' },
       catalog_video_pack: { label: 'Catalog Pack + Video Pendek', description: 'Buat pack katalog dan lanjutkan dengan video promosi pendek.' },
     },
+    premiumPresets: {
+      fast_1k: { label: 'Fast 1K', description: 'Validasi Premium cepat di 1K. Cocok untuk mengecek prompt dan gambar.' },
+      balanced_2k: { label: 'Balanced 2K', description: 'Preset Premium yang direkomendasikan untuk validasi beta dan detail yang berguna.' },
+      quality_4k: { label: 'Quality 4K', description: 'Preset Premium kualitas tertinggi. Gunakan saat detail penting dan biaya sesuai.' },
+    },
     personSources: {
       user_upload: { label: 'Upload foto orang', description: 'Upload atau pilih foto yang kamu punya izin untuk digunakan.' },
       nusa_ai_model: { label: 'Pilih Nusa AI model', description: 'Pilih model fashion AI kurasi Nusa.' },
@@ -321,6 +339,8 @@ export default {
       personSourceUnavailable: 'Upload foto orang adalah satu-satunya sumber orang yang tersedia saat ini.',
       standardUnavailable: 'Standard Fashion Try-On sedang tidak tersedia.',
       premiumDisabled: 'Premium akan hadir setelah validasi Premium.',
+      premiumPresetUnavailable: 'Pilih preset Premium yang aktif sebelum generate.',
+      premiumPromptTooLong: 'Instruksi styling harus di bawah {count} karakter.',
       personPhotoRequired: 'Pilih atau upload satu foto orang terlebih dahulu.',
       productPhotoRequired: 'Pilih atau upload satu foto pakaian/produk terlebih dahulu.',
       consentRequired: 'Konfirmasi bahwa kamu punya izin memakai foto orang ini.',
@@ -343,7 +363,7 @@ export default {
       },
     },
     result: {
-      package: 'Paket', personSource: 'Sumber orang', uploadedPhoto: 'Foto upload', directActions: 'Aksi Try-On langsung', continuePremiumVideo: 'Lanjut dengan video premium', premiumVideoCopy: 'Animasikan gambar try-on ini di workflow terpisah Motion AI Video. Ini membuat generation berbayar baru dan memakai kredit tambahan.', separateWorkflow: 'Workflow terpisah', additionalCredits: 'Kredit Motion AI Video tambahan diperlukan', noVideoIncluded: 'Hasil Try-On tidak termasuk video', reviewSettings: 'Kamu bisa meninjau pengaturan Motion AI sebelum generate', noAutoGeneration: 'Generation tidak dimulai otomatis', continueMotion: 'Lanjut ke Motion AI Video', oneImageOutput: '1 gambar output', manyImageOutputs: '{count} gambar output',
+      package: 'Paket', personSource: 'Sumber orang', preset: 'Preset', providerResolution: 'Resolusi', uploadedPhoto: 'Foto upload', directActions: 'Aksi Try-On langsung', continuePremiumVideo: 'Lanjut dengan video premium', premiumVideoCopy: 'Animasikan gambar try-on ini di workflow terpisah Motion AI Video. Ini membuat generation berbayar baru dan memakai kredit tambahan.', separateWorkflow: 'Workflow terpisah', additionalCredits: 'Kredit Motion AI Video tambahan diperlukan', noVideoIncluded: 'Hasil Try-On tidak termasuk video', reviewSettings: 'Kamu bisa meninjau pengaturan Motion AI sebelum generate', noAutoGeneration: 'Generation tidak dimulai otomatis', continueMotion: 'Lanjut ke Motion AI Video', oneImageOutput: '1 gambar output', manyImageOutputs: '{count} gambar output',
     },
   },
   voiceover: {

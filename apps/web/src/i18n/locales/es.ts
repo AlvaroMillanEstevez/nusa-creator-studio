@@ -1,4 +1,4 @@
-﻿import en from './en'
+import en from './en'
 
 export default {
   ...en,
@@ -213,6 +213,7 @@ export default {
     loadFailed: 'No pudimos cargar la configuración de AI Fashion Try-On.',
     providerMock: 'Plan mock de vista previa',
     providerFashnStandard: 'FASHN Standard',
+    providerFashnPremium: 'FASHN Premium',
     oneOutputImage: 'una imagen de salida',
     packageStep: 'Paquete',
     packageTitle: 'Elige tu paquete Try-On',
@@ -242,6 +243,18 @@ export default {
     permissionBody: 'Confirmo que tengo permiso para usar esta foto de persona para AI fashion try-on.',
     costStep: 'Costo y generar',
     costBody: 'Un clic explícito crea una generación. Single Try-On produce exactamente una imagen; el modo mock solo crea un plan de preparación.',
+    premiumCostBody: 'Los presets Premium los controla Nusa. El costo viene de las capabilities habilitadas del servidor; el navegador no envia ajustes arbitrarios del proveedor.',
+    noCreditCharge: 'Sin cargo de creditos',
+    internalValidationNoCharge: 'Validacion interna: sin cargo',
+    premiumPricingUnavailable: 'Precio no configurado',
+    premiumTierDescription: 'Validacion FASHN tryon-max con mas detalle y una imagen de salida, disponible solo cuando Premium esta habilitado para este usuario.',
+    premiumPresetStep: 'Preset Premium',
+    premiumPresetTitle: 'Elige preset de calidad Premium',
+    premiumPresetBody: 'Cada preset se mapea en servidor a resolucion y modo de calidad fijos. Elige el objetivo de validacion.',
+    premiumPromptLabel: 'Instrucciones de estilo',
+    premiumPromptPlaceholder: 'Opcional: manten la pose natural, conserva el color de la prenda, iluminacion limpia de catalogo...',
+    premiumPromptHelp: 'Opcional. No incluyas claims, datos privados ni ajustes del proveedor. Nusa lo guarda solo en el input de la generacion.',
+    recommended: 'Recomendado',
     availableNow: 'Disponible ahora',
     premiumValidation: 'Después de validar Premium',
     selected: 'Seleccionado',
@@ -259,6 +272,11 @@ export default {
       catalog_pack: { label: 'Pack de catálogo e-commerce', description: 'Prepara un set de imágenes de producto para tiendas online y marketplaces.' },
       catalog_video_pack: { label: 'Pack catálogo + video corto', description: 'Crea un pack de catálogo y continúa con un video promocional corto.' },
     },
+    premiumPresets: {
+      fast_1k: { label: 'Fast 1K', description: 'Validacion Premium rapida en 1K. Util para revisar prompt e imagenes.' },
+      balanced_2k: { label: 'Balanced 2K', description: 'Preset Premium recomendado para validacion beta y buen detalle.' },
+      quality_4k: { label: 'Quality 4K', description: 'Preset Premium de mayor calidad. Usalo cuando el detalle importa y el coste es aceptable.' },
+    },
     personSources: {
       user_upload: { label: 'Subir foto de persona', description: 'Sube o selecciona una foto que tienes permiso de usar.' },
       nusa_ai_model: { label: 'Elegir modelo IA de Nusa', description: 'Elige un modelo de moda IA curado por Nusa.' },
@@ -273,6 +291,8 @@ export default {
       personSourceUnavailable: 'Subir foto de persona es la única fuente disponible ahora.',
       standardUnavailable: 'Standard Fashion Try-On no está disponible temporalmente.',
       premiumDisabled: 'Premium vendrá después de la validación Premium.',
+      premiumPresetUnavailable: 'Elige un preset Premium habilitado antes de generar.',
+      premiumPromptTooLong: 'Las instrucciones de estilo deben estar por debajo de {count} caracteres.',
       personPhotoRequired: 'Elige o sube primero una foto de persona.',
       productPhotoRequired: 'Elige o sube primero una foto de prenda/producto.',
       consentRequired: 'Confirma que tienes permiso para usar esta foto de persona.',
@@ -295,7 +315,7 @@ export default {
       },
     },
     result: {
-      package: 'Paquete', personSource: 'Fuente de persona', uploadedPhoto: 'Foto subida', directActions: 'Acciones directas de Try-On', continuePremiumVideo: 'Continuar con video premium', premiumVideoCopy: 'Anima esta imagen try-on en el workflow separado Motion AI Video. Esto crea una nueva generación pagada y usa créditos adicionales.', separateWorkflow: 'Workflow separado', additionalCredits: 'Créditos adicionales de Motion AI Video requeridos', noVideoIncluded: 'El resultado Try-On no incluye video', reviewSettings: 'Puedes revisar los ajustes de Motion AI antes de generar', noAutoGeneration: 'La generación no empezará automáticamente', continueMotion: 'Continuar a Motion AI Video', oneImageOutput: '1 imagen de salida', manyImageOutputs: '{count} imágenes de salida',
+      package: 'Paquete', personSource: 'Fuente de persona', preset: 'Preset', providerResolution: 'Resolucion', uploadedPhoto: 'Foto subida', directActions: 'Acciones directas de Try-On', continuePremiumVideo: 'Continuar con video premium', premiumVideoCopy: 'Anima esta imagen try-on en el workflow separado Motion AI Video. Esto crea una nueva generación pagada y usa créditos adicionales.', separateWorkflow: 'Workflow separado', additionalCredits: 'Créditos adicionales de Motion AI Video requeridos', noVideoIncluded: 'El resultado Try-On no incluye video', reviewSettings: 'Puedes revisar los ajustes de Motion AI antes de generar', noAutoGeneration: 'La generación no empezará automáticamente', continueMotion: 'Continuar a Motion AI Video', oneImageOutput: '1 imagen de salida', manyImageOutputs: '{count} imágenes de salida',
     },
   },
   voiceover: {

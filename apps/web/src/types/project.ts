@@ -134,6 +134,12 @@ export const fashionTryOnTierOptions = [
   { value: 'premium', label: 'Premium', description: 'Higher detail and broader wearable support. Coming after Standard validation.' },
 ] as const
 
+export const fashionTryOnPremiumPresetOptions = [
+  { value: 'fast_1k', label: 'Fast 1K', description: 'Lower provider cost and faster Premium validation renders.' },
+  { value: 'balanced_2k', label: 'Balanced 2K', description: 'Recommended Premium balance of quality and cost.' },
+  { value: 'quality_4k', label: 'Quality 4K', description: 'Highest Premium quality preset for detailed review.' },
+] as const
+
 export const fashionTryOnPackageOptions = [
   { value: 'single_result', label: 'Single Try-On', status: 'available', description: 'Create one realistic fashion try-on image from a person photo and a clothing product photo.' },
   { value: 'variations', label: 'Try-On Variations', status: 'coming_soon', description: 'Generate several try-on variations so you can choose the best result.' },
@@ -377,6 +383,7 @@ export type FashionTryOnPersonSource = (typeof fashionTryOnPersonSourceOptions)[
 export type FashionTryOnCategory = (typeof fashionTryOnCategoryOptions)[number]['value']
 export type FashionTryOnGarmentPhotoType = (typeof fashionTryOnGarmentPhotoTypeOptions)[number]['value']
 export type FashionTryOnStandardMode = (typeof fashionTryOnStandardModeOptions)[number]['value']
+export type FashionTryOnPremiumPresetKey = (typeof fashionTryOnPremiumPresetOptions)[number]['value']
 export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionVideoPlatform | WorkspacePlatform
 
 export type ProjectType =
@@ -494,10 +501,16 @@ export interface FashionTryOnProviderCapabilities {
   standard_enabled: boolean
   premium_supported: boolean
   premium_enabled: boolean
+  premium_real_available_for_user?: boolean
+  premium_pricing_configured?: boolean
+  premium_default_preset?: FashionTryOnPremiumPresetKey | string
+  premium_output_count?: number
   standard_categories: FashionTryOnCategory[] | string[]
   standard_garment_photo_types: FashionTryOnGarmentPhotoType[] | string[]
   standard_modes: FashionTryOnStandardMode[] | string[]
-  premium_presets: string[]
+  premium_presets: FashionTryOnPremiumPresetKey[] | string[]
+  available_premium_presets?: FashionTryOnPremiumPresetCapability[]
+  known_premium_presets?: FashionTryOnPremiumPresetCapability[]
   active_packages?: FashionTryOnPackageKey[] | string[]
   default_package?: FashionTryOnPackageKey | string
   future_packages?: FashionTryOnPackageKey[] | string[]
@@ -512,6 +525,24 @@ export interface FashionTryOnProviderCapabilities {
   person_image_required: boolean
   product_image_required: boolean
   supported_mime_types: string[]
+}
+
+export interface FashionTryOnPremiumPresetCapability {
+  key: FashionTryOnPremiumPresetKey | string
+  label: string
+  label_key?: string | null
+  description_key?: string | null
+  resolution: '1k' | '2k' | '4k' | string
+  resolution_label: string
+  generation_mode: 'fast' | 'balanced' | 'quality' | string
+  quality_label: string
+  expected_provider_credits: number
+  num_images: number
+  recommended: boolean
+  nusa_credit_cost: number | null
+  pricing_configured: boolean
+  enabled: boolean
+  disabled_reason: string | null
 }
 
 export interface FashionTryOnCapabilitiesResponse {
@@ -731,6 +762,8 @@ export interface GenerateFashionTryOnPayload {
   category?: FashionTryOnCategory | string | null
   garment_photo_type?: FashionTryOnGarmentPhotoType | string | null
   standard_mode?: FashionTryOnStandardMode | string | null
+  premium_preset?: FashionTryOnPremiumPresetKey | string | null
+  premium_prompt?: string | null
   quality_preset?: string | null
   prompt?: string | null
   person_image_permission_confirmed: boolean
@@ -1024,6 +1057,12 @@ export interface FashionTryOnProviderMetadata {
   package_key?: FashionTryOnPackageKey | string | null
   person_source?: FashionTryOnPersonSource | string | null
   tier?: FashionTryOnTier | string | null
+  premium_preset?: FashionTryOnPremiumPresetKey | string | null
+  provider_resolution?: string | null
+  provider_generation_mode?: string | null
+  provider_seed?: number | null
+  expected_provider_credits?: number | null
+  actual_provider_credits?: number | null
   quality_preset?: string | null
   output_count?: number | null
   safe_error_category?: string | null
@@ -1039,6 +1078,7 @@ export interface FashionTryOnResult {
   package_key?: FashionTryOnPackageKey | string | null
   person_source?: FashionTryOnPersonSource | string | null
   tier?: FashionTryOnTier | string | null
+  premium_preset?: FashionTryOnPremiumPresetKey | string | null
   quality_preset?: string | null
   category?: FashionTryOnCategory | string | null
   model_reference_summary?: string

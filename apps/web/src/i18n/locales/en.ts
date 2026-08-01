@@ -1,4 +1,4 @@
-﻿export default {
+export default {
   brand: {
     homeLabel: 'Nusa Creator Studio home',
   },
@@ -365,6 +365,7 @@
     loadFailed: 'We could not load AI Fashion Try-On setup.',
     providerMock: 'Mock preview plan',
     providerFashnStandard: 'FASHN Standard',
+    providerFashnPremium: 'FASHN Premium',
     oneOutputImage: 'one output image',
     packageStep: 'Package',
     packageTitle: 'Choose your Try-On package',
@@ -394,6 +395,18 @@
     permissionBody: 'I confirm that I have permission to use this person’s photo for AI fashion try-on.',
     costStep: 'Cost and generate',
     costBody: 'One explicit click creates one generation. Single Try-On outputs exactly one image; mock mode creates a preparation plan only.',
+    premiumCostBody: 'Premium presets are controlled by Nusa. Cost comes from enabled server capabilities; no arbitrary provider settings are sent from the browser.',
+    noCreditCharge: 'No credit charge',
+    internalValidationNoCharge: 'Internal validation: no charge',
+    premiumPricingUnavailable: 'Pricing not configured',
+    premiumTierDescription: 'Higher-detail FASHN tryon-max validation with one image output, gated until Premium is enabled for this user.',
+    premiumPresetStep: 'Premium preset',
+    premiumPresetTitle: 'Choose Premium quality preset',
+    premiumPresetBody: 'Presets map to fixed provider resolution and quality mode server-side. Pick the validation target you want to run.',
+    premiumPromptLabel: 'Styling instructions',
+    premiumPromptPlaceholder: 'Optional: keep the model pose natural, preserve garment color, clean catalog lighting...',
+    premiumPromptHelp: 'Optional. Do not include claims, private data or provider settings. Nusa stores this only with the generation input.',
+    recommended: 'Recommended',
     availableNow: 'Available now',
     premiumValidation: 'Coming after Premium validation',
     selected: 'Selected',
@@ -410,6 +423,11 @@
       variations: { label: 'Try-On Variations', description: 'Generate several try-on variations so you can choose the best result.' },
       catalog_pack: { label: 'E-commerce Catalog Pack', description: 'Prepare a product image set for online stores and marketplaces using the selected try-on result.' },
       catalog_video_pack: { label: 'Catalog Pack + Short Video', description: 'Create a catalog image pack and continue with a short promotional product video.' },
+    },
+    premiumPresets: {
+      fast_1k: { label: 'Fast 1K', description: 'Fast Premium validation at 1K. Best for checking prompt and image suitability.' },
+      balanced_2k: { label: 'Balanced 2K', description: 'Recommended Premium preset for beta validation and useful detail.' },
+      quality_4k: { label: 'Quality 4K', description: 'Highest Premium quality preset. Use when detail matters and cost is acceptable.' },
     },
     personSources: {
       user_upload: { label: 'Upload a person photo', description: 'Upload or select a photo that you have permission to use.' },
@@ -437,6 +455,8 @@
       personSourceUnavailable: 'Upload a person photo is the only available person source right now.',
       standardUnavailable: 'Standard Fashion Try-On is temporarily unavailable.',
       premiumDisabled: 'Premium is coming after Premium validation.',
+      premiumPresetUnavailable: 'Choose an enabled Premium preset before generating.',
+      premiumPromptTooLong: 'Styling instructions must stay under {count} characters.',
       personPhotoRequired: 'Choose or upload one person photo first.',
       productPhotoRequired: 'Choose or upload one clothing/product photo first.',
       consentRequired: 'Confirm that you have permission to use this person photo.',
@@ -466,6 +486,8 @@
     result: {
       package: 'Package',
       personSource: 'Person source',
+      preset: 'Preset',
+      providerResolution: 'Resolution',
       uploadedPhoto: 'Uploaded photo',
       directActions: 'Direct Try-On actions',
       continuePremiumVideo: 'Continue with premium video',

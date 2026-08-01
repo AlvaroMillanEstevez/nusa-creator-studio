@@ -12,6 +12,7 @@ import {
   fashionTryOnGarmentPhotoTypeOptions,
   fashionTryOnPackageOptions,
   fashionTryOnPersonSourceOptions,
+  fashionTryOnPremiumPresetOptions,
   fashionTryOnStandardModeOptions,
   fashionTryOnTierOptions,
   type CreatorProject,
@@ -19,6 +20,8 @@ import {
   type FashionTryOnGarmentPhotoType,
   type FashionTryOnPackageKey,
   type FashionTryOnPersonSource,
+  type FashionTryOnPremiumPresetCapability,
+  type FashionTryOnPremiumPresetKey,
   type FashionTryOnProviderCapabilities,
   type FashionTryOnStandardMode,
   type FashionTryOnTier,
@@ -32,6 +35,8 @@ type FashionField =
   | 'package_key'
   | 'person_source'
   | 'tier'
+  | 'premium_preset'
+  | 'premium_prompt'
   | 'person_image_asset_id'
   | 'product_image_asset_id'
   | 'person_image_permission_confirmed'
@@ -53,6 +58,8 @@ const productImageAssetId = ref<number | null>(null)
 const category = ref<FashionTryOnCategory>('auto')
 const garmentPhotoType = ref<FashionTryOnGarmentPhotoType>('auto')
 const standardMode = ref<FashionTryOnStandardMode>('balanced')
+const premiumPreset = ref<FashionTryOnPremiumPresetKey>('balanced_2k')
+const premiumPrompt = ref('')
 const consentConfirmed = ref(false)
 const advancedOpen = ref(false)
 const isLoading = ref(true)
@@ -73,13 +80,56 @@ const actionCapabilities = computed(() => {
   return isFashionTryOnCapabilities(value) ? value : null
 })
 const capabilities = computed(() => actionCapabilities.value ?? fetchedCapabilities.value)
-const creditCost = computed(() => fashionAction.value?.credit_cost ?? 2)
+const standardCreditCost = computed(() => fashionAction.value?.credit_cost ?? 2)
 const isUpgradeRequired = computed(() => fashionAction.value?.upgrade_required === true || fashionAction.value?.action_mode === 'upgrade')
 const standardEnabled = computed(() => capabilities.value?.standard_enabled !== false)
-const premiumEnabled = computed(() => capabilities.value?.premium_enabled === true)
+const premiumPresetChoices = computed<FashionTryOnPremiumPresetCapability[]>(() => {
+  const known = capabilities.value?.known_premium_presets
+
+  if (Array.isArray(known) && known.length > 0) {
+    return known
+  }
+
+  return fashionTryOnPremiumPresetOptions.map((option) => ({
+    key: option.value,
+    label: option.label,
+    description_key: null,
+    resolution: option.value === 'fast_1k' ? '1k' : option.value === 'quality_4k' ? '4k' : '2k',
+    resolution_label: option.value === 'fast_1k' ? '1K' : option.value === 'quality_4k' ? '4K' : '2K',
+    generation_mode: option.value === 'fast_1k' ? 'fast' : option.value === 'quality_4k' ? 'quality' : 'balanced',
+    quality_label: option.value === 'fast_1k' ? 'Fast' : option.value === 'quality_4k' ? 'Quality' : 'Balanced',
+    expected_provider_credits: option.value === 'fast_1k' ? 1 : option.value === 'quality_4k' ? 5 : 3,
+    num_images: 1,
+    recommended: option.value === 'balanced_2k',
+    nusa_credit_cost: null,
+    pricing_configured: false,
+    enabled: false,
+    disabled_reason: 'premium_disabled',
+  }))
+})
+const selectedPremiumPreset = computed(() => premiumPresetChoices.value.find((option) => option.key === premiumPreset.value) ?? null)
+const premiumEnabled = computed(() => capabilities.value?.premium_enabled === true && premiumPresetChoices.value.some((option) => option.enabled))
 const isMockMode = computed(() => capabilities.value?.mock_mode !== false)
-const providerLabel = computed(() => isMockMode.value ? t('fashionTryOn.providerMock') : t('fashionTryOn.providerFashnStandard'))
+const providerLabel = computed(() => {
+  if (isMockMode.value) {
+    return t('fashionTryOn.providerMock')
+  }
+
+  return tier.value === 'premium' ? t('fashionTryOn.providerFashnPremium') : t('fashionTryOn.providerFashnStandard')
+})
 const selectedTierOption = computed(() => fashionTryOnTierOptions.find((option) => option.value === tier.value) ?? fashionTryOnTierOptions[0])
+const effectiveCreditCost = computed(() => tier.value === 'premium'
+  ? selectedPremiumPreset.value?.nusa_credit_cost ?? 0
+  : standardCreditCost.value)
+const creditCostLabel = computed(() => {
+  const cost = effectiveCreditCost.value
+
+  if (cost === 0) {
+    return t('fashionTryOn.noCreditCharge')
+  }
+
+  return `${cost} ${cost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: cost })}`
+})
 const activePackages = computed(() => capabilities.value?.active_packages ?? ['single_result'])
 const activePersonSources = computed(() => capabilities.value?.active_person_sources ?? ['user_upload'])
 const packageChoices = computed(() => fashionTryOnPackageOptions.map((option) => ({
@@ -105,6 +155,9 @@ const standardModeChoices = computed(() => {
 
   return fashionTryOnStandardModeOptions.filter((option) => allowed.length === 0 || allowed.includes(option.value))
 })
+const isSelectedPremiumPresetEnabled = computed(() => tier.value !== 'premium' || selectedPremiumPreset.value?.enabled === true)
+const premiumPromptMaxCharacters = 500
+const premiumPromptCharacters = computed(() => premiumPrompt.value.length)
 const firstValidationMessage = computed(() => Object.values(fieldErrors.value)[0] ?? '')
 const formBlockingReason = computed(() => {
   if (isSubmitting.value) {
@@ -141,6 +194,63 @@ function isPersonSourceEnabled(value: FashionTryOnPersonSource): boolean {
   return activePersonSources.value.includes(value)
 }
 
+function isPremiumPresetKey(value: string | null | undefined): value is FashionTryOnPremiumPresetKey {
+  return fashionTryOnPremiumPresetOptions.some((option) => option.value === value)
+}
+
+function defaultPremiumPreset(): FashionTryOnPremiumPresetKey {
+  const configuredDefault = capabilities.value?.premium_default_preset
+  const recommended = premiumPresetChoices.value.find((option) => option.enabled && option.recommended)?.key
+  const firstEnabled = premiumPresetChoices.value.find((option) => option.enabled)?.key
+
+  if (isPremiumPresetKey(configuredDefault) && premiumPresetChoices.value.some((option) => option.key === configuredDefault && option.enabled)) {
+    return configuredDefault
+  }
+
+  if (isPremiumPresetKey(recommended)) {
+    return recommended
+  }
+
+  if (isPremiumPresetKey(firstEnabled)) {
+    return firstEnabled
+  }
+
+  return 'balanced_2k'
+}
+
+function selectPremiumPreset(value: FashionTryOnPremiumPresetKey | string): void {
+  formError.value = ''
+  fieldErrors.value = {}
+
+  if (!isPremiumPresetKey(value)) {
+    return
+  }
+
+  premiumPreset.value = value
+}
+
+function premiumPresetLabel(preset: FashionTryOnPremiumPresetCapability): string {
+  const key = String(preset.key)
+  const local = fashionTryOnPremiumPresetOptions.find((option) => option.value === key)
+
+  return isPremiumPresetKey(key) ? t(`fashionTryOn.premiumPresets.${key}.label`) : (preset.label || local?.label || key)
+}
+
+function premiumPresetDescription(preset: FashionTryOnPremiumPresetCapability): string {
+  const key = String(preset.key)
+  const local = fashionTryOnPremiumPresetOptions.find((option) => option.value === key)
+
+  return isPremiumPresetKey(key) ? t(`fashionTryOn.premiumPresets.${key}.description`) : (local?.description ?? '')
+}
+
+function premiumPresetCostLabel(preset: FashionTryOnPremiumPresetCapability): string {
+  if (preset.nusa_credit_cost === null) {
+    return preset.enabled ? t('fashionTryOn.internalValidationNoCharge') : t('fashionTryOn.premiumPricingUnavailable')
+  }
+
+  return `${preset.nusa_credit_cost} ${preset.nusa_credit_cost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: preset.nusa_credit_cost })}`
+}
+
 function selectPackage(value: FashionTryOnPackageKey): void {
   formError.value = ''
   fieldErrors.value = {}
@@ -173,6 +283,10 @@ function selectTier(value: FashionTryOnTier): void {
   }
 
   tier.value = value
+
+  if (value === 'premium') {
+    premiumPreset.value = defaultPremiumPreset()
+  }
 }
 
 async function loadPage(): Promise<void> {
@@ -200,6 +314,8 @@ async function loadPage(): Promise<void> {
 function applyQueryPreselection(): void {
   const personId = positiveInt(Array.isArray(route.query.personImageAssetId) ? route.query.personImageAssetId[0] : route.query.personImageAssetId)
   const productId = positiveInt(Array.isArray(route.query.productImageAssetId) ? route.query.productImageAssetId[0] : route.query.productImageAssetId)
+  const requestedTier = Array.isArray(route.query.tier) ? route.query.tier[0] : route.query.tier
+  const requestedPremiumPreset = Array.isArray(route.query.premiumPreset) ? route.query.premiumPreset[0] : route.query.premiumPreset
 
   if (personId !== null) {
     personImageAssetId.value = personId
@@ -207,6 +323,14 @@ function applyQueryPreselection(): void {
 
   if (productId !== null) {
     productImageAssetId.value = productId
+  }
+
+  if (requestedTier === 'premium' && premiumEnabled.value) {
+    selectTier('premium')
+  }
+
+  if (isPremiumPresetKey(requestedPremiumPreset)) {
+    selectPremiumPreset(requestedPremiumPreset)
   }
 }
 
@@ -227,6 +351,14 @@ function validateForm(): boolean {
 
   if (tier.value === 'premium' && !premiumEnabled.value) {
     errors.tier = t('fashionTryOn.errors.premiumDisabled')
+  }
+
+  if (tier.value === 'premium' && (selectedPremiumPreset.value === null || !selectedPremiumPreset.value.enabled)) {
+    errors.premium_preset = t('fashionTryOn.errors.premiumPresetUnavailable')
+  }
+
+  if (tier.value === 'premium' && premiumPrompt.value.length > premiumPromptMaxCharacters) {
+    errors.premium_prompt = t('fashionTryOn.errors.premiumPromptTooLong', { count: premiumPromptMaxCharacters })
   }
 
   if (personSource.value === 'user_upload' && personImageAssetId.value === null) {
@@ -278,12 +410,16 @@ async function submit(): Promise<void> {
     tier: tier.value,
     person_image_asset_id: personImageAssetId.value,
     product_image_asset_id: productImageAssetId.value,
-    category: tier.value === 'standard' ? category.value : null,
-    garment_photo_type: tier.value === 'standard' ? garmentPhotoType.value : null,
-    standard_mode: tier.value === 'standard' ? standardMode.value : null,
-    quality_preset: null,
-    prompt: null,
     person_image_permission_confirmed: consentConfirmed.value,
+  }
+
+  if (tier.value === 'standard') {
+    payload.category = category.value
+    payload.garment_photo_type = garmentPhotoType.value
+    payload.standard_mode = standardMode.value
+  } else {
+    payload.premium_preset = premiumPreset.value
+    payload.premium_prompt = premiumPrompt.value.trim() === '' ? null : premiumPrompt.value.trim()
   }
 
   try {
@@ -335,7 +471,7 @@ onMounted(loadPage)
             {{ t('fashionTryOn.body') }}
           </p>
           <p class="mt-4 max-w-2xl rounded-2xl border border-emerald-900/50 bg-emerald-950/20 p-4 text-sm leading-6 text-emerald-100/80">
-            {{ providerLabel }} · {{ t('fashionTryOn.oneOutputImage') }} · {{ creditCost }} {{ creditCost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: creditCost }) }}.
+            {{ providerLabel }} · {{ t('fashionTryOn.oneOutputImage') }} · {{ creditCostLabel }}.
           </p>
         </header>
 
@@ -400,7 +536,7 @@ onMounted(loadPage)
                   <span class="flex items-start justify-between gap-3">
                     <span>
                       <span class="block text-lg font-semibold text-white">{{ option.label }}</span>
-                      <span class="mt-2 block text-sm leading-6 text-neutral-400">{{ option.description }}</span>
+                      <span class="mt-2 block text-sm leading-6 text-neutral-400">{{ option.value === 'premium' ? t('fashionTryOn.premiumTierDescription') : option.description }}</span>
                     </span>
                     <span class="rounded-full border border-neutral-700 px-3 py-1 text-xs font-semibold text-neutral-300">
                       {{ option.value === 'premium' && !premiumEnabled ? t('fashionTryOn.premiumValidation') : tier === option.value ? t('common.selected') : t('common.choose') }}
@@ -506,7 +642,67 @@ onMounted(loadPage)
             </label>
           </section>
 
-          <section class="nusa-card-premium rounded-[2rem] p-5">
+          <section v-if="tier === 'premium'" class="nusa-card-premium rounded-[2rem] p-5" :data-invalid="Boolean(fieldErrors.premium_preset || fieldErrors.premium_prompt)" data-testid="fashion-premium-settings">
+            <fieldset>
+              <legend>
+                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">6 · {{ t('fashionTryOn.premiumPresetStep') }}</span>
+                <span class="mt-2 block text-xl font-semibold text-white">{{ t('fashionTryOn.premiumPresetTitle') }}</span>
+              </legend>
+              <p class="mt-2 text-sm leading-6 text-neutral-400">
+                {{ t('fashionTryOn.premiumPresetBody') }}
+              </p>
+
+              <div class="mt-5 grid gap-3 sm:grid-cols-3" role="radiogroup" :aria-label="t('fashionTryOn.premiumPresetTitle')">
+                <button
+                  v-for="preset in premiumPresetChoices"
+                  :key="preset.key"
+                  type="button"
+                  role="radio"
+                  :aria-checked="premiumPreset === preset.key"
+                  :disabled="!preset.enabled"
+                  class="rounded-[1.5rem] border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
+                  :class="premiumPreset === preset.key ? 'border-emerald-400 bg-emerald-950/30' : 'border-neutral-800 bg-neutral-950/60 hover:border-neutral-600'"
+                  :data-testid="`fashion-premium-preset-${preset.key}`"
+                  @click="selectPremiumPreset(preset.key)"
+                >
+                  <span class="flex min-h-full flex-col justify-between gap-4">
+                    <span>
+                      <span class="flex flex-wrap items-center gap-2">
+                        <span class="text-base font-semibold text-white">{{ premiumPresetLabel(preset) }}</span>
+                        <span v-if="preset.recommended" class="rounded-full bg-emerald-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-950">{{ t('fashionTryOn.recommended') }}</span>
+                      </span>
+                      <span class="mt-2 block text-xs leading-5 text-neutral-400">{{ premiumPresetDescription(preset) }}</span>
+                    </span>
+                    <span class="flex flex-wrap gap-2 text-[11px] font-semibold">
+                      <span class="rounded-full border border-neutral-700 px-2.5 py-1 text-neutral-300">{{ preset.resolution_label }}</span>
+                      <span class="rounded-full border border-neutral-700 px-2.5 py-1 text-neutral-300">{{ premiumPresetCostLabel(preset) }}</span>
+                    </span>
+                  </span>
+                </button>
+              </div>
+              <p v-if="fieldErrors.premium_preset" id="fashion-premium-preset-error" class="mt-3 text-sm text-rose-400">{{ fieldErrors.premium_preset }}</p>
+            </fieldset>
+
+            <label class="mt-5 block" for="fashion-premium-prompt">
+              <span class="nusa-label">{{ t('fashionTryOn.premiumPromptLabel') }}</span>
+              <textarea
+                id="fashion-premium-prompt"
+                v-model="premiumPrompt"
+                class="nusa-textarea mt-2 min-h-28"
+                :maxlength="premiumPromptMaxCharacters"
+                :placeholder="t('fashionTryOn.premiumPromptPlaceholder')"
+                data-testid="fashion-premium-prompt"
+                :disabled="isSubmitting"
+              />
+            </label>
+            <div class="mt-2 flex flex-col gap-1 text-xs leading-5 text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+              <p>{{ t('fashionTryOn.premiumPromptHelp') }}</p>
+              <p>{{ premiumPromptCharacters }}/{{ premiumPromptMaxCharacters }}</p>
+            </div>
+            <p v-if="fieldErrors.premium_prompt" id="fashion-premium-prompt-error" class="mt-3 text-sm text-rose-400">{{ fieldErrors.premium_prompt }}</p>
+          </section>
+
+          <section v-if="tier === 'standard'" class="nusa-card-premium rounded-[2rem] p-5">
             <button
               type="button"
               class="flex w-full items-center justify-between gap-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
@@ -561,7 +757,7 @@ onMounted(loadPage)
                 :aria-describedby="fieldErrors.person_image_permission_confirmed ? 'fashion-consent-error' : undefined"
               >
               <span>
-                <span class="block font-semibold text-amber-100">8 · {{ t('fashionTryOn.permissionTitle') }}</span>
+                <span class="block font-semibold text-amber-100">{{ tier === 'premium' ? '7' : '8' }} · {{ t('fashionTryOn.permissionTitle') }}</span>
                 <span class="mt-1 block">{{ t('fashionTryOn.permissionBody') }}</span>
               </span>
             </label>
@@ -571,14 +767,14 @@ onMounted(loadPage)
           <section class="nusa-card-premium rounded-[2rem] p-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">9 · {{ t('fashionTryOn.costStep') }}</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ tier === 'premium' ? '8' : '9' }} · {{ t('fashionTryOn.costStep') }}</p>
                 <h2 class="mt-2 text-xl font-semibold">{{ selectedTierOption.label }} · {{ t('fashionTryOn.packages.' + packageKey + '.label') }}</h2>
                 <p class="mt-2 text-sm leading-6 text-neutral-400">
-                  {{ t('fashionTryOn.costBody') }}
+                  {{ tier === 'premium' ? t('fashionTryOn.premiumCostBody') : t('fashionTryOn.costBody') }}
                 </p>
               </div>
               <span class="w-fit rounded-full border border-neutral-700 bg-neutral-950 px-3 py-1 text-xs font-semibold text-neutral-300">
-                {{ creditCost }} {{ creditCost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: creditCost }) }}
+                {{ creditCostLabel }}
               </span>
             </div>
 
@@ -589,8 +785,8 @@ onMounted(loadPage)
             <button
               type="submit"
               class="mt-5 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 text-sm font-black transition"
-              :class="isSubmitting ? 'cursor-not-allowed border border-neutral-800 text-neutral-500' : 'bg-white text-neutral-950 hover:bg-emerald-300'"
-              :disabled="isSubmitting"
+              :class="isSubmitting || !isSelectedPremiumPresetEnabled ? 'cursor-not-allowed border border-neutral-800 text-neutral-500' : 'bg-white text-neutral-950 hover:bg-emerald-300'"
+              :disabled="isSubmitting || !isSelectedPremiumPresetEnabled"
               data-testid="fashion-generate-button"
             >
               <span v-if="isSubmitting" class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950" aria-hidden="true" />

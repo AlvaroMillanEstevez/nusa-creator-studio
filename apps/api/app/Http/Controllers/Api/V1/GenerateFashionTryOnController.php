@@ -76,6 +76,7 @@ class GenerateFashionTryOnController extends Controller
     {
         return match ($reason) {
             'fashn_premium_disabled' => 'Premium Fashion Try-On is prepared but not enabled yet.',
+            'fashn_premium_pricing_unconfigured' => 'Premium Fashion Try-On pricing is not configured yet.',
             'fashn_standard_disabled' => 'Standard Fashion Try-On is temporarily disabled.',
             'fashn_image_load_failed' => 'Use clear, accessible image assets before generating a fashion try-on.',
             'fashn_pose_not_detected' => 'Use a clear photo where the person’s body and pose are visible.',

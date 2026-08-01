@@ -132,6 +132,67 @@ describe('FashionTryOnGenerationResult', () => {
     expect(text).not.toContain('pred_123')
   })
 
+  it('shows Premium preset summary and preserves safe inputs for another version', async () => {
+    fetchMediaBlobMock.mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
+
+    const result: FashionTryOnResult = {
+      try_on_title: 'Premium try-on result',
+      concept_summary: 'A Premium try-on image saved privately in Nusa.',
+      tier: 'premium',
+      premium_preset: 'balanced_2k',
+      generated_image: {
+        status: 'rendered',
+        message: 'Image rendered successfully.',
+        provider: 'fashn',
+      },
+      selected_person_image: { id: 101, original_name: 'model.jpg', mime_type: 'image/jpeg', size_bytes: 1024 },
+      selected_product_image: { id: 202, original_name: 'jacket.png', mime_type: 'image/png', size_bytes: 2048 },
+      final_image_asset_id: 601,
+      final_image_stream_url: '/api/v1/media-assets/601/stream',
+      final_image_download_url: '/api/v1/media-assets/601/download',
+      rendered_image_asset: {
+        id: 601,
+        stream_url: '/api/v1/media-assets/601/stream',
+        download_url: '/api/v1/media-assets/601/download',
+        mime_type: 'image/png',
+        size_bytes: 4096,
+        output_index: 0,
+      },
+      provider_metadata: {
+        provider: 'fashn',
+        provider_model: 'tryon-max',
+        premium_preset: 'balanced_2k',
+        provider_resolution: '2k',
+        provider_generation_mode: 'balanced',
+        provider_seed: 123456,
+      },
+      generation_summary: {
+        quality: 'Premium',
+        premium_preset: 'balanced_2k',
+        provider_resolution: '2k',
+        output_count: 1,
+      },
+      compliance_notes: [],
+    }
+
+    const wrapper = mountResult(result)
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('Premium try-on result')
+    expect(text).toContain('Balanced 2K')
+    expect(text).toContain('2K')
+    expect(text).not.toContain('tryon-max')
+    expect(text).not.toContain('123456')
+
+    const generateAnother = wrapper.findAll('a').find((link) => link.text().includes('Generate another version'))
+    expect(generateAnother?.attributes('href')).toContain('tier')
+    expect(generateAnother?.attributes('href')).toContain('premiumPreset')
+    expect(generateAnother?.attributes('href')).toContain('balanced_2k')
+    expect(generateAnother?.attributes('href')).toContain('personImageAssetId')
+    expect(generateAnother?.attributes('href')).toContain('productImageAssetId')
+  })
+
 
   it('normalizes historical singular image results for preview and Motion continuation', async () => {
     fetchMediaBlobMock.mockResolvedValue(new Blob(['image'], { type: 'image/png' }))

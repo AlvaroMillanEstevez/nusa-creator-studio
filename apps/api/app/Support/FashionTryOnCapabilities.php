@@ -25,6 +25,16 @@ class FashionTryOnCapabilities
 
     public const PERSON_SOURCE_CUSTOM_AI_MODEL = 'custom_ai_model';
 
+    public const PREMIUM_PRESET_FAST_1K = 'fast_1k';
+
+    public const PREMIUM_PRESET_BALANCED_2K = 'balanced_2k';
+
+    public const PREMIUM_PRESET_QUALITY_4K = 'quality_4k';
+
+    public const PREMIUM_OUTPUT_COUNT = 1;
+
+    public const MAX_PROVIDER_SEED = 4294967295;
+
     /** @var list<string> */
     public const STANDARD_CATEGORIES = ['auto', 'tops', 'bottoms', 'one-pieces'];
 
@@ -60,31 +70,63 @@ class FashionTryOnCapabilities
     public static function premiumPresets(): array
     {
         return [
-            'premium_fast' => [
+            self::PREMIUM_PRESET_FAST_1K => [
+                'key' => self::PREMIUM_PRESET_FAST_1K,
                 'label' => 'Premium Fast',
+                'label_key' => 'fashionTryOn.premiumPresets.fast_1k.label',
+                'description_key' => 'fashionTryOn.premiumPresets.fast_1k.description',
                 'resolution' => '1k',
+                'resolution_label' => '1K',
                 'generation_mode' => 'fast',
-                'credit_cost_key' => 'premium_fast',
+                'quality_label' => 'Fast',
+                'expected_provider_credits' => 1,
+                'num_images' => self::PREMIUM_OUTPUT_COUNT,
+                'recommended' => false,
             ],
-            'premium_balanced' => [
+            self::PREMIUM_PRESET_BALANCED_2K => [
+                'key' => self::PREMIUM_PRESET_BALANCED_2K,
                 'label' => 'Premium Balanced',
+                'label_key' => 'fashionTryOn.premiumPresets.balanced_2k.label',
+                'description_key' => 'fashionTryOn.premiumPresets.balanced_2k.description',
                 'resolution' => '2k',
+                'resolution_label' => '2K',
                 'generation_mode' => 'balanced',
-                'credit_cost_key' => 'premium_balanced',
+                'quality_label' => 'Balanced',
+                'expected_provider_credits' => 3,
+                'num_images' => self::PREMIUM_OUTPUT_COUNT,
+                'recommended' => true,
             ],
-            'premium_quality' => [
+            self::PREMIUM_PRESET_QUALITY_4K => [
+                'key' => self::PREMIUM_PRESET_QUALITY_4K,
                 'label' => 'Premium Quality',
+                'label_key' => 'fashionTryOn.premiumPresets.quality_4k.label',
+                'description_key' => 'fashionTryOn.premiumPresets.quality_4k.description',
                 'resolution' => '4k',
+                'resolution_label' => '4K',
                 'generation_mode' => 'quality',
-                'credit_cost_key' => 'premium_quality',
+                'quality_label' => 'Quality',
+                'expected_provider_credits' => 5,
+                'num_images' => self::PREMIUM_OUTPUT_COUNT,
+                'recommended' => false,
             ],
         ];
+    }
+
+    /** @return list<string> */
+    public static function premiumPresetKeys(): array
+    {
+        return array_keys(self::premiumPresets());
     }
 
     /** @return array<string, mixed> */
     public static function forUser(?User $user = null): array
     {
         $selectedProvider = self::selectedProviderForUser($user);
+        $knownPremiumPresets = self::knownPremiumPresetsForUser($user);
+        $availablePremiumPresets = array_values(array_filter(
+            $knownPremiumPresets,
+            fn (array $preset): bool => ($preset['enabled'] ?? false) === true,
+        ));
 
         return [
             'provider' => $selectedProvider,
@@ -96,10 +138,16 @@ class FashionTryOnCapabilities
             'standard_enabled' => (bool) config('fashion_try_on.fashn.standard_enabled', true),
             'premium_supported' => true,
             'premium_enabled' => self::premiumEnabledForUser($user),
+            'premium_real_available_for_user' => self::premiumRealAvailableForUser($user),
+            'premium_pricing_configured' => self::premiumPricingConfigured(),
+            'premium_default_preset' => self::defaultPremiumPresetKey(),
+            'premium_output_count' => self::PREMIUM_OUTPUT_COUNT,
+            'premium_presets' => array_column($availablePremiumPresets, 'key'),
+            'available_premium_presets' => $availablePremiumPresets,
+            'known_premium_presets' => $knownPremiumPresets,
             'standard_categories' => self::STANDARD_CATEGORIES,
             'standard_garment_photo_types' => self::STANDARD_GARMENT_PHOTO_TYPES,
             'standard_modes' => self::STANDARD_MODES,
-            'premium_presets' => self::premiumEnabledForUser($user) ? array_keys(self::premiumPresets()) : [],
             'active_packages' => self::ACTIVE_PACKAGES,
             'default_package' => self::PACKAGE_SINGLE_RESULT,
             'future_packages' => self::FUTURE_PACKAGES,
@@ -115,6 +163,145 @@ class FashionTryOnCapabilities
             'product_image_required' => true,
             'supported_mime_types' => self::SUPPORTED_IMAGE_MIME_TYPES,
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function premiumPreset(string $key): array
+    {
+        $presets = self::premiumPresets();
+
+        return $presets[$key] ?? $presets[self::defaultPremiumPresetKey()];
+    }
+
+    public static function defaultPremiumPresetKey(): string
+    {
+        $configured = (string) config('fashion_try_on.fashn.premium_default_preset', self::PREMIUM_PRESET_BALANCED_2K);
+
+        return in_array($configured, self::premiumPresetKeys(), true)
+            ? $configured
+            : self::PREMIUM_PRESET_BALANCED_2K;
+    }
+
+    public static function normalizePremiumPreset(?string $preset): string
+    {
+        return in_array($preset, self::premiumPresetKeys(), true)
+            ? $preset
+            : self::defaultPremiumPresetKey();
+    }
+
+    /** @param array<string, mixed> $input */
+    public static function premiumPresetKeyFromInput(array $input): string
+    {
+        $value = $input['premium_preset'] ?? $input['quality_preset'] ?? null;
+
+        return self::normalizePremiumPreset(is_string($value) ? $value : null);
+    }
+
+    public static function premiumCreditCost(?string $preset): ?int
+    {
+        $key = self::normalizePremiumPreset($preset);
+        $value = config('fashion_try_on.credit_costs.premium_presets.'.$key);
+
+        return is_numeric($value) ? max(0, (int) $value) : null;
+    }
+
+    public static function premiumPricingConfigured(): bool
+    {
+        foreach (self::premiumPresetKeys() as $preset) {
+            if (self::premiumCreditCost($preset) === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public static function premiumRealAvailableForUser(?User $user = null): bool
+    {
+        return self::realEnabledForUser($user)
+            && (bool) config('fashion_try_on.fashn.premium_enabled', false);
+    }
+
+    public static function premiumEnabledForUser(?User $user = null): bool
+    {
+        if (! self::premiumRealAvailableForUser($user)) {
+            return false;
+        }
+
+        return self::userCanUsePremiumWithoutConfiguredPricing($user)
+            || count(array_filter(self::premiumPresetKeys(), fn (string $preset): bool => self::premiumCreditCost($preset) !== null)) > 0;
+    }
+
+    public static function userCanUsePremiumWithoutConfiguredPricing(?User $user): bool
+    {
+        return $user !== null && $user->hasUnlimitedAccess();
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function knownPremiumPresetsForUser(?User $user = null): array
+    {
+        return array_values(array_map(function (array $preset) use ($user): array {
+            $cost = self::premiumCreditCost($preset['key']);
+            $pricingConfigured = $cost !== null;
+            $enabled = self::premiumRealAvailableForUser($user)
+                && ($pricingConfigured || self::userCanUsePremiumWithoutConfiguredPricing($user));
+
+            return $preset + [
+                'nusa_credit_cost' => $cost,
+                'pricing_configured' => $pricingConfigured,
+                'enabled' => $enabled,
+                'disabled_reason' => $enabled
+                    ? null
+                    : (self::premiumRealAvailableForUser($user) ? 'premium_pricing_unconfigured' : 'premium_disabled'),
+            ];
+        }, self::premiumPresets()));
+    }
+
+    public static function sanitizePremiumPrompt(mixed $prompt): ?string
+    {
+        if (! is_string($prompt)) {
+            return null;
+        }
+
+        $prompt = trim($prompt);
+
+        return $prompt === '' ? null : Str::limit($prompt, self::premiumPromptMaxCharacters(), '');
+    }
+
+    public static function premiumPromptMaxCharacters(): int
+    {
+        return max(1, (int) config('fashion_try_on.fashn.premium_prompt_max_characters', 500));
+    }
+
+    public static function generateProviderSeed(): int
+    {
+        return random_int(0, self::MAX_PROVIDER_SEED);
+    }
+
+    public static function normalizeProviderSeed(mixed $seed): ?int
+    {
+        if (is_int($seed)) {
+            return $seed >= 0 && $seed <= self::MAX_PROVIDER_SEED ? $seed : null;
+        }
+
+        if (is_string($seed) && preg_match('/^\d+$/', $seed) === 1) {
+            $value = (int) $seed;
+
+            return $value >= 0 && $value <= self::MAX_PROVIDER_SEED ? $value : null;
+        }
+
+        return null;
+    }
+
+    public static function estimatedProviderCostUsd(int|float|null $providerCredits): ?float
+    {
+        $rate = config('fashion_try_on.fashn.estimated_cost_usd_per_credit');
+
+        if (! is_numeric($rate) || ! is_numeric($providerCredits)) {
+            return null;
+        }
+
+        return round((float) $providerCredits * (float) $rate, 6);
     }
 
     public static function normalizePackage(?string $package): string
@@ -155,12 +342,6 @@ class FashionTryOnCapabilities
         }
 
         return true;
-    }
-
-    public static function premiumEnabledForUser(?User $user = null): bool
-    {
-        return self::realEnabledForUser($user)
-            && (bool) config('fashion_try_on.fashn.premium_enabled', false);
     }
 
     public static function normalizeTier(?string $tier): string
