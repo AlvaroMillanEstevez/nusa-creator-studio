@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectGenerationController;
 use App\Http\Controllers\Api\V1\ProjectMediaAssetController;
 use App\Http\Controllers\Api\V1\ProviderAssetController;
+use App\Http\Controllers\Api\V1\SelectFashionTryOnResultController;
 use App\Http\Controllers\Api\V1\SubscriptionPlanController;
 use App\Http\Controllers\Api\V1\VoiceoverVoiceController;
 use Illuminate\Http\Request;
@@ -94,6 +95,8 @@ Route::prefix('v1')->group(function () {
             ->name('fashion-try-on.capabilities');
         Route::get('generations/{generation}', GenerationController::class)
             ->name('generations.show');
+        Route::patch('generations/{generation}/fashion-try-on/selection', SelectFashionTryOnResultController::class)
+            ->name('generations.fashion-try-on.selection.update');
         Route::get(
             'projects/{project}/media-assets',
             ProjectMediaAssetController::class,

@@ -36,7 +36,9 @@ class FashionTryOnGenerationService
         $personSource = $this->activePersonSource($options);
         $tier = FashionTryOnCapabilities::normalizeTier(is_string($options['tier'] ?? null) ? $options['tier'] : null);
         $premiumPreset = null;
-        $providerSeed = null;
+        $providerSeed = $packageKey === FashionTryOnCapabilities::PACKAGE_VARIATIONS
+            ? $this->providerSeed($options)
+            : null;
         $premiumPrompt = null;
 
         if ($tier === FashionTryOnCapabilities::TIER_PREMIUM) {
@@ -67,7 +69,7 @@ class FashionTryOnGenerationService
                 ]);
             }
 
-            $providerSeed = $this->providerSeed($options);
+            $providerSeed ??= $this->providerSeed($options);
             $premiumPrompt = FashionTryOnCapabilities::sanitizePremiumPrompt($options['premium_prompt'] ?? $options['prompt'] ?? null);
         }
 
@@ -86,11 +88,12 @@ class FashionTryOnGenerationService
             ]);
         }
 
-        $requestedOutputCount = $this->requestedOutputCount($options);
+        $requestedOutputCount = $this->requestedOutputCount($options, $packageKey);
         $personImage = $this->resolveRequestAsset($project, $user, $options, 'person_image_asset_id', 'person_image');
         $productImage = $this->resolveRequestAsset($project, $user, $options, 'product_image_asset_id', 'product_image');
         $provider = $this->providers->selectedProviderForUser($user);
-        $creditCost = $this->creditCost($user, $tier, $premiumPreset);
+        $perOutputCreditCost = $this->perOutputCreditCost($user, $tier, $premiumPreset);
+        $creditCost = $perOutputCreditCost * $requestedOutputCount;
 
         return $this->submissions->submit(
             project: $project,
@@ -112,6 +115,7 @@ class FashionTryOnGenerationService
                 providerSeed: $providerSeed,
                 premiumPrompt: $premiumPrompt,
                 creditCost: $creditCost,
+                perOutputCreditCost: $perOutputCreditCost,
                 requestedOutputCount: $requestedOutputCount,
             ),
             provider: $provider,
@@ -146,10 +150,22 @@ class FashionTryOnGenerationService
     {
         $value = is_string($options['package_key'] ?? null) ? $options['package_key'] : null;
 
-        if ($value !== null && ! in_array($value, FashionTryOnCapabilities::ACTIVE_PACKAGES, true)) {
+        if ($value !== null && ! in_array($value, FashionTryOnCapabilities::canonicalPackageKeys(), true)) {
             throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
                 'stage' => 'validate_package',
                 'field' => 'package_key',
+            ]);
+        }
+
+        if ($value !== null && ! FashionTryOnCapabilities::packageEnabled($value)) {
+            $reason = $value === FashionTryOnCapabilities::PACKAGE_VARIATIONS
+                ? 'fashn_variations_disabled'
+                : 'fashn_package_unavailable';
+
+            throw FashionTryOnProviderException::invalidInput($reason, [
+                'stage' => 'validate_package',
+                'field' => 'package_key',
+                'package_key' => $value,
             ]);
         }
 
@@ -223,26 +239,35 @@ class FashionTryOnGenerationService
     }
 
     /** @param array<string, mixed> $options */
-    private function requestedOutputCount(array $options): int
+    private function requestedOutputCount(array $options, string $packageKey): int
     {
         $value = $options['requested_output_count'] ?? null;
 
         if ($value === null || $value === '') {
-            return FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS;
+            return FashionTryOnCapabilities::defaultOutputCount($packageKey);
         }
 
-        if (! is_numeric($value) || (int) $value !== FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS) {
+        if (! is_int($value)) {
             throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
                 'stage' => 'validate_requested_output_count',
                 'field' => 'requested_output_count',
-                'current_max_outputs' => FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS,
+                'package_key' => $packageKey,
             ]);
         }
 
-        return (int) $value;
+        if (! in_array($value, FashionTryOnCapabilities::allowedOutputCounts($packageKey), true)) {
+            throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
+                'stage' => 'validate_requested_output_count',
+                'field' => 'requested_output_count',
+                'package_key' => $packageKey,
+                'allowed_output_counts' => FashionTryOnCapabilities::allowedOutputCounts($packageKey),
+            ]);
+        }
+
+        return $value;
     }
 
-    private function creditCost(User $user, string $tier, ?string $premiumPreset): int
+    private function perOutputCreditCost(User $user, string $tier, ?string $premiumPreset): int
     {
         if ($tier === FashionTryOnCapabilities::TIER_PREMIUM) {
             $presetCost = FashionTryOnCapabilities::premiumCreditCost($premiumPreset);
@@ -296,6 +321,7 @@ class FashionTryOnGenerationService
         ?int $providerSeed,
         ?string $premiumPrompt,
         int $creditCost,
+        int $perOutputCreditCost,
         int $requestedOutputCount,
     ): array {
         $projectInput = is_array($project->input_payload) ? $project->input_payload : [];
@@ -314,10 +340,13 @@ class FashionTryOnGenerationService
             'consent_confirmed_at' => now()->toISOString(),
             'nusa_credit_cost' => $creditCost,
             'configured_nusa_credit_cost' => $creditCost,
-            'per_output_credit_cost' => $requestedOutputCount > 0 ? (int) floor($creditCost / $requestedOutputCount) : $creditCost,
+            'total_nusa_credit_cost' => $creditCost,
+            'per_output_credit_cost' => $perOutputCreditCost,
             'requested_output_count' => $requestedOutputCount,
             'output_count' => $requestedOutputCount,
             'current_max_outputs' => FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS,
+            'expected_provider_credits_per_output' => FashionTryOnCapabilities::expectedProviderCreditsPerOutput($tier, $premiumPreset),
+            'expected_provider_credits_total' => FashionTryOnCapabilities::expectedProviderCreditsTotal($tier, $premiumPreset, $requestedOutputCount),
             'variations_pricing_ready' => FashionTryOnCapabilities::variationsPricingReady(),
             'variations_enabled' => FashionTryOnCapabilities::variationsEnabled(),
             'assets' => [
@@ -342,11 +371,14 @@ class FashionTryOnGenerationService
                 'provider_seed' => $providerSeed,
                 'provider_resolution' => $preset['resolution'],
                 'provider_generation_mode' => $preset['generation_mode'],
-                'expected_provider_credits' => $preset['expected_provider_credits'],
-                'output_count' => FashionTryOnCapabilities::PREMIUM_OUTPUT_COUNT,
+                'expected_provider_credits' => FashionTryOnCapabilities::expectedProviderCreditsTotal($tier, $premiumPreset, $requestedOutputCount),
+                'expected_provider_credits_per_output' => FashionTryOnCapabilities::expectedProviderCreditsPerOutput($tier, $premiumPreset),
+                'expected_provider_credits_total' => FashionTryOnCapabilities::expectedProviderCreditsTotal($tier, $premiumPreset, $requestedOutputCount),
+                'output_count' => $requestedOutputCount,
                 'requested_output_count' => $requestedOutputCount,
-                'configured_nusa_credit_cost' => FashionTryOnCapabilities::premiumCreditCost($premiumPreset),
-                'per_output_credit_cost' => FashionTryOnCapabilities::premiumCreditCost($premiumPreset),
+                'configured_nusa_credit_cost' => $creditCost,
+                'total_nusa_credit_cost' => $creditCost,
+                'per_output_credit_cost' => $perOutputCreditCost,
                 'premium_pricing_configured' => FashionTryOnCapabilities::premiumCreditCost($premiumPreset) !== null,
             ]);
         } else {
@@ -354,6 +386,7 @@ class FashionTryOnGenerationService
                 'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
                 'garment_photo_type' => is_string($options['garment_photo_type'] ?? null) ? $options['garment_photo_type'] : null,
                 'standard_mode' => is_string($options['standard_mode'] ?? null) ? $options['standard_mode'] : null,
+                'provider_seed' => $providerSeed,
             ]);
         }
 

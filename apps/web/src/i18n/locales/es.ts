@@ -215,6 +215,12 @@ export default {
     providerFashnStandard: 'FASHN Standard',
     providerFashnPremium: 'FASHN Premium',
     oneOutputImage: 'una imagen de salida',
+    manyOutputImages: '{count} imágenes de salida',
+    beta: 'Beta',
+    outputCountTitle: '¿Cuántas variaciones?',
+    outputCountBody: 'Genera 2, 3 o 4 opciones try-on con las mismas fotos de persona y producto. Elige tu favorita después.',
+    variationsCostSummary: '{count} imágenes · {perImage} por imagen · {total} total.',
+    higherCountsMayTakeLonger: 'Más imágenes pueden tardar más y usar más créditos.',
     standardTier: 'Standard',
     standardTierDescription: 'Try-on rapido y confiable para contenido cotidiano.',
     premiumBeta: 'Premium Beta',
@@ -270,6 +276,7 @@ export default {
     viewPlanOptions: 'Ver opciones de plan',
     generatePremium: 'Generar Try-On Premium',
     generateStandard: 'Generar Try-On Standard',
+    generateVariations: 'Generar {count} variaciones Try-On',
     packages: {
       single_result: { label: 'Single Try-On', description: 'Crea una imagen realista de try-on con una foto de persona y una foto de prenda.' },
       variations: { label: 'Variaciones Try-On', description: 'Genera varias variaciones para elegir el mejor resultado.' },
@@ -296,6 +303,7 @@ export default {
       standardUnavailable: 'Standard Fashion Try-On no está disponible temporalmente.',
       premiumDisabled: 'Premium vendrá después de la validación Premium.',
       premiumPresetUnavailable: 'Elige un preset Premium habilitado antes de generar.',
+      outputCountUnavailable: 'Elige 2, 3 o 4 imágenes de salida para Variaciones Try-On.',
       premiumPromptTooLong: 'Las instrucciones de estilo deben estar por debajo de {count} caracteres.',
       personPhotoRequired: 'Elige o sube primero una foto de persona.',
       productPhotoRequired: 'Elige o sube primero una foto de prenda/producto.',
@@ -319,7 +327,7 @@ export default {
       },
     },
     result: {
-      package: 'Paquete', personSource: 'Fuente de persona', preset: 'Preset', providerResolution: 'Resolucion', nusaCreditCost: 'Creditos Nusa', createdAt: 'Creado', includedWithInternalAccess: 'Incluido con acceso interno', uploadedPhoto: 'Foto subida', directActions: 'Acciones directas de Try-On', continuePremiumVideo: 'Continuar con video premium', premiumVideoCopy: 'Anima esta imagen try-on en el workflow separado Motion AI Video. Esto crea una nueva generación pagada y usa créditos adicionales.', separateWorkflow: 'Workflow separado', additionalCredits: 'Créditos adicionales de Motion AI Video requeridos', noVideoIncluded: 'El resultado Try-On no incluye video', reviewSettings: 'Puedes revisar los ajustes de Motion AI antes de generar', noAutoGeneration: 'La generación no empezará automáticamente', continueMotion: 'Continuar a Motion AI Video', oneImageOutput: '1 imagen de salida', manyImageOutputs: '{count} imágenes de salida',
+      package: 'Paquete', personSource: 'Fuente de persona', preset: 'Preset', providerResolution: 'Resolucion', nusaCreditCost: 'Creditos Nusa', createdAt: 'Creado', includedWithInternalAccess: 'Incluido con acceso interno', uploadedPhoto: 'Foto subida', directActions: 'Acciones directas de Try-On', continuePremiumVideo: 'Continuar con video premium', premiumVideoCopy: 'Anima esta imagen try-on en el workflow separado Motion AI Video. Esto crea una nueva generación pagada y usa créditos adicionales.', separateWorkflow: 'Workflow separado', additionalCredits: 'Créditos adicionales de Motion AI Video requeridos', noVideoIncluded: 'El resultado Try-On no incluye video', reviewSettings: 'Puedes revisar los ajustes de Motion AI antes de generar', noAutoGeneration: 'La generación no empezará automáticamente', continueMotion: 'Continuar a Motion AI Video', oneImageOutput: '1 imagen de salida', manyImageOutputs: '{count} imágenes de salida', variationGallery: 'Variaciones generadas', chooseFavoriteHelp: 'Elige tu resultado favorito antes de continuar a Motion AI Video o workflows de catálogo.', favoriteSelectedHelp: 'Tu resultado favorito está seleccionado y listo para el siguiente workflow.', favoriteSelected: 'Favorito seleccionado', favorite: 'Favorito', selectFavorite: 'Seleccionar este resultado', variationNumber: 'Variación {number}', previewLoading: 'Cargando preview seguro...', selectionFailed: 'No pudimos guardar tu resultado favorito. Inténtalo de nuevo.', chooseFavoriteForMotion: 'Elige primero un resultado favorito', chooseFavoriteForMotionCopy: 'Motion AI Video debe partir de la imagen try-on específica que prefieres. Selecciona una variación arriba para desbloquear el siguiente paso.', partialOutputWarning: 'Se entregaron {delivered} de {requested} imágenes solicitadas. Se reembolsaron {refund} créditos por salidas faltantes.',
     },
   },
   voiceover: {

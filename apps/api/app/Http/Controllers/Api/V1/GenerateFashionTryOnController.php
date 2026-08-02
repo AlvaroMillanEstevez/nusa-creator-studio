@@ -78,6 +78,8 @@ class GenerateFashionTryOnController extends Controller
             'fashn_premium_disabled' => 'Premium Fashion Try-On is prepared but not enabled yet.',
             'fashn_premium_pricing_unconfigured' => 'Premium Fashion Try-On pricing is not configured yet.',
             'fashn_standard_disabled' => 'Standard Fashion Try-On is temporarily disabled.',
+            'fashn_variations_disabled' => 'Try-On Variations is visible for beta planning but not enabled yet.',
+            'fashn_package_unavailable' => 'The selected Fashion Try-On package is not available yet.',
             'fashn_image_load_failed' => 'Use clear, accessible image assets before generating a fashion try-on.',
             'fashn_pose_not_detected' => 'Use a clear photo where the person’s body and pose are visible.',
             'fashn_content_moderation' => 'This image could not be processed under the fashion-image safety policy.',

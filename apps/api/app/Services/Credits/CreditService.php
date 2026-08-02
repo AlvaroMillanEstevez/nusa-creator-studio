@@ -67,30 +67,66 @@ class CreditService
                 'reason' => $isUnlimited
                     ? "{$reason} (unlimited/internal access)"
                     : $reason,
-                'metadata' => $isUnlimited ? ['unlimited_access' => true] : null,
+                'metadata' => $isUnlimited ? ['unlimited_access' => true, 'configured_usage_amount' => $amount] : ['configured_usage_amount' => $amount],
             ]);
         });
     }
 
     public function refundUsage(Generation $generation, string $reason): ?CreditTransaction
     {
-        return DB::transaction(function () use ($generation, $reason) {
+        return $this->refundUsageAmount(
+            generation: $generation,
+            requestedAmount: $generation->credits_charged,
+            reason: $reason,
+            metadata: [
+                'failed_generation_id' => $generation->getKey(),
+                'refund_reason' => 'internal_generation_failure',
+                'refund_scope' => 'full_generation_failure',
+            ],
+            auditZeroAmount: false,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
+    public function refundUsageAmount(
+        Generation $generation,
+        int $requestedAmount,
+        string $reason,
+        array $metadata = [],
+        bool $auditZeroAmount = false,
+    ): ?CreditTransaction {
+        if ($requestedAmount < 0) {
+            throw new DomainException('Platform credit refunds cannot be negative.');
+        }
+
+        return DB::transaction(function () use ($generation, $requestedAmount, $reason, $metadata, $auditZeroAmount) {
             $lockedGeneration = Generation::query()
                 ->whereKey($generation->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $refundScope = is_string($metadata['refund_scope'] ?? null)
+                ? $metadata['refund_scope']
+                : 'usage_refund';
+
             $existingRefund = $lockedGeneration->creditTransactions()
                 ->where('type', CreditTransactionType::Refund->value)
-                ->first();
+                ->get()
+                ->first(function (CreditTransaction $transaction) use ($refundScope): bool {
+                    $metadata = is_array($transaction->metadata) ? $transaction->metadata : [];
+
+                    return ($metadata['refund_scope'] ?? null) === $refundScope;
+                });
 
             if ($existingRefund !== null) {
                 return $existingRefund;
             }
 
-            $refundAmount = $lockedGeneration->credits_charged;
+            $refundAmount = min($requestedAmount, max(0, (int) $lockedGeneration->credits_charged));
 
-            if ($refundAmount === 0) {
+            if ($refundAmount === 0 && ! $auditZeroAmount) {
                 return null;
             }
 
@@ -100,7 +136,14 @@ class CreditService
                 ->firstOrFail();
 
             $balanceAfter = $lockedUser->credits_balance + $refundAmount;
-            $lockedUser->forceFill(['credits_balance' => $balanceAfter])->save();
+
+            if ($refundAmount > 0) {
+                $lockedUser->forceFill(['credits_balance' => $balanceAfter])->save();
+            }
+
+            $lockedGeneration->forceFill([
+                'credits_charged' => max(0, (int) $lockedGeneration->credits_charged - $refundAmount),
+            ])->save();
 
             return $lockedUser->creditTransactions()->create([
                 'generation_id' => $lockedGeneration->getKey(),
@@ -108,10 +151,10 @@ class CreditService
                 'amount' => $refundAmount,
                 'balance_after' => $balanceAfter,
                 'reason' => $reason,
-                'metadata' => [
-                    'failed_generation_id' => $lockedGeneration->getKey(),
-                    'refund_reason' => 'internal_generation_failure',
-                ],
+                'metadata' => array_filter($metadata + [
+                    'requested_refund_amount' => $requestedAmount,
+                    'refunded_credit_amount' => $refundAmount,
+                ], fn (mixed $value): bool => $value !== null),
             ]);
         });
     }

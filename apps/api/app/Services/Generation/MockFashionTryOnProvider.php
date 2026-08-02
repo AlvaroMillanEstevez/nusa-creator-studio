@@ -33,6 +33,9 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
         $packageKey = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
         $personSource = FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null);
         $category = is_string($input['category'] ?? null) ? $input['category'] : 'auto';
+        $requestedOutputCount = is_int($input['requested_output_count'] ?? null)
+            ? (int) $input['requested_output_count']
+            : FashionTryOnCapabilities::defaultOutputCount($packageKey);
         $configuredNusaCreditCost = FashionTryOnCapabilities::configuredCreditCost($input['configured_nusa_credit_cost'] ?? $input['nusa_credit_cost'] ?? null);
         $perOutputCreditCost = FashionTryOnCapabilities::configuredCreditCost($input['per_output_credit_cost'] ?? $configuredNusaCreditCost);
         $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
@@ -99,7 +102,11 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
             'nusa_credit_cost' => $configuredNusaCreditCost,
             'configured_nusa_credit_cost' => $configuredNusaCreditCost,
             'per_output_credit_cost' => $perOutputCreditCost,
-            'output_count' => $tier === FashionTryOnCapabilities::TIER_PREMIUM ? FashionTryOnCapabilities::PREMIUM_OUTPUT_COUNT : FashionTryOnCapabilities::STANDARD_OUTPUT_COUNT,
+            'requested_output_count' => $requestedOutputCount,
+            'output_count' => 0,
+            'delivered_output_count' => 0,
+            'missing_output_count' => $packageKey === FashionTryOnCapabilities::PACKAGE_VARIATIONS ? $requestedOutputCount : 0,
+            'partial_output' => false,
             'selected_person_image' => $modelAsset,
             'selected_product_image' => $garmentAsset,
             'input_readiness' => [
@@ -113,6 +120,7 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 'person_source' => $personSource,
                 'tier' => $tier,
                 'premium_preset' => $premiumPreset['key'] ?? null,
+                'requested_output_count' => $requestedOutputCount,
                 'output_count' => 0,
                 'real_provider_call_made' => false,
             ],
@@ -125,6 +133,7 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 'category' => in_array($category, FashionTryOnCapabilities::STANDARD_CATEGORIES, true) ? $category : 'auto',
                 'package_key' => $packageKey,
                 'person_source' => $personSource,
+                'requested_output_count' => $requestedOutputCount,
                 'output_count' => 0,
                 'nusa_credit_cost' => $configuredNusaCreditCost,
                 'configured_nusa_credit_cost' => $configuredNusaCreditCost,
@@ -135,7 +144,9 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 'Use one clear clothing or wearable product photo with minimal background clutter.',
                 'Avoid screenshots, collages, low light, heavy filters or tiny product crops.',
             ],
-            'expected_output_description' => 'A future real provider call will combine the person photo with the clothing/product photo into one private try-on image.',
+            'expected_output_description' => $packageKey === FashionTryOnCapabilities::PACKAGE_VARIATIONS
+                ? 'A future real provider call will create the requested try-on variations as private image assets.'
+                : 'A future real provider call will combine the person photo with the clothing/product photo into one private try-on image.',
             'missing_or_risky_input_notes' => [],
         ], $localized);
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Support\FashionTryOnCapabilities;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,7 @@ class GenerateFashionTryOnRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'package_key' => ['nullable', 'string', Rule::in(FashionTryOnCapabilities::ACTIVE_PACKAGES)],
+            'package_key' => ['nullable', 'string', Rule::in(FashionTryOnCapabilities::activePackages())],
             'person_source' => ['nullable', 'string', Rule::in(FashionTryOnCapabilities::ACTIVE_PERSON_SOURCES)],
             'tier' => ['nullable', 'string', Rule::in([
                 FashionTryOnCapabilities::TIER_STANDARD,
@@ -32,13 +33,15 @@ class GenerateFashionTryOnRequest extends FormRequest
             'standard_mode' => ['nullable', 'string', Rule::in(FashionTryOnCapabilities::STANDARD_MODES)],
             'premium_preset' => ['nullable', 'string', Rule::in(FashionTryOnCapabilities::premiumPresetKeys())],
             'premium_prompt' => ['nullable', 'string', 'max:'.FashionTryOnCapabilities::premiumPromptMaxCharacters()],
-            'requested_output_count' => ['nullable', 'integer', 'min:1', 'max:'.FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS],
+            'requested_output_count' => ['nullable', $this->strictOutputCountRule()],
             'person_image_permission_confirmed' => ['accepted'],
             'model_name' => ['prohibited'],
             'provider' => ['prohibited'],
             'resolution' => ['prohibited'],
             'generation_mode' => ['prohibited'],
             'expected_provider_credits' => ['prohibited'],
+            'expected_provider_credits_per_output' => ['prohibited'],
+            'expected_provider_credits_total' => ['prohibited'],
             'seed' => ['prohibited'],
             'provider_seed' => ['prohibited'],
             'num_samples' => ['prohibited'],
@@ -46,6 +49,7 @@ class GenerateFashionTryOnRequest extends FormRequest
             'output_count' => ['prohibited'],
             'nusa_credit_cost' => ['prohibited'],
             'configured_nusa_credit_cost' => ['prohibited'],
+            'total_nusa_credit_cost' => ['prohibited'],
             'credit_cost' => ['prohibited'],
             'credits_charged' => ['prohibited'],
             'total_nusa_cost' => ['prohibited'],
@@ -68,7 +72,7 @@ class GenerateFashionTryOnRequest extends FormRequest
     {
         return [
             'person_image_permission_confirmed.accepted' => 'Please confirm you have permission to use this person photo for AI fashion try-on.',
-            'package_key.in' => 'Only Single Try-On is available right now.',
+            'package_key.in' => 'The selected Fashion Try-On package is not available right now.',
             'person_source.in' => 'Upload a person photo is the only available person source right now.',
             'premium_preset.in' => 'Choose one of the available Premium presets.',
             'model_name.prohibited' => 'Provider model names are controlled by Nusa.',
@@ -76,14 +80,16 @@ class GenerateFashionTryOnRequest extends FormRequest
             'resolution.prohibited' => 'Premium resolution is controlled by the selected Nusa preset.',
             'generation_mode.prohibited' => 'Premium generation mode is controlled by the selected Nusa preset.',
             'expected_provider_credits.prohibited' => 'Provider credit estimates are controlled by Nusa.',
+            'expected_provider_credits_per_output.prohibited' => 'Provider credit estimates are controlled by Nusa.',
+            'expected_provider_credits_total.prohibited' => 'Provider credit estimates are controlled by Nusa.',
             'seed.prohibited' => 'Provider seed is created by Nusa for each generation.',
             'provider_seed.prohibited' => 'Provider seed is created by Nusa for each generation.',
             'num_samples.prohibited' => 'Output count is controlled by Nusa and cannot be submitted directly.',
             'num_images.prohibited' => 'Output count is controlled by Nusa and cannot be submitted directly.',
             'output_count.prohibited' => 'Output count is controlled by Nusa and cannot be submitted directly.',
-            'requested_output_count.max' => 'Single Try-On supports exactly one output image right now.',
             'nusa_credit_cost.prohibited' => 'Nusa credit pricing is controlled by the server.',
             'configured_nusa_credit_cost.prohibited' => 'Nusa credit pricing is controlled by the server.',
+            'total_nusa_credit_cost.prohibited' => 'Nusa credit pricing is controlled by the server.',
             'credit_cost.prohibited' => 'Nusa credit pricing is controlled by the server.',
             'credits_charged.prohibited' => 'Credits charged are calculated by the server.',
             'total_nusa_cost.prohibited' => 'Nusa credit pricing is controlled by the server.',
@@ -97,5 +103,42 @@ class GenerateFashionTryOnRequest extends FormRequest
             'inputs.prohibited' => 'Raw provider inputs cannot be submitted directly.',
             'provider_payload.prohibited' => 'Raw provider payloads cannot be submitted directly.',
         ];
+    }
+
+    private function strictOutputCountRule(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if ($value === null || $value === '') {
+                return;
+            }
+
+            if (! is_int($value)) {
+                $fail('Output count must be submitted as a JSON integer controlled by Nusa.');
+
+                return;
+            }
+
+            $package = is_string($this->input('package_key'))
+                ? (string) $this->input('package_key')
+                : FashionTryOnCapabilities::PACKAGE_SINGLE_RESULT;
+
+            if ($package === FashionTryOnCapabilities::PACKAGE_VARIATIONS) {
+                if (! FashionTryOnCapabilities::variationsEnabled()) {
+                    $fail('Try-On Variations is not available right now.');
+
+                    return;
+                }
+
+                if (! in_array($value, FashionTryOnCapabilities::VARIATIONS_ALLOWED_OUTPUT_COUNTS, true)) {
+                    $fail('Try-On Variations supports exactly 2, 3 or 4 outputs.');
+                }
+
+                return;
+            }
+
+            if ($value !== FashionTryOnCapabilities::STANDARD_OUTPUT_COUNT) {
+                $fail('Single Try-On supports exactly one output image.');
+            }
+        };
     }
 }

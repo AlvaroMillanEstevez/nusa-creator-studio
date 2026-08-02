@@ -13,20 +13,28 @@ class FashnFashionTryOnPayloadBuilder
      */
     public function standard(array $input, string $personImageDataUri, string $garmentImageDataUri): array
     {
+        $inputs = [
+            'model_image' => $personImageDataUri,
+            'garment_image' => $garmentImageDataUri,
+            'category' => $this->standardCategory($input),
+            'garment_photo_type' => $this->garmentPhotoType($input),
+            'mode' => $this->standardMode($input),
+            'segmentation_free' => (bool) config('fashion_try_on.fashn.standard_segmentation_free', true),
+            'moderation_level' => FashionTryOnCapabilities::safeModerationLevel(),
+            'num_samples' => $this->requestedOutputCount($input),
+            'output_format' => $this->outputFormat(),
+            'return_base64' => $this->returnBase64(),
+        ];
+
+        $seed = FashionTryOnCapabilities::normalizeProviderSeed($input['provider_seed'] ?? null);
+
+        if ($seed !== null) {
+            $inputs['seed'] = $seed;
+        }
+
         return [
             'model_name' => (string) config('fashion_try_on.fashn.standard_model', 'tryon-v1.6'),
-            'inputs' => [
-                'model_image' => $personImageDataUri,
-                'garment_image' => $garmentImageDataUri,
-                'category' => $this->standardCategory($input),
-                'garment_photo_type' => $this->garmentPhotoType($input),
-                'mode' => $this->standardMode($input),
-                'segmentation_free' => (bool) config('fashion_try_on.fashn.standard_segmentation_free', true),
-                'moderation_level' => FashionTryOnCapabilities::safeModerationLevel(),
-                'num_samples' => 1,
-                'output_format' => $this->outputFormat(),
-                'return_base64' => $this->returnBase64(),
-            ],
+            'inputs' => $inputs,
         ];
     }
 
@@ -53,7 +61,7 @@ class FashnFashionTryOnPayloadBuilder
             'resolution' => $preset['resolution'],
             'generation_mode' => $preset['generation_mode'],
             'seed' => $seed,
-            'num_images' => FashionTryOnCapabilities::PREMIUM_OUTPUT_COUNT,
+            'num_images' => $this->requestedOutputCount($input),
             'output_format' => $this->outputFormat(),
             'return_base64' => true,
         ];
@@ -68,6 +76,17 @@ class FashnFashionTryOnPayloadBuilder
             'model_name' => (string) config('fashion_try_on.fashn.premium_model', 'tryon-max'),
             'inputs' => $inputs,
         ];
+    }
+
+    /** @param array<string, mixed> $input */
+    public function requestedOutputCount(array $input): int
+    {
+        $package = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
+        $value = $input['requested_output_count'] ?? null;
+
+        return is_int($value) && in_array($value, FashionTryOnCapabilities::allowedOutputCounts($package), true)
+            ? $value
+            : FashionTryOnCapabilities::defaultOutputCount($package);
     }
 
     /** @param array<string, mixed> $input */

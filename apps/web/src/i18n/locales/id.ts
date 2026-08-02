@@ -263,6 +263,12 @@ export default {
     providerFashnStandard: 'FASHN Standard',
     providerFashnPremium: 'FASHN Premium',
     oneOutputImage: 'satu gambar output',
+    manyOutputImages: '{count} gambar output',
+    beta: 'Beta',
+    outputCountTitle: 'Berapa variasi?',
+    outputCountBody: 'Generate 2, 3, atau 4 opsi try-on dari foto orang dan produk yang sama. Pilih favorit setelah selesai.',
+    variationsCostSummary: '{count} gambar · {perImage} per gambar · {total} total.',
+    higherCountsMayTakeLonger: 'Jumlah lebih tinggi bisa lebih lama dan memakai lebih banyak kredit.',
     standardTier: 'Standard',
     standardTierDescription: 'Try-on cepat dan andal untuk konten harian.',
     premiumBeta: 'Premium Beta',
@@ -318,6 +324,7 @@ export default {
     viewPlanOptions: 'Lihat opsi plan',
     generatePremium: 'Generate Premium Try-On',
     generateStandard: 'Generate Standard Try-On',
+    generateVariations: 'Generate {count} variasi Try-On',
     packages: {
       single_result: { label: 'Single Try-On', description: 'Buat satu gambar try-on realistis dari foto orang dan foto pakaian.' },
       variations: { label: 'Variasi Try-On', description: 'Generate beberapa variasi try-on agar kamu bisa memilih hasil terbaik.' },
@@ -344,6 +351,7 @@ export default {
       standardUnavailable: 'Standard Fashion Try-On sedang tidak tersedia.',
       premiumDisabled: 'Premium akan hadir setelah validasi Premium.',
       premiumPresetUnavailable: 'Pilih preset Premium yang aktif sebelum generate.',
+      outputCountUnavailable: 'Pilih 2, 3, atau 4 gambar output untuk Variasi Try-On.',
       premiumPromptTooLong: 'Instruksi styling harus di bawah {count} karakter.',
       personPhotoRequired: 'Pilih atau upload satu foto orang terlebih dahulu.',
       productPhotoRequired: 'Pilih atau upload satu foto pakaian/produk terlebih dahulu.',
@@ -367,7 +375,7 @@ export default {
       },
     },
     result: {
-      package: 'Paket', personSource: 'Sumber orang', preset: 'Preset', providerResolution: 'Resolusi', nusaCreditCost: 'Kredit Nusa', createdAt: 'Dibuat', includedWithInternalAccess: 'Termasuk akses internal', uploadedPhoto: 'Foto upload', directActions: 'Aksi Try-On langsung', continuePremiumVideo: 'Lanjut dengan video premium', premiumVideoCopy: 'Animasikan gambar try-on ini di workflow terpisah Motion AI Video. Ini membuat generation berbayar baru dan memakai kredit tambahan.', separateWorkflow: 'Workflow terpisah', additionalCredits: 'Kredit Motion AI Video tambahan diperlukan', noVideoIncluded: 'Hasil Try-On tidak termasuk video', reviewSettings: 'Kamu bisa meninjau pengaturan Motion AI sebelum generate', noAutoGeneration: 'Generation tidak dimulai otomatis', continueMotion: 'Lanjut ke Motion AI Video', oneImageOutput: '1 gambar output', manyImageOutputs: '{count} gambar output',
+      package: 'Paket', personSource: 'Sumber orang', preset: 'Preset', providerResolution: 'Resolusi', nusaCreditCost: 'Kredit Nusa', createdAt: 'Dibuat', includedWithInternalAccess: 'Termasuk akses internal', uploadedPhoto: 'Foto upload', directActions: 'Aksi Try-On langsung', continuePremiumVideo: 'Lanjut dengan video premium', premiumVideoCopy: 'Animasikan gambar try-on ini di workflow terpisah Motion AI Video. Ini membuat generation berbayar baru dan memakai kredit tambahan.', separateWorkflow: 'Workflow terpisah', additionalCredits: 'Kredit Motion AI Video tambahan diperlukan', noVideoIncluded: 'Hasil Try-On tidak termasuk video', reviewSettings: 'Kamu bisa meninjau pengaturan Motion AI sebelum generate', noAutoGeneration: 'Generation tidak dimulai otomatis', continueMotion: 'Lanjut ke Motion AI Video', oneImageOutput: '1 gambar output', manyImageOutputs: '{count} gambar output', variationGallery: 'Variasi yang dibuat', chooseFavoriteHelp: 'Pilih hasil favorit sebelum lanjut ke Motion AI Video atau workflow katalog.', favoriteSelectedHelp: 'Hasil favoritmu sudah dipilih dan siap untuk workflow berikutnya.', favoriteSelected: 'Favorit dipilih', favorite: 'Favorit', selectFavorite: 'Pilih hasil ini', variationNumber: 'Variasi {number}', previewLoading: 'Memuat preview aman...', selectionFailed: 'Kami tidak dapat menyimpan hasil favoritmu. Coba lagi.', chooseFavoriteForMotion: 'Pilih hasil favorit dulu', chooseFavoriteForMotionCopy: 'Motion AI Video harus dimulai dari gambar try-on spesifik yang kamu pilih. Pilih satu variasi di atas untuk membuka langkah berikutnya.', partialOutputWarning: 'Berhasil membuat {delivered} dari {requested} gambar yang diminta. {refund} kredit dikembalikan untuk output yang hilang.',
     },
   },
   voiceover: {

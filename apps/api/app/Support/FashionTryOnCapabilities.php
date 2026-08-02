@@ -35,9 +35,14 @@ class FashionTryOnCapabilities
 
     public const STANDARD_OUTPUT_COUNT = 1;
 
-    public const CURRENT_MAX_OUTPUTS = 1;
+    public const CURRENT_MAX_OUTPUTS = 4;
+
+    public const VARIATIONS_DEFAULT_OUTPUT_COUNT = 2;
 
     public const MAX_PROVIDER_SEED = 4294967295;
+
+    /** @var list<int> */
+    public const VARIATIONS_ALLOWED_OUTPUT_COUNTS = [2, 3, 4];
 
     /** @var list<string> */
     public const STANDARD_CATEGORIES = ['auto', 'tops', 'bottoms', 'one-pieces'];
@@ -84,6 +89,7 @@ class FashionTryOnCapabilities
                 'generation_mode' => 'fast',
                 'quality_label' => 'Fast',
                 'expected_provider_credits' => 1,
+                'expected_provider_credits_per_output' => 1,
                 'num_images' => self::PREMIUM_OUTPUT_COUNT,
                 'recommended' => false,
             ],
@@ -97,6 +103,7 @@ class FashionTryOnCapabilities
                 'generation_mode' => 'balanced',
                 'quality_label' => 'Balanced',
                 'expected_provider_credits' => 3,
+                'expected_provider_credits_per_output' => 3,
                 'num_images' => self::PREMIUM_OUTPUT_COUNT,
                 'recommended' => true,
             ],
@@ -110,6 +117,7 @@ class FashionTryOnCapabilities
                 'generation_mode' => 'quality',
                 'quality_label' => 'Quality',
                 'expected_provider_credits' => 5,
+                'expected_provider_credits_per_output' => 5,
                 'num_images' => self::PREMIUM_OUTPUT_COUNT,
                 'recommended' => false,
             ],
@@ -156,24 +164,130 @@ class FashionTryOnCapabilities
             'standard_categories' => self::STANDARD_CATEGORIES,
             'standard_garment_photo_types' => self::STANDARD_GARMENT_PHOTO_TYPES,
             'standard_modes' => self::STANDARD_MODES,
-            'active_packages' => self::ACTIVE_PACKAGES,
+            'packages' => self::packages(),
+            'active_packages' => self::activePackages(),
             'default_package' => self::PACKAGE_SINGLE_RESULT,
-            'future_packages' => self::FUTURE_PACKAGES,
+            'future_packages' => self::futurePackages(),
             'active_person_sources' => self::ACTIVE_PERSON_SOURCES,
             'default_person_source' => self::PERSON_SOURCE_USER_UPLOAD,
             'future_person_sources' => self::FUTURE_PERSON_SOURCES,
             'maximum_outputs' => self::CURRENT_MAX_OUTPUTS,
-            'max_outputs_enabled' => self::CURRENT_MAX_OUTPUTS,
+            'max_outputs_enabled' => self::variationsEnabled() ? self::CURRENT_MAX_OUTPUTS : self::STANDARD_OUTPUT_COUNT,
             'current_max_outputs' => self::CURRENT_MAX_OUTPUTS,
             'multi_output_supported' => true,
-            'multi_output_generation_enabled' => false,
+            'multi_output_generation_enabled' => self::variationsEnabled(),
             'variations_pricing_ready' => self::variationsPricingReady(),
             'variations_enabled' => self::variationsEnabled(),
+            'variations' => [
+                'enabled' => self::variationsEnabled(),
+                'allowed_output_counts' => self::VARIATIONS_ALLOWED_OUTPUT_COUNTS,
+                'default_output_count' => self::VARIATIONS_DEFAULT_OUTPUT_COUNT,
+                'max_output_count' => self::CURRENT_MAX_OUTPUTS,
+                'selection_required_for_continuation' => true,
+                'partial_refund_supported' => true,
+            ],
+            'output_limits' => [
+                'max_bytes_per_output' => self::maxOutputBytesPerImage(),
+                'max_total_output_bytes' => self::maxOutputBytesTotal(),
+            ],
             'consent_required' => true,
             'person_image_required' => true,
             'product_image_required' => true,
             'supported_mime_types' => self::SUPPORTED_IMAGE_MIME_TYPES,
         ];
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function packages(): array
+    {
+        return [
+            [
+                'key' => self::PACKAGE_SINGLE_RESULT,
+                'enabled' => true,
+                'status' => 'available',
+                'allowed_output_counts' => [self::STANDARD_OUTPUT_COUNT],
+                'default_output_count' => self::STANDARD_OUTPUT_COUNT,
+                'selection_required_for_continuation' => false,
+                'partial_refund_supported' => false,
+            ],
+            [
+                'key' => self::PACKAGE_VARIATIONS,
+                'enabled' => self::variationsEnabled(),
+                'status' => self::variationsEnabled() ? 'beta' : 'coming_soon',
+                'allowed_output_counts' => self::VARIATIONS_ALLOWED_OUTPUT_COUNTS,
+                'default_output_count' => self::VARIATIONS_DEFAULT_OUTPUT_COUNT,
+                'selection_required_for_continuation' => true,
+                'partial_refund_supported' => true,
+            ],
+            [
+                'key' => self::PACKAGE_CATALOG_PACK,
+                'enabled' => false,
+                'status' => 'coming_soon',
+                'allowed_output_counts' => [],
+                'default_output_count' => null,
+                'selection_required_for_continuation' => true,
+                'partial_refund_supported' => false,
+            ],
+            [
+                'key' => self::PACKAGE_CATALOG_VIDEO_PACK,
+                'enabled' => false,
+                'status' => 'coming_soon',
+                'allowed_output_counts' => [],
+                'default_output_count' => null,
+                'selection_required_for_continuation' => true,
+                'partial_refund_supported' => false,
+            ],
+        ];
+    }
+
+    /** @return list<string> */
+    public static function activePackages(): array
+    {
+        return array_values(array_filter([
+            self::PACKAGE_SINGLE_RESULT,
+            self::variationsEnabled() ? self::PACKAGE_VARIATIONS : null,
+        ], fn (?string $value): bool => $value !== null));
+    }
+
+    /** @return list<string> */
+    public static function futurePackages(): array
+    {
+        return array_values(array_filter([
+            self::variationsEnabled() ? null : self::PACKAGE_VARIATIONS,
+            self::PACKAGE_CATALOG_PACK,
+            self::PACKAGE_CATALOG_VIDEO_PACK,
+        ], fn (?string $value): bool => $value !== null));
+    }
+
+    /** @return list<string> */
+    public static function canonicalPackageKeys(): array
+    {
+        return [
+            self::PACKAGE_SINGLE_RESULT,
+            self::PACKAGE_VARIATIONS,
+            self::PACKAGE_CATALOG_PACK,
+            self::PACKAGE_CATALOG_VIDEO_PACK,
+        ];
+    }
+
+    public static function packageEnabled(string $package): bool
+    {
+        return in_array($package, self::activePackages(), true);
+    }
+
+    /** @return list<int> */
+    public static function allowedOutputCounts(string $package): array
+    {
+        return $package === self::PACKAGE_VARIATIONS
+            ? self::VARIATIONS_ALLOWED_OUTPUT_COUNTS
+            : [self::STANDARD_OUTPUT_COUNT];
+    }
+
+    public static function defaultOutputCount(string $package): int
+    {
+        return $package === self::PACKAGE_VARIATIONS
+            ? self::VARIATIONS_DEFAULT_OUTPUT_COUNT
+            : self::STANDARD_OUTPUT_COUNT;
     }
 
     /** @return array<string, mixed> */
@@ -302,7 +416,38 @@ class FashionTryOnCapabilities
 
     public static function variationsEnabled(): bool
     {
-        return false;
+        return (bool) config('fashion_try_on.variations_enabled', false);
+    }
+
+    public static function standardProviderCreditsPerOutput(): int
+    {
+        return 1;
+    }
+
+    public static function expectedProviderCreditsPerOutput(string $tier, ?string $premiumPreset = null): int
+    {
+        if ($tier === self::TIER_PREMIUM) {
+            $preset = self::premiumPreset(self::normalizePremiumPreset($premiumPreset));
+
+            return max(0, (int) ($preset['expected_provider_credits_per_output'] ?? $preset['expected_provider_credits'] ?? 0));
+        }
+
+        return self::standardProviderCreditsPerOutput();
+    }
+
+    public static function expectedProviderCreditsTotal(string $tier, ?string $premiumPreset, int $outputCount): int
+    {
+        return self::expectedProviderCreditsPerOutput($tier, $premiumPreset) * max(0, $outputCount);
+    }
+
+    public static function maxOutputBytesPerImage(): int
+    {
+        return max(1, (int) config('fashion_try_on.fashn.output_max_bytes_per_image', 33554432));
+    }
+
+    public static function maxOutputBytesTotal(): int
+    {
+        return max(self::maxOutputBytesPerImage(), (int) config('fashion_try_on.fashn.output_max_bytes_total', 134217728));
     }
 
     /** @return list<array<string, mixed>> */
@@ -313,6 +458,7 @@ class FashionTryOnCapabilities
             $cost = self::premiumCreditCost($key);
             $pricingConfigured = $cost !== null;
             $disabledReason = self::premiumPresetDisabledReason($user, $key);
+            $allowedCounts = self::VARIATIONS_ALLOWED_OUTPUT_COUNTS;
 
             return $preset + [
                 'nusa_credit_cost' => $cost,
@@ -325,10 +471,45 @@ class FashionTryOnCapabilities
                 'beta' => true,
                 'output_count' => self::PREMIUM_OUTPUT_COUNT,
                 'current_max_outputs' => self::CURRENT_MAX_OUTPUTS,
+                'max_output_count' => self::CURRENT_MAX_OUTPUTS,
+                'allowed_output_counts' => $allowedCounts,
+                'default_output_count' => self::VARIATIONS_DEFAULT_OUTPUT_COUNT,
                 'variations_pricing_ready' => self::variationsPricingReady(),
                 'variations_enabled' => self::variationsEnabled(),
+                'total_credit_costs' => self::totalCreditCostsForCounts($cost, $allowedCounts),
+                'expected_provider_credits_per_output' => self::expectedProviderCreditsPerOutput(self::TIER_PREMIUM, $key),
+                'expected_provider_credits_total_by_count' => self::totalProviderCreditsForCounts(self::TIER_PREMIUM, $key, $allowedCounts),
             ];
         }, self::premiumPresets()));
+    }
+
+    /** @param list<int> $counts @return array<int, int>|null */
+    public static function totalCreditCostsForCounts(?int $perOutputCost, array $counts): ?array
+    {
+        if ($perOutputCost === null) {
+            return null;
+        }
+
+        $totals = [];
+
+        foreach ($counts as $count) {
+            $totals[$count] = $perOutputCost * $count;
+        }
+
+        return $totals;
+    }
+
+    /** @param list<int> $counts @return array<int, int> */
+    public static function totalProviderCreditsForCounts(string $tier, ?string $preset, array $counts): array
+    {
+        $perOutput = self::expectedProviderCreditsPerOutput($tier, $preset);
+        $totals = [];
+
+        foreach ($counts as $count) {
+            $totals[$count] = $perOutput * $count;
+        }
+
+        return $totals;
     }
 
     public static function sanitizePremiumPrompt(mixed $prompt): ?string
@@ -380,7 +561,7 @@ class FashionTryOnCapabilities
 
     public static function normalizePackage(?string $package): string
     {
-        return in_array($package, self::ACTIVE_PACKAGES, true)
+        return in_array($package, self::activePackages(), true)
             ? $package
             : self::PACKAGE_SINGLE_RESULT;
     }

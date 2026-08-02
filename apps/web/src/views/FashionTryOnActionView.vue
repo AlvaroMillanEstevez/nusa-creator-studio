@@ -7,6 +7,7 @@ import ProjectAssetInput from '@/components/ProjectAssetInput.vue'
 import { t } from '@/i18n'
 import { ApiError } from '@/services/api'
 import { generateFashionTryOn, getCreatorProject, getFashionTryOnCapabilities, getProjectActions } from '@/services/projects'
+import { useAuthStore } from '@/stores/auth'
 import {
   fashionTryOnCategoryOptions,
   fashionTryOnGarmentPhotoTypeOptions,
@@ -37,6 +38,7 @@ type FashionField =
   | 'tier'
   | 'premium_preset'
   | 'premium_prompt'
+  | 'requested_output_count'
   | 'person_image_asset_id'
   | 'product_image_asset_id'
   | 'person_image_permission_confirmed'
@@ -45,12 +47,14 @@ type FashionFieldErrors = Partial<Record<FashionField, string>>
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 
 const project = ref<CreatorProject | null>(null)
 const actions = ref<ProjectAction[]>([])
 const fetchedCapabilities = ref<FashionTryOnProviderCapabilities | null>(null)
 const formElement = ref<HTMLFormElement | null>(null)
 const packageKey = ref<FashionTryOnPackageKey>('single_result')
+const requestedOutputCount = ref(2)
 const personSource = ref<FashionTryOnPersonSource>('user_upload')
 const tier = ref<FashionTryOnTier>('standard')
 const personImageAssetId = ref<number | null>(null)
@@ -99,11 +103,17 @@ const premiumPresetChoices = computed<FashionTryOnPremiumPresetCapability[]>(() 
     generation_mode: option.value === 'fast_1k' ? 'fast' : option.value === 'quality_4k' ? 'quality' : 'balanced',
     quality_label: option.value === 'fast_1k' ? 'Fast' : option.value === 'quality_4k' ? 'Quality' : 'Balanced',
     expected_provider_credits: option.value === 'fast_1k' ? 1 : option.value === 'quality_4k' ? 5 : 3,
+    expected_provider_credits_per_output: option.value === 'fast_1k' ? 1 : option.value === 'quality_4k' ? 5 : 3,
+    expected_provider_credits_total_by_count: option.value === 'fast_1k' ? { 2: 2, 3: 3, 4: 4 } : option.value === 'quality_4k' ? { 2: 10, 3: 15, 4: 20 } : { 2: 6, 3: 9, 4: 12 },
     num_images: 1,
     recommended: option.value === 'balanced_2k',
     nusa_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
     configured_nusa_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
     per_output_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
+    total_credit_costs: option.value === 'fast_1k' ? { 2: 6, 3: 9, 4: 12 } : option.value === 'quality_4k' ? { 2: 22, 3: 33, 4: 44 } : { 2: 14, 3: 21, 4: 28 },
+    allowed_output_counts: [2, 3, 4],
+    default_output_count: 2,
+    max_output_count: 4,
     pricing_configured: true,
     enabled: false,
     disabled_reason: option.value === 'quality_4k' ? 'premium_quality_validation_pending' : 'premium_disabled',
@@ -128,10 +138,34 @@ const providerLabel = computed(() => {
 const selectedTierLabel = computed(() => tier.value === 'premium' ? t('fashionTryOn.premiumBeta') : t('fashionTryOn.standardTier'))
 const selectedPresetLabel = computed(() => selectedPremiumPreset.value === null ? '' : premiumPresetLabel(selectedPremiumPreset.value))
 const selectedPresetResolution = computed(() => selectedPremiumPreset.value?.resolution_label ?? '')
-const outputCountLabel = computed(() => t('fashionTryOn.oneOutputImage'))
-const effectiveCreditCost = computed(() => tier.value === 'premium'
-  ? selectedPremiumPreset.value?.nusa_credit_cost ?? 0
-  : standardCreditCost.value)
+const isVariationsSelected = computed(() => packageKey.value === 'variations')
+const variationsCapability = computed(() => capabilities.value?.variations ?? null)
+const allowedOutputCounts = computed(() => {
+  if (!isVariationsSelected.value) {
+    return [1]
+  }
+
+  const configured = variationsCapability.value?.allowed_output_counts ?? [2, 3, 4]
+
+  return configured.filter((count) => Number.isInteger(count) && count >= 2 && count <= 4)
+})
+const selectedOutputCount = computed(() => isVariationsSelected.value ? requestedOutputCount.value : 1)
+const outputCountLabel = computed(() => selectedOutputCount.value === 1
+  ? t('fashionTryOn.oneOutputImage')
+  : t('fashionTryOn.manyOutputImages', { count: selectedOutputCount.value }))
+const perOutputCreditCost = computed(() => {
+  if (tier.value === 'premium') {
+    return selectedPremiumPreset.value?.per_output_credit_cost ?? selectedPremiumPreset.value?.nusa_credit_cost ?? 0
+  }
+
+  return capabilities.value?.standard_per_output_credit_cost ?? standardCreditCost.value
+})
+const effectiveCreditCost = computed(() => perOutputCreditCost.value * selectedOutputCount.value)
+const hasInsufficientCredits = computed(() => {
+  const user = auth.user
+
+  return user !== null && !user.is_unlimited && user.credits_balance < effectiveCreditCost.value
+})
 const creditCostLabel = computed(() => {
   const cost = effectiveCreditCost.value
 
@@ -141,12 +175,28 @@ const creditCostLabel = computed(() => {
 
   return `${cost} ${cost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: cost })}`
 })
+const perImageCreditCostLabel = computed(() => {
+  const cost = perOutputCreditCost.value
+
+  if (cost === 0) {
+    return t('fashionTryOn.noCreditCharge')
+  }
+
+  return `${cost} ${cost === 1 ? t('projectActions.oneCredit') : t('projectActions.manyCredits', { credits: cost })}`
+})
 const activePackages = computed(() => capabilities.value?.active_packages ?? ['single_result'])
+const packageCapabilities = computed(() => capabilities.value?.packages ?? [])
 const activePersonSources = computed(() => capabilities.value?.active_person_sources ?? ['user_upload'])
-const packageChoices = computed(() => fashionTryOnPackageOptions.map((option) => ({
-  ...option,
-  isEnabled: activePackages.value.includes(option.value),
-})))
+const packageChoices = computed(() => fashionTryOnPackageOptions.map((option) => {
+  const capability = packageCapabilities.value.find((item) => item.key === option.value)
+  const isEnabled = capability?.enabled ?? activePackages.value.includes(option.value)
+
+  return {
+    ...option,
+    status: String(capability?.status ?? option.status),
+    isEnabled,
+  }
+}))
 const personSourceChoices = computed(() => fashionTryOnPersonSourceOptions.map((option) => ({
   ...option,
   isEnabled: activePersonSources.value.includes(option.value),
@@ -179,6 +229,10 @@ const formBlockingReason = computed(() => {
     return ''
   }
 
+  if (hasInsufficientCredits.value) {
+    return t('fashionTryOn.errors.insufficientCredits')
+  }
+
   return firstValidationMessage.value
 })
 const generateButtonLabel = computed(() => {
@@ -190,9 +244,20 @@ const generateButtonLabel = computed(() => {
     return t('fashionTryOn.viewPlanOptions')
   }
 
+  if (isVariationsSelected.value) {
+    return t('fashionTryOn.generateVariations', { count: selectedOutputCount.value })
+  }
+
   return tier.value === 'premium' ? t('fashionTryOn.generatePremium') : t('fashionTryOn.generateStandard')
 })
 
+function availabilityBadgeLabel(isEnabled: boolean, status?: string): string {
+  if (!isEnabled) {
+    return t('common.comingSoon')
+  }
+
+  return status === 'beta' ? t('fashionTryOn.beta') : t('fashionTryOn.availableNow')
+}
 function isFashionTryOnCapabilities(value: unknown): value is FashionTryOnProviderCapabilities {
   return typeof value === 'object' && value !== null && 'standard_supported' in value && 'premium_supported' in value
 }
@@ -207,6 +272,27 @@ function isPersonSourceEnabled(value: FashionTryOnPersonSource): boolean {
 
 function isPremiumPresetKey(value: string | null | undefined): value is FashionTryOnPremiumPresetKey {
   return fashionTryOnPremiumPresetOptions.some((option) => option.value === value)
+}
+
+function isPackageKey(value: string | null | undefined): value is FashionTryOnPackageKey {
+  return fashionTryOnPackageOptions.some((option) => option.value === value)
+}
+
+function defaultVariationsOutputCount(): number {
+  const configuredDefault = variationsCapability.value?.default_output_count ?? 2
+
+  return allowedOutputCounts.value.includes(configuredDefault) ? configuredDefault : allowedOutputCounts.value[0] ?? 2
+}
+
+function selectOutputCount(value: number): void {
+  formError.value = ''
+  fieldErrors.value = {}
+
+  if (!allowedOutputCounts.value.includes(value)) {
+    return
+  }
+
+  requestedOutputCount.value = value
 }
 
 function defaultPremiumPreset(): FashionTryOnPremiumPresetKey {
@@ -283,6 +369,10 @@ function selectPackage(value: FashionTryOnPackageKey): void {
   }
 
   packageKey.value = value
+
+  if (value === 'variations') {
+    requestedOutputCount.value = defaultVariationsOutputCount()
+  }
 }
 
 function selectPersonSource(value: FashionTryOnPersonSource): void {
@@ -339,6 +429,16 @@ function applyQueryPreselection(): void {
   const productId = positiveInt(Array.isArray(route.query.productImageAssetId) ? route.query.productImageAssetId[0] : route.query.productImageAssetId)
   const requestedTier = Array.isArray(route.query.tier) ? route.query.tier[0] : route.query.tier
   const requestedPremiumPreset = Array.isArray(route.query.premiumPreset) ? route.query.premiumPreset[0] : route.query.premiumPreset
+  const requestedPackage = Array.isArray(route.query.package) ? route.query.package[0] : route.query.package
+  const requestedOutputs = positiveInt(Array.isArray(route.query.outputs) ? route.query.outputs[0] : route.query.outputs)
+
+  if (isPackageKey(requestedPackage) && isPackageEnabled(requestedPackage)) {
+    selectPackage(requestedPackage)
+  }
+
+  if (requestedOutputs !== null && allowedOutputCounts.value.includes(requestedOutputs)) {
+    requestedOutputCount.value = requestedOutputs
+  }
 
   if (personId !== null) {
     personImageAssetId.value = personId
@@ -362,6 +462,10 @@ function validateForm(): boolean {
 
   if (!isPackageEnabled(packageKey.value)) {
     errors.package_key = t('fashionTryOn.errors.packageUnavailable')
+  }
+
+  if (isVariationsSelected.value && !allowedOutputCounts.value.includes(requestedOutputCount.value)) {
+    errors.requested_output_count = t('fashionTryOn.errors.outputCountUnavailable')
   }
 
   if (!isPersonSourceEnabled(personSource.value)) {
@@ -394,6 +498,11 @@ function validateForm(): boolean {
 
   if (personSource.value === 'user_upload' && !consentConfirmed.value) {
     errors.person_image_permission_confirmed = t('fashionTryOn.errors.consentRequired')
+  }
+
+  if (hasInsufficientCredits.value) {
+    errors.requested_output_count = t('fashionTryOn.errors.insufficientCredits')
+    formError.value = t('fashionTryOn.errors.insufficientCredits')
   }
 
   fieldErrors.value = errors
@@ -434,6 +543,10 @@ async function submit(): Promise<void> {
     person_image_asset_id: personImageAssetId.value,
     product_image_asset_id: productImageAssetId.value,
     person_image_permission_confirmed: consentConfirmed.value,
+  }
+
+  if (isVariationsSelected.value) {
+    payload.requested_output_count = selectedOutputCount.value
   }
 
   if (tier.value === 'standard') {
@@ -524,12 +637,37 @@ onMounted(loadPage)
                       <span class="mt-2 block text-sm leading-6 text-neutral-400">{{ t('fashionTryOn.packages.' + option.value + '.description') }}</span>
                     </span>
                     <span class="rounded-full border border-neutral-700 px-3 py-1 text-xs font-semibold text-neutral-300">
-                      {{ option.isEnabled ? t('fashionTryOn.availableNow') : t('common.comingSoon') }}
+                      {{ availabilityBadgeLabel(option.isEnabled, option.status) }}
                     </span>
                   </span>
                 </button>
               </div>
               <p v-if="fieldErrors.package_key" id="fashion-package-error" class="mt-3 text-sm text-rose-400">{{ fieldErrors.package_key }}</p>
+
+              <div v-if="isVariationsSelected" class="mt-5 rounded-[1.5rem] border border-emerald-900/50 bg-emerald-950/20 p-4" :data-invalid="Boolean(fieldErrors.requested_output_count)" data-testid="fashion-output-count-section">
+                <p class="text-sm font-semibold text-emerald-100">{{ t('fashionTryOn.outputCountTitle') }}</p>
+                <p class="mt-2 text-sm leading-6 text-emerald-100/70">{{ t('fashionTryOn.outputCountBody') }}</p>
+                <div class="mt-4 grid grid-cols-3 gap-2" role="radiogroup" :aria-label="t('fashionTryOn.outputCountTitle')">
+                  <button
+                    v-for="count in allowedOutputCounts"
+                    :key="count"
+                    type="button"
+                    role="radio"
+                    :aria-checked="requestedOutputCount === count"
+                    class="rounded-2xl border px-3 py-3 text-center text-sm font-semibold transition"
+                    :class="requestedOutputCount === count ? 'border-emerald-300 bg-emerald-300 text-emerald-950' : 'border-neutral-700 bg-neutral-950/60 text-neutral-200 hover:border-emerald-500'"
+                    :data-testid="`fashion-output-count-${count}`"
+                    @click="selectOutputCount(count)"
+                  >
+                    {{ count }}
+                  </button>
+                </div>
+                <p class="mt-3 text-xs leading-5 text-emerald-100/70" data-testid="fashion-variations-cost-summary">
+                  {{ t('fashionTryOn.variationsCostSummary', { count: selectedOutputCount, perImage: perImageCreditCostLabel, total: creditCostLabel }) }}
+                </p>
+                <p class="mt-1 text-xs leading-5 text-neutral-500">{{ t('fashionTryOn.higherCountsMayTakeLonger') }}</p>
+                <p v-if="fieldErrors.requested_output_count" id="fashion-output-count-error" class="mt-3 text-sm text-rose-400">{{ fieldErrors.requested_output_count }}</p>
+              </div>
             </fieldset>
           </section>
 
@@ -593,7 +731,7 @@ onMounted(loadPage)
                   <span class="block text-sm font-semibold text-white">{{ t('fashionTryOn.personSources.' + option.value + '.label') }}</span>
                   <span class="mt-2 block text-xs leading-5 text-neutral-400">{{ t('fashionTryOn.personSources.' + option.value + '.description') }}</span>
                   <span class="mt-3 inline-flex rounded-full border border-neutral-700 px-2.5 py-1 text-[11px] font-semibold text-neutral-300">
-                    {{ option.isEnabled ? t('fashionTryOn.availableNow') : t('common.comingSoon') }}
+                    {{ availabilityBadgeLabel(option.isEnabled, option.status) }}
                   </span>
                 </button>
               </div>
@@ -816,8 +954,8 @@ onMounted(loadPage)
             <button
               type="submit"
               class="mt-5 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 text-sm font-black transition"
-              :class="isSubmitting || !isSelectedPremiumPresetEnabled ? 'cursor-not-allowed border border-neutral-800 text-neutral-500' : 'bg-white text-neutral-950 hover:bg-emerald-300'"
-              :disabled="isSubmitting || !isSelectedPremiumPresetEnabled"
+              :class="isSubmitting || !isSelectedPremiumPresetEnabled || hasInsufficientCredits ? 'cursor-not-allowed border border-neutral-800 text-neutral-500' : 'bg-white text-neutral-950 hover:bg-emerald-300'"
+              :disabled="isSubmitting || !isSelectedPremiumPresetEnabled || hasInsufficientCredits"
               data-testid="fashion-generate-button"
             >
               <span v-if="isSubmitting" class="size-5 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950" aria-hidden="true" />

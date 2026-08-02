@@ -3,11 +3,15 @@
 namespace App\Services\Generation;
 
 use App\Models\Generation;
+use App\Services\Credits\CreditService;
 use Illuminate\Support\Facades\DB;
 
 class FashionTryOnGenerationProcessor
 {
-    public function __construct(private readonly FashionTryOnProviderManager $providers) {}
+    public function __construct(
+        private readonly FashionTryOnProviderManager $providers,
+        private readonly CreditService $credits,
+    ) {}
 
     public function process(int $generationId): void
     {
@@ -65,10 +69,51 @@ class FashionTryOnGenerationProcessor
 
             $generation->forceFill([
                 'status' => Generation::STATUS_COMPLETED,
+                'cost_usd' => $this->providerCostUsd($output) ?? $generation->cost_usd,
                 'output_payload' => $output,
                 'error_message' => null,
                 'finished_at' => now(),
             ])->save();
         });
+
+        $this->applyPartialRefund($generationId, $output);
+    }
+
+    /** @param array<string, mixed> $output */
+    private function providerCostUsd(array $output): ?float
+    {
+        $actual = data_get($output, 'provider_metadata.actual_provider_cost_usd');
+
+        if (is_numeric($actual)) {
+            return (float) $actual;
+        }
+
+        $estimated = data_get($output, 'provider_metadata.estimated_provider_cost_usd');
+
+        return is_numeric($estimated) ? (float) $estimated : null;
+    }
+
+    /** @param array<string, mixed> $output */
+    private function applyPartialRefund(int $generationId, array $output): void
+    {
+        $refund = $output['credit_refund'] ?? null;
+
+        if (! is_array($refund) || ($refund['type'] ?? null) !== 'partial_output') {
+            return;
+        }
+
+        $amount = is_numeric($refund['amount'] ?? null) ? (int) $refund['amount'] : 0;
+        $metadata = is_array($refund['metadata'] ?? null) ? $refund['metadata'] : [];
+        $reason = is_string($refund['reason'] ?? null)
+            ? $refund['reason']
+            : 'Partial refund for missing Fashion Try-On variations';
+
+        $this->credits->refundUsageAmount(
+            generation: Generation::query()->findOrFail($generationId),
+            requestedAmount: $amount,
+            reason: $reason,
+            metadata: $metadata + ['refund_scope' => 'fashion_try_on_partial_output'],
+            auditZeroAmount: true,
+        );
     }
 }

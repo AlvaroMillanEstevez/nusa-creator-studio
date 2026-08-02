@@ -5,6 +5,7 @@ return [
     'real_enabled' => (bool) env('FASHION_TRY_ON_REAL_ENABLED', false),
     'real_internal_only' => (bool) env('FASHION_TRY_ON_REAL_INTERNAL_ONLY', true),
     'public_enabled' => (bool) env('FASHION_TRY_ON_PUBLIC_ENABLED', true),
+    'variations_enabled' => (bool) env('FASHION_TRY_ON_VARIATIONS_ENABLED', false),
 
     'credit_costs' => [
         'standard' => env('FASHION_TRY_ON_STANDARD_CREDIT_COST', 2),
@@ -35,6 +36,9 @@ return [
         'moderation_level' => env('FASHN_MODERATION_LEVEL', 'permissive'),
         'output_format' => env('FASHN_OUTPUT_FORMAT', 'png'),
         'return_base64' => (bool) env('FASHN_RETURN_BASE64', true),
+
+        'output_max_bytes_per_image' => (int) env('FASHN_OUTPUT_MAX_BYTES_PER_IMAGE', 33554432),
+        'output_max_bytes_total' => (int) env('FASHN_OUTPUT_MAX_BYTES_TOTAL', 134217728),
 
         'connect_timeout_seconds' => (int) env('FASHN_CONNECT_TIMEOUT_SECONDS', 30),
         'request_timeout_seconds' => (int) env('FASHN_REQUEST_TIMEOUT_SECONDS', 120),

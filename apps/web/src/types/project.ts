@@ -384,6 +384,7 @@ export type FashionTryOnCategory = (typeof fashionTryOnCategoryOptions)[number][
 export type FashionTryOnGarmentPhotoType = (typeof fashionTryOnGarmentPhotoTypeOptions)[number]['value']
 export type FashionTryOnStandardMode = (typeof fashionTryOnStandardModeOptions)[number]['value']
 export type FashionTryOnPremiumPresetKey = (typeof fashionTryOnPremiumPresetOptions)[number]['value']
+export type FashionTryOnOutputCount = 1 | 2 | 3 | 4
 export type CreatorPlatform = VoiceoverPlatform | FashionPlatform | MotionVideoPlatform | WorkspacePlatform
 
 export type ProjectType =
@@ -491,6 +492,29 @@ export interface MotionAiVideoProviderCapabilities {
   source_modes: MotionAiVideoSourceMode[] | string[]
 }
 
+export interface FashionTryOnPackageCapability {
+  key: FashionTryOnPackageKey | string
+  enabled: boolean
+  status: 'available' | 'beta' | 'coming_soon' | string
+  allowed_output_counts: number[]
+  default_output_count: number | null
+  selection_required_for_continuation?: boolean
+  partial_refund_supported?: boolean
+}
+
+export interface FashionTryOnVariationsCapability {
+  enabled: boolean
+  allowed_output_counts: number[]
+  default_output_count: number
+  max_output_count: number
+  selection_required_for_continuation: boolean
+  partial_refund_supported: boolean
+}
+
+export interface FashionTryOnOutputLimits {
+  max_bytes_per_output?: number | null
+  max_total_output_bytes?: number | null
+}
 export interface FashionTryOnProviderCapabilities {
   provider: 'mock' | 'fashn' | string
   mock_mode: boolean
@@ -518,6 +542,7 @@ export interface FashionTryOnProviderCapabilities {
   premium_presets: FashionTryOnPremiumPresetKey[] | string[]
   available_premium_presets?: FashionTryOnPremiumPresetCapability[]
   known_premium_presets?: FashionTryOnPremiumPresetCapability[]
+  packages?: FashionTryOnPackageCapability[]
   active_packages?: FashionTryOnPackageKey[] | string[]
   default_package?: FashionTryOnPackageKey | string
   future_packages?: FashionTryOnPackageKey[] | string[]
@@ -528,6 +553,8 @@ export interface FashionTryOnProviderCapabilities {
   max_outputs_enabled?: number
   multi_output_supported?: boolean
   multi_output_generation_enabled?: boolean
+  variations?: FashionTryOnVariationsCapability
+  output_limits?: FashionTryOnOutputLimits
   consent_required: boolean
   person_image_required: boolean
   product_image_required: boolean
@@ -549,6 +576,12 @@ export interface FashionTryOnPremiumPresetCapability {
   nusa_credit_cost: number | null
   configured_nusa_credit_cost?: number | null
   per_output_credit_cost?: number | null
+  total_credit_costs?: Record<number, number> | null
+  expected_provider_credits_per_output?: number | null
+  expected_provider_credits_total_by_count?: Record<number, number> | null
+  allowed_output_counts?: number[]
+  default_output_count?: number | null
+  max_output_count?: number | null
   pricing_configured: boolean
   enabled: boolean
   disabled_reason: string | null
@@ -781,6 +814,7 @@ export interface GenerateFashionTryOnPayload {
   premium_prompt?: string | null
   quality_preset?: string | null
   prompt?: string | null
+  requested_output_count?: FashionTryOnOutputCount | number | null
   person_image_permission_confirmed: boolean
 }
 export interface FashionTryOnFormPayload {
@@ -1077,6 +1111,8 @@ export interface FashionTryOnProviderMetadata {
   provider_generation_mode?: string | null
   provider_seed?: number | null
   expected_provider_credits?: number | null
+  expected_provider_credits_per_output?: number | null
+  expected_provider_credits_total?: number | null
   actual_provider_credits?: number | null
   quality_preset?: string | null
   output_count?: number | null
@@ -1087,6 +1123,12 @@ export interface FashionTryOnProviderMetadata {
   [key: string]: unknown
 }
 
+export interface FashionTryOnCreditRefund {
+  type?: string | null
+  amount?: number | null
+  reason?: string | null
+  metadata?: Record<string, string | number | boolean | null> | null
+}
 export interface FashionTryOnResult {
   try_on_title: string
   concept_summary: string
@@ -1100,6 +1142,18 @@ export interface FashionTryOnResult {
   configured_nusa_credit_cost?: number | null
   per_output_credit_cost?: number | null
   output_count?: number | null
+  total_nusa_credit_cost?: number | null
+  requested_output_count?: number | null
+  provider_observed_output_count?: number | null
+  delivered_output_count?: number | null
+  missing_output_count?: number | null
+  partial_output?: boolean | null
+  refunded_credit_amount?: number | null
+  net_credit_cost?: number | null
+  selected_image_asset_id?: number | null
+  selected_output_index?: number | null
+  selection_updated_at?: string | null
+  credit_refund?: FashionTryOnCreditRefund | null
   model_reference_summary?: string
   garment_reference_summary?: string
   selected_person_image?: FashionTryOnSelectedImageSummary
@@ -1111,7 +1165,7 @@ export interface FashionTryOnResult {
   final_image_download_url?: string | null
   rendered_image_asset?: FashionTryOnRenderedImageAsset | null
   rendered_image_assets?: FashionTryOnRenderedImageAsset[]
-  generation_summary?: Record<string, string | number | null>
+  generation_summary?: Record<string, string | number | boolean | null>
   provider_metadata?: FashionTryOnProviderMetadata | null
   provider_request_summary?: Record<string, unknown>
   input_readiness?: Record<string, boolean>

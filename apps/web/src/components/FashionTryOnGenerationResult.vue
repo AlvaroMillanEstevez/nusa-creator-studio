@@ -4,8 +4,9 @@ import { RouterLink } from 'vue-router'
 
 import { useTranslations } from '@/i18n'
 import { fetchMediaBlob } from '@/services/media'
+import { selectFashionTryOnResult } from '@/services/projects'
 import { useAuthStore } from '@/stores/auth'
-import { fashionTryOnPremiumPresetOptions } from '@/types/project'
+import { fashionTryOnPremiumPresetOptions, isFashionTryOnResult } from '@/types/project'
 import type { FashionTryOnRenderedImageAsset, FashionTryOnResult } from '@/types/project'
 import { formatDate, formatLabel } from '@/utils/formatters'
 
@@ -29,14 +30,19 @@ interface NormalizedTryOnImage extends FashionTryOnRenderedImageAsset {
 
 const { t } = useTranslations()
 const auth = useAuthStore()
-const imageUrl = ref<string | null>(null)
+const previewUrls = ref<Record<number, string>>({})
 const imageError = ref('')
 const downloadError = ref('')
+const selectionError = ref('')
 const isPreviewLoading = ref(false)
 const isDownloading = ref(false)
+const isSelectingFavorite = ref(false)
+const selectedImageAssetIdOverride = ref<number | null>(null)
+const selectedOutputIndexOverride = ref<number | null>(null)
 
 const normalizedImages = computed<NormalizedTryOnImage[]>(() => normalizeRenderedImages(props.result))
-const selectedImage = computed(() => normalizedImages.value[0] ?? null)
+const selectedImageAssetId = computed(() => selectedImageAssetIdOverride.value ?? numberValue(props.result.selected_image_asset_id))
+const selectedOutputIndex = computed(() => selectedOutputIndexOverride.value ?? numberValue(props.result.selected_output_index))
 const packageKey = computed(() => stringValue(
   props.result.package_key
     ?? props.result.provider_metadata?.package_key
@@ -108,9 +114,17 @@ const outputCountLabel = computed(() => {
 
   return t('fashionTryOn.result.manyImageOutputs', { count: outputCount.value })
 })
-const finalImageAssetId = computed(() => selectedImage.value?.id ?? numberValue(props.result.final_image_asset_id))
-const streamUrl = computed(() => selectedImage.value?.stream_url ?? props.result.final_image_stream_url ?? null)
+const isVariationsResult = computed(() => packageKey.value === 'variations' || normalizedImages.value.length > 1)
+const selectedImage = computed(() => {
+  const selectedId = selectedImageAssetId.value
+  const explicitlySelected = selectedId === null ? null : normalizedImages.value.find((image) => image.id === selectedId) ?? null
+
+  return explicitlySelected ?? normalizedImages.value[0] ?? null
+})
+const hasFavoriteSelection = computed(() => !isVariationsResult.value || selectedImageAssetId.value !== null)
+const finalImageAssetId = computed(() => hasFavoriteSelection.value ? selectedImage.value?.id ?? numberValue(props.result.final_image_asset_id) : null)
 const downloadUrl = computed(() => selectedImage.value?.download_url ?? props.result.final_image_download_url ?? null)
+const selectedPreviewUrl = computed(() => selectedImage.value === null ? null : previewUrls.value[selectedImage.value.id] ?? null)
 const hasRenderedImage = computed(() => props.result.generated_image.status === 'rendered' && normalizedImages.value.length > 0)
 const isMockResult = computed(() => props.result.generated_image.provider === 'mock' || props.result.generated_image.status !== 'rendered')
 const projectRoute = computed(() => props.projectId === null || props.projectId === undefined ? '/dashboard' : `/projects/${String(props.projectId)}`)
@@ -119,7 +133,14 @@ const generateAnotherRoute = computed(() => {
     return '/dashboard'
   }
 
-  const query: Record<string, string> = {}
+  const query: Record<string, string> = {
+    package: packageKey.value,
+  }
+
+  const requestedCount = numberValue(props.result.requested_output_count ?? props.result.generation_summary?.requested_output_count)
+  if (requestedCount !== null && requestedCount > 1) {
+    query.outputs = String(requestedCount)
+  }
 
   if (props.result.selected_person_image?.id !== undefined) {
     query.personImageAssetId = String(props.result.selected_person_image.id)
@@ -174,7 +195,10 @@ const summaryItems = computed<SummaryItem[]>(() => [
   { label: 'Category', value: props.result.generation_summary?.category ?? props.result.category },
   { label: 'Person photo', value: assetLabel(props.result.selected_person_image) },
   { label: 'Product photo', value: assetLabel(props.result.selected_product_image) },
-  { label: 'Output count', value: outputCount.value > 0 ? outputCount.value : null },
+  { label: 'Requested outputs', value: numberValue(props.result.requested_output_count ?? props.result.generation_summary?.requested_output_count) },
+  { label: 'Delivered outputs', value: numberValue(props.result.delivered_output_count ?? props.result.generation_summary?.delivered_output_count) ?? (outputCount.value > 0 ? outputCount.value : null) },
+  { label: 'Favorite result', value: selectedOutputIndex.value === null ? null : 'Result ' + String(selectedOutputIndex.value + 1) },
+  { label: 'Refunded credits', value: (props.result.refunded_credit_amount ?? 0) > 0 ? props.result.refunded_credit_amount : null },
   { label: 'Output format', value: props.result.generation_summary?.output_format ?? selectedImage.value?.mime_type ?? props.result.rendered_image_asset?.mime_type },
 ].filter((item): item is SummaryItem => item.value !== null && item.value !== undefined && item.value !== ''))
 const canViewDiagnostics = computed(() => {
@@ -313,29 +337,70 @@ function safeList(values: string[] | undefined): string[] {
 }
 
 function revokePreview(): void {
-  if (imageUrl.value !== null) {
-    URL.revokeObjectURL(imageUrl.value)
-    imageUrl.value = null
-  }
+  Object.values(previewUrls.value).forEach((url) => URL.revokeObjectURL(url))
+  previewUrls.value = {}
 }
 
-async function loadPreview(): Promise<void> {
+async function loadPreviews(): Promise<void> {
   revokePreview()
   imageError.value = ''
 
-  if (!hasRenderedImage.value || streamUrl.value === null) {
+  if (!hasRenderedImage.value) {
+    return
+  }
+
+  const images = normalizedImages.value.filter((image) => image.stream_url !== null)
+
+  if (images.length === 0) {
     return
   }
 
   isPreviewLoading.value = true
 
   try {
-    const blob = await fetchMediaBlob(streamUrl.value)
-    imageUrl.value = URL.createObjectURL(blob)
+    const entries = await Promise.all(images.map(async (image) => {
+      const blob = await fetchMediaBlob(String(image.stream_url))
+
+      return [image.id, URL.createObjectURL(blob)] as const
+    }))
+    previewUrls.value = Object.fromEntries(entries)
   } catch {
     imageError.value = 'Could not load the secure image preview.'
   } finally {
     isPreviewLoading.value = false
+  }
+}
+
+async function selectFavorite(image: NormalizedTryOnImage): Promise<void> {
+  selectionError.value = ''
+
+  if (!isVariationsResult.value) {
+    return
+  }
+
+  if (props.generationId === null || props.generationId === undefined) {
+    selectedImageAssetIdOverride.value = image.id
+    selectedOutputIndexOverride.value = image.output_index
+    return
+  }
+
+  isSelectingFavorite.value = true
+
+  try {
+    const generation = await selectFashionTryOnResult(props.generationId, image.id)
+    const resultPayload = generation.output_payload
+
+    if (isFashionTryOnResult(resultPayload)) {
+      selectedImageAssetIdOverride.value = numberValue(resultPayload.selected_image_asset_id) ?? image.id
+      selectedOutputIndexOverride.value = numberValue(resultPayload.selected_output_index) ?? image.output_index
+    } else {
+      selectedImageAssetIdOverride.value = image.id
+      selectedOutputIndexOverride.value = image.output_index
+    }
+  } catch {
+    selectionError.value = t('fashionTryOn.result.selectionFailed')
+  } finally {
+    isSelectingFavorite.value = false
   }
 }
 
@@ -364,11 +429,15 @@ async function downloadImage(): Promise<void> {
   }
 }
 
-watch(streamUrl, () => {
-  void loadPreview()
+watch(() => props.result, () => {
+  selectedImageAssetIdOverride.value = null
+  selectedOutputIndexOverride.value = null
+})
+watch(normalizedImages, () => {
+  void loadPreviews()
 })
 onMounted(() => {
-  void loadPreview()
+  void loadPreviews()
 })
 onBeforeUnmount(revokePreview)
 </script>
@@ -391,7 +460,7 @@ onBeforeUnmount(revokePreview)
         <div v-if="isPreviewLoading" class="flex min-h-80 items-center justify-center text-sm text-neutral-500" aria-live="polite">
           Loading secure image preview...
         </div>
-        <img v-else-if="imageUrl" :src="imageUrl" alt="Generated AI Fashion Try-On result" class="max-h-[720px] w-full object-contain" data-testid="fashion-result-image">
+        <img v-else-if="selectedPreviewUrl" :src="selectedPreviewUrl" alt="Generated AI Fashion Try-On result" class="max-h-[720px] w-full object-contain" data-testid="fashion-result-image">
         <div v-else class="flex min-h-80 items-center justify-center p-6 text-center text-sm leading-6 text-neutral-500">
           Secure image preview is not available right now. You can still try downloading it if the asset exists.
         </div>
@@ -400,11 +469,60 @@ onBeforeUnmount(revokePreview)
         {{ imageError }}
       </p>
 
-      <div v-if="normalizedImages.length > 1" class="mt-4 grid gap-3 sm:grid-cols-2" data-testid="fashion-rendered-image-assets">
-        <div v-for="image in normalizedImages" :key="image.id" class="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-sm text-neutral-300">
-          <p class="font-semibold text-neutral-100">Result {{ (image.output_index ?? 0) + 1 }}</p>
-          <p class="mt-1 text-xs text-neutral-500">Asset #{{ image.id }}</p>
+      <div v-if="result.partial_output" class="mt-4 rounded-2xl border border-amber-900/60 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100/80" data-testid="fashion-partial-output-warning">
+        {{ t('fashionTryOn.result.partialOutputWarning', { delivered: result.delivered_output_count ?? normalizedImages.length, requested: result.requested_output_count ?? outputCount, refund: result.refunded_credit_amount ?? 0 }) }}
+      </div>
+
+      <div v-if="normalizedImages.length > 1" class="mt-5 rounded-[1.75rem] border border-neutral-800 bg-neutral-950/50 p-4" data-testid="fashion-variation-gallery">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">{{ t('fashionTryOn.result.variationGallery') }}</p>
+            <p class="mt-2 text-sm leading-6 text-neutral-400">{{ hasFavoriteSelection ? t('fashionTryOn.result.favoriteSelectedHelp') : t('fashionTryOn.result.chooseFavoriteHelp') }}</p>
+          </div>
+          <span v-if="hasFavoriteSelection" class="w-fit rounded-full bg-emerald-300 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-emerald-950">
+            {{ t('fashionTryOn.result.favoriteSelected') }}
+          </span>
         </div>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2" data-testid="fashion-rendered-image-assets">
+          <article
+            v-for="image in normalizedImages"
+            :key="image.id"
+            class="overflow-hidden rounded-2xl border bg-neutral-950/70 text-sm text-neutral-300 transition"
+            :class="selectedImageAssetId === image.id ? 'border-emerald-400 shadow-[0_0_0_1px_rgba(52,211,153,0.35)]' : 'border-neutral-800'"
+            :data-testid="`fashion-variation-card-${image.id}`"
+          >
+            <div class="aspect-[4/5] bg-neutral-900">
+              <img v-if="previewUrls[image.id]" :src="previewUrls[image.id]" :alt="`Fashion Try-On variation ${(image.output_index ?? 0) + 1}`" class="size-full object-contain">
+              <div v-else class="flex size-full items-center justify-center p-4 text-center text-xs leading-5 text-neutral-500">
+                {{ t('fashionTryOn.result.previewLoading') }}
+              </div>
+            </div>
+            <div class="space-y-3 p-3">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-semibold text-neutral-100">{{ t('fashionTryOn.result.variationNumber', { number: (image.output_index ?? 0) + 1 }) }}</p>
+                  <p class="mt-1 text-xs text-neutral-500">Asset #{{ image.id }}</p>
+                </div>
+                <span v-if="selectedImageAssetId === image.id" class="rounded-full bg-emerald-300 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-950">
+                  {{ t('fashionTryOn.result.favorite') }}
+                </span>
+              </div>
+              <button
+                type="button"
+                class="flex min-h-11 w-full items-center justify-center rounded-2xl border border-emerald-800 px-3 text-xs font-semibold text-emerald-100 transition hover:border-emerald-400 hover:bg-emerald-950/40 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSelectingFavorite || selectedImageAssetId === image.id"
+                :data-testid="`fashion-select-variation-${image.id}`"
+                @click="selectFavorite(image)"
+              >
+                {{ selectedImageAssetId === image.id ? t('fashionTryOn.result.favoriteSelected') : t('fashionTryOn.result.selectFavorite') }}
+              </button>
+            </div>
+          </article>
+        </div>
+        <p v-if="selectionError" role="alert" class="mt-3 rounded-2xl border border-rose-900/60 bg-rose-950/30 p-3 text-sm text-rose-100">
+          {{ selectionError }}
+        </p>
       </div>
 
       <div class="mt-5 rounded-[1.75rem] border border-neutral-800 bg-neutral-950/50 p-4" data-testid="fashion-direct-actions">
@@ -451,6 +569,12 @@ onBeforeUnmount(revokePreview)
           <dd class="mt-2 break-words text-sm font-semibold text-neutral-100">{{ item.value }}</dd>
         </div>
       </dl>
+    </section>
+
+    <section v-if="isVariationsResult && !hasFavoriteSelection" class="rounded-[2rem] border border-sky-900/60 bg-sky-950/15 p-5" data-testid="fashion-motion-needs-favorite">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-300">{{ t('fashionTryOn.result.separateWorkflow') }}</p>
+      <h2 class="mt-2 text-xl font-bold text-sky-50">{{ t('fashionTryOn.result.chooseFavoriteForMotion') }}</h2>
+      <p class="mt-3 text-sm leading-7 text-sky-100/80">{{ t('fashionTryOn.result.chooseFavoriteForMotionCopy') }}</p>
     </section>
 
     <section v-if="animateRoute" class="rounded-[2rem] border border-sky-800/70 bg-sky-950/20 p-5" data-testid="fashion-motion-continuation">

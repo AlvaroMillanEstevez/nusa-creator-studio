@@ -192,6 +192,44 @@ const premiumCapabilities: FashionTryOnProviderCapabilities = {
   known_premium_presets: enabledPremiumPresets,
 }
 
+const variationsCapabilities: FashionTryOnProviderCapabilities = {
+  ...capabilities,
+  maximum_outputs: 4,
+  max_outputs_enabled: 4,
+  current_max_outputs: 4,
+  variations_enabled: true,
+  multi_output_generation_enabled: true,
+  packages: [
+    {
+      key: 'single_result',
+      enabled: true,
+      status: 'available',
+      allowed_output_counts: [1],
+      default_output_count: 1,
+      selection_required_for_continuation: false,
+      partial_refund_supported: false,
+    },
+    {
+      key: 'variations',
+      enabled: true,
+      status: 'beta',
+      allowed_output_counts: [2, 3, 4],
+      default_output_count: 2,
+      selection_required_for_continuation: true,
+      partial_refund_supported: true,
+    },
+  ],
+  active_packages: ['single_result', 'variations'],
+  future_packages: ['catalog_pack', 'catalog_video_pack'],
+  variations: {
+    enabled: true,
+    allowed_output_counts: [2, 3, 4],
+    default_output_count: 2,
+    max_output_count: 4,
+    selection_required_for_continuation: true,
+    partial_refund_supported: true,
+  },
+}
 const ProjectAssetInputStub = {
   props: ['modelValue', 'usageRole', 'title', 'helperText'],
   emits: ['update:modelValue'],
@@ -396,6 +434,52 @@ describe('FashionTryOnActionView', () => {
     expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/700')
   })
 
+  it('submits Variations with canonical output count and total-cost UX', async () => {
+    const fetchMock = successfulFetch(undefined, variationsCapabilities)
+    const { wrapper, router } = await mountView(fetchMock)
+
+    await wrapper.get('[data-testid="fashion-package-variations"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="fashion-output-count-section"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Beta')
+    expect(wrapper.text()).toContain('2 images')
+    expect(wrapper.text()).toContain('4 credits')
+
+    await wrapper.get('[data-testid="fashion-output-count-3"]').trigger('click')
+    await wrapper.get('[data-testid="select-model_reference"]').trigger('click')
+    await wrapper.get('[data-testid="select-garment_reference"]').trigger('click')
+    await wrapper.get('[data-testid="fashion-consent-checkbox"]').setValue(true)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const submitCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+      return url === API_BASE_URL + '/projects/42/generate-fashion-try-on' && init?.method === 'POST'
+    })
+
+    if (submitCall === undefined) {
+      throw new Error('Fashion Try-On Variations submit call was not captured.')
+    }
+
+    const [, request] = submitCall
+    expect(JSON.parse(String(request?.body))).toEqual({
+      package_key: 'variations',
+      person_source: 'user_upload',
+      tier: 'standard',
+      person_image_asset_id: 101,
+      product_image_asset_id: 202,
+      person_image_permission_confirmed: true,
+      requested_output_count: 3,
+      category: 'auto',
+      garment_photo_type: 'auto',
+      standard_mode: 'balanced',
+    })
+    expect(String(request?.body)).not.toContain('num_samples')
+    expect(String(request?.body)).not.toContain('num_images')
+    expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/700')
+  })
   it('ignores invalid query preselection IDs safely', async () => {
     const { wrapper } = await mountView(
       successfulFetch(),

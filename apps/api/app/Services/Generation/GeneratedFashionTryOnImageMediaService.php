@@ -20,6 +20,47 @@ class GeneratedFashionTryOnImageMediaService
     /**
      * @param  array<string, mixed>  $metadata
      */
+    public function storeOrReuse(
+        User $user,
+        Project $project,
+        int $generationId,
+        int $outputIndex,
+        string $imageBinary,
+        string $mimeType,
+        array $metadata,
+    ): MediaAsset {
+        $existing = $this->existingOutputAsset($user, $project, $generationId, $outputIndex);
+
+        if ($existing instanceof MediaAsset) {
+            return $existing;
+        }
+
+        return $this->store(
+            user: $user,
+            project: $project,
+            generationId: $generationId,
+            imageBinary: $imageBinary,
+            mimeType: $mimeType,
+            metadata: array_merge($metadata, ['output_index' => $outputIndex]),
+        );
+    }
+
+    /**
+     * @param  iterable<MediaAsset>  $assets
+     * @param  array<string, mixed>  $metadata
+     */
+    public function mergeMetadata(iterable $assets, array $metadata): void
+    {
+        foreach ($assets as $asset) {
+            $asset->forceFill([
+                'metadata' => array_filter(array_merge($asset->metadata ?? [], $metadata), fn (mixed $value): bool => $value !== null),
+            ])->save();
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
     public function store(
         User $user,
         Project $project,
@@ -43,7 +84,8 @@ class GeneratedFashionTryOnImageMediaService
             now()->format('Y'),
             now()->format('m'),
         );
-        $filename = sprintf('fashion-try-on-%d-%s.%s', $generationId, Str::uuid(), $extension);
+        $outputIndex = is_numeric($metadata['output_index'] ?? null) ? (int) $metadata['output_index'] : 0;
+        $filename = sprintf('fashion-try-on-%d-%d-%s.%s', $generationId, $outputIndex, Str::uuid(), $extension);
         $path = "{$directory}/{$filename}";
 
         $stored = Storage::disk($disk)->put($path, $imageBinary, [
@@ -60,7 +102,7 @@ class GeneratedFashionTryOnImageMediaService
             'usage_role' => 'fashion_try_on_result',
             'disk' => $disk,
             'path' => $path,
-            'original_name' => 'fashion-try-on-'.$generationId.'.'.$extension,
+            'original_name' => 'fashion-try-on-'.$generationId.'-'.$outputIndex.'.'.$extension,
             'mime_type' => $mimeType,
             'size_bytes' => strlen($imageBinary),
             'metadata' => array_filter(array_merge([
@@ -97,5 +139,22 @@ class GeneratedFashionTryOnImageMediaService
         if (is_string($detectedMime) && isset(self::EXTENSIONS[$detectedMime]) && $detectedMime !== $mimeType) {
             throw new RuntimeException('Generated image MIME type did not match its content.');
         }
+    }
+
+    private function existingOutputAsset(User $user, Project $project, int $generationId, int $outputIndex): ?MediaAsset
+    {
+        return MediaAsset::query()
+            ->where('user_id', $user->getKey())
+            ->where('project_id', $project->getKey())
+            ->where('type', 'image')
+            ->where('usage_role', 'fashion_try_on_result')
+            ->get()
+            ->first(function (MediaAsset $asset) use ($generationId, $outputIndex): bool {
+                $metadata = is_array($asset->metadata) ? $asset->metadata : [];
+
+                return (int) ($metadata['generation_id'] ?? 0) === $generationId
+                    && (int) ($metadata['output_index'] ?? -1) === $outputIndex
+                    && ($metadata['workflow'] ?? null) === 'fashion_try_on';
+            });
     }
 }

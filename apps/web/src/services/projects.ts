@@ -304,6 +304,16 @@ export function getFashionTryOnCapabilities(): Promise<FashionTryOnCapabilitiesR
   return apiGet<FashionTryOnCapabilitiesResponse>('/fashion-try-on/capabilities')
 }
 
+export function selectFashionTryOnResult(
+  generationId: number | string,
+  mediaAssetId: number,
+): Promise<CreatorGeneration> {
+  return apiPatch<ResourceResponse<CreatorGeneration>, { media_asset_id: number }>(
+    '/generations/' + generationId + '/fashion-try-on/selection',
+    { media_asset_id: mediaAssetId },
+  ).then((response) => response.data)
+}
+
 export function generateMotionVideo(
   projectId: number | string,
   payload: GenerateMotionAiVideoPayload,

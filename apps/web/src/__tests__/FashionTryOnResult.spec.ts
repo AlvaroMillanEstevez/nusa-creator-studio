@@ -7,9 +7,14 @@ import FashionTryOnGenerationResult from '@/components/FashionTryOnGenerationRes
 import type { FashionTryOnResult } from '@/types/project'
 
 const fetchMediaBlobMock = vi.hoisted(() => vi.fn<(streamOrDownloadUrl: string) => Promise<Blob>>())
+const selectFashionTryOnResultMock = vi.hoisted(() => vi.fn<(generationId: number, mediaAssetId: number) => Promise<unknown>>())
 
 vi.mock('@/services/media', () => ({
   fetchMediaBlob: fetchMediaBlobMock,
+}))
+
+vi.mock('@/services/projects', () => ({
+  selectFashionTryOnResult: selectFashionTryOnResultMock,
 }))
 
 function mountResult(result: FashionTryOnResult, props: Partial<InstanceType<typeof FashionTryOnGenerationResult>['$props']> = {}) {
@@ -30,6 +35,7 @@ describe('FashionTryOnGenerationResult', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     fetchMediaBlobMock.mockReset()
+    selectFashionTryOnResultMock.mockReset()
     vi.stubGlobal('URL', {
       createObjectURL: vi.fn<(blob: Blob | MediaSource) => string>(() => 'blob://fashion-result'),
       revokeObjectURL: vi.fn<(url: string) => void>(),
@@ -200,6 +206,82 @@ describe('FashionTryOnGenerationResult', () => {
   })
 
 
+  it('shows Variations gallery and saves a favorite before Motion continuation', async () => {
+    fetchMediaBlobMock.mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
+
+    const result: FashionTryOnResult = {
+      try_on_title: 'AI Fashion Try-On variations',
+      concept_summary: 'Several private try-on images were generated.',
+      package_key: 'variations',
+      tier: 'standard',
+      requested_output_count: 2,
+      delivered_output_count: 2,
+      selected_image_asset_id: null,
+      selected_output_index: null,
+      generated_image: {
+        status: 'rendered',
+        message: 'Images rendered successfully.',
+        provider: 'fashn',
+      },
+      final_image_asset_id: 601,
+      final_image_asset_ids: [601, 602],
+      rendered_image_assets: [
+        {
+          id: 601,
+          stream_url: '/api/v1/media-assets/601/stream',
+          download_url: '/api/v1/media-assets/601/download',
+          mime_type: 'image/png',
+          size_bytes: 1024,
+          output_index: 0,
+        },
+        {
+          id: 602,
+          stream_url: '/api/v1/media-assets/602/stream',
+          download_url: '/api/v1/media-assets/602/download',
+          mime_type: 'image/png',
+          size_bytes: 1024,
+          output_index: 1,
+        },
+      ],
+      generation_summary: {
+        output_count: 2,
+        requested_output_count: 2,
+        delivered_output_count: 2,
+        package_key: 'variations',
+      },
+      compliance_notes: [],
+    }
+
+    selectFashionTryOnResultMock.mockResolvedValue({
+      output_payload: {
+        ...result,
+        selected_image_asset_id: 602,
+        selected_output_index: 1,
+      },
+    })
+
+    const wrapper = mountResult(result)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="fashion-variation-gallery"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="fashion-motion-needs-favorite"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="fashion-motion-continuation"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Choose your favorite result')
+
+    await wrapper.get('[data-testid="fashion-select-variation-602"]').trigger('click')
+    await flushPromises()
+
+    expect(selectFashionTryOnResultMock).toHaveBeenCalledWith(77, 602)
+    expect(wrapper.text()).toContain('Favorite selected')
+    expect(wrapper.find('[data-testid="fashion-motion-continuation"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="fashion-continue-motion"]').attributes('href')).toContain('productImageAssetId')
+    expect(wrapper.get('[data-testid="fashion-continue-motion"]').attributes('href')).toContain('602')
+
+    const generateAnother = wrapper.findAll('a').find((link) => link.text().includes('Generate another version'))
+    expect(generateAnother?.attributes('href')).toContain('package')
+    expect(generateAnother?.attributes('href')).toContain('variations')
+    expect(generateAnother?.attributes('href')).toContain('outputs')
+  })
   it('normalizes historical singular image results for preview and Motion continuation', async () => {
     fetchMediaBlobMock.mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
 
