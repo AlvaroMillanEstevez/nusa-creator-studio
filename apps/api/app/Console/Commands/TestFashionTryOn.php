@@ -20,7 +20,7 @@ class TestFashionTryOn extends Command
 {
     protected $signature = 'nusa:test-fashion-try-on
         {--package=single_result : Package: single_result or variations}
-        {--outputs=1 : Output count. Single requires 1; Variations allows 2, 3 or 4}
+        {--outputs=1 : Output count. Single requires 1; Variations counts depend on the selected tier/preset}
         {--tier=standard : standard or premium}
         {--preset= : Premium preset: fast_1k, balanced_2k, quality_4k}
         {--prompt= : Optional Premium styling instruction; never printed}
@@ -56,7 +56,8 @@ class TestFashionTryOn extends Command
             $user = $project->user()->firstOrFail();
             $tier = $this->tier();
             $packageKey = $this->packageOption();
-            $requestedOutputCount = $this->outputCountOption($packageKey);
+            $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM ? $this->premiumPresetOption() : null;
+            $requestedOutputCount = $this->outputCountOption($packageKey, $tier, $premiumPreset);
 
             if ($packageKey === FashionTryOnCapabilities::PACKAGE_VARIATIONS && ! FashionTryOnCapabilities::variationsEnabled()) {
                 $this->error('Try-On Variations is visible for beta planning but disabled. Set FASHION_TRY_ON_VARIATIONS_ENABLED=true only for controlled validation.');
@@ -199,7 +200,7 @@ class TestFashionTryOn extends Command
         return $package;
     }
 
-    private function outputCountOption(string $packageKey): int
+    private function outputCountOption(string $packageKey, string $tier, ?string $premiumPreset): int
     {
         $value = $this->option('outputs');
 
@@ -211,12 +212,16 @@ class TestFashionTryOn extends Command
         }
 
         $count = (int) $value;
+        $allowedCounts = FashionTryOnCapabilities::allowedOutputCounts($packageKey, $tier, $premiumPreset);
 
-        if (! in_array($count, FashionTryOnCapabilities::allowedOutputCounts($packageKey), true)) {
+        if (! in_array($count, $allowedCounts, true)) {
             throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
                 'stage' => 'cli_option_validation',
                 'option' => 'outputs',
                 'package_key' => $packageKey,
+                'tier' => $tier,
+                'premium_preset' => $premiumPreset,
+                'allowed_output_counts' => $allowedCounts,
             ]);
         }
 
@@ -326,6 +331,8 @@ class TestFashionTryOn extends Command
             'resolution' => $inputs['resolution'] ?? null,
             'quality_mode' => $inputs['generation_mode'] ?? $inputs['mode'] ?? 'unknown',
             'requested_output_count' => $requestedOutputCount,
+            'maximum_allowed_outputs' => FashionTryOnCapabilities::maximumOutputCountForSelection($tier, $preset['key'] ?? null),
+            'allowed_output_counts' => implode(',', FashionTryOnCapabilities::allowedOutputCounts((string) ($input['package_key'] ?? FashionTryOnCapabilities::PACKAGE_SINGLE_RESULT), $tier, $preset['key'] ?? null)),
             'provider_output_parameter_name' => $providerOutputParameter,
             'output_count' => $inputs['num_samples'] ?? $inputs['num_images'] ?? 1,
             'person_image_asset_id' => $personImage->getKey(),
@@ -340,6 +347,7 @@ class TestFashionTryOn extends Command
             'return_base64' => ($inputs['return_base64'] ?? false) ? 'true' : 'false',
             'max_decoded_bytes_per_output' => FashionTryOnCapabilities::maxOutputBytesPerImage(),
             'max_decoded_bytes_total' => FashionTryOnCapabilities::maxOutputBytesTotal(),
+            'high_resolution_multi_output_memory_warning' => ($input['package_key'] ?? null) === FashionTryOnCapabilities::PACKAGE_VARIATIONS ? 'Large Base64 JSON responses may require substantial local server memory during controlled validation.' : null,
             'payload_byte_size' => strlen(json_encode($payload, JSON_UNESCAPED_SLASHES) ?: ''),
             'expected_provider_credits_per_output' => $expectedProviderCreditsPerOutput,
             'expected_provider_credits_total' => $expectedProviderCredits,

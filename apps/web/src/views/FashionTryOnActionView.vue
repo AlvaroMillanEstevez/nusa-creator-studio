@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
@@ -104,16 +104,17 @@ const premiumPresetChoices = computed<FashionTryOnPremiumPresetCapability[]>(() 
     quality_label: option.value === 'fast_1k' ? 'Fast' : option.value === 'quality_4k' ? 'Quality' : 'Balanced',
     expected_provider_credits: option.value === 'fast_1k' ? 1 : option.value === 'quality_4k' ? 5 : 3,
     expected_provider_credits_per_output: option.value === 'fast_1k' ? 1 : option.value === 'quality_4k' ? 5 : 3,
-    expected_provider_credits_total_by_count: option.value === 'fast_1k' ? { 2: 2, 3: 3, 4: 4 } : option.value === 'quality_4k' ? { 2: 10, 3: 15, 4: 20 } : { 2: 6, 3: 9, 4: 12 },
+    expected_provider_credits_total_by_count: option.value === 'fast_1k' ? { 2: 2, 3: 3, 4: 4 } : option.value === 'quality_4k' ? { 2: 10 } : { 2: 6, 3: 9, 4: 12 },
     num_images: 1,
     recommended: option.value === 'balanced_2k',
     nusa_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
     configured_nusa_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
     per_output_credit_cost: option.value === 'fast_1k' ? 3 : option.value === 'quality_4k' ? 11 : 7,
-    total_credit_costs: option.value === 'fast_1k' ? { 2: 6, 3: 9, 4: 12 } : option.value === 'quality_4k' ? { 2: 22, 3: 33, 4: 44 } : { 2: 14, 3: 21, 4: 28 },
-    allowed_output_counts: [2, 3, 4],
+    total_credit_costs: option.value === 'fast_1k' ? { 2: 6, 3: 9, 4: 12 } : option.value === 'quality_4k' ? { 2: 22 } : { 2: 14, 3: 21, 4: 28 },
+    allowed_output_counts: option.value === 'quality_4k' ? [2] : [2, 3, 4],
     default_output_count: 2,
-    max_output_count: 4,
+    max_output_count: option.value === 'quality_4k' ? 2 : 4,
+    limited_for_beta_response_safety: option.value === 'quality_4k',
     pricing_configured: true,
     enabled: false,
     disabled_reason: option.value === 'quality_4k' ? 'premium_quality_validation_pending' : 'premium_disabled',
@@ -140,16 +141,29 @@ const selectedPresetLabel = computed(() => selectedPremiumPreset.value === null 
 const selectedPresetResolution = computed(() => selectedPremiumPreset.value?.resolution_label ?? '')
 const isVariationsSelected = computed(() => packageKey.value === 'variations')
 const variationsCapability = computed(() => capabilities.value?.variations ?? null)
+function cleanVariationCounts(counts: number[] | undefined | null): number[] {
+  const valid = (counts ?? []).filter((count) => Number.isInteger(count) && count >= 2 && count <= 4)
+
+  return valid.length > 0 ? valid : [2]
+}
+
 const allowedOutputCounts = computed(() => {
   if (!isVariationsSelected.value) {
     return [1]
   }
 
-  const configured = variationsCapability.value?.allowed_output_counts ?? [2, 3, 4]
+  if (tier.value === 'premium') {
+    return cleanVariationCounts(selectedPremiumPreset.value?.allowed_output_counts)
+  }
 
-  return configured.filter((count) => Number.isInteger(count) && count >= 2 && count <= 4)
+  return cleanVariationCounts(variationsCapability.value?.standard?.allowed_output_counts ?? variationsCapability.value?.allowed_output_counts)
 })
 const selectedOutputCount = computed(() => isVariationsSelected.value ? requestedOutputCount.value : 1)
+const isQualityVariationLimited = computed(() => isVariationsSelected.value
+  && tier.value === 'premium'
+  && premiumPreset.value === 'quality_4k'
+  && allowedOutputCounts.value.length === 1
+  && allowedOutputCounts.value[0] === 2)
 const outputCountLabel = computed(() => selectedOutputCount.value === 1
   ? t('fashionTryOn.oneOutputImage')
   : t('fashionTryOn.manyOutputImages', { count: selectedOutputCount.value }))
@@ -279,9 +293,21 @@ function isPackageKey(value: string | null | undefined): value is FashionTryOnPa
 }
 
 function defaultVariationsOutputCount(): number {
-  const configuredDefault = variationsCapability.value?.default_output_count ?? 2
+  const configuredDefault = tier.value === 'premium'
+    ? selectedPremiumPreset.value?.default_output_count ?? variationsCapability.value?.default_output_count ?? 2
+    : variationsCapability.value?.standard?.default_output_count ?? variationsCapability.value?.default_output_count ?? 2
 
   return allowedOutputCounts.value.includes(configuredDefault) ? configuredDefault : allowedOutputCounts.value[0] ?? 2
+}
+
+function ensureAllowedOutputCount(): void {
+  if (!isVariationsSelected.value) {
+    return
+  }
+
+  if (!allowedOutputCounts.value.includes(requestedOutputCount.value)) {
+    requestedOutputCount.value = defaultVariationsOutputCount()
+  }
 }
 
 function selectOutputCount(value: number): void {
@@ -324,6 +350,7 @@ function selectPremiumPreset(value: FashionTryOnPremiumPresetKey | string): void
   }
 
   premiumPreset.value = value
+  ensureAllowedOutputCount()
 }
 
 function premiumPresetLabel(preset: FashionTryOnPremiumPresetCapability): string {
@@ -400,6 +427,8 @@ function selectTier(value: FashionTryOnTier): void {
   if (value === 'premium') {
     premiumPreset.value = defaultPremiumPreset()
   }
+
+  ensureAllowedOutputCount()
 }
 
 async function loadPage(): Promise<void> {
@@ -417,6 +446,7 @@ async function loadPage(): Promise<void> {
     actions.value = Array.isArray(actionResponse.data) ? actionResponse.data : []
     fetchedCapabilities.value = capabilityResponse.data
     applyQueryPreselection()
+    ensureAllowedOutputCount()
   } catch (error: unknown) {
     loadError.value = error instanceof ApiError ? error.message : t('fashionTryOn.loadFailed')
   } finally {
@@ -572,6 +602,8 @@ async function submit(): Promise<void> {
   }
 }
 
+watch([tier, premiumPreset, packageKey, capabilities], ensureAllowedOutputCount)
+
 onMounted(loadPage)
 </script>
 
@@ -664,6 +696,9 @@ onMounted(loadPage)
                 </div>
                 <p class="mt-3 text-xs leading-5 text-emerald-100/70" data-testid="fashion-variations-cost-summary">
                   {{ t('fashionTryOn.variationsCostSummary', { count: selectedOutputCount, perImage: perImageCreditCostLabel, total: creditCostLabel }) }}
+                </p>
+                <p v-if="isQualityVariationLimited" class="mt-3 text-xs leading-5 text-amber-100" data-testid="fashion-quality-variation-limit-copy">
+                  {{ t('fashionTryOn.qualityVariationLimitCopy') }}
                 </p>
                 <p class="mt-1 text-xs leading-5 text-neutral-500">{{ t('fashionTryOn.higherCountsMayTakeLonger') }}</p>
                 <p v-if="fieldErrors.requested_output_count" id="fashion-output-count-error" class="mt-3 text-sm text-rose-400">{{ fieldErrors.requested_output_count }}</p>

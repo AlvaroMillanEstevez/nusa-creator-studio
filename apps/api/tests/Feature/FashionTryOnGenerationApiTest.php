@@ -1001,7 +1001,12 @@ class FashionTryOnGenerationApiTest extends TestCase
             ->assertJsonPath('data.variations.selection_required_for_continuation', true)
             ->assertJsonPath('data.known_premium_presets.0.total_credit_costs.2', 6)
             ->assertJsonPath('data.known_premium_presets.1.total_credit_costs.3', 21)
-            ->assertJsonPath('data.known_premium_presets.2.total_credit_costs.4', 44);
+            ->assertJsonPath('data.known_premium_presets.2.total_credit_costs.2', 22)
+            ->assertJsonPath('data.known_premium_presets.2.allowed_output_counts.0', 2)
+            ->assertJsonPath('data.known_premium_presets.2.max_output_count', 2)
+            ->assertJsonPath('data.known_premium_presets.2.limited_for_beta_response_safety', true)
+            ->assertJsonPath('data.variations.standard.allowed_output_counts.2', 4)
+            ->assertJsonPath('data.variations.premium_presets.quality_4k.allowed_output_counts.0', 2);
     }
 
     public function test_variations_output_count_validation_and_total_credit_charge_are_server_controlled(): void
@@ -1251,6 +1256,293 @@ class FashionTryOnGenerationApiTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_variations_limits_are_enforced_per_tier_and_premium_preset_before_charge(): void
+    {
+        Queue::fake();
+        Http::fake();
+        config()->set('fashion_try_on.variations_enabled', true);
+        $this->enablePremiumFashn();
+        config()->set('fashion_try_on.fashn.premium_quality_enabled', true);
+
+        $user = User::factory()->admin()->create(['credits_balance' => 300]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+
+        $matrix = [
+            ['tier' => 'standard', 'preset' => null, 'counts' => [2, 3, 4], 'per_output_cost' => 2],
+            ['tier' => 'premium', 'preset' => 'fast_1k', 'counts' => [2, 3, 4], 'per_output_cost' => 3],
+            ['tier' => 'premium', 'preset' => 'balanced_2k', 'counts' => [2, 3, 4], 'per_output_cost' => 7],
+            ['tier' => 'premium', 'preset' => 'quality_4k', 'counts' => [2], 'per_output_cost' => 11],
+        ];
+
+        foreach ($matrix as $case) {
+            foreach ($case['counts'] as $count) {
+                $payload = $this->payload($person, $product, [
+                    'package_key' => 'variations',
+                    'tier' => $case['tier'],
+                    'requested_output_count' => $count,
+                ]);
+
+                if (is_string($case['preset'])) {
+                    $payload['premium_preset'] = $case['preset'];
+                }
+
+                $generationId = $this->actingAs($user)
+                    ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $payload)
+                    ->assertCreated()
+                    ->assertJsonPath('data.credits_charged', $case['per_output_cost'] * $count)
+                    ->json('data.id');
+
+                $generation = Generation::query()->findOrFail($generationId);
+                $this->assertSame($count, $generation->input_payload['requested_output_count']);
+                $this->assertSame($case['per_output_cost'] * $count, $generation->input_payload['total_nusa_credit_cost']);
+                $this->assertSame($case['per_output_cost'], $generation->input_payload['per_output_credit_cost']);
+                $this->assertContains($count, $generation->input_payload['allowed_output_counts']);
+            }
+        }
+
+        $balanceAfterAllowedRequests = $user->refresh()->credits_balance;
+        $generationCount = Generation::query()->count();
+
+        foreach ([3, 4] as $invalidQualityCount) {
+            $this->actingAs($user)
+                ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                    'package_key' => 'variations',
+                    'tier' => 'premium',
+                    'premium_preset' => 'quality_4k',
+                    'requested_output_count' => $invalidQualityCount,
+                ]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('requested_output_count');
+        }
+
+        $this->assertSame($balanceAfterAllowedRequests, $user->refresh()->credits_balance);
+        $this->assertSame($generationCount, Generation::query()->count());
+        Queue::assertPushed(GenerateFashionTryOnJob::class, 10);
+        Http::assertNothingSent();
+    }
+
+    public function test_cli_rejects_quality_variation_counts_above_two_before_provider_payload(): void
+    {
+        Http::fake();
+        config()->set('fashion_try_on.variations_enabled', true);
+        config()->set('fashion_try_on.fashn.premium_quality_enabled', true);
+        $project = $this->workspaceProject(User::factory()->admin()->create());
+
+        $this->artisan('nusa:test-fashion-try-on', [
+            '--project-id' => $project->id,
+            '--package' => 'variations',
+            '--tier' => 'premium',
+            '--preset' => 'quality_4k',
+            '--outputs' => '3',
+            '--dry-run' => true,
+        ])
+            ->expectsOutput('Fashion Try-On setup failed safely: fashn_input_validation')
+            ->assertFailed();
+
+        $this->artisan('nusa:test-fashion-try-on', [
+            '--project-id' => $project->id,
+            '--package' => 'variations',
+            '--tier' => 'premium',
+            '--preset' => 'quality_4k',
+            '--outputs' => '4',
+            '--dry-run' => true,
+        ])->assertFailed();
+
+        $this->assertDatabaseCount('generations', 0);
+        $this->assertDatabaseCount('credit_transactions', 0);
+        Http::assertNothingSent();
+    }
+
+    public function test_output_byte_limits_accept_confirmed_quality_4k_sized_output_equivalent(): void
+    {
+        Queue::fake();
+        $this->enableFashn();
+        $user = User::factory()->admin()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+        $output = 'data:image/png;base64,'.base64_encode($this->pngBytesOfSize(18_268_510));
+
+        Http::fake([
+            'https://api.fashn.ai/v1/run' => Http::response(['id' => 'pred_large_4k', 'status' => 'starting'], 200),
+            'https://api.fashn.ai/v1/status/pred_large_4k' => Http::response(['id' => 'pred_large_4k', 'status' => 'completed', 'output' => [$output]], 200),
+        ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product))
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->runJob($generationId);
+        $generation = Generation::query()->findOrFail($generationId);
+        $asset = MediaAsset::query()->where('usage_role', 'fashion_try_on_result')->firstOrFail();
+
+        $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame(18_268_510, $asset->size_bytes);
+        $this->assertSame(18_268_510, $generation->output_payload['provider_metadata']['total_decoded_output_bytes']);
+        $this->assertSame(33_554_432, $generation->output_payload['provider_metadata']['max_decoded_bytes_per_output']);
+        $this->assertSame(134_217_728, $generation->output_payload['provider_metadata']['max_decoded_bytes_total']);
+    }
+
+    public function test_output_byte_limits_reject_oversized_individual_output_safely(): void
+    {
+        Queue::fake();
+        $this->enableFashn();
+        config()->set('fashion_try_on.fashn.output_max_bytes_per_image', 128);
+        config()->set('fashion_try_on.fashn.output_max_bytes_total', 1024);
+        $user = User::factory()->admin()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+        $output = 'data:image/png;base64,'.base64_encode($this->pngBytesOfSize(129));
+
+        Http::fake([
+            'https://api.fashn.ai/v1/run' => Http::response(['id' => 'pred_oversized_one', 'status' => 'starting'], 200),
+            'https://api.fashn.ai/v1/status/pred_oversized_one' => Http::response(['id' => 'pred_oversized_one', 'status' => 'completed', 'output' => [$output]], 200),
+        ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product))
+            ->assertCreated()
+            ->json('data.id');
+
+        try {
+            $this->runJob($generationId);
+            $this->fail('Expected oversized output to be rejected.');
+        } catch (FashionTryOnProviderException $caught) {
+            (new GenerateFashionTryOnJob($generationId))->failed($caught);
+        }
+
+        $this->assertSame(0, MediaAsset::query()->where('usage_role', 'fashion_try_on_result')->count());
+        $this->assertSame(Generation::STATUS_FAILED, Generation::query()->findOrFail($generationId)->status);
+    }
+
+    public function test_total_decoded_byte_limit_is_enforced_with_partial_refund(): void
+    {
+        Queue::fake();
+        $this->enableFashn();
+        config()->set('fashion_try_on.variations_enabled', true);
+        config()->set('fashion_try_on.fashn.output_max_bytes_per_image', 512);
+        config()->set('fashion_try_on.fashn.output_max_bytes_total', 300);
+        $user = User::factory()->admin()->create(['credits_balance' => 10]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+        $output = 'data:image/png;base64,'.base64_encode($this->pngBytesOfSize(300));
+
+        Http::fake([
+            'https://api.fashn.ai/v1/run' => Http::response(['id' => 'pred_total_limit', 'status' => 'starting'], 200),
+            'https://api.fashn.ai/v1/status/pred_total_limit' => Http::response(['id' => 'pred_total_limit', 'status' => 'completed', 'output' => [$output, $output]], 200),
+        ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'package_key' => 'variations',
+                'requested_output_count' => 2,
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.credits_charged', 4)
+            ->json('data.id');
+
+        $this->runJob($generationId);
+        $generation = Generation::query()->findOrFail($generationId);
+
+        $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame(1, $generation->output_payload['delivered_output_count']);
+        $this->assertSame(1, $generation->output_payload['missing_output_count']);
+        $this->assertSame(2, $generation->output_payload['refunded_credit_amount']);
+        $this->assertSame(2, $generation->credits_charged);
+        $this->assertSame(8, $user->refresh()->credits_balance);
+        $this->assertSame(300, $generation->output_payload['provider_metadata']['total_decoded_output_bytes']);
+        $this->assertSame(1, $generation->output_payload['provider_metadata']['invalid_output_count']);
+    }
+
+    public function test_internal_unlimited_partial_variations_do_not_create_positive_refund_or_balance_change(): void
+    {
+        Queue::fake();
+        $this->enableFashn();
+        config()->set('fashion_try_on.variations_enabled', true);
+        $user = User::factory()->internalCreator()->create(['credits_balance' => 0]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+        $output = 'data:image/png;base64,'.base64_encode($this->pngBytes());
+
+        Http::fake([
+            'https://api.fashn.ai/v1/run' => Http::response(['id' => 'pred_internal_partial', 'status' => 'starting'], 200),
+            'https://api.fashn.ai/v1/status/pred_internal_partial' => Http::response(['id' => 'pred_internal_partial', 'status' => 'completed', 'output' => [$output, 'bad-output', 'bad-output', 'bad-output']], 200),
+        ]);
+
+        $generationId = $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/generate-fashion-try-on", $this->payload($person, $product, [
+                'package_key' => 'variations',
+                'requested_output_count' => 4,
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.credits_charged', 0)
+            ->assertJsonPath('meta.credits_balance', 0)
+            ->json('data.id');
+
+        $this->runJob($generationId);
+        $generation = Generation::query()->findOrFail($generationId);
+        $usage = CreditTransaction::query()->where('generation_id', $generationId)->where('type', CreditTransactionType::Usage->value)->firstOrFail();
+        $refund = CreditTransaction::query()->where('generation_id', $generationId)->where('type', CreditTransactionType::Refund->value)->firstOrFail();
+
+        $this->assertSame(0, $usage->amount);
+        $this->assertSame(0, $refund->amount);
+        $this->assertSame(0, $refund->balance_after);
+        $this->assertSame(0, $user->refresh()->credits_balance);
+        $this->assertSame(0, $generation->credits_charged);
+        $this->assertSame(0, $generation->output_payload['refunded_credit_amount']);
+        $this->assertSame(0, $generation->output_payload['net_credit_cost']);
+        $this->assertSame(6, $refund->metadata['requested_refund_amount']);
+        $this->assertSame(0, $refund->metadata['refunded_credit_amount']);
+    }
+
+    public function test_variations_resume_reuses_existing_output_assets_and_does_not_resubmit_prediction(): void
+    {
+        $this->enableFashn();
+        config()->set('fashion_try_on.variations_enabled', true);
+        $user = User::factory()->admin()->create(['credits_balance' => 20]);
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+        $generation = Generation::query()->create([
+            'user_id' => $user->id,
+            'project_id' => $project->id,
+            'job_type' => 'generate_fashion_try_on',
+            'provider' => 'fashn',
+            'status' => Generation::STATUS_PROCESSING,
+            'cost_usd' => 0,
+            'credits_charged' => 6,
+            'input_payload' => $this->payload($person, $product, [
+                'project_id' => $project->id,
+                'user_id' => $user->id,
+                'package_key' => 'variations',
+                'requested_output_count' => 3,
+                'configured_nusa_credit_cost' => 6,
+                'per_output_credit_cost' => 2,
+                'provider_prediction_id' => 'pred_resume_variations',
+            ]),
+            'output_payload' => null,
+        ]);
+        $existing = $this->storedAsset($project, $user, 'fashion_try_on_result', [
+            'metadata' => ['workflow' => 'fashion_try_on', 'generation_id' => $generation->id, 'output_index' => 0],
+        ]);
+        $output = 'data:image/png;base64,'.base64_encode($this->pngBytes());
+
+        Http::fake([
+            'https://api.fashn.ai/v1/status/pred_resume_variations' => Http::response(['id' => 'pred_resume_variations', 'status' => 'completed', 'output' => [$output, $output, $output]], 200),
+        ]);
+
+        $this->runJob($generation->id);
+        $this->runJob($generation->id);
+
+        $generation->refresh();
+        $this->assertSame(Generation::STATUS_COMPLETED, $generation->status);
+        $this->assertSame($existing->id, $generation->output_payload['final_image_asset_ids'][0]);
+        $this->assertSame([0, 1, 2], collect($generation->output_payload['rendered_image_assets'])->pluck('output_index')->all());
+        $this->assertSame(3, MediaAsset::query()->where('usage_role', 'fashion_try_on_result')->count());
+        Http::assertSentCount(1);
+        Http::assertNotSent(fn (Request $request): bool => $request->method() === 'POST' && str_ends_with($request->url(), '/run'));
+    }
+
     private function enableTool(): void
     {
         CreatorTool::query()->updateOrCreate(['key' => 'fashion_try_on'], [
@@ -1362,6 +1654,17 @@ class FashionTryOnGenerationApiTest extends TestCase
     private function runJob(int $generationId): void
     {
         (new GenerateFashionTryOnJob($generationId))->handle(app(FashionTryOnGenerationProcessor::class));
+    }
+
+    private function pngBytesOfSize(int $size): string
+    {
+        $png = $this->pngBytes();
+
+        if ($size <= strlen($png)) {
+            return substr($png, 0, $size);
+        }
+
+        return $png.str_repeat("\0", $size - strlen($png));
     }
 
     private function pngBytes(): string

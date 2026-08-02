@@ -502,13 +502,19 @@ export interface FashionTryOnPackageCapability {
   partial_refund_supported?: boolean
 }
 
-export interface FashionTryOnVariationsCapability {
-  enabled: boolean
+export interface FashionTryOnOutputCountCapability {
   allowed_output_counts: number[]
   default_output_count: number
   max_output_count: number
+  limited_for_beta_response_safety?: boolean
+}
+
+export interface FashionTryOnVariationsCapability extends FashionTryOnOutputCountCapability {
+  enabled: boolean
   selection_required_for_continuation: boolean
   partial_refund_supported: boolean
+  standard?: FashionTryOnOutputCountCapability
+  premium_presets?: Record<string, FashionTryOnOutputCountCapability>
 }
 
 export interface FashionTryOnOutputLimits {
@@ -576,12 +582,13 @@ export interface FashionTryOnPremiumPresetCapability {
   nusa_credit_cost: number | null
   configured_nusa_credit_cost?: number | null
   per_output_credit_cost?: number | null
-  total_credit_costs?: Record<number, number> | null
+  total_credit_costs?: Partial<Record<number, number>> | null
   expected_provider_credits_per_output?: number | null
-  expected_provider_credits_total_by_count?: Record<number, number> | null
+  expected_provider_credits_total_by_count?: Partial<Record<number, number>> | null
   allowed_output_counts?: number[]
   default_output_count?: number | null
   max_output_count?: number | null
+  limited_for_beta_response_safety?: boolean
   pricing_configured: boolean
   enabled: boolean
   disabled_reason: string | null

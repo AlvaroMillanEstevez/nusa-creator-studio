@@ -33,9 +33,13 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
         $packageKey = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
         $personSource = FashionTryOnCapabilities::normalizePersonSource(is_string($input['person_source'] ?? null) ? $input['person_source'] : null);
         $category = is_string($input['category'] ?? null) ? $input['category'] : 'auto';
-        $requestedOutputCount = is_int($input['requested_output_count'] ?? null)
+        $premiumPresetKey = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+            ? FashionTryOnCapabilities::premiumPresetKeyFromInput($input)
+            : null;
+        $allowedOutputCounts = FashionTryOnCapabilities::allowedOutputCounts($packageKey, $tier, $premiumPresetKey);
+        $requestedOutputCount = is_int($input['requested_output_count'] ?? null) && in_array((int) $input['requested_output_count'], $allowedOutputCounts, true)
             ? (int) $input['requested_output_count']
-            : FashionTryOnCapabilities::defaultOutputCount($packageKey);
+            : FashionTryOnCapabilities::defaultOutputCount($packageKey, $tier, $premiumPresetKey);
         $configuredNusaCreditCost = FashionTryOnCapabilities::configuredCreditCost($input['configured_nusa_credit_cost'] ?? $input['nusa_credit_cost'] ?? null);
         $perOutputCreditCost = FashionTryOnCapabilities::configuredCreditCost($input['per_output_credit_cost'] ?? $configuredNusaCreditCost);
         $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM

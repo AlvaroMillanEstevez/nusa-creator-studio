@@ -16,6 +16,15 @@ return [
         ],
     ],
 
+    'output_max_counts' => [
+        'standard' => (int) env('FASHION_TRY_ON_STANDARD_VARIATIONS_MAX_OUTPUTS', 4),
+        'premium_presets' => [
+            'fast_1k' => (int) env('FASHN_PREMIUM_FAST_1K_VARIATIONS_MAX_OUTPUTS', 4),
+            'balanced_2k' => (int) env('FASHN_PREMIUM_BALANCED_2K_VARIATIONS_MAX_OUTPUTS', 4),
+            'quality_4k' => (int) env('FASHN_PREMIUM_QUALITY_4K_VARIATIONS_MAX_OUTPUTS', 2),
+        ],
+    ],
+
     'fashn' => [
         'api_key' => env('FASHN_API_KEY'),
         'base_url' => rtrim((string) env('FASHN_BASE_URL', 'https://api.fashn.ai/v1'), '/'),

@@ -269,6 +269,7 @@ export default {
     outputCountBody: 'Generate 2, 3, atau 4 opsi try-on dari foto orang dan produk yang sama. Pilih favorit setelah selesai.',
     variationsCostSummary: '{count} gambar · {perImage} per gambar · {total} total.',
     higherCountsMayTakeLonger: 'Jumlah lebih tinggi bisa lebih lama dan memakai lebih banyak kredit.',
+    qualityVariationLimitCopy: 'Variasi Premium Quality saat ini dibatasi dua gambar 4K per set selama beta.',
     standardTier: 'Standard',
     standardTierDescription: 'Try-on cepat dan andal untuk konten harian.',
     premiumBeta: 'Premium Beta',

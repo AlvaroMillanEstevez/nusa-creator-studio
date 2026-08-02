@@ -180,11 +180,13 @@ class FashionTryOnCapabilities
             'variations_enabled' => self::variationsEnabled(),
             'variations' => [
                 'enabled' => self::variationsEnabled(),
-                'allowed_output_counts' => self::VARIATIONS_ALLOWED_OUTPUT_COUNTS,
-                'default_output_count' => self::VARIATIONS_DEFAULT_OUTPUT_COUNT,
-                'max_output_count' => self::CURRENT_MAX_OUTPUTS,
+                'allowed_output_counts' => self::allowedOutputCounts(self::PACKAGE_VARIATIONS, self::TIER_STANDARD),
+                'default_output_count' => self::defaultOutputCount(self::PACKAGE_VARIATIONS, self::TIER_STANDARD),
+                'max_output_count' => self::maximumOutputCountForSelection(self::TIER_STANDARD),
                 'selection_required_for_continuation' => true,
                 'partial_refund_supported' => true,
+                'standard' => self::outputCountCapability(self::TIER_STANDARD),
+                'premium_presets' => self::premiumOutputCountCapabilities(),
             ],
             'output_limits' => [
                 'max_bytes_per_output' => self::maxOutputBytesPerImage(),
@@ -214,8 +216,8 @@ class FashionTryOnCapabilities
                 'key' => self::PACKAGE_VARIATIONS,
                 'enabled' => self::variationsEnabled(),
                 'status' => self::variationsEnabled() ? 'beta' : 'coming_soon',
-                'allowed_output_counts' => self::VARIATIONS_ALLOWED_OUTPUT_COUNTS,
-                'default_output_count' => self::VARIATIONS_DEFAULT_OUTPUT_COUNT,
+                'allowed_output_counts' => self::allowedOutputCounts(self::PACKAGE_VARIATIONS, self::TIER_STANDARD),
+                'default_output_count' => self::defaultOutputCount(self::PACKAGE_VARIATIONS, self::TIER_STANDARD),
                 'selection_required_for_continuation' => true,
                 'partial_refund_supported' => true,
             ],
@@ -276,18 +278,93 @@ class FashionTryOnCapabilities
     }
 
     /** @return list<int> */
-    public static function allowedOutputCounts(string $package): array
+    public static function allowedOutputCounts(string $package, ?string $tier = null, ?string $premiumPreset = null): array
     {
-        return $package === self::PACKAGE_VARIATIONS
-            ? self::VARIATIONS_ALLOWED_OUTPUT_COUNTS
-            : [self::STANDARD_OUTPUT_COUNT];
+        if ($package !== self::PACKAGE_VARIATIONS) {
+            return [self::STANDARD_OUTPUT_COUNT];
+        }
+
+        return self::outputCountCapability($tier ?? self::TIER_STANDARD, $premiumPreset)['allowed_output_counts'];
     }
 
-    public static function defaultOutputCount(string $package): int
+    public static function defaultOutputCount(string $package, ?string $tier = null, ?string $premiumPreset = null): int
     {
-        return $package === self::PACKAGE_VARIATIONS
+        if ($package !== self::PACKAGE_VARIATIONS) {
+            return self::STANDARD_OUTPUT_COUNT;
+        }
+
+        return self::outputCountCapability($tier ?? self::TIER_STANDARD, $premiumPreset)['default_output_count'];
+    }
+
+    /** @return array{allowed_output_counts: list<int>, default_output_count: int, max_output_count: int, limited_for_beta_response_safety: bool} */
+    public static function outputCountCapability(string $tier, ?string $premiumPreset = null): array
+    {
+        $tier = self::normalizeTier($tier);
+        $max = self::maximumOutputCountForSelection($tier, $premiumPreset);
+        $allowed = array_values(array_filter(
+            self::VARIATIONS_ALLOWED_OUTPUT_COUNTS,
+            fn (int $count): bool => $count <= $max,
+        ));
+
+        if ($allowed === []) {
+            $allowed = [self::VARIATIONS_DEFAULT_OUTPUT_COUNT];
+        }
+
+        $default = in_array(self::VARIATIONS_DEFAULT_OUTPUT_COUNT, $allowed, true)
             ? self::VARIATIONS_DEFAULT_OUTPUT_COUNT
-            : self::STANDARD_OUTPUT_COUNT;
+            : $allowed[0];
+
+        $limitedForBetaSafety = $tier === self::TIER_PREMIUM
+            && self::normalizePremiumPreset($premiumPreset) === self::PREMIUM_PRESET_QUALITY_4K
+            && $max < self::CURRENT_MAX_OUTPUTS;
+
+        return [
+            'allowed_output_counts' => $allowed,
+            'default_output_count' => $default,
+            'max_output_count' => $max,
+            'limited_for_beta_response_safety' => $limitedForBetaSafety,
+        ];
+    }
+
+    public static function maximumOutputCountForSelection(string $tier, ?string $premiumPreset = null): int
+    {
+        $tier = self::normalizeTier($tier);
+
+        if ($tier === self::TIER_PREMIUM) {
+            $preset = self::normalizePremiumPreset($premiumPreset);
+            $default = $preset === self::PREMIUM_PRESET_QUALITY_4K
+                ? self::VARIATIONS_DEFAULT_OUTPUT_COUNT
+                : self::CURRENT_MAX_OUTPUTS;
+
+            return self::configuredVariationMaxOutputCount(
+                config('fashion_try_on.output_max_counts.premium_presets.'.$preset),
+                $default,
+            );
+        }
+
+        return self::configuredVariationMaxOutputCount(
+            config('fashion_try_on.output_max_counts.standard'),
+            self::CURRENT_MAX_OUTPUTS,
+        );
+    }
+
+    /** @return array<string, array<string, mixed>> */
+    public static function premiumOutputCountCapabilities(): array
+    {
+        $capabilities = [];
+
+        foreach (self::premiumPresetKeys() as $preset) {
+            $capabilities[$preset] = self::outputCountCapability(self::TIER_PREMIUM, $preset);
+        }
+
+        return $capabilities;
+    }
+
+    private static function configuredVariationMaxOutputCount(mixed $value, int $default): int
+    {
+        $count = is_numeric($value) ? (int) $value : $default;
+
+        return min(self::CURRENT_MAX_OUTPUTS, max(self::VARIATIONS_DEFAULT_OUTPUT_COUNT, $count));
     }
 
     /** @return array<string, mixed> */
@@ -458,7 +535,8 @@ class FashionTryOnCapabilities
             $cost = self::premiumCreditCost($key);
             $pricingConfigured = $cost !== null;
             $disabledReason = self::premiumPresetDisabledReason($user, $key);
-            $allowedCounts = self::VARIATIONS_ALLOWED_OUTPUT_COUNTS;
+            $outputCountCapability = self::outputCountCapability(self::TIER_PREMIUM, $key);
+            $allowedCounts = $outputCountCapability['allowed_output_counts'];
 
             return $preset + [
                 'nusa_credit_cost' => $cost,
@@ -471,9 +549,10 @@ class FashionTryOnCapabilities
                 'beta' => true,
                 'output_count' => self::PREMIUM_OUTPUT_COUNT,
                 'current_max_outputs' => self::CURRENT_MAX_OUTPUTS,
-                'max_output_count' => self::CURRENT_MAX_OUTPUTS,
+                'max_output_count' => $outputCountCapability['max_output_count'],
                 'allowed_output_counts' => $allowedCounts,
-                'default_output_count' => self::VARIATIONS_DEFAULT_OUTPUT_COUNT,
+                'default_output_count' => $outputCountCapability['default_output_count'],
+                'limited_for_beta_response_safety' => $outputCountCapability['limited_for_beta_response_safety'],
                 'variations_pricing_ready' => self::variationsPricingReady(),
                 'variations_enabled' => self::variationsEnabled(),
                 'total_credit_costs' => self::totalCreditCostsForCounts($cost, $allowedCounts),

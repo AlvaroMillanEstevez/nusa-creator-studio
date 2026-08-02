@@ -82,11 +82,16 @@ class FashnFashionTryOnPayloadBuilder
     public function requestedOutputCount(array $input): int
     {
         $package = FashionTryOnCapabilities::normalizePackage(is_string($input['package_key'] ?? null) ? $input['package_key'] : null);
+        $tier = FashionTryOnCapabilities::normalizeTier(is_string($input['tier'] ?? null) ? $input['tier'] : null);
+        $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+            ? FashionTryOnCapabilities::premiumPresetKeyFromInput($input)
+            : null;
         $value = $input['requested_output_count'] ?? null;
+        $allowedCounts = FashionTryOnCapabilities::allowedOutputCounts($package, $tier, $premiumPreset);
 
-        return is_int($value) && in_array($value, FashionTryOnCapabilities::allowedOutputCounts($package), true)
+        return is_int($value) && in_array($value, $allowedCounts, true)
             ? $value
-            : FashionTryOnCapabilities::defaultOutputCount($package);
+            : FashionTryOnCapabilities::defaultOutputCount($package, $tier, $premiumPreset);
     }
 
     /** @param array<string, mixed> $input */

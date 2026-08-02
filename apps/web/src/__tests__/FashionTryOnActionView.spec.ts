@@ -192,6 +192,20 @@ const premiumCapabilities: FashionTryOnProviderCapabilities = {
   known_premium_presets: enabledPremiumPresets,
 }
 
+const variationPremiumPresets: FashionTryOnPremiumPresetCapability[] = enabledPremiumPresets.map((preset) => ({
+  ...preset,
+  enabled: true,
+  disabled_reason: null,
+  validation_status: 'beta_validated',
+  allowed_output_counts: preset.key === 'quality_4k' ? [2] : [2, 3, 4],
+  default_output_count: 2,
+  max_output_count: preset.key === 'quality_4k' ? 2 : 4,
+  limited_for_beta_response_safety: preset.key === 'quality_4k',
+  total_credit_costs: preset.key === 'fast_1k' ? { 2: 6, 3: 9, 4: 12 } : preset.key === 'quality_4k' ? { 2: 22 } : { 2: 14, 3: 21, 4: 28 },
+  expected_provider_credits_total_by_count: preset.key === 'fast_1k' ? { 2: 2, 3: 3, 4: 4 } : preset.key === 'quality_4k' ? { 2: 10 } : { 2: 6, 3: 9, 4: 12 },
+  variations_enabled: true,
+}))
+
 const variationsCapabilities: FashionTryOnProviderCapabilities = {
   ...capabilities,
   maximum_outputs: 4,
@@ -228,7 +242,43 @@ const variationsCapabilities: FashionTryOnProviderCapabilities = {
     max_output_count: 4,
     selection_required_for_continuation: true,
     partial_refund_supported: true,
+    standard: {
+      allowed_output_counts: [2, 3, 4],
+      default_output_count: 2,
+      max_output_count: 4,
+    },
+    premium_presets: {
+      fast_1k: {
+        allowed_output_counts: [2, 3, 4],
+        default_output_count: 2,
+        max_output_count: 4,
+      },
+      balanced_2k: {
+        allowed_output_counts: [2, 3, 4],
+        default_output_count: 2,
+        max_output_count: 4,
+      },
+      quality_4k: {
+        allowed_output_counts: [2],
+        default_output_count: 2,
+        max_output_count: 2,
+        limited_for_beta_response_safety: true,
+      },
+    },
   },
+}
+
+const premiumVariationsCapabilities: FashionTryOnProviderCapabilities = {
+  ...variationsCapabilities,
+  provider: 'fashn',
+  mock_mode: false,
+  real_rendering_enabled: true,
+  premium_enabled: true,
+  premium_real_available_for_user: true,
+  premium_quality_enabled: true,
+  premium_presets: ['fast_1k', 'balanced_2k', 'quality_4k'],
+  available_premium_presets: variationPremiumPresets,
+  known_premium_presets: variationPremiumPresets,
 }
 const ProjectAssetInputStub = {
   props: ['modelValue', 'usageRole', 'title', 'helperText'],
@@ -478,6 +528,73 @@ describe('FashionTryOnActionView', () => {
     })
     expect(String(request?.body)).not.toContain('num_samples')
     expect(String(request?.body)).not.toContain('num_images')
+    expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/700')
+  })
+
+  it('limits Premium Quality variations to two outputs and resets the count without submitting', async () => {
+    const fetchMock = successfulFetch(undefined, premiumVariationsCapabilities)
+    const { wrapper, router } = await mountView(fetchMock)
+
+    await wrapper.get('[data-testid="fashion-package-variations"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="fashion-output-count-2"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="fashion-output-count-3"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="fashion-output-count-4"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="fashion-output-count-4"]').trigger('click')
+    expect(wrapper.text()).toContain('4 images')
+    expect(wrapper.text()).toContain('8 credits')
+
+    await wrapper.get('[data-testid="fashion-tier-premium"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="fashion-output-count-4"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="fashion-premium-preset-fast_1k"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="fashion-output-count-4"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="fashion-premium-preset-quality_4k"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="fashion-output-count-2"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="fashion-output-count-3"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="fashion-output-count-4"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="fashion-output-count-2"]').attributes('aria-checked')).toBe('true')
+    expect(wrapper.get('[data-testid="fashion-quality-variation-limit-copy"]').text()).toContain('two 4K images')
+    expect(wrapper.text()).toContain('2 images')
+    expect(wrapper.text()).toContain('22 credits')
+
+    const submitCallsBeforeSubmit = fetchMock.mock.calls.filter(([input, init]) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+      return url === API_BASE_URL + '/projects/42/generate-fashion-try-on' && init?.method === 'POST'
+    })
+    expect(submitCallsBeforeSubmit).toHaveLength(0)
+
+    await wrapper.get('[data-testid="select-model_reference"]').trigger('click')
+    await wrapper.get('[data-testid="select-garment_reference"]').trigger('click')
+    await wrapper.get('[data-testid="fashion-consent-checkbox"]').setValue(true)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const submitCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+      return url === API_BASE_URL + '/projects/42/generate-fashion-try-on' && init?.method === 'POST'
+    })
+
+    if (submitCall === undefined) {
+      throw new Error('Fashion Try-On Quality variations submit call was not captured.')
+    }
+
+    const [, request] = submitCall
+    expect(JSON.parse(String(request?.body))).toMatchObject({
+      package_key: 'variations',
+      tier: 'premium',
+      premium_preset: 'quality_4k',
+      requested_output_count: 2,
+    })
     expect(router.currentRoute.value.fullPath).toBe('/projects/42/generations/700')
   })
   it('ignores invalid query preselection IDs safely', async () => {

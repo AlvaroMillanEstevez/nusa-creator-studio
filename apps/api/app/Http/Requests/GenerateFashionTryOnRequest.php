@@ -129,8 +129,14 @@ class GenerateFashionTryOnRequest extends FormRequest
                     return;
                 }
 
-                if (! in_array($value, FashionTryOnCapabilities::VARIATIONS_ALLOWED_OUTPUT_COUNTS, true)) {
-                    $fail('Try-On Variations supports exactly 2, 3 or 4 outputs.');
+                $tier = FashionTryOnCapabilities::normalizeTier(is_string($this->input('tier')) ? (string) $this->input('tier') : null);
+                $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+                    ? FashionTryOnCapabilities::premiumPresetKeyFromInput($this->all())
+                    : null;
+                $allowedCounts = FashionTryOnCapabilities::allowedOutputCounts($package, $tier, $premiumPreset);
+
+                if (! in_array($value, $allowedCounts, true)) {
+                    $fail('Try-On Variations supports '.implode(', ', $allowedCounts).' outputs for the selected quality during beta.');
                 }
 
                 return;

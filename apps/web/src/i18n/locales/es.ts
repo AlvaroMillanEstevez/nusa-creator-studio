@@ -221,6 +221,7 @@ export default {
     outputCountBody: 'Genera 2, 3 o 4 opciones try-on con las mismas fotos de persona y producto. Elige tu favorita después.',
     variationsCostSummary: '{count} imágenes · {perImage} por imagen · {total} total.',
     higherCountsMayTakeLonger: 'Más imágenes pueden tardar más y usar más créditos.',
+    qualityVariationLimitCopy: 'Las variaciones Premium Quality están limitadas actualmente a dos imágenes 4K por set durante la beta.',
     standardTier: 'Standard',
     standardTierDescription: 'Try-on rapido y confiable para contenido cotidiano.',
     premiumBeta: 'Premium Beta',

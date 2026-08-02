@@ -522,10 +522,15 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
     private function requestedOutputCount(array $input, string $packageKey): int
     {
         $value = $input['requested_output_count'] ?? null;
+        $tier = FashionTryOnCapabilities::normalizeTier(is_string($input['tier'] ?? null) ? $input['tier'] : null);
+        $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
+            ? FashionTryOnCapabilities::premiumPresetKeyFromInput($input)
+            : null;
+        $allowedCounts = FashionTryOnCapabilities::allowedOutputCounts($packageKey, $tier, $premiumPreset);
 
-        return is_int($value) && in_array($value, FashionTryOnCapabilities::allowedOutputCounts($packageKey), true)
+        return is_int($value) && in_array($value, $allowedCounts, true)
             ? $value
-            : FashionTryOnCapabilities::defaultOutputCount($packageKey);
+            : FashionTryOnCapabilities::defaultOutputCount($packageKey, $tier, $premiumPreset);
     }
 
     /** @param array<string, mixed> $input */
@@ -601,6 +606,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
             'total_nusa_credit_cost' => $configuredNusaCreditCost,
             'per_output_credit_cost' => $perOutputCreditCost,
             'requested_output_count' => $requestedOutputCount,
+            'maximum_allowed_outputs' => FashionTryOnCapabilities::maximumOutputCountForSelection($tier, $premiumPreset['key'] ?? null),
+            'allowed_output_counts' => FashionTryOnCapabilities::allowedOutputCounts($packageKey, $tier, $premiumPreset['key'] ?? null),
             'provider_observed_output_count' => $stored['observed_output_count'],
             'delivered_output_count' => $deliveredOutputCount,
             'missing_output_count' => $missingOutputCount,
@@ -632,6 +639,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                 'output_format' => $firstImage->mime_type,
                 'output_count' => $deliveredOutputCount,
                 'requested_output_count' => $requestedOutputCount,
+                'maximum_allowed_outputs' => FashionTryOnCapabilities::maximumOutputCountForSelection($tier, $premiumPreset['key'] ?? null),
+                'allowed_output_counts' => FashionTryOnCapabilities::allowedOutputCounts($packageKey, $tier, $premiumPreset['key'] ?? null),
                 'provider_observed_output_count' => $stored['observed_output_count'],
                 'delivered_output_count' => $deliveredOutputCount,
                 'missing_output_count' => $missingOutputCount,
@@ -684,6 +693,8 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                 'provider_seed' => FashionTryOnCapabilities::normalizeProviderSeed($input['provider_seed'] ?? null),
                 'output_count' => $deliveredOutputCount,
                 'requested_output_count' => $requestedOutputCount,
+                'maximum_allowed_outputs' => FashionTryOnCapabilities::maximumOutputCountForSelection($tier, $premiumPreset['key'] ?? null),
+                'allowed_output_counts' => FashionTryOnCapabilities::allowedOutputCounts($packageKey, $tier, $premiumPreset['key'] ?? null),
                 'provider_observed_output_count' => $stored['observed_output_count'],
                 'observed_provider_output_count' => $stored['observed_output_count'],
                 'delivered_output_count' => $deliveredOutputCount,

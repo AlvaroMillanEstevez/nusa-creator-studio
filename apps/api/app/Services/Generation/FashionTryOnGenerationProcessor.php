@@ -2,6 +2,7 @@
 
 namespace App\Services\Generation;
 
+use App\Models\CreditTransaction;
 use App\Models\Generation;
 use App\Services\Credits\CreditService;
 use Illuminate\Support\Facades\DB;
@@ -108,12 +109,38 @@ class FashionTryOnGenerationProcessor
             ? $refund['reason']
             : 'Partial refund for missing Fashion Try-On variations';
 
-        $this->credits->refundUsageAmount(
+        $transaction = $this->credits->refundUsageAmount(
             generation: Generation::query()->findOrFail($generationId),
             requestedAmount: $amount,
             reason: $reason,
             metadata: $metadata + ['refund_scope' => 'fashion_try_on_partial_output'],
             auditZeroAmount: true,
         );
+
+        $this->syncPartialRefundAccounting($generationId, $transaction);
+    }
+
+    private function syncPartialRefundAccounting(int $generationId, ?CreditTransaction $transaction): void
+    {
+        $generation = Generation::query()->findOrFail($generationId);
+        $payload = is_array($generation->output_payload) ? $generation->output_payload : [];
+
+        if ($payload === [] || ! is_array($payload['credit_refund'] ?? null)) {
+            return;
+        }
+
+        $actualRefundAmount = $transaction instanceof CreditTransaction ? (int) $transaction->amount : 0;
+        $netCreditCost = max(0, (int) $generation->credits_charged);
+
+        data_set($payload, 'refunded_credit_amount', $actualRefundAmount);
+        data_set($payload, 'net_credit_cost', $netCreditCost);
+        data_set($payload, 'generation_summary.refunded_credit_amount', $actualRefundAmount);
+        data_set($payload, 'generation_summary.net_credit_cost', $netCreditCost);
+        data_set($payload, 'credit_refund.amount', $actualRefundAmount);
+        data_set($payload, 'credit_refund.metadata.refunded_credit_amount', $actualRefundAmount);
+        data_set($payload, 'credit_refund.metadata.actual_refunded_credit_amount', $actualRefundAmount);
+        data_set($payload, 'credit_refund.metadata.net_credit_cost', $netCreditCost);
+
+        $generation->forceFill(['output_payload' => $payload])->save();
     }
 }

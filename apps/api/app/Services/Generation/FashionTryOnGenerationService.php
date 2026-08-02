@@ -88,7 +88,7 @@ class FashionTryOnGenerationService
             ]);
         }
 
-        $requestedOutputCount = $this->requestedOutputCount($options, $packageKey);
+        $requestedOutputCount = $this->requestedOutputCount($options, $packageKey, $tier, $premiumPreset);
         $personImage = $this->resolveRequestAsset($project, $user, $options, 'person_image_asset_id', 'person_image');
         $productImage = $this->resolveRequestAsset($project, $user, $options, 'product_image_asset_id', 'product_image');
         $provider = $this->providers->selectedProviderForUser($user);
@@ -239,12 +239,13 @@ class FashionTryOnGenerationService
     }
 
     /** @param array<string, mixed> $options */
-    private function requestedOutputCount(array $options, string $packageKey): int
+    private function requestedOutputCount(array $options, string $packageKey, string $tier, ?string $premiumPreset): int
     {
         $value = $options['requested_output_count'] ?? null;
+        $allowedCounts = FashionTryOnCapabilities::allowedOutputCounts($packageKey, $tier, $premiumPreset);
 
         if ($value === null || $value === '') {
-            return FashionTryOnCapabilities::defaultOutputCount($packageKey);
+            return FashionTryOnCapabilities::defaultOutputCount($packageKey, $tier, $premiumPreset);
         }
 
         if (! is_int($value)) {
@@ -252,15 +253,20 @@ class FashionTryOnGenerationService
                 'stage' => 'validate_requested_output_count',
                 'field' => 'requested_output_count',
                 'package_key' => $packageKey,
+                'tier' => $tier,
+                'premium_preset' => $premiumPreset,
+                'allowed_output_counts' => $allowedCounts,
             ]);
         }
 
-        if (! in_array($value, FashionTryOnCapabilities::allowedOutputCounts($packageKey), true)) {
+        if (! in_array($value, $allowedCounts, true)) {
             throw FashionTryOnProviderException::invalidInput('fashn_input_validation', [
                 'stage' => 'validate_requested_output_count',
                 'field' => 'requested_output_count',
                 'package_key' => $packageKey,
-                'allowed_output_counts' => FashionTryOnCapabilities::allowedOutputCounts($packageKey),
+                'tier' => $tier,
+                'premium_preset' => $premiumPreset,
+                'allowed_output_counts' => $allowedCounts,
             ]);
         }
 
@@ -345,6 +351,8 @@ class FashionTryOnGenerationService
             'requested_output_count' => $requestedOutputCount,
             'output_count' => $requestedOutputCount,
             'current_max_outputs' => FashionTryOnCapabilities::CURRENT_MAX_OUTPUTS,
+            'maximum_allowed_outputs' => FashionTryOnCapabilities::maximumOutputCountForSelection($tier, $premiumPreset),
+            'allowed_output_counts' => FashionTryOnCapabilities::allowedOutputCounts($packageKey, $tier, $premiumPreset),
             'expected_provider_credits_per_output' => FashionTryOnCapabilities::expectedProviderCreditsPerOutput($tier, $premiumPreset),
             'expected_provider_credits_total' => FashionTryOnCapabilities::expectedProviderCreditsTotal($tier, $premiumPreset, $requestedOutputCount),
             'variations_pricing_ready' => FashionTryOnCapabilities::variationsPricingReady(),

@@ -151,10 +151,10 @@ class CreditService
                 'amount' => $refundAmount,
                 'balance_after' => $balanceAfter,
                 'reason' => $reason,
-                'metadata' => array_filter($metadata + [
+                'metadata' => array_filter(array_merge($metadata, [
                     'requested_refund_amount' => $requestedAmount,
                     'refunded_credit_amount' => $refundAmount,
-                ], fn (mixed $value): bool => $value !== null),
+                ]), fn (mixed $value): bool => $value !== null),
             ]);
         });
     }

@@ -373,6 +373,7 @@ export default {
     outputCountBody: 'Generate 2, 3 or 4 try-on options from the same person and product images. Choose your favorite after generation.',
     variationsCostSummary: '{count} images · {perImage} per image · {total} total.',
     higherCountsMayTakeLonger: 'Higher counts may take longer and cost more credits.',
+    qualityVariationLimitCopy: 'Premium Quality variations are currently limited to two 4K images per set during beta.',
     standardTier: 'Standard',
     standardTierDescription: 'Fast, reliable clothing try-on for everyday content.',
     premiumBeta: 'Premium Beta',
