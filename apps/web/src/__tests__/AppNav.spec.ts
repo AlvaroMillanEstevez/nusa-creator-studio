@@ -23,7 +23,7 @@ const routes = [
 
 const freeUser: AuthUser = {
   id: 1,
-  name: 'Koke Creator',
+  name: 'Sari Creator',
   email: 'creator@example.com',
   role: 'free_user',
   role_label: 'Free User',
@@ -109,7 +109,7 @@ describe('AppNav', () => {
     const text = wrapper.text()
 
     expect(wrapper.find('details').exists()).toBe(true)
-    expect(wrapper.get('summary').text()).toContain('Hi, Koke')
+    expect(wrapper.get('summary').text()).toContain('Hi, Sari')
     expect(wrapper.get('summary').text()).toContain('Free')
     expect(text).toContain('13 credits')
     expect(wrapper.find('a[href="/account"]').text()).toBe('Account')

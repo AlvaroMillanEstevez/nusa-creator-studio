@@ -12,7 +12,7 @@ import AccountView from '@/views/AccountView.vue'
 
 const freeUser: AuthUser = {
   id: 7,
-  name: 'Koke Creator',
+  name: 'Sari Creator',
   email: 'creator@example.test',
   role: 'free_user',
   role_label: 'Free User',
@@ -79,7 +79,7 @@ describe('AccountView', () => {
 
     expect(wrapper.get('h1').text()).toBe('Account and access')
     expect((wrapper.get('input[name="name"]').element as HTMLInputElement).value).toBe(
-      'Koke Creator',
+      'Sari Creator',
     )
     expect((wrapper.get('input[name="email"]').element as HTMLInputElement).value).toBe(
       'creator@example.test',

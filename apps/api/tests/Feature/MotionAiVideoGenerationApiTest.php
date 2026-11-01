@@ -1576,19 +1576,19 @@ class MotionAiVideoGenerationApiTest extends TestCase
             'campaign_generation_id' => 68,
             'campaign_generation_summary' => [
                 'product_name' => 'Hydration bottle',
-                'campaign_title' => 'Koke Shop launch',
+                'campaign_title' => 'Toko Demo launch',
                 'campaign_angle' => 'Show the bottle as a desk routine upgrade.',
                 'target_audience' => 'TikTok affiliate creators',
                 'visual_direction' => 'Clean desk close-up with soft daylight.',
-                'caption' => 'FLASH SALE 50% at Koke Shop',
-                'cta' => 'Buy now at Koke Shop',
+                'caption' => 'FLASH SALE 50% at Toko Demo',
+                'cta' => 'Buy now at Toko Demo',
                 'hooks' => [['hook' => 'Follow @fake_creator for this bottle']],
                 'hashtags' => ['#ViralDeal'],
                 'script' => [
-                    'voiceover_script' => 'Say exactly: Welcome to Koke Shop.',
+                    'voiceover_script' => 'Say exactly: Welcome to Toko Demo.',
                     'scenes' => [[
                         'visual_direction' => 'Slow push-in on product.',
-                        'on_screen_text' => 'Koke Shop 50% off',
+                        'on_screen_text' => 'Toko Demo 50% off',
                     ]],
                 ],
             ],
@@ -1605,9 +1605,9 @@ class MotionAiVideoGenerationApiTest extends TestCase
         $this->assertStringNotContainsString('Buy now', $prompt);
         $this->assertStringNotContainsString('@fake_creator', $prompt);
         $this->assertStringNotContainsString('#ViralDeal', $prompt);
-        $this->assertStringNotContainsString('Welcome to Koke Shop', $prompt);
-        $this->assertStringNotContainsString('Koke Shop 50% off', $prompt);
-        $this->assertStringNotContainsString('Koke Shop launch', $prompt);
+        $this->assertStringNotContainsString('Welcome to Toko Demo', $prompt);
+        $this->assertStringNotContainsString('Toko Demo 50% off', $prompt);
+        $this->assertStringNotContainsString('Toko Demo launch', $prompt);
     }
 
     public function test_google_veo_platform_prompt_never_requests_platform_interfaces(): void
@@ -1672,14 +1672,14 @@ class MotionAiVideoGenerationApiTest extends TestCase
     {
         $prompt = $this->googleVeoPrompt([
             'product_name' => 'Hydration bottle',
-            'project_title' => 'Koke Shop Secret Project',
+            'project_title' => 'Toko Demo Secret Project',
             'brand_name' => 'LumaBottle',
         ])['prompt'];
 
         $this->assertStringContainsString('LumaBottle', $prompt);
         $this->assertStringContainsString('not as a generated logo or text overlay', $prompt);
         $this->assertStringContainsString('No explicit store name, account name or social handle was supplied', $prompt);
-        $this->assertStringNotContainsString('Koke Shop Secret Project', $prompt);
+        $this->assertStringNotContainsString('Toko Demo Secret Project', $prompt);
     }
 
     public function test_google_veo_user_negative_prompt_cannot_override_visual_integrity_rules(): void

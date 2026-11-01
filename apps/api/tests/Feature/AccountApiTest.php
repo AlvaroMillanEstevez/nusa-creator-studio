@@ -20,14 +20,14 @@ class AccountApiTest extends TestCase
 
         $this->actingAs($user)
             ->patchJson('/api/v1/auth/profile', [
-                'name' => 'Koke Creator',
+                'name' => 'Sari Creator',
                 'email' => $user->email,
             ])
             ->assertOk()
-            ->assertJsonPath('user.name', 'Koke Creator')
+            ->assertJsonPath('user.name', 'Sari Creator')
             ->assertJsonPath('user.email', $user->email);
 
-        $this->assertSame('Koke Creator', $user->refresh()->name);
+        $this->assertSame('Sari Creator', $user->refresh()->name);
     }
 
     public function test_authenticated_user_can_update_their_email(): void

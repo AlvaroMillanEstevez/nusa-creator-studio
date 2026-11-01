@@ -740,7 +740,7 @@ class FashionTryOnGenerationApiTest extends TestCase
         Log::spy();
         Http::fake(function (Request $request) use (&$calls): never {
             $calls++;
-            throw new ConnectionException('timeout secret-fashn-key https://api.fashn.ai/v1/run data:image/png;base64,'.base64_encode($this->pngBytes()).' /home/koke/projects/private/media/person.png');
+            throw new ConnectionException('timeout secret-fashn-key https://api.fashn.ai/v1/run data:image/png;base64,'.base64_encode($this->pngBytes()).' /home/dev/projects/private/media/person.png');
         });
 
         try {
@@ -752,7 +752,7 @@ class FashionTryOnGenerationApiTest extends TestCase
             $encoded = json_encode($exception->context, JSON_THROW_ON_ERROR);
             $this->assertStringNotContainsString('secret-fashn-key', $encoded);
             $this->assertStringNotContainsString('data:image/png;base64', $encoded);
-            $this->assertStringNotContainsString('/home/koke/projects/private', $encoded);
+            $this->assertStringNotContainsString('/home/dev/projects/private', $encoded);
             $this->assertStringContainsString('[redacted-url]', $exception->context['safe_exception_message']);
             $this->assertStringContainsString('[redacted-data-uri]', $exception->context['safe_exception_message']);
         }
@@ -766,7 +766,7 @@ class FashionTryOnGenerationApiTest extends TestCase
                 && ($context['endpoint_host'] ?? null) === 'api.fashn.ai'
                 && ! str_contains($encoded, 'secret-fashn-key')
                 && ! str_contains($encoded, 'data:image/png;base64')
-                && ! str_contains($encoded, '/home/koke/projects/private');
+                && ! str_contains($encoded, '/home/dev/projects/private');
         });
     }
 
@@ -775,7 +775,7 @@ class FashionTryOnGenerationApiTest extends TestCase
         $this->enableFashn('secret-fashn-key');
         $client = app(FashnFashionTryOnClient::class);
         $longMessage = str_repeat('Provider says pose could not be detected safely. ', 12)
-            .'secret-fashn-key data:image/png;base64,'.base64_encode($this->pngBytes()).' /home/koke/projects/private/media/person.png';
+            .'secret-fashn-key data:image/png;base64,'.base64_encode($this->pngBytes()).' /home/dev/projects/private/media/person.png';
 
         foreach ([
             'image_object' => [
@@ -870,7 +870,7 @@ class FashionTryOnGenerationApiTest extends TestCase
                 $encodedContext = json_encode($exception->context, JSON_THROW_ON_ERROR);
                 $this->assertStringNotContainsString('secret-fashn-key', $encodedContext, $caseName);
                 $this->assertStringNotContainsString('data:image/png;base64', $encodedContext, $caseName);
-                $this->assertStringNotContainsString('/home/koke/projects/private', $encodedContext, $caseName);
+                $this->assertStringNotContainsString('/home/dev/projects/private', $encodedContext, $caseName);
             }
 
             Http::assertSentCount(1);
@@ -885,7 +885,7 @@ class FashionTryOnGenerationApiTest extends TestCase
         Http::fake([
             'https://api.fashn.ai/v1/run' => Http::response([
                 'error' => 'UnauthorizedAccess',
-                'message' => 'Unauthorized: Invalid token secret-fashn-key data:image/png;base64,'.base64_encode($this->pngBytes()).' /home/koke/projects/private/media/person.png',
+                'message' => 'Unauthorized: Invalid token secret-fashn-key data:image/png;base64,'.base64_encode($this->pngBytes()).' /home/dev/projects/private/media/person.png',
             ], 401),
         ]);
 
@@ -902,7 +902,7 @@ class FashionTryOnGenerationApiTest extends TestCase
             $encodedContext = json_encode($exception->context, JSON_THROW_ON_ERROR);
             $this->assertStringNotContainsString('secret-fashn-key', $encodedContext);
             $this->assertStringNotContainsString('data:image/png;base64', $encodedContext);
-            $this->assertStringNotContainsString('/home/koke/projects/private', $encodedContext);
+            $this->assertStringNotContainsString('/home/dev/projects/private', $encodedContext);
         }
 
         Http::assertSentCount(1);
@@ -915,7 +915,7 @@ class FashionTryOnGenerationApiTest extends TestCase
                 && ! array_key_exists('provider_prediction_id', $context)
                 && ! str_contains($encodedContext, 'secret-fashn-key')
                 && ! str_contains($encodedContext, 'data:image/png;base64')
-                && ! str_contains($encodedContext, '/home/koke/projects/private');
+                && ! str_contains($encodedContext, '/home/dev/projects/private');
         });
     }
 
