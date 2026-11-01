@@ -37,7 +37,7 @@ Items found in the audit.
 | [ ] Remove scaffold leftovers: Laravel welcome view and Vite assets in `apps/api`, template READMEs in `apps/api` and `apps/web`. | 1 h |
 | [ ] Make the Google Veo SDK bridge (`tools/google-veo-sdk-probe`) an explicit, documented optional build step (and part of the API image when enabled). | 2 h |
 
-## 3. Quality and CI (Now) — 22 h
+## 3. Quality and CI (Now) — 26 h
 
 | Task | Estimate |
 | --- | --- |
@@ -45,6 +45,8 @@ Items found in the audit.
 | [ ] OpenAPI description of `/api/v1` and a rendered API reference in `docs/`. | 6 h |
 | [ ] End-to-end smoke test (Playwright) in mock mode: register, create a project, run a generation, see the result. | 5 h |
 | [ ] Accessibility and performance pass: keyboard navigation, form labels, contrast, Lighthouse baseline for the main views. | 5 h |
+| [ ] Responsive header and navigation: on a 390 px phone screen the language selector and nav items are clipped. Fix the app shell for small screens and add a mobile viewport check to the E2E test. | 3 h |
+| [ ] Bundle the Poppins brand font: it is named in the CSS but never loaded, so each system falls back to its default font. | 1 h |
 
 ## 4. Southeast Asia product focus (Next) — 36 h
 
@@ -88,12 +90,12 @@ Items found in the audit.
 | --- | --- | --- |
 | Self-hosting and open source | Now | 18 |
 | Technical debt cleanup | Now | 20 |
-| Quality and CI | Now | 22 |
+| Quality and CI | Now | 26 |
 | Southeast Asia product focus | Next | 36 |
 | Creator productivity | Next | 20 |
 | AI provider robustness | Next | 14 |
 | Later | Later | 24 |
-| **Total** | | **154** |
+| **Total** | | **158** |
 
 ## Out of scope
 
