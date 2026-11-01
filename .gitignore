@@ -16,10 +16,10 @@ apps/web/.env.local
 /apps/api/storage/logs/*.log
 /apps/api/bootstrap/cache/*.php
 
-# Env
+# Env (keep only the committed examples)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Docker volumes / local storage
 /storage-local/
