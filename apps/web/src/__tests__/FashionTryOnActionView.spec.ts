@@ -367,6 +367,7 @@ describe('FashionTryOnActionView', () => {
     expect(wrapper.text()).toContain('AI Fashion Try-On')
     expect(wrapper.text()).toContain('Choose your Try-On package')
     expect(wrapper.text()).toContain('Single Try-On')
+    expect(wrapper.text()).toContain('Generate several distinct try-on results in one request')
     expect(wrapper.get('[data-testid="fashion-package-variations"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-testid="fashion-package-catalog_pack"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-testid="fashion-person-source-nusa_ai_model"]').attributes('disabled')).toBeDefined()

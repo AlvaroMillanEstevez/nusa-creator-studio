@@ -7,6 +7,10 @@ use App\Support\FashionTryOnCapabilities;
 
 class FashnFashionTryOnPayloadBuilder
 {
+    public function __construct(
+        private readonly FashionTryOnPromptBuilder $prompts,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
@@ -142,7 +146,7 @@ class FashnFashionTryOnPayloadBuilder
     /** @param array<string, mixed> $input */
     public function premiumPrompt(array $input): ?string
     {
-        return FashionTryOnCapabilities::sanitizePremiumPrompt($input['premium_prompt'] ?? $input['prompt'] ?? null);
+        return $this->prompts->premiumProviderPrompt($input);
     }
 
     private function outputFormat(): string

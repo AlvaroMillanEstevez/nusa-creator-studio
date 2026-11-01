@@ -12,6 +12,7 @@ use App\Models\MediaAsset;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Generation\FashionTryOnGenerationProcessor;
+use App\Services\Generation\FashionTryOnPromptBuilder;
 use App\Services\Generation\FashnFashionTryOnClient;
 use App\Services\Generation\FashnFashionTryOnProvider;
 use App\Support\FashionTryOnCapabilities;
@@ -38,6 +39,7 @@ class FashionTryOnGenerationApiTest extends TestCase
         $this->enableTool();
         config()->set('fashion_try_on.provider', 'mock');
         config()->set('fashion_try_on.real_enabled', false);
+        config()->set('fashion_try_on.variations_enabled', false);
         config()->set('fashion_try_on.fashn.api_key', null);
         config()->set('fashion_try_on.fashn.poll_interval_seconds', 0);
         config()->set('fashion_try_on.fashn.max_poll_attempts', 1);
@@ -1100,6 +1102,100 @@ class FashionTryOnGenerationApiTest extends TestCase
         $this->assertNull(data_get($premium, 'inputs.num_samples'));
     }
 
+    public function test_variation_prompt_builder_preserves_single_result_and_guides_premium_variations(): void
+    {
+        config()->set('fashion_try_on.variations_enabled', true);
+        $builder = app(FashionTryOnPromptBuilder::class);
+
+        $singleMetadata = $builder->safeMetadata([
+            'package_key' => 'single_result',
+            'premium_prompt' => 'Clean catalogue look',
+        ], 'premium');
+
+        $this->assertArrayNotHasKey('variation_diversity_requested', $singleMetadata);
+        $this->assertTrue($singleMetadata['user_styling_prompt_present']);
+        $this->assertSame('Clean catalogue look', $builder->premiumProviderPrompt([
+            'package_key' => 'single_result',
+            'premium_prompt' => 'Clean catalogue look',
+        ]));
+
+        $variationsPrompt = $builder->premiumProviderPrompt([
+            'package_key' => 'variations',
+            'premium_prompt' => 'Use soft studio lighting.',
+        ]);
+
+        $this->assertIsString($variationsPrompt);
+        $this->assertStringStartsWith('Create distinct fashion try-on variations.', $variationsPrompt);
+        $this->assertStringContainsString('Avoid near-duplicate compositions.', $variationsPrompt);
+        $this->assertStringContainsString('Creator styling note: Use soft studio lighting.', $variationsPrompt);
+        $this->assertLessThanOrEqual(FashionTryOnCapabilities::premiumPromptMaxCharacters(), mb_strlen($variationsPrompt));
+
+        $variationsMetadata = $builder->safeMetadata([
+            'package_key' => 'variations',
+            'premium_prompt' => 'Use soft studio lighting.',
+        ], 'premium');
+
+        $this->assertTrue($variationsMetadata['variation_diversity_requested']);
+        $this->assertSame('controlled_pose_and_framing_diversity', $variationsMetadata['variation_diversity_mode']);
+        $this->assertTrue($variationsMetadata['variation_prompt_applied']);
+        $this->assertSame('premium_prompt', $variationsMetadata['variation_prompt_channel']);
+        $this->assertTrue($variationsMetadata['user_styling_prompt_present']);
+        $this->assertArrayNotHasKey('premium_prompt', $variationsMetadata);
+        $this->assertArrayNotHasKey('prompt', $variationsMetadata);
+    }
+
+    public function test_variations_provider_payload_uses_supported_fields_and_diversity_prompt_where_available(): void
+    {
+        config()->set('fashion_try_on.variations_enabled', true);
+        $user = User::factory()->admin()->create();
+        $project = $this->workspaceProject($user);
+        [$person, $product] = $this->attachAssets($project, $user);
+        $provider = app(FashnFashionTryOnProvider::class);
+
+        $standard = $provider->providerPayload('standard', $this->payload($person, $product, [
+            'package_key' => 'variations',
+            'requested_output_count' => 2,
+            'provider_seed' => 987654,
+        ]), $person, $product);
+
+        $this->assertSame('tryon-v1.6', $standard['model_name']);
+        $this->assertSame(2, data_get($standard, 'inputs.num_samples'));
+        $this->assertSame(987654, data_get($standard, 'inputs.seed'));
+        $this->assertEqualsCanonicalizing([
+            'model_image',
+            'garment_image',
+            'category',
+            'garment_photo_type',
+            'mode',
+            'segmentation_free',
+            'moderation_level',
+            'num_samples',
+            'output_format',
+            'return_base64',
+            'seed',
+        ], array_keys($standard['inputs']));
+        $this->assertArrayNotHasKey('prompt', $standard['inputs']);
+        $this->assertArrayNotHasKey('product_image', $standard['inputs']);
+        $this->assertArrayNotHasKey('num_images', $standard['inputs']);
+
+        $premium = $provider->providerPayload('premium', $this->payload($person, $product, [
+            'package_key' => 'variations',
+            'tier' => 'premium',
+            'premium_preset' => 'fast_1k',
+            'requested_output_count' => 2,
+            'provider_seed' => 123456,
+            'premium_prompt' => 'Keep product color accurate.',
+        ]), $person, $product);
+
+        $this->assertSame('tryon-max', $premium['model_name']);
+        $this->assertSame(2, data_get($premium, 'inputs.num_images'));
+        $this->assertSame(123456, data_get($premium, 'inputs.seed'));
+        $this->assertStringStartsWith('Create distinct fashion try-on variations.', data_get($premium, 'inputs.prompt'));
+        $this->assertStringContainsString('Keep product color accurate.', data_get($premium, 'inputs.prompt'));
+        $this->assertNull(data_get($premium, 'inputs.num_samples'));
+        $this->assertNull(data_get($premium, 'inputs.garment_image'));
+    }
+
     public function test_variations_real_completion_stores_multiple_outputs_without_default_favorite(): void
     {
         Queue::fake();
@@ -1136,6 +1232,16 @@ class FashionTryOnGenerationApiTest extends TestCase
         $this->assertSame(3, $generation->output_payload['delivered_output_count']);
         $this->assertSame(0, $generation->output_payload['missing_output_count']);
         $this->assertFalse($generation->output_payload['partial_output']);
+        $this->assertTrue($generation->input_payload['variation_diversity_requested']);
+        $this->assertSame('controlled_pose_and_framing_diversity', $generation->input_payload['variation_diversity_mode']);
+        $this->assertFalse($generation->input_payload['variation_prompt_applied']);
+        $this->assertSame('standard_provider_contract_unavailable', $generation->input_payload['variation_prompt_channel']);
+        $this->assertTrue($generation->output_payload['variation_diversity_requested']);
+        $this->assertFalse($generation->output_payload['variation_prompt_applied']);
+        $this->assertSame('metadata_only_no_standard_prompt_field', $generation->output_payload['prompt_strategy']);
+        $this->assertSame('controlled_pose_and_framing_diversity', $generation->output_payload['provider_metadata']['variation_diversity_mode']);
+        $this->assertArrayNotHasKey('prompt', $generation->output_payload['provider_metadata']);
+        $this->assertArrayNotHasKey('premium_prompt', $generation->output_payload['provider_metadata']);
         $this->assertSame(0, $generation->output_payload['refunded_credit_amount']);
         $this->assertSame(6, $generation->output_payload['net_credit_cost']);
         $this->assertNull($generation->output_payload['selected_image_asset_id']);
@@ -1155,7 +1261,8 @@ class FashionTryOnGenerationApiTest extends TestCase
                 && str_ends_with($request->url(), '/run')
                 && data_get($data, 'model_name') === 'tryon-v1.6'
                 && data_get($data, 'inputs.num_samples') === 3
-                && data_get($data, 'inputs.num_images') === null;
+                && data_get($data, 'inputs.num_images') === null
+                && data_get($data, 'inputs.prompt') === null;
         });
     }
 

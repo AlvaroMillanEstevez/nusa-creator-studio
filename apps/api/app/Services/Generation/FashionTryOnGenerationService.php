@@ -21,6 +21,7 @@ class FashionTryOnGenerationService
         private readonly ToolAvailabilityService $tools,
         private readonly FashionTryOnAssetResolver $assets,
         private readonly FashionTryOnProviderManager $providers,
+        private readonly FashionTryOnPromptBuilder $prompts,
     ) {}
 
     /**
@@ -332,6 +333,12 @@ class FashionTryOnGenerationService
     ): array {
         $projectInput = is_array($project->input_payload) ? $project->input_payload : [];
         $category = is_string($options['category'] ?? null) ? $options['category'] : 'auto';
+        $promptMetadata = $this->prompts->safeMetadata([
+            'package_key' => $packageKey,
+            'tier' => $tier,
+            'premium_prompt' => $premiumPrompt,
+        ], $tier);
+
         $payload = array_merge($projectInput, [
             'source_workflow' => 'ai_fashion_try_on',
             'origin_workflow' => 'ai_fashion_try_on',
@@ -369,7 +376,7 @@ class FashionTryOnGenerationService
                 'product_name' => $projectInput['product_name'] ?? null,
                 'target_audience' => $projectInput['target_audience'] ?? null,
             ],
-        ]);
+        ], $promptMetadata);
 
         if ($tier === FashionTryOnCapabilities::TIER_PREMIUM && $premiumPreset !== null && $providerSeed !== null) {
             $preset = FashionTryOnCapabilities::premiumPreset($premiumPreset);

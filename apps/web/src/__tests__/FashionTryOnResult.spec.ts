@@ -266,7 +266,7 @@ describe('FashionTryOnGenerationResult', () => {
     expect(wrapper.find('[data-testid="fashion-variation-gallery"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="fashion-motion-needs-favorite"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="fashion-motion-continuation"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Choose your favorite result')
+    expect(wrapper.text()).toContain('Choose the variation with the pose or composition you prefer')
 
     await wrapper.get('[data-testid="fashion-select-variation-602"]').trigger('click')
     await flushPromises()

@@ -432,7 +432,7 @@ export default {
     generateVariations: 'Generate {count} Try-On variations',
     packages: {
       single_result: { label: 'Single Try-On', description: 'Create one realistic fashion try-on image from a person photo and a clothing product photo.' },
-      variations: { label: 'Try-On Variations', description: 'Generate several try-on variations so you can choose the best result.' },
+      variations: { label: 'Try-On Variations', description: 'Generate several distinct try-on results in one request and choose your favorite pose or composition.' },
       catalog_pack: { label: 'E-commerce Catalog Pack', description: 'Prepare a product image set for online stores and marketplaces using the selected try-on result.' },
       catalog_video_pack: { label: 'Catalog Pack + Short Video', description: 'Create a catalog image pack and continue with a short promotional product video.' },
     },
@@ -517,7 +517,7 @@ export default {
       oneImageOutput: '1 output image',
       manyImageOutputs: '{count} output images',
       variationGallery: 'Generated variations',
-      chooseFavoriteHelp: 'Choose your favorite result before continuing to Motion AI Video or catalog workflows.',
+      chooseFavoriteHelp: 'Choose the variation with the pose or composition you prefer before continuing to Motion AI Video or catalog workflows.',
       favoriteSelectedHelp: 'Your favorite result is selected and ready for the next workflow.',
       favoriteSelected: 'Favorite selected',
       favorite: 'Favorite',

@@ -142,7 +142,7 @@ export const fashionTryOnPremiumPresetOptions = [
 
 export const fashionTryOnPackageOptions = [
   { value: 'single_result', label: 'Single Try-On', status: 'available', description: 'Create one realistic fashion try-on image from a person photo and a clothing product photo.' },
-  { value: 'variations', label: 'Try-On Variations', status: 'coming_soon', description: 'Generate several try-on variations so you can choose the best result.' },
+  { value: 'variations', label: 'Try-On Variations', status: 'coming_soon', description: 'Generate several distinct try-on results in one request and choose your favorite pose or composition.' },
   { value: 'catalog_pack', label: 'E-commerce Catalog Pack', status: 'coming_soon', description: 'Prepare a product image set for online stores and marketplaces using the selected try-on result.' },
   { value: 'catalog_video_pack', label: 'Catalog Pack + Short Video', status: 'coming_soon', description: 'Create a catalog image pack and continue with a short promotional product video.' },
 ] as const
@@ -1122,6 +1122,13 @@ export interface FashionTryOnProviderMetadata {
   expected_provider_credits_total?: number | null
   actual_provider_credits?: number | null
   quality_preset?: string | null
+  variation_diversity_requested?: boolean | null
+  variation_diversity_mode?: string | null
+  variation_prompt_applied?: boolean | null
+  variation_prompt_channel?: string | null
+  user_styling_prompt_present?: boolean | null
+  provider_prompt_summary?: string | null
+  prompt_strategy?: string | null
   output_count?: number | null
   safe_error_category?: string | null
   provider_error_name?: string | null
@@ -1157,6 +1164,13 @@ export interface FashionTryOnResult {
   partial_output?: boolean | null
   refunded_credit_amount?: number | null
   net_credit_cost?: number | null
+  variation_diversity_requested?: boolean | null
+  variation_diversity_mode?: string | null
+  variation_prompt_applied?: boolean | null
+  variation_prompt_channel?: string | null
+  user_styling_prompt_present?: boolean | null
+  provider_prompt_summary?: string | null
+  prompt_strategy?: string | null
   selected_image_asset_id?: number | null
   selected_output_index?: number | null
   selection_updated_at?: string | null

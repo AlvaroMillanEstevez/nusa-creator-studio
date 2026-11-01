@@ -8,6 +8,10 @@ use Illuminate\Support\Str;
 
 class MockFashionTryOnProvider implements FashionTryOnProvider
 {
+    public function __construct(
+        private readonly FashionTryOnPromptBuilder $prompts,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
@@ -45,6 +49,7 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
         $premiumPreset = $tier === FashionTryOnCapabilities::TIER_PREMIUM
             ? FashionTryOnCapabilities::premiumPreset(FashionTryOnCapabilities::premiumPresetKeyFromInput($input))
             : null;
+        $promptMetadata = $this->prompts->safeMetadata($input, $tier);
 
         $localized = match (strtolower($this->value($input, 'language', 'english', 40))) {
             'indonesian' => $this->localized(
@@ -118,7 +123,7 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 'product_image_selected' => $garmentAsset !== [],
                 'permission_confirmed' => (bool) ($input['person_image_permission_confirmed'] ?? false),
             ],
-            'provider_request_summary' => [
+            'provider_request_summary' => array_merge([
                 'provider' => 'mock',
                 'package_key' => $packageKey,
                 'person_source' => $personSource,
@@ -127,8 +132,8 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 'requested_output_count' => $requestedOutputCount,
                 'output_count' => 0,
                 'real_provider_call_made' => false,
-            ],
-            'generation_summary' => [
+            ], $promptMetadata),
+            'generation_summary' => array_merge([
                 'quality' => ucfirst($tier),
                 'preset' => $tier === FashionTryOnCapabilities::TIER_PREMIUM ? ($premiumPreset['label'] ?? null) : null,
                 'premium_preset' => $premiumPreset['key'] ?? null,
@@ -142,7 +147,7 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 'nusa_credit_cost' => $configuredNusaCreditCost,
                 'configured_nusa_credit_cost' => $configuredNusaCreditCost,
                 'per_output_credit_cost' => $perOutputCreditCost,
-            ],
+            ], $promptMetadata),
             'image_quality_recommendations' => [
                 'Use a clear person photo where the body and outfit area are visible.',
                 'Use one clear clothing or wearable product photo with minimal background clutter.',
@@ -152,7 +157,7 @@ class MockFashionTryOnProvider implements FashionTryOnProvider
                 ? 'A future real provider call will create the requested try-on variations as private image assets.'
                 : 'A future real provider call will combine the person photo with the clothing/product photo into one private try-on image.',
             'missing_or_risky_input_notes' => [],
-        ], $localized);
+        ], $promptMetadata, $localized);
     }
 
     /**

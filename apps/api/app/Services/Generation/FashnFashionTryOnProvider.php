@@ -20,6 +20,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         private readonly FashnFashionTryOnClient $client,
         private readonly FashionTryOnAssetResolver $assets,
         private readonly GeneratedFashionTryOnImageMediaService $images,
+        private readonly FashionTryOnPromptBuilder $prompts,
     ) {}
 
     /**
@@ -245,6 +246,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         $input['requested_output_count'] = $requestedOutputCount;
         $input['provider_submit_status'] = $submit['status'] ?? 'starting';
         $input['provider_submit_latency_ms'] = $submit['submit_latency_ms'] ?? null;
+        $input = array_merge($input, $this->prompts->safeMetadata($input, $tier));
 
         $generation->forceFill(['input_payload' => $input])->save();
     }
@@ -283,6 +285,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         $assets = [];
         $invalidIndexes = [];
         $totalBytes = 0;
+        $promptMetadata = $this->prompts->safeMetadata($input, $tier);
 
         foreach (array_slice($values, 0, $requestedOutputCount, true) as $outputIndex => $value) {
             try {
@@ -304,7 +307,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                     outputIndex: (int) $outputIndex,
                     imageBinary: $imageBinary,
                     mimeType: $mimeType,
-                    metadata: [
+                    metadata: array_merge([
                         'provider' => 'fashn',
                         'provider_model' => $providerModel,
                         'provider_prediction_id' => $predictionId,
@@ -328,7 +331,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                         'requested_output_count' => $requestedOutputCount,
                         'provider_observed_output_count' => $observedOutputCount,
                         'observed_provider_output_count' => $observedOutputCount,
-                    ],
+                    ], $promptMetadata),
                 );
 
                 $assets[] = $asset->refresh();
@@ -589,6 +592,7 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
         $finalImageAssetIds = array_map(fn (MediaAsset $asset): int => (int) $asset->getKey(), $assets);
         $selectedImageAssetId = $packageKey === FashionTryOnCapabilities::PACKAGE_VARIATIONS ? null : (int) $firstImage->getKey();
         $selectedOutputIndex = $packageKey === FashionTryOnCapabilities::PACKAGE_VARIATIONS ? null : (int) ($firstImage->metadata['output_index'] ?? 0);
+        $promptMetadata = $this->prompts->safeMetadata($input, $tier);
 
         $payload = array_filter([
             'try_on_title' => $packageKey === FashionTryOnCapabilities::PACKAGE_VARIATIONS ? 'AI Fashion Try-On variations' : 'AI Fashion Try-On result',
@@ -717,6 +721,16 @@ class FashnFashionTryOnProvider implements FashionTryOnProvider
                 'Avoid implying exact sizing, body changes or guaranteed results.',
             ],
         ], fn (mixed $value): bool => $value !== null && $value !== '');
+
+        $payload = array_merge($payload, $promptMetadata);
+
+        if (is_array($payload['generation_summary'] ?? null)) {
+            $payload['generation_summary'] = array_merge($payload['generation_summary'], $promptMetadata);
+        }
+
+        if (is_array($payload['provider_metadata'] ?? null)) {
+            $payload['provider_metadata'] = array_merge($payload['provider_metadata'], $promptMetadata);
+        }
 
         if ($packageKey === FashionTryOnCapabilities::PACKAGE_VARIATIONS) {
             $payload['selected_image_asset_id'] = null;
