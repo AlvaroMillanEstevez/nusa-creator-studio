@@ -1,5 +1,5 @@
 # Local development helpers for Nusa Creator Studio.
-# Requires Docker (with Compose), PHP 8.3+ with pdo_pgsql, Composer and Node 20+.
+# Requires Docker (with Compose), PHP 8.4.27+ or 8.5.12+ with pdo_pgsql, Composer and Node 22.18+.
 
 API := apps/api
 WEB := apps/web
