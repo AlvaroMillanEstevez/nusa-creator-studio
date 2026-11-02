@@ -1,0 +1,3 @@
+# Reviewed false positives: i18n label keys and video format keys, not credentials.
+41dcae6f1896e1f51c4923e6dc810b5d4f8bbc26:apps/api/app/Support/FashionTryOnCapabilities.php:generic-api-key:89
+337b458527d875c174cee92d919828a426d0b898:apps/api/app/Services/Generation/ShotstackAutoVideoAdTimelineBuilder.php:generic-api-key:529
